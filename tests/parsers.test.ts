@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { parseExerciseCsv, parseCustomExerciseCsv } from '../src/lib/samsung';
+import { parseExerciseCsv, parseCustomExerciseCsv, parseSleepCsv, parseStepsCsv, parseVitalityCsv } from '../src/lib/samsung';
 import { parseMeasuresCsv } from '../src/lib/measures';
 import { analyze } from '../src/lib/analysis';
+import { buildPayload } from '../src/lib/ai';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
-import type { StrengthRow } from '../src/types';
+import type { CardioRow, DailyWellbeing, StrengthRow } from '../src/types';
 
 const EX = 'C:/Users/Victor/Downloads/com.samsung.shealth.exercise.20261111152201.csv';
 const CE = 'C:/Users/Victor/Desktop/samsunghealth_victorblascogar_20261111152201/com.samsung.shealth.exercise.custom_exercise.20261111152201.csv';
@@ -90,5 +91,63 @@ describe('sesiones manuales', () => {
     const lastSess = a.sessions[a.sessions.length - 1];
     expect(lastSess.day).toBe('Pull');
     expect(lastSess.exercises).toContain('Face Pull');
+  });
+});
+
+describe('frecuencia cardiaca, sueño, pasos, vitalidad e IA', () => {
+  it('extrae pulso, duración y kcal de fuerza y parsea sueño, pasos y vitalidad con deduplicación', () => {
+    const exCsv = [
+      'com.samsung.shealth.exercise,7013005,18',
+      'com.samsung.health.exercise.datauuid,com.samsung.health.exercise.start_time,com.samsung.health.exercise.time_offset,com.samsung.health.exercise.exercise_type,com.samsung.health.exercise.duration,com.samsung.health.exercise.mean_heart_rate,com.samsung.health.exercise.max_heart_rate,com.samsung.health.exercise.min_heart_rate,com.samsung.health.exercise.calorie,routine_datauuid,custom_id,subset_data',
+      'ex-1,2026-11-10 17:00:00.000,UTC+0100,10001,600000,128.4,149.0,102.0,95.6,rout-1,,"[{""reps"":10,""weight"":80},{""reps"":9,""weight"":80}]"',
+    ].join('\n');
+
+    const { strength } = parseExerciseCsv(exCsv);
+    expect(strength).toHaveLength(1);
+    expect(strength[0]).toMatchObject({ durMin: 10, avgHr: 128, maxHr: 149, minHr: 102, kcal: 96 });
+
+    const sleepCsv = [
+      'com.samsung.shealth.sleep,7013005,12',
+      'com.samsung.health.sleep.start_time,com.samsung.health.sleep.end_time,com.samsung.health.sleep.time_offset,sleep_duration,sleep_score,efficiency,total_rem_duration,factor_01,physical_recovery,mental_recovery',
+      '2026-11-10 15:00:00.000,2026-11-10 15:30:00.000,UTC+0100,30,40,80,5,0,50,50',
+      '2026-11-10 00:30:00.000,2026-11-10 08:30:00.000,UTC+0100,462,90,95,104,38,93,93',
+    ].join('\n');
+    const sleepMap = parseSleepCsv(sleepCsv);
+    expect(sleepMap.get('2026-11-10')).toMatchObject({
+      date: '2026-11-10', sleepMin: 462, sleepScore: 90, sleepEff: 95, remMin: 104, deepMin: 38, physRec: 93, mentalRec: 93,
+    });
+
+    const stepsCsv = [
+      'com.samsung.shealth.tracker.pedometer_day_summary,7013005,8',
+      'day_time,step_count,distance,active_time,calorie',
+      '2026-11-10 00:00:00.000,4800,3723.0,2952000,211.1',
+      '2026-11-10 00:00:00.000,9117,7338.0,5315914,388.6',
+    ].join('\n');
+    const stepsMap = parseStepsCsv(stepsCsv);
+    expect(stepsMap.get('2026-11-10')).toMatchObject({ date: '2026-11-10', steps: 9117, stepKm: 7.3, activeMin: 89, stepKcal: 389 });
+
+    const vitCsv = [
+      'com.samsung.shealth.vitality_score,7013005,4',
+      'day_time,total_score,shr_value,shrv_value',
+      '2026-11-10 00:00:00.000,87.3,55.0,100.0',
+    ].join('\n');
+    const vitMap = parseVitalityCsv(vitCsv);
+    expect(vitMap.get('2026-11-10')).toMatchObject({ date: '2026-11-10', energyScore: 87, rhr: 55, hrv: 100 });
+
+    const s = structuredClone(DEFAULT_SETTINGS);
+    const today = new Date().toISOString().slice(0, 10);
+    const rows: StrengthRow[] = [{
+      id: 'ex-1', sessionId: 'rout-1', ts: Date.now(), date: today,
+      ref: 'name:Jalones al pecho', sets: [{ w: 80, r: 10 }], avgHr: 128, maxHr: 149, durMin: 10, kcal: 96, day: 'Pull',
+    }];
+    const cardio: CardioRow[] = [{ id: 'c-1', ts: Date.now(), date: today, type: 1001, durMin: 25, distKm: 4.2, avgHr: 145, kcal: 240, vo2: 48 }];
+    const wellbeing: DailyWellbeing[] = [{ ...sleepMap.get('2026-11-10')!, ...stepsMap.get('2026-11-10')!, ...vitMap.get('2026-11-10')!, date: today }];
+    const a = analyze(rows, s);
+    const payload = buildPayload(a, [], s, cardio, wellbeing);
+
+    expect((payload.ejercicios as Record<string, { fc_media_historica?: number }>)['Jalones al pecho'].fc_media_historica).toBe(128);
+    expect(payload.sesiones_fuerza_recientes[0]).toMatchObject({ fc_media: 128, fc_max: 149, dur_min: 10, kcal: 96 });
+    expect(payload.cardio_reciente.resumen_8_sem).toMatchObject({ sesiones: 1, km_totales: 4.2, vo2_max_reciente: 48 });
+    expect(payload.recuperacion_y_actividad.ultimos_7_dias).toMatchObject({ pasos_media: 9117, fc_reposo_media: 55, hrv_media_ms: 100 });
   });
 });

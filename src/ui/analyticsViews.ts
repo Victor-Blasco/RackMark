@@ -126,17 +126,52 @@ export function viewAdherence(S: State): string {
   const lim = cols[cols.length - 9];
   byDate.forEach((t, d) => { if (t && d >= lim) counts[t]++; });
   const cardio = S.cardio.filter((c) => c.date >= lim);
+  const well56 = S.wellbeing.filter((w) => w.date >= lim);
+  const hasSleep = well56.some((w) => w.sleepMin != null || w.hrv != null);
+  const hasSteps = well56.some((w) => w.steps != null);
+  if (hasSleep) {
+    chart('c-well-sleep', {
+      type: 'line',
+      data: {
+        labels: well56.map((w) => short(w.date)),
+        datasets: [
+          { label: 'Sueño (h)', data: well56.map((w) => (w.sleepMin != null ? Math.round((w.sleepMin / 60) * 10) / 10 : null)), borderColor: '#3B82F6', yAxisID: 'y', tension: 0.25, spanGaps: true },
+          { label: 'HRV (ms)', data: well56.map((w) => w.hrv ?? null), borderColor: '#10B981', yAxisID: 'y1', tension: 0.25, spanGaps: true },
+        ],
+      },
+      options: { interaction: { mode: 'index', intersect: false }, scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } },
+    });
+  }
+  if (hasSteps) {
+    chart('c-well-steps', {
+      type: 'bar',
+      data: {
+        labels: well56.map((w) => short(w.date)),
+        datasets: [{ label: 'Pasos diarios', data: well56.map((w) => w.steps ?? 0), backgroundColor: '#F59E0B' }],
+      },
+    });
+  }
   return `${noData(S)}
   <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
     ${kpi('Media semanal (8 sem.)', r1(avg), 'días entrenados')}
     ${kpi('Racha ≥3 días/sem.', String(streak), 'semanas completas')}
     ${kpi('Push / Pull / Leg', `${counts.Push}/${counts.Pull}/${counts.Leg}`, 'últimas 8 semanas')}
-    ${kpi('Cardio (8 sem.)', String(cardio.length), `${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km`)}
+    ${kpi('Cardio (8 sem.)', String(cardio.length), `${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km · ${Math.round(cardio.reduce((a, c) => a + c.durMin, 0))} min`)}
   </div>
   <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Calendario (últimas ${W} semanas)</h3>
     <div class="flex gap-1.5"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-500">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
     ${cols.map((w) => `<div class="flex flex-col gap-1.5">${[0, 1, 2, 3, 4, 5, 6].map((i) => cell(w, i)).join('')}</div>`).join('')}</div>
-    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${DAYS.map((d) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${DAY_COLOR[d]}">${DAY_SHORT[d]}</span>${d}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>`;
+    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${DAYS.map((d) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${DAY_COLOR[d]}">${DAY_SHORT[d]}</span>${d}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
+  ${hasSleep || hasSteps ? `
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    ${hasSleep ? `<div class="card"><h3 class="mb-2 font-bold text-white">Sueño y HRV nocturna (8 sem.)</h3><div class="chart-box"><canvas id="c-well-sleep"></canvas></div></div>` : ''}
+    ${hasSteps ? `<div class="card"><h3 class="mb-2 font-bold text-white">Pasos diarios · NEAT (8 sem.)</h3><div class="chart-box"><canvas id="c-well-steps"></canvas></div></div>` : ''}
+  </div>` : ''}
+  ${S.cardio.length ? `
+  <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Últimas sesiones de cardio (${S.cardio.length})</h3>
+    <table class="w-full text-left text-xs"><thead class="uppercase text-gray-400"><tr><th class="py-1.5 pr-3">Fecha</th><th class="pr-3 text-right">Duración</th><th class="pr-3 text-right">Distancia</th><th class="pr-3 text-right">FC media</th><th class="pr-3 text-right">Kcal</th><th class="text-right">VO2 máx</th></tr></thead><tbody>
+    ${[...S.cardio].reverse().slice(0, 12).map((c) => `<tr class="border-t border-gray-800 font-mono tabular-nums"><td class="py-1.5 pr-3">${fmtDate(c.date)}</td><td class="pr-3 text-right">${r1(c.durMin)} min</td><td class="pr-3 text-right">${r1(c.distKm)} km</td><td class="pr-3 text-right text-cyan-300">${c.avgHr ? `${Math.round(c.avgHr)} lpm` : '—'}</td><td class="pr-3 text-right">${c.kcal || '—'}</td><td class="text-right text-emeraldGreen">${c.vo2 ? r1(c.vo2) : '—'}</td></tr>`).join('')}
+    </tbody></table></div>` : ''}`;
 }
 
 /** Renderiza la calculadora de 1RM y el planificador nutricional Katch-McArdle. */

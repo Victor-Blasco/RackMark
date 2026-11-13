@@ -2,21 +2,42 @@ import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { generateAnalysis } from './lib/ai';
-import { deleteKey, exportBackup, getAll, importBackup, loadSettings, putMany, saveSettings, wipeAll, type Backup } from './lib/db';
+import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, putMany, saveSettings, wipeAll, type Backup } from './lib/db';
 import { importSamsungFiles } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
-import { MEASURE_FIELDS, type CardioRow, type DayName, type LogDraft, type Measure, type StrengthRow } from './types';
+import { MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type LogDraft, type Measure, type StrengthRow } from './types';
 import { norm } from './lib/seed';
-import { icon } from './ui/icons';
+import { icon, type IconName } from './ui/icons';
 import { defaultSetsForEx, initLogDraft, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewDay, viewHome, viewLog, viewSettings, viewVolume, type State } from './ui/views';
 
 registerSW({ immediate: true });
 
-const TABS: [string, string][] = [
-  ['home', 'Resumen'], ['log', '+ Entrenar'], ['Push', 'Push'], ['Pull', 'Pull'], ['Leg', 'Leg'],
-  ['body', 'Cuerpo'], ['volume', 'Volumen'], ['adherence', 'Adherencia'], ['calc', 'Calculadoras'], ['settings', 'Ajustes'],
+const ROUTINE_TABS: { id: DayName; label: string; sub: string; color: string }[] = [
+  { id: 'Push', label: 'Push', sub: 'Empuje', color: '#F43F5E' },
+  { id: 'Pull', label: 'Pull', sub: 'Tirón', color: '#3B82F6' },
+  { id: 'Leg', label: 'Leg', sub: 'Pierna', color: '#10B981' },
 ];
-const TAB_IDS = new Set(TABS.map(([k]) => k));
+const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
+  { id: 'body', label: 'Cuerpo', icon: 'body' },
+  { id: 'volume', label: 'Volumen', icon: 'chart' },
+  { id: 'adherence', label: 'Adherencia', icon: 'calendar' },
+  { id: 'calc', label: 'Calculadoras', icon: 'calc' },
+];
+const TAB_TITLES: Record<string, string> = {
+  home: 'Resumen',
+  log: 'Registrar entreno',
+  Push: 'Rutina Push',
+  Pull: 'Rutina Pull',
+  Leg: 'Rutina Leg',
+  body: 'Cuerpo',
+  volume: 'Volumen',
+  adherence: 'Adherencia',
+  calc: 'Calculadoras',
+  settings: 'Ajustes',
+};
+const ROUTINE_IDS = new Set<string>(ROUTINE_TABS.map((t) => t.id));
+const ANALYTICS_IDS = new Set<string>(ANALYTICS_TABS.map((t) => t.id));
+const TAB_IDS = new Set<string>(Object.keys(TAB_TITLES));
 const initialTab = () => {
   const hash = location.hash.slice(1);
   return TAB_IDS.has(hash) ? hash : 'home';
@@ -33,10 +54,14 @@ function saveDraft(d?: LogDraft) {
 }
 
 const S = { tab: initialTab(), sel: {}, perimeter: 'arms', muscleSel: 'Pecho', logDraft: loadDraft() } as State;
+let lastRoutine: DayName = ROUTINE_IDS.has(S.tab) ? (S.tab as DayName) : 'Push';
+let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
 
 function setTab(tab: string) {
   S.tab = TAB_IDS.has(tab) ? tab : 'home';
+  if (ROUTINE_IDS.has(S.tab)) lastRoutine = S.tab as DayName;
+  if (ANALYTICS_IDS.has(S.tab)) lastAnalytics = S.tab;
   if (location.hash.slice(1) !== S.tab) history.replaceState(null, '', `#${S.tab}`);
 }
 
@@ -45,6 +70,7 @@ async function reload() {
   S.strength = (await getAll<StrengthRow>('strength')).sort((a, b) => a.ts - b.ts);
   S.cardio = (await getAll<CardioRow>('cardio')).sort((a, b) => a.ts - b.ts);
   S.measures = (await getAll<Measure>('measures')).sort((a, b) => a.date.localeCompare(b.date));
+  S.wellbeing = (await getAll<DailyWellbeing>('wellbeing')).sort((a, b) => a.date.localeCompare(b.date));
   S.analysis = analyze(S.strength, S.settings);
 }
 
@@ -80,20 +106,152 @@ function focusSelector(el: Element | null): string | null {
   return null;
 }
 
+function renderSidebar(statsText: string, draftCount: number): string {
+  const aiReady = Boolean(S.settings.geminiKey);
+  const routineBtns = ROUTINE_TABS.map((r) => {
+    const active = S.tab === r.id;
+    const count = S.settings.routines[r.id].length;
+    return `<button data-act="tab" data-arg="${r.id}" ${active ? 'aria-current="page"' : ''} class="nav-item ${active ? 'nav-item-on' : ''}">
+      <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color:${r.color}"></span>
+      <span class="flex-1 text-left">${r.label} <span class="text-xs font-normal text-gray-500">· ${r.sub}</span></span>
+      <span class="font-mono text-[11px] text-gray-500 tabular-nums">${count}</span>
+    </button>`;
+  }).join('');
+  const analyticsBtns = ANALYTICS_TABS.map((a) => {
+    const active = S.tab === a.id;
+    return `<button data-act="tab" data-arg="${a.id}" ${active ? 'aria-current="page"' : ''} class="nav-item ${active ? 'nav-item-on' : ''}">
+      ${icon(a.icon, 'h-4 w-4')}
+      <span>${a.label}</span>
+    </button>`;
+  }).join('');
+
+  return `<aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-gray-800/80 bg-[#0B101B]">
+    <div class="flex items-center gap-3 border-b border-gray-800/80 px-4 py-4">
+      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
+      <div class="min-w-0">
+        <p class="truncate text-sm font-extrabold text-white">Panel PPL</p>
+        <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
+      </div>
+    </div>
+
+    <div class="p-3">
+      <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${S.tab === 'log' ? 'bg-gradient-to-r from-electricBlue to-emeraldGreen ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}">
+        ${icon('plus', 'h-4 w-4')}
+        <span>Registrar entreno</span>
+        ${draftCount > 0 ? `<span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200"><span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emeraldGreen"></span>${draftCount}</span>` : ''}
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-1">
+      <div>
+        <p class="nav-sec-lbl">General</p>
+        <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'home' ? 'nav-item-on' : ''}">
+          ${icon('home', 'h-4 w-4')}
+          <span>Resumen</span>
+        </button>
+      </div>
+
+      <div>
+        <p class="nav-sec-lbl">Rutinas PPL</p>
+        <div class="space-y-1">${routineBtns}</div>
+      </div>
+
+      <div>
+        <p class="nav-sec-lbl">Análisis y métricas</p>
+        <div class="space-y-1">${analyticsBtns}</div>
+      </div>
+    </nav>
+
+    <div class="mt-auto border-t border-gray-800/80 p-3">
+      <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
+        ${icon('gear', 'h-4 w-4')}
+        <span class="flex-1 text-left">Ajustes</span>
+        <span title="${aiReady ? 'IA configurada' : 'Sin clave de IA'}" class="h-2 w-2 rounded-full ${aiReady ? 'bg-emeraldGreen' : 'bg-gray-600'}"></span>
+      </button>
+    </div>
+  </aside>`;
+}
+
+function renderMobileHeader(statsText: string): string {
+  const inRoutine = ROUTINE_IDS.has(S.tab);
+  const inAnalytics = ANALYTICS_IDS.has(S.tab);
+  const subNav = inRoutine
+    ? `<div role="tablist" aria-label="Rutinas PPL" class="mt-2 grid grid-cols-3 gap-1.5 rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${ROUTINE_TABS.map((r) => {
+        const active = S.tab === r.id;
+        return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${r.id}" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold transition-colors ${active ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}">
+          <span class="h-2 w-2 rounded-full" style="background-color:${r.color}"></span>
+          <span>${r.label}</span>
+        </button>`;
+      }).join('')}</div>`
+    : inAnalytics
+      ? `<div role="tablist" aria-label="Vistas de análisis" class="mt-2 grid grid-cols-4 gap-1 rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${ANALYTICS_TABS.map((a) => {
+          const active = S.tab === a.id;
+          return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${a.id}" class="truncate rounded-lg px-1.5 py-1.5 text-center text-[11px] font-bold transition-colors ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">${a.label === 'Calculadoras' ? 'Calc.' : a.label}</button>`;
+        }).join('')}</div>`
+      : '';
+
+  return `<header class="sticky top-0 z-30 border-b border-gray-800 bg-bgDark/95 px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur lg:hidden">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-2.5">
+      <div class="flex min-w-0 items-center gap-2.5">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
+        <div class="min-w-0">
+          <h1 class="truncate text-sm font-extrabold leading-tight text-white">${TAB_TITLES[S.tab] ?? 'Panel PPL'}</h1>
+          <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
+        </div>
+      </div>
+      <button data-act="tab" data-arg="settings" aria-label="Ajustes" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${S.tab === 'settings' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-gray-800 bg-gray-900/80 text-gray-400 hover:text-white'}">
+        ${icon('gear', 'h-5 w-5')}
+      </button>
+    </div>
+    ${subNav}
+  </header>`;
+}
+
+function renderMobileNav(draftCount: number): string {
+  const inRoutine = ROUTINE_IDS.has(S.tab);
+  const inAnalytics = ANALYTICS_IDS.has(S.tab);
+  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-800 bg-[#0B101B]/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+    <div class="mx-auto grid max-w-md grid-cols-4 items-center gap-1">
+      <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="bnav-item ${S.tab === 'home' ? 'bnav-item-on' : ''}">
+        ${icon('home', 'h-5 w-5')}
+        <span>Resumen</span>
+      </button>
+      <button data-act="tab" data-arg="${lastRoutine}" ${inRoutine ? 'aria-current="page"' : ''} class="bnav-item ${inRoutine ? 'bnav-item-on' : ''}">
+        ${icon('barbell', 'h-5 w-5')}
+        <span>${inRoutine ? `Rutina · ${S.tab}` : 'Rutinas'}</span>
+      </button>
+      <button data-act="tab" data-arg="${lastAnalytics}" ${inAnalytics ? 'aria-current="page"' : ''} class="bnav-item ${inAnalytics ? 'bnav-item-on' : ''}">
+        ${icon('chart', 'h-5 w-5')}
+        <span>Análisis</span>
+      </button>
+      <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="bnav-item">
+        <span class="relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm ${S.tab === 'log' ? 'bg-gradient-to-r from-electricBlue to-emeraldGreen ring-2 ring-blue-300/60' : 'bg-electricBlue'}">
+          ${icon('plus', 'h-4 w-4')}
+          ${draftCount > 0 ? `<span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-[#0B101B]"></span>` : ''}
+        </span>
+        <span class="${S.tab === 'log' ? 'text-blue-300' : 'text-gray-200'}">Entrenar</span>
+      </button>
+    </div>
+  </nav>`;
+}
+
 /** Re-renderiza el panel preservando posición de scroll y foco del control activo. */
 function render() {
   const y = window.scrollY;
   const activeSel = focusSelector(document.activeElement);
   resetCharts();
   const html = view();
+  const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'sin datos importados';
+  const draftCount = S.logDraft?.exercises.filter((e) => e.done).length ?? 0;
+
   root.innerHTML = `
-  <header class="sticky top-0 z-30 border-b border-gray-800 bg-bgDark/90 px-3 pb-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur">
-    <div class="mx-auto flex max-w-6xl items-center gap-2.5 pb-2">
-      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
-      <div><h1 class="text-base font-extrabold leading-tight text-white">Panel de rendimiento PPL</h1><p class="text-[11px] text-gray-500 tabular-nums">${S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'sin datos importados'}</p></div></div>
-    <nav role="tablist" aria-label="Secciones del panel" class="mx-auto flex max-w-6xl gap-2 overflow-x-auto pb-1">${TABS.map(([k, l]) => `<button role="tab" aria-selected="${S.tab === k}" data-act="tab" data-arg="${k}" class="tab ${S.tab === k ? 'tab-on' : ''}">${l}</button>`).join('')}</nav></header>
-  <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl space-y-4 p-3 pb-24 sm:p-5 focus:outline-none">${html}</main>
-  ${S.toast ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-4 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm shadow-xl">${S.toast}</div>` : ''}`;
+  ${renderSidebar(statsText, draftCount)}
+  ${renderMobileHeader(statsText)}
+  <div class="lg:pl-64">
+    <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl space-y-4 p-3 pb-28 sm:p-5 lg:p-6 lg:pb-10 focus:outline-none">${html}</main>
+  </div>
+  ${renderMobileNav(draftCount)}
+  ${S.toast ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm shadow-xl lg:bottom-6 lg:left-64">${S.toast}</div>` : ''}`;
   runChartJobs(); runCalc();
   window.scrollTo(0, y);
   if (activeSel) root.querySelector<HTMLElement>(activeSel)?.focus({ preventScroll: true });
@@ -258,7 +416,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   },
   ai: async () => {
     if (S.busy) return; S.busy = 'ai'; render();
-    try { S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings); await saveSettings(S.settings); toast('Análisis generado.'); }
+    try { S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing); await saveSettings(S.settings); toast('Análisis generado.'); }
     catch (e) { toast(`Error de IA: ${(e as Error).message}`); }
     S.busy = undefined; render();
   },
@@ -317,9 +475,16 @@ root.addEventListener('change', async (e) => {
       const imp = await importSamsungFiles(files);
       const before = S.strength.length;
       await putMany('strength', imp.strength); await putMany('cardio', imp.cardio);
+      await mergeWellbeing(imp.wellbeing);
       Object.assign(S.settings.customNames, imp.customNames);
       await saveSettings(S.settings); await reload();
-      toast(`Importado: ${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos), ${imp.cardio.length} cardio, ${Object.keys(imp.customNames).length} nombres.${!Object.keys(S.settings.customNames).length ? ' Falta custom_exercise.csv para los nombres.' : ''}`);
+      const parts = [
+        `${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos)`,
+        `${imp.cardio.length} cardio`,
+        `${imp.wellbeing.length} días de bienestar`,
+        `${Object.keys(imp.customNames).length} nombres`,
+      ];
+      toast(`Importado: ${parts.join(', ')}.${!Object.keys(S.settings.customNames).length && imp.strength.length ? ' Falta custom_exercise.csv para los nombres.' : ''}`);
     } else if (kind === 'measures') {
       const m = parseMeasuresCsv(await files[0].text());
       await putMany('measures', m.measures);

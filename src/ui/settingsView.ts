@@ -20,11 +20,11 @@ export function viewSettings(S: State): string {
   return `
   <div class="card space-y-3"><h3 class="font-bold text-white">Importar datos</h3>
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <label class="block"><span class="lbl">Samsung Health: ZIP de la exportación o CSV (exercise y custom_exercise)</span>
+      <label class="block"><span class="lbl">Samsung Health: ZIP completo o CSV (exercise, custom_exercise, sleep, pedometer/step_daily_trend, vitality_score)</span>
         <input class="inp" type="file" accept=".zip,.csv" multiple data-file="samsung"></label>
       <label class="block"><span class="lbl">Medidas: CSV (formato de tu hoja)</span>
         <input class="inp" type="file" accept=".csv" data-file="measures"></label></div>
-    <p class="text-xs text-gray-400 tabular-nums">Reimportar es seguro: se deduplica por identificador. Datos guardados: ${S.strength.length} ejercicios, ${S.cardio.length} cardio, ${S.measures.length} medidas.</p></div>
+    <p class="text-xs text-gray-400 tabular-nums">Reimportar es seguro: se deduplica por identificador. Datos guardados: ${S.strength.length} ejercicios, ${S.cardio.length} cardio, ${S.wellbeing.length} días de sueño/pasos, ${S.measures.length} medidas.</p></div>
 
   <div class="card space-y-3"><h3 class="font-bold text-white">Copia de seguridad</h3><div class="flex flex-wrap gap-2">
     <button class="btn" data-act="export">${icon('download', 'h-4 w-4')} Exportar JSON</button>

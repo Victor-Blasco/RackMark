@@ -11,6 +11,11 @@ export interface StrengthRow {
   date: string;          // YYYY-MM-DD local
   ref: string;           // custom_id, "type:10018" o "name:<Nombre>"
   sets: SetRec[];
+  durMin?: number;       // duración del ejercicio (min)
+  avgHr?: number;        // frecuencia cardíaca media (lpm)
+  maxHr?: number;        // frecuencia cardíaca máxima (lpm)
+  minHr?: number;        // frecuencia cardíaca mínima (lpm)
+  kcal?: number;         // calorías estimadas
   note?: string;         // nota del ejercicio en esta sesión
   day?: DayName;         // rutina asignada manualmente
 }
@@ -31,6 +36,24 @@ export interface LogDraft {
 export interface CardioRow {
   id: string; ts: number; date: string; type: number;
   durMin: number; distKm: number; avgHr: number; kcal: number; vo2?: number;
+}
+
+export interface DailyWellbeing {
+  date: string;         // YYYY-MM-DD
+  sleepMin?: number;    // duración de sueño (min)
+  sleepScore?: number;  // puntuación de sueño (0-100)
+  sleepEff?: number;    // eficiencia de sueño (%)
+  remMin?: number;      // sueño REM (min)
+  deepMin?: number;     // sueño profundo (min)
+  physRec?: number;     // recuperación física (0-100)
+  mentalRec?: number;   // recuperación mental (0-100)
+  steps?: number;       // pasos totales del día
+  stepKm?: number;      // distancia diaria en pasos (km)
+  activeMin?: number;   // tiempo activo diario (min)
+  stepKcal?: number;    // kcal activas por pasos
+  energyScore?: number; // Energy Score / vitalidad (0-100)
+  rhr?: number;         // FC en reposo nocturna (lpm)
+  hrv?: number;         // HRV nocturna (ms)
 }
 
 export interface Measure {

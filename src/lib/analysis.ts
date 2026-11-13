@@ -20,16 +20,21 @@ export function musclesOf(name: string, s: Settings): MuscleMap | null {
 export interface ExSession {
   date: string; sets: { w: number; r: number }[];
   top: number; repsAtTop: number; volume: number; e1rm: number;
+  avgHr?: number; maxHr?: number; durMin?: number; kcal?: number;
   note?: string;
 }
 export interface ExStats {
   name: string; day: DayName | null; target?: RoutineEx;
   sessions: ExSession[]; last?: ExSession; n: number;
   maxWeight: number; maxE1rm: number;
+  avgHr?: number; maxHr?: number;
   status: string; statusColor: 'emeraldGreen' | 'electricBlue' | 'coralRed' | 'amberGold' | 'gray';
   prescription: string;
 }
-export interface Session { id: string; date: string; day: DayName | null; exercises: string[]; sets: number }
+export interface Session {
+  id: string; date: string; day: DayName | null; exercises: string[]; sets: number;
+  avgHr?: number; maxHr?: number; durMin?: number; kcal?: number;
+}
 
 export interface Analysis {
   exercises: Map<string, ExStats>;
@@ -96,10 +101,28 @@ export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<
     prescription: `Mantén ${last.top} kg buscando ${nSets}×${minReps} (faltan ${missing} reps) antes de subir a ${last.top + inc} kg.` };
 }
 
+interface PhysioAcc { hrs: number[]; maxHr: number; durMin: number; kcal: number }
+
+function addPhysio(acc: PhysioAcc, row: StrengthRow) {
+  if (row.avgHr) acc.hrs.push(row.avgHr);
+  if (row.maxHr && row.maxHr > acc.maxHr) acc.maxHr = row.maxHr;
+  if (row.durMin) acc.durMin += row.durMin;
+  if (row.kcal) acc.kcal += row.kcal;
+}
+
+function summarizePhysio(acc: PhysioAcc) {
+  return {
+    ...(acc.hrs.length ? { avgHr: Math.round(acc.hrs.reduce((a, b) => a + b, 0) / acc.hrs.length) } : {}),
+    ...(acc.maxHr > 0 ? { maxHr: acc.maxHr } : {}),
+    ...(acc.durMin > 0 ? { durMin: round(acc.durMin) } : {}),
+    ...(acc.kcal > 0 ? { kcal: Math.round(acc.kcal) } : {}),
+  };
+}
+
 export function analyze(rows: StrengthRow[], s: Settings): Analysis {
-  const perEx = new Map<string, Map<string, { sets: { w: number; r: number }[]; notes: string[] }>>();
+  const perEx = new Map<string, Map<string, { sets: { w: number; r: number }[]; notes: string[]; phys: PhysioAcc }>>();
   const unm = new Map<string, { n: number; last: string }>();
-  const sessMap = new Map<string, { date: string; day?: DayName; names: Set<string>; sets: number }>();
+  const sessMap = new Map<string, { date: string; day?: DayName; names: Set<string>; sets: number; phys: PhysioAcc }>();
   const manualDays = new Map<string, DayName>();
 
   for (const row of rows) {
@@ -110,21 +133,23 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       unm.set(row.ref, u);
     }
     if (row.day) manualDays.set(name, row.day);
-    const byDate = perEx.get(name) ?? new Map<string, { sets: { w: number; r: number }[]; notes: string[] }>();
-    const entry = byDate.get(row.date) ?? { sets: [], notes: [] };
+    const byDate = perEx.get(name) ?? new Map<string, { sets: { w: number; r: number }[]; notes: string[]; phys: PhysioAcc }>();
+    const entry = byDate.get(row.date) ?? { sets: [], notes: [], phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
     entry.sets.push(...row.sets);
     if (row.note?.trim()) entry.notes.push(row.note.trim());
+    addPhysio(entry.phys, row);
     byDate.set(row.date, entry);
     perEx.set(name, byDate);
-    const sm = sessMap.get(row.sessionId) ?? { date: row.date, day: row.day, names: new Set<string>(), sets: 0 };
+    const sm = sessMap.get(row.sessionId) ?? { date: row.date, day: row.day, names: new Set<string>(), sets: 0, phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
     if (row.day && !sm.day) sm.day = row.day;
     sm.names.add(name); sm.sets += row.sets.length; if (row.date < sm.date) sm.date = row.date;
+    addPhysio(sm.phys, row);
     sessMap.set(row.sessionId, sm);
   }
 
   const exercises = new Map<string, ExStats>();
   for (const [name, byDate] of perEx) {
-    const sessions: ExSession[] = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, { sets, notes }]) => {
+    const sessions: ExSession[] = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, { sets, notes, phys }]) => {
       const top = Math.max(...sets.map((x) => x.w));
       const note = notes.length ? [...new Set(notes)].join(' · ') : undefined;
       return {
@@ -132,15 +157,20 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
         repsAtTop: Math.max(...sets.filter((x) => x.w === top).map((x) => x.r)),
         volume: round(sets.reduce((a, x) => a + x.w * x.r, 0)),
         e1rm: round(Math.max(...sets.map((x) => epley(x.w, x.r)))),
+        ...summarizePhysio(phys),
         ...(note ? { note } : {}),
       };
     });
     const tgt = targetOf(name, s);
     const verdict = judge(name, sessions, tgt?.t);
+    const hrs = sessions.map((x) => x.avgHr).filter((h): h is number => h != null);
+    const maxHrs = sessions.map((x) => x.maxHr).filter((h): h is number => h != null);
     exercises.set(name, {
       name, day: tgt?.day ?? dayOfExercise(name, s) ?? manualDays.get(name) ?? null, target: tgt?.t, sessions,
       last: sessions[sessions.length - 1], n: sessions.length,
       maxWeight: Math.max(...sessions.map((x) => x.top)), maxE1rm: Math.max(...sessions.map((x) => x.e1rm)),
+      ...(hrs.length ? { avgHr: Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) } : {}),
+      ...(maxHrs.length ? { maxHr: Math.max(...maxHrs) } : {}),
       ...verdict,
     });
   }
@@ -153,7 +183,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       const best = Object.entries(votes).sort((a, b) => b[1] - a[1])[0];
       day = (best?.[0] as DayName) ?? null;
     }
-    return { id, date: v.date, day, exercises: [...v.names], sets: v.sets };
+    return { id, date: v.date, day, exercises: [...v.names], sets: v.sets, ...summarizePhysio(v.phys) };
   }).sort((a, b) => a.date.localeCompare(b.date));
 
   const byDay: Record<DayName, ExStats[]> = { Push: [], Pull: [], Leg: [] };

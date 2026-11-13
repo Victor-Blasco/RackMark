@@ -1,6 +1,6 @@
 import { Chart, registerables, type ChartConfiguration } from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
-import type { CardioRow, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import type { CardioRow, DailyWellbeing, LogDraft, Measure, Settings, StrengthRow } from '../types';
 
 Chart.register(...registerables);
 Chart.defaults.color = '#9CA3AF';
@@ -13,6 +13,7 @@ export interface State {
   strength: StrengthRow[];
   cardio: CardioRow[];
   measures: Measure[];
+  wellbeing: DailyWellbeing[];
   settings: Settings;
   analysis: Analysis;
   sel: Record<string, string>;
