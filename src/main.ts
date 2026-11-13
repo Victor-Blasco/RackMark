@@ -110,7 +110,6 @@ function focusSelector(el: Element | null): string | null {
 }
 
 function renderSidebar(statsText: string, draftCount: number): string {
-  const aiReady = Boolean(S.settings.geminiKey);
   const routineBtns = ROUTINE_TABS.map((r) => {
     const active = S.tab === r.id;
     const count = S.settings.routines[r.id].length;
@@ -173,7 +172,6 @@ function renderSidebar(statsText: string, draftCount: number): string {
       <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
         ${icon('gear', 'h-4 w-4')}
         <span class="flex-1 text-left">Ajustes</span>
-        <span title="${aiReady ? 'IA configurada' : 'Sin clave de IA'}" class="h-2 w-2 rounded-full ${aiReady ? 'bg-emeraldGreen' : 'bg-gray-600'}"></span>
       </button>
     </div>
   </aside>`;
@@ -557,7 +555,6 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   selPerim: (el) => { S.perimeter = el.value; render(); },
   calcPreset: (el) => { const [w, r] = el.value.split('|'); (document.getElementById('calcW') as HTMLInputElement).value = w; (document.getElementById('calcR') as HTMLInputElement).value = r; runCalc(); },
   nutri: () => runCalc(),
-  geminiKey: async (el) => { S.settings.geminiKey = el.value.trim() || undefined; await saveSettings(S.settings); markSettingsDirty(); queueSync(); toast('Clave guardada.'); },
   rtName: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].name = el.value; await persist(); },
   rtSets: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].sets = Math.max(1, +el.value || 1); await persist(); },
   rtReps: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].reps = Math.max(1, +el.value || 1); await persist(); },

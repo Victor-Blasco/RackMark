@@ -1,8 +1,10 @@
+import { AIError, getGenerativeModel } from 'firebase/ai';
 import type { AiResult, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
 import type { Analysis } from './analysis';
 import { currentPhase } from './analysis';
+import { getAiBackend } from './firebase';
 
-const MODELS = ['gemini-4-hydrogen', 'gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
+const MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'];
 
 const avgOf = (vals: (number | undefined)[], dec = 1) => {
   const nums = vals.filter((v): v is number => v != null && Number.isFinite(v));
@@ -112,7 +114,6 @@ export async function generateAnalysis(
   cardio: CardioRow[] = [],
   wellbeing: DailyWellbeing[] = [],
 ): Promise<AiResult> {
-  if (!s.geminiKey) throw new Error('Falta la clave de Gemini (Ajustes).');
   const payload = buildPayload(a, ms, s, cardio, wellbeing);
   const prompt =
     'Eres un fisiólogo y entrenador de fuerza e hipertrofia de élite basado en la máxima evidencia científica. ' +
@@ -162,27 +163,18 @@ export async function generateAnalysis(
     '}\n\n' +
     'Escribe en español con tono profesional, motivador y fundamentado en ciencia deportiva. Sé conciso y directo para lectura rápida en móvil: máximo 2-3 frases por sección y 1 frase corta por highlight.\n\nDATOS DEL USUARIO:\n' + JSON.stringify(payload);
 
+  const ai = getAiBackend();
   const errors: string[] = [];
-  for (const model of MODELS) {
+  for (const modelName of MODELS) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': s.geminiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0.4 },
-        }),
+      const model = getGenerativeModel(ai, {
+        model: modelName,
+        generationConfig: { responseMimeType: 'application/json' },
       });
-
-      if (!res.ok) {
-        const errorBody = await res.text();
-        errors.push(`${model} (HTTP ${res.status}): ${errorBody.slice(0, 150)}`);
-        continue;
-      }
-
-      const j = await res.json();
-      const text: string = j.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-      const parsed = JSON.parse(text);
+      const res = await model.generateContent(prompt);
+      const raw = res.response.text();
+      const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+      const parsed = JSON.parse(clean);
       return {
         date: new Date().toISOString().slice(0, 10),
         summary: parsed.summary,
@@ -190,7 +182,14 @@ export async function generateAnalysis(
         byExercise: parsed.byExercise ?? {},
       };
     } catch (err) {
-      errors.push(`${model}: ${(err as Error).message}`);
+      if (err instanceof AIError) {
+        if (err.code === 'api-not-enabled') {
+          throw new Error('Firebase AI Logic no está activado aún en Firebase Console para este proyecto.');
+        }
+        errors.push(`${modelName} (${err.code}): ${err.message.slice(0, 150)}`);
+      } else {
+        errors.push(`${modelName}: ${(err as Error).message}`);
+      }
     }
   }
 

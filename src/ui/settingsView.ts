@@ -1,4 +1,5 @@
 import { musclesOf } from '../lib/analysis';
+import { isAppCheckConfigured } from '../lib/firebase';
 import { MUSCLES } from '../lib/seed';
 import { DAYS } from '../types';
 import { icon } from './icons';
@@ -50,10 +51,14 @@ export function viewSettings(S: State): string {
     <p class="text-xs text-gray-400 tabular-nums">Reimportar es seguro: se deduplica por identificador. Datos guardados: ${S.strength.length} ejercicios, ${S.cardio.length} cardio, ${S.wellbeing.length} días de sueño/pasos, ${S.measures.length} medidas.</p></div>
 
   <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-    <div class="card space-y-3"><h3 class="font-bold text-white">IA (Gemini)</h3>
-      <label class="block"><span class="lbl">Clave de API de Google AI Studio</span>
-        <input class="inp" type="password" placeholder="AIza…" value="${esc(s.geminiKey ?? '')}" data-change="geminiKey" autocomplete="off" spellcheck="false"></label>
-      <p class="text-xs text-gray-400">Se guarda en este dispositivo (y en tu cuenta privada si inicias sesión) y se envía únicamente a Google al pulsar «Generar análisis».</p></div>
+    <div class="card space-y-2.5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h3 class="font-bold text-white">IA (Firebase AI Logic)</h3>
+        <span class="rounded-full border border-emeraldGreen/40 bg-emeraldGreen/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-300">Activada para todos</span>
+      </div>
+      <p class="text-xs text-gray-300 leading-relaxed">Los análisis de progreso usan Gemini a través del proyecto Firebase, sin que cada usuario tenga que introducir su propia clave API.</p>
+      <p class="text-[11px] text-gray-400">App Check (reCAPTCHA Enterprise): <span class="${isAppCheckConfigured ? 'text-emerald-400' : 'text-amberGold'} font-semibold">${isAppCheckConfigured ? 'configurado' : 'pendiente de VITE_RECAPTCHA_SITE_KEY'}</span></p>
+    </div>
 
     <div class="card space-y-2"><h3 class="font-bold text-white">Perfil</h3><div class="grid grid-cols-3 gap-3">
       <label class="block"><span class="lbl">Sexo</span><input class="inp" value="${esc(s.profile.sex)}" data-change="pfSex"></label>

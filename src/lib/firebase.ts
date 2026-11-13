@@ -1,4 +1,6 @@
 import { initializeApp } from 'firebase/app';
+import { getAI, GoogleAIBackend, type AI } from 'firebase/ai';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import {
   getAuth,
   getRedirectResult,
@@ -24,6 +26,28 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const fs = getFirestore(app);
+
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim() || '';
+export const isAppCheckConfigured = Boolean(recaptchaSiteKey);
+
+let appCheckInstance: AppCheck | undefined;
+if (typeof window !== 'undefined' && recaptchaSiteKey) {
+  if (import.meta.env.DEV && import.meta.env.VITE_APPCHECK_DEBUG_TOKEN !== 'false') {
+    (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }).FIREBASE_APPCHECK_DEBUG_TOKEN =
+      import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
+  }
+  appCheckInstance = initializeAppCheck(app, {
+    provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+export { appCheckInstance as appCheck };
+
+let aiInstance: AI | undefined;
+/** Devuelve la instancia compartida de Firebase AI Logic (Gemini Developer API). */
+export function getAiBackend(): AI {
+  return (aiInstance ??= getAI(app, { backend: new GoogleAIBackend() }));
+}
 
 export type CloudUser = Pick<User, 'uid' | 'email' | 'displayName' | 'photoURL'>;
 
