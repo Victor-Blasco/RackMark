@@ -22,6 +22,7 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   logFilter?: string;
+  authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
   lastSync?: number;

@@ -164,7 +164,11 @@ function renderSidebar(statsText: string, draftCount: number): string {
       </div>
     </nav>
 
-    <div class="mt-auto border-t border-gray-800/80 p-3">
+    <div class="mt-auto space-y-2 border-t border-gray-800/80 p-3">
+      ${S.authReady && !S.user ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} class="flex w-full items-center gap-2.5 rounded-xl border border-electricBlue/35 bg-electricBlue/10 px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-electricBlue/20 active:scale-[0.98]">
+        ${icon('login', 'h-4 w-4')}
+        <span class="flex-1 text-left">Iniciar sesión · Google</span>
+      </button>` : ''}
       <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
         ${icon('gear', 'h-4 w-4')}
         <span class="flex-1 text-left">Ajustes</span>
@@ -201,9 +205,15 @@ function renderMobileHeader(statsText: string): string {
           <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
         </div>
       </div>
-      <button data-act="tab" data-arg="settings" aria-label="Ajustes" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors ${S.tab === 'settings' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-gray-800 bg-gray-900/80 text-gray-400 hover:text-white'}">
-        ${icon('gear', 'h-5 w-5')}
-      </button>
+      <div class="flex shrink-0 items-center gap-2">
+        ${S.authReady && !S.user ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-9 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-2.5 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98]">
+          ${icon('login', 'h-3.5 w-3.5')}
+          <span>Entrar</span>
+        </button>` : ''}
+        <button data-act="tab" data-arg="settings" aria-label="Ajustes" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${S.tab === 'settings' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-gray-800 bg-gray-900/80 text-gray-400 hover:text-white'}">
+          ${icon('gear', 'h-5 w-5')}
+        </button>
+      </div>
     </div>
     ${subNav}
   </header>`;
@@ -650,6 +660,7 @@ reload().then(async () => {
   render();
   subscribeAuth((user) => {
     const changed = user?.uid !== S.user?.uid;
+    S.authReady = true;
     S.user = user;
     if (user && changed && navigator.onLine) void runSync(false);
     else render();

@@ -30,7 +30,7 @@ export function viewSettings(S: State): string {
     : `<div class="card space-y-3"><div class="flex flex-wrap items-center justify-between gap-3">
         <div><h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
           <p class="text-xs text-gray-400 mt-0.5">Inicia sesión con Google para sincronizar entrenamientos, medidas, sueño/FC y ajustes entre dispositivos.</p></div>
-        <button class="btn btn-p" data-act="cloudLogin" ${S.syncing ? 'disabled' : ''}>${icon('upload', 'h-4 w-4')} Iniciar sesión con Google</button></div></div>`;
+        <button class="btn btn-p" data-act="cloudLogin" ${S.syncing ? 'disabled' : ''}>${icon('login', 'h-4 w-4')} Iniciar sesión con Google</button></div></div>`;
 
   return `
   ${cloudCard}
