@@ -1,0 +1,192 @@
+import { epley, isoWeekStart, weeklyVolume } from '../lib/analysis';
+import { MUSCLES } from '../lib/seed';
+import { DAYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
+import { icon } from './icons';
+import { DAY_COLOR, chart, esc, fmtDate, kpi, noData, r1, short, type State } from './shared';
+
+const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
+  arms: { label: 'Brazos', keys: ['armL', 'armR'] },
+  thighs: { label: 'Muslos', keys: ['thighL', 'thighR'] },
+  trunk: { label: 'Torso / Cintura / Hombros / Glúteo', keys: ['torso', 'waist', 'shoulders', 'glute'] },
+  calves: { label: 'Gemelos y rodillas', keys: ['calfL', 'calfR', 'kneeL', 'kneeR'] },
+};
+const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#A78BFA', '#22D3EE'];
+const DAY_SHORT: Record<DayName, string> = { Push: 'Pu', Pull: 'Pl', Leg: 'Lg' };
+
+/** Renderiza la vista de medidas antropométricas y composición corporal. */
+export function viewBody(S: State): string {
+  const ms = S.measures;
+  const today = new Date().toISOString().slice(0, 10);
+  const last = ms[ms.length - 1] ?? ({} as Measure);
+  const comp = ms.filter((m) => m.weight != null);
+  if (comp.length) {
+    chart('c-comp', {
+      type: 'line',
+      data: {
+        labels: comp.map((m) => short(m.date)),
+        datasets: [
+          { label: 'Peso (kg)', data: comp.map((m) => m.weight ?? null), borderColor: '#3B82F6', yAxisID: 'y', tension: 0.25, spanGaps: true },
+          { label: 'Masa muscular (kg)', data: comp.map((m) => m.muscle ?? null), borderColor: '#10B981', yAxisID: 'y', tension: 0.25, spanGaps: true },
+          { label: '% Grasa', data: comp.map((m) => m.bf ?? null), borderColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
+        ],
+      },
+      options: { scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } },
+    });
+  }
+  const pk = PERIM[S.perimeter] ?? PERIM.arms;
+  chart('c-perim', {
+    type: 'line',
+    data: {
+      labels: ms.map((m) => short(m.date)),
+      datasets: pk.keys.map((k, i) => ({
+        label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
+        data: ms.map((m) => (m[k] as number | undefined) ?? null),
+        borderColor: PAL[i],
+        tension: 0.25,
+        spanGaps: true,
+      })),
+    },
+  });
+  const cols = MEASURE_FIELDS;
+  return `
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+    <div class="card"><h3 class="mb-2 font-bold text-white">Composición corporal (${comp.length} registros)</h3><div class="chart-box"><canvas id="c-comp"></canvas></div></div>
+    <div class="card"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Perímetros (cm)</h3>
+      <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+      <div class="chart-box"><canvas id="c-perim"></canvas></div></div>
+  </div>
+  <form id="f-measure" class="card space-y-3"><h3 class="font-bold text-white">Añadir / editar medición</h3>
+    <p class="text-xs text-gray-400">Si ya existe una medición en esa fecha, se actualiza. Se rellenan los valores de la última medición para que solo cambies lo necesario.</p>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <label class="block"><span class="lbl">Fecha</span><input class="inp font-mono" type="date" name="date" value="${today}" required></label>
+      ${cols.map((f) => `<label class="block"><span class="lbl">${f.label} (${f.unit})</span><input class="inp font-mono tabular-nums" inputmode="decimal" name="${f.key}" value="${last[f.key] ?? ''}"></label>`).join('')}
+      <label class="col-span-2 block"><span class="lbl">Nota (opcional)</span><input class="inp" name="note" placeholder="p. ej. empieza la defi…"></label>
+    </div>
+    <button class="btn-primary" type="submit">${icon('save', 'h-4 w-4')} Guardar medición</button></form>
+  <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Registro histórico (N = ${ms.length})</h3>
+    <table class="w-full min-w-[900px] text-right text-xs"><thead class="text-gray-400"><tr><th class="py-1.5 text-left">Fecha</th>${cols.map((f) => `<th>${f.label}</th>`).join('')}<th></th></tr></thead><tbody>
+    ${[...ms].reverse().map((m) => `<tr class="border-t border-gray-800 font-mono tabular-nums"><td class="py-1.5 text-left">${fmtDate(m.date)}${m.note ? `<div class="font-sans text-[10px] text-amberGold">${esc(m.note)}</div>` : ''}</td>${cols.map((f) => `<td>${m[f.key] ?? ''}</td>`).join('')}<td><button class="rounded p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="delMeasure" data-arg="${m.date}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+/** Renderiza la matriz de series efectivas semanales por grupo muscular. */
+export function viewVolume(S: State): string {
+  const vol = weeklyVolume(S.strength, S.settings);
+  const wk0 = isoWeekStart(new Date().toISOString().slice(0, 10));
+  const weeks: string[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(wk0 + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - i * 7);
+    weeks.push(d.toISOString().slice(0, 10));
+  }
+  const color = (v: number) => (v === 0 ? 'text-gray-600' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold');
+  const mark = (v: number) => (v === 0 ? '' : v < 8 ? '<span class="sr-only"> (bajo)</span><span aria-hidden="true">↓</span>' : v > 20 ? '<span class="sr-only"> (alto)</span><span aria-hidden="true">↑</span>' : '');
+  const sel = S.muscleSel || 'Pecho';
+  chart('c-vol', { type: 'bar', data: { labels: weeks.map(short), datasets: [{ label: `Series efectivas · ${sel}`, data: weeks.map((w) => vol.get(sel)?.get(w) ?? 0), backgroundColor: '#3B82F6' }] } });
+  return `${noData(S)}
+  <div class="card overflow-x-auto"><h3 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h3>
+    <p class="mb-2 text-xs text-gray-400">Músculo principal = 1 serie, secundario = 0,5. <span class="text-coralRed">&lt;8↓ bajo</span> · <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. La última columna es la semana en curso.</p>
+    <table class="w-full min-w-[640px] text-center text-xs"><thead class="text-gray-400"><tr><th class="py-1.5 text-left">Músculo</th>${weeks.map((w) => `<th class="font-mono tabular-nums">${short(w)}</th>`).join('')}</tr></thead><tbody>
+    ${MUSCLES.map((m) => `<tr class="border-t border-gray-800"><td class="py-1.5 text-left font-semibold"><button data-act="selMuscle" data-arg="${m}" aria-pressed="${m === sel}" class="rounded px-1 py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${m === sel ? 'text-electricBlue' : 'hover:text-white'}">${m}</button></td>${weeks.map((w) => { const v = vol.get(m)?.get(w) ?? 0; return `<td class="font-mono tabular-nums font-bold ${color(v)}">${v ? `${r1(v)}${mark(v)}` : '·'}</td>`; }).join('')}</tr>`).join('')}
+    </tbody></table></div>
+  <div class="card"><h3 class="mb-2 font-bold text-white">Tendencia · ${sel}</h3><div class="chart-box"><canvas id="c-vol"></canvas></div></div>`;
+}
+
+/** Renderiza el calendario de adherencia semanal y rachas de entrenamiento. */
+export function viewAdherence(S: State): string {
+  const byDate = new Map<string, DayName | null>();
+  S.analysis.sessions.forEach((s) => { if (!byDate.has(s.date) || s.day) byDate.set(s.date, s.day ?? byDate.get(s.date) ?? null); });
+  const wk0 = isoWeekStart(new Date().toISOString().slice(0, 10));
+  const W = 20;
+  const cols: string[] = [];
+  for (let i = W - 1; i >= 0; i--) {
+    const d = new Date(wk0 + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() - i * 7);
+    cols.push(d.toISOString().slice(0, 10));
+  }
+  const dn = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+  const cell = (w: string, di: number) => {
+    const d = new Date(w + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + di);
+    const iso = d.toISOString().slice(0, 10);
+    const t = byDate.get(iso);
+    const has = byDate.has(iso);
+    const bg = has ? (t ? DAY_COLOR[t] : '#6B7280') : 'rgba(255,255,255,0.05)';
+    const label = `${fmtDate(iso)}: ${has ? (t ?? 'Otro entrenamiento') : 'Sin sesión'}`;
+    const code = has ? (t ? DAY_SHORT[t] : '·') : '';
+    return `<div role="img" aria-label="${label}" title="${label}" class="flex h-5 w-5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95" style="background:${bg}">${code}</div>`;
+  };
+  const perWeek = new Map<string, number>();
+  byDate.forEach((_, d) => { const w = isoWeekStart(d); perWeek.set(w, (perWeek.get(w) ?? 0) + 1); });
+  const last8 = cols.slice(-9, -1);
+  const avg = last8.reduce((a, w) => a + (perWeek.get(w) ?? 0), 0) / 8;
+  let streak = 0;
+  for (let i = cols.length - 2; i >= 0 && (perWeek.get(cols[i]) ?? 0) >= 3; i--) streak++;
+  const counts: Record<string, number> = { Push: 0, Pull: 0, Leg: 0 };
+  const lim = cols[cols.length - 9];
+  byDate.forEach((t, d) => { if (t && d >= lim) counts[t]++; });
+  const cardio = S.cardio.filter((c) => c.date >= lim);
+  return `${noData(S)}
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    ${kpi('Media semanal (8 sem.)', r1(avg), 'días entrenados')}
+    ${kpi('Racha ≥3 días/sem.', String(streak), 'semanas completas')}
+    ${kpi('Push / Pull / Leg', `${counts.Push}/${counts.Pull}/${counts.Leg}`, 'últimas 8 semanas')}
+    ${kpi('Cardio (8 sem.)', String(cardio.length), `${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km`)}
+  </div>
+  <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Calendario (últimas ${W} semanas)</h3>
+    <div class="flex gap-1.5"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-500">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
+    ${cols.map((w) => `<div class="flex flex-col gap-1.5">${[0, 1, 2, 3, 4, 5, 6].map((i) => cell(w, i)).join('')}</div>`).join('')}</div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${DAYS.map((d) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${DAY_COLOR[d]}">${DAY_SHORT[d]}</span>${d}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>`;
+}
+
+/** Renderiza la calculadora de 1RM y el planificador nutricional Katch-McArdle. */
+export function viewCalc(S: State): string {
+  const last = [...S.measures].reverse().find((m) => m.weight != null && m.bf != null) ?? S.measures[S.measures.length - 1];
+  const w = last?.weight ?? 70;
+  const bf = last?.bf ?? 15;
+  const presets = DAYS.flatMap((d) => S.analysis.byDay[d]).filter((e) => e.last).map((e) => {
+    const best = e.last!.sets.filter((s) => s.w === e.last!.top).sort((a, b) => b.r - a.r)[0];
+    return { n: e.name, w: best.w, r: best.r };
+  });
+  const first = presets[0] ?? { w: 50, r: 9 };
+  return `<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  <div class="card space-y-3"><h3 class="font-bold text-white">Calculadora de 1RM</h3>
+    <label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${p.w}|${p.r}">${esc(p.n)} (${p.w} kg × ${p.r})</option>`).join('')}</select></label>
+    <div class="grid grid-cols-3 gap-3">
+      <label class="block"><span class="lbl">Peso (kg)</span><input id="calcW" class="inp font-mono tabular-nums" type="number" step="0.5" value="${first.w}" data-input="calc"></label>
+      <label class="block"><span class="lbl">Reps</span><input id="calcR" class="inp font-mono tabular-nums" type="number" min="1" max="30" value="${first.r}" data-input="calc"></label>
+      <label class="block"><span class="lbl">RIR (0-5)</span><input id="calcRir" class="inp font-mono tabular-nums" type="number" min="0" max="5" value="1" data-input="calc"></label></div>
+    <div class="grid grid-cols-3 gap-3 text-center" id="calcOut"></div>
+    <div class="grid grid-cols-2 gap-2 text-center text-xs font-mono tabular-nums sm:grid-cols-4" id="calcZones"></div></div>
+  <div class="card space-y-3"><h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% BF)</h3>
+    <p class="text-xs text-gray-400">Katch-McArdle con tu masa libre de grasa real (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55">PPL 3-4 días (×1,55)</option><option value="1.65" selected>PPL 5-6 días + pasos (×1,65)</option><option value="1.75">Intenso (×1,75)</option></select></label>
+      <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0">Mantenimiento (+0)</option><option value="225" selected>Lean bulk (+225)</option><option value="350">Superávit estándar (+350)</option><option value="-350">Mini-cut (−350)</option></select></label></div>
+    <input type="hidden" id="nuW" value="${w}"><input type="hidden" id="nuBf" value="${bf}">
+    <div class="grid grid-cols-3 gap-3 text-center" id="nuOut"></div><div class="grid grid-cols-3 gap-3" id="nuMacros"></div></div></div>`;
+}
+
+/** Recalcula los resultados de 1RM y macros en la vista de Calculadoras. */
+export function runCalc() {
+  const g = (id: string) => document.getElementById(id) as HTMLInputElement | null;
+  if (g('calcW')) {
+    const w = parseFloat(g('calcW')!.value) || 0, r = parseInt(g('calcR')!.value, 10) || 1, rir = parseInt(g('calcRir')!.value, 10) || 0;
+    const e = epley(w, r), e2 = w * (1 + (r + rir) / 30);
+    document.getElementById('calcOut')!.innerHTML = [['1RM (Epley)', e, 'text-electricBlue'], ['1RM ajustado RIR', e2, 'text-emeraldGreen']]
+      .map(([l, v, c]) => `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3"><span class="block text-xs text-gray-400">${l}</span><span class="font-mono tabular-nums text-xl font-extrabold ${c}">${r1(v as number)} kg</span></div>`).join('') +
+      `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3"><span class="block text-xs text-gray-400">Ratio / peso</span><span class="font-mono tabular-nums text-xl font-extrabold text-amberGold">${(e / (parseFloat(g('nuW')?.value ?? '70') || 70)).toFixed(2)}×</span></div>`;
+    document.getElementById('calcZones')!.innerHTML = [[0.85, '5–6 reps'], [0.8, '7–8 reps'], [0.75, '9–10 reps'], [0.7, '11–12 reps']]
+      .map(([p, l]) => `<div class="rounded-lg border border-gray-800 bg-gray-900 p-2"><span class="block text-[11px] text-gray-400">${Math.round((p as number) * 100)}% · ${l}</span><b>${r1(e * (p as number))} kg</b></div>`).join('');
+  }
+  if (g('nuW')) {
+    const w = parseFloat(g('nuW')!.value), bf = parseFloat(g('nuBf')!.value);
+    const lbm = w * (1 - bf / 100), bmr = Math.round(370 + 21.6 * lbm);
+    const tdee = Math.round(bmr * parseFloat((document.getElementById('nuAct') as HTMLSelectElement).value));
+    const target = tdee + parseInt((document.getElementById('nuGoal') as HTMLSelectElement).value, 10);
+    const p = Math.round(w * 2.2), f = Math.round(w), pk = p * 4, fk = f * 9, ck = Math.max(0, target - pk - fk);
+    const box = (l: string, v: string, c = 'text-white') => `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3 text-center"><span class="block text-[11px] text-gray-400">${l}</span><span class="font-mono tabular-nums text-lg font-extrabold ${c}">${v}</span></div>`;
+    document.getElementById('nuOut')!.innerHTML = box('TMB', `${bmr} kcal`) + box('TDEE', `${tdee} kcal`, 'text-electricBlue') + box('Objetivo', `${target} kcal`, 'text-emeraldGreen');
+    document.getElementById('nuMacros')!.innerHTML = box('Proteína 2,2 g/kg', `${p} g`, 'text-coralRed') + box('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + box('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
+  }
+}

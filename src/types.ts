@@ -1,0 +1,93 @@
+export type DayName = 'Push' | 'Pull' | 'Leg';
+export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
+
+export interface SetRec { w: number; r: number }
+
+/** Una fila de fuerza de Samsung Health = un ejercicio dentro de una sesión. */
+export interface StrengthRow {
+  id: string;            // datauuid (clave de deduplicación)
+  sessionId: string;     // routine_datauuid o fecha
+  ts: number;            // epoch ms (UTC)
+  date: string;          // YYYY-MM-DD local
+  ref: string;           // custom_id, "type:10018" o "name:<Nombre>"
+  sets: SetRec[];
+  note?: string;         // nota del ejercicio en esta sesión
+  day?: DayName;         // rutina asignada manualmente
+}
+
+export interface LogExDraft {
+  name: string;
+  done: boolean;
+  sets: SetRec[];
+  note: string;
+}
+
+export interface LogDraft {
+  date: string;
+  day: DayName | 'Libre';
+  exercises: LogExDraft[];
+}
+
+export interface CardioRow {
+  id: string; ts: number; date: string; type: number;
+  durMin: number; distKm: number; avgHr: number; kcal: number; vo2?: number;
+}
+
+export interface Measure {
+  date: string; // YYYY-MM-DD
+  armL?: number; armR?: number; torso?: number; waist?: number;
+  thighL?: number; thighR?: number; kneeL?: number; kneeR?: number;
+  calfL?: number; calfR?: number; glute?: number; shoulders?: number;
+  bf?: number; weight?: number; muscle?: number; note?: string;
+}
+
+export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }[] = [
+  { key: 'weight', label: 'Peso', unit: 'kg' },
+  { key: 'bf', label: '% Grasa', unit: '%' },
+  { key: 'muscle', label: 'Masa muscular', unit: 'kg' },
+  { key: 'waist', label: 'Cintura', unit: 'cm' },
+  { key: 'torso', label: 'Torso', unit: 'cm' },
+  { key: 'shoulders', label: 'Hombros', unit: 'cm' },
+  { key: 'glute', label: 'Glúteo', unit: 'cm' },
+  { key: 'armL', label: 'Brazo izq.', unit: 'cm' },
+  { key: 'armR', label: 'Brazo der.', unit: 'cm' },
+  { key: 'thighL', label: 'Muslo izq.', unit: 'cm' },
+  { key: 'thighR', label: 'Muslo der.', unit: 'cm' },
+  { key: 'kneeL', label: 'Sobre rodilla izq.', unit: 'cm' },
+  { key: 'kneeR', label: 'Sobre rodilla der.', unit: 'cm' },
+  { key: 'calfL', label: 'Gemelo izq.', unit: 'cm' },
+  { key: 'calfR', label: 'Gemelo der.', unit: 'cm' },
+];
+
+export interface RoutineEx { name: string; sets: number; reps: number }
+export interface MuscleMap { p: string; s: string[] }
+export interface AiEntry { status?: string; prescription?: string; biomech?: string }
+export interface AiSection {
+  title: string;
+  verdict: 'good' | 'warning' | 'neutral';
+  text: string;
+}
+
+export interface AiResult {
+  date: string;
+  summary?: string;
+  overview?: {
+    overallStatus: string;       // ej: "En progresión positiva", "Superávit efectivo", etc.
+    highlights: string[];        // 3-4 puntos clave rápidos
+    sections: AiSection[];       // Bloques detallados: Composición corporal, Rendimiento PPL, Fatiga/Recuperación, Próximos pasos
+  };
+  byExercise: Record<string, AiEntry>;
+}
+
+export interface Settings {
+  routines: Record<DayName, RoutineEx[]>;
+  customNames: Record<string, string>;   // ref -> nombre (de custom_exercise.csv)
+  refNames: Record<string, string>;      // ref -> nombre manual (renombrar tipos Samsung)
+  aliases: Record<string, string>;       // nombre -> nombre (fusionar)
+  muscles: Record<string, MuscleMap>;    // nombre normalizado -> músculos
+  notes: Record<string, string>;         // nombre -> nota biomecánica editable
+  phases: { name: string; start: string }[];
+  profile: { sex: string; age: number; height: number };
+  geminiKey?: string;
+  ai?: AiResult;
+}
