@@ -1,5 +1,6 @@
 import { Chart, registerables, type ChartConfiguration } from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
+import type { CloudUser } from '../lib/firebase';
 import type { CardioRow, DailyWellbeing, LogDraft, Measure, Settings, StrengthRow } from '../types';
 
 Chart.register(...registerables);
@@ -21,6 +22,9 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   logFilter?: string;
+  user?: CloudUser | null;
+  syncing?: boolean;
+  lastSync?: number;
   busy?: string;
   toast?: string;
 }

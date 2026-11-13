@@ -3,6 +3,8 @@ import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { generateAnalysis } from './lib/ai';
 import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, putMany, saveSettings, wipeAll, type Backup } from './lib/db';
+import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from './lib/firebase';
+import { loadSyncMeta, markBucketDeletes, markBucketUpserts, markSettingsDirty, markWipePending, syncWithCloud } from './lib/sync';
 import { importSamsungFiles } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
 import { MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type LogDraft, type Measure, type StrengthRow } from './types';
@@ -259,7 +261,50 @@ function render() {
 
 const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return Number.isFinite(n) ? n : undefined; };
 const arg = (el: HTMLElement) => el.dataset.arg ?? '';
-async function persist() { await saveSettings(S.settings); S.analysis = analyze(S.strength, S.settings); render(); }
+
+let syncTimer: number | undefined;
+let syncInFlight = false;
+let syncPending = false;
+
+async function runSync(showToast = false) {
+  if (!S.user) return;
+  if (syncInFlight) { syncPending = true; return; }
+  syncInFlight = true;
+  S.syncing = true;
+  render();
+  try {
+    const res = await syncWithCloud(S.user.uid);
+    S.lastSync = Date.now();
+    if (res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled') await reload();
+    if (showToast) {
+      const msg = res.pulledItems || res.pushedBuckets || res.deletedItems || res.settingsDirection !== 'none'
+        ? `Sincronizado (${res.pushedBuckets} subidos, ${res.pulledItems} descargados).`
+        : 'Todo al día con la nube.';
+      toast(msg);
+    }
+  } catch (e) {
+    toast(`Error de sincronización: ${(e as Error).message}`);
+  } finally {
+    S.syncing = false;
+    syncInFlight = false;
+    render();
+    if (syncPending) { syncPending = false; void runSync(false); }
+  }
+}
+
+function queueSync() {
+  if (!S.user || !navigator.onLine) return;
+  clearTimeout(syncTimer);
+  syncTimer = window.setTimeout(() => { void runSync(false); }, 600);
+}
+
+async function persist() {
+  await saveSettings(S.settings);
+  markSettingsDirty();
+  S.analysis = analyze(S.strength, S.settings);
+  render();
+  queueSync();
+}
 function download(name: string, data: string, type: string) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click();
@@ -384,11 +429,14 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!rows.length) { toast('Marca al menos un ejercicio con series y repeticiones (> 0).'); return; }
     const oldManual = S.strength.filter((r) => r.id.startsWith('manual-') && r.date === draft.date);
     for (const r of oldManual) await deleteKey('strength', r.id);
+    if (oldManual.length) markBucketDeletes('strength', oldManual.map((r) => ({ key: r.id, date: r.date })));
     await putMany('strength', rows);
+    markBucketUpserts('strength', rows);
     const savedDay = draft.day;
     S.logDraft = undefined;
     saveDraft(undefined);
     await reload();
+    queueSync();
     if (savedDay !== 'Libre') setTab(savedDay);
     toast(`Sesión guardada: ${rows.length} ejercicios.`);
   },
@@ -404,24 +452,66 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!confirm(`¿Borrar la sesión manual del ${date}?`)) return;
     const toDel = S.strength.filter((r) => r.id.startsWith('manual-') && (r.sessionId === sessionId || r.date === date));
     for (const r of toDel) await deleteKey('strength', r.id);
+    if (toDel.length) markBucketDeletes('strength', toDel.map((r) => ({ key: r.id, date: r.date })));
     await reload();
+    queueSync();
     toast('Sesión manual borrada.');
   },
   selEx: (el) => { const [d, n] = arg(el).split('|'); S.sel[d] = n; render(); },
   selMuscle: (el) => { S.muscleSel = arg(el); render(); },
-  delMeasure: async (el) => { if (!confirm('¿Borrar esta medición?')) return; await deleteKey('measures', arg(el)); await reload(); render(); },
+  delMeasure: async (el) => {
+    const key = arg(el);
+    if (!confirm('¿Borrar esta medición?')) return;
+    await deleteKey('measures', key);
+    markBucketDeletes('measures', [{ key, date: key }]);
+    await reload();
+    render();
+    queueSync();
+  },
   editNote: async (el) => {
     const n = arg(el); const v = prompt(`Nota biomecánica para «${n}»`, S.settings.notes[n] ?? '');
     if (v == null) return; S.settings.notes[n] = v; await persist();
   },
   ai: async () => {
     if (S.busy) return; S.busy = 'ai'; render();
-    try { S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing); await saveSettings(S.settings); toast('Análisis generado.'); }
+    try {
+      S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing);
+      await saveSettings(S.settings);
+      markSettingsDirty();
+      queueSync();
+      toast('Análisis generado.');
+    }
     catch (e) { toast(`Error de IA: ${(e as Error).message}`); }
     S.busy = undefined; render();
   },
+  cloudLogin: async () => {
+    try {
+      await signInGoogle();
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code !== 'auth/popup-closed-by-user') toast(`Error al iniciar sesión: ${(e as Error).message}`);
+    }
+  },
+  cloudSync: async () => { await runSync(true); },
+  cloudLogout: async () => {
+    await signOutGoogle();
+    S.user = null;
+    S.lastSync = undefined;
+    render();
+    toast('Sesión cerrada.');
+  },
   export: async () => download(`gymapp-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(await exportBackup()), 'application/json'),
-  wipe: async () => { if (!confirm('Se borrarán todos los datos de este dispositivo. ¿Seguro?')) return; await wipeAll(); await reload(); toast('Datos borrados.'); },
+  wipe: async () => {
+    const msg = S.user
+      ? 'Se borrarán todos los datos de este dispositivo y de tu nube conectada. ¿Seguro?'
+      : 'Se borrarán todos los datos de este dispositivo. ¿Seguro?';
+    if (!confirm(msg)) return;
+    await wipeAll();
+    markWipePending();
+    await reload();
+    queueSync();
+    toast('Datos borrados.');
+  },
   rtAdd: async (el) => { S.settings.routines[arg(el) as DayName].push({ name: '', sets: 2, reps: 10 }); await persist(); },
   rtDel: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName].splice(+i, 1); await persist(); },
   merge: async () => {
@@ -443,7 +533,7 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   selPerim: (el) => { S.perimeter = el.value; render(); },
   calcPreset: (el) => { const [w, r] = el.value.split('|'); (document.getElementById('calcW') as HTMLInputElement).value = w; (document.getElementById('calcR') as HTMLInputElement).value = r; runCalc(); },
   nutri: () => runCalc(),
-  geminiKey: async (el) => { S.settings.geminiKey = el.value.trim() || undefined; await saveSettings(S.settings); toast('Clave guardada.'); },
+  geminiKey: async (el) => { S.settings.geminiKey = el.value.trim() || undefined; await saveSettings(S.settings); markSettingsDirty(); queueSync(); toast('Clave guardada.'); },
   rtName: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].name = el.value; await persist(); },
   rtSets: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].sets = Math.max(1, +el.value || 1); await persist(); },
   rtReps: async (el) => { const [d, i] = arg(el).split('|'); S.settings.routines[d as DayName][+i].reps = Math.max(1, +el.value || 1); await persist(); },
@@ -477,7 +567,13 @@ root.addEventListener('change', async (e) => {
       await putMany('strength', imp.strength); await putMany('cardio', imp.cardio);
       await mergeWellbeing(imp.wellbeing);
       Object.assign(S.settings.customNames, imp.customNames);
-      await saveSettings(S.settings); await reload();
+      await saveSettings(S.settings);
+      markBucketUpserts('strength', imp.strength);
+      markBucketUpserts('cardio', imp.cardio);
+      markBucketUpserts('wellbeing', imp.wellbeing);
+      markSettingsDirty();
+      await reload();
+      queueSync();
       const parts = [
         `${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos)`,
         `${imp.cardio.length} cardio`,
@@ -489,10 +585,23 @@ root.addEventListener('change', async (e) => {
       const m = parseMeasuresCsv(await files[0].text());
       await putMany('measures', m.measures);
       Object.assign(S.settings.profile, m.profile);
-      await saveSettings(S.settings); await reload();
+      await saveSettings(S.settings);
+      markBucketUpserts('measures', m.measures);
+      markSettingsDirty();
+      await reload();
+      queueSync();
       toast(`Importadas ${m.measures.length} mediciones.`);
     } else if (kind === 'backup') {
-      await importBackup(JSON.parse(await files[0].text()) as Backup); await reload(); toast('Copia restaurada.');
+      const b = JSON.parse(await files[0].text()) as Backup;
+      await importBackup(b);
+      markBucketUpserts('strength', b.strength);
+      markBucketUpserts('cardio', b.cardio);
+      markBucketUpserts('measures', b.measures);
+      if (b.wellbeing?.length) markBucketUpserts('wellbeing', b.wellbeing);
+      markSettingsDirty();
+      await reload();
+      queueSync();
+      toast('Copia restaurada.');
     }
   } catch (err) { toast(`Error al importar: ${(err as Error).message}`); }
   el.value = '';
@@ -521,7 +630,7 @@ root.addEventListener('submit', async (e) => {
     const m: Measure = { date: String(fd.get('date')) };
     for (const { key } of MEASURE_FIELDS) { const v = num(String(fd.get(key) ?? '')); if (v != null) (m as unknown as Record<string, number>)[key] = v; }
     const note = String(fd.get('note') ?? '').trim(); if (note) m.note = note;
-    await putMany('measures', [m]); await reload(); toast('Medición guardada.');
+    await putMany('measures', [m]); markBucketUpserts('measures', [m]); await reload(); queueSync(); toast('Medición guardada.');
   } else if (f.id === 'f-phase') {
     S.settings.phases.push({ name: String(fd.get('name')), start: String(fd.get('start')) }); await persist();
   }
@@ -531,8 +640,18 @@ window.addEventListener('hashchange', () => {
   if (next !== S.tab) { S.tab = next; render(); }
 });
 
-reload().then(() => {
+window.addEventListener('online', () => queueSync());
+
+reload().then(async () => {
+  await consumeRedirectAuth();
+  S.lastSync = loadSyncMeta().lastSyncAt;
   const first = !S.strength.length && !S.measures.length;
   if (first && !location.hash) setTab('settings');
   render();
+  subscribeAuth((user) => {
+    const changed = user?.uid !== S.user?.uid;
+    S.user = user;
+    if (user && changed && navigator.onLine) void runSync(false);
+    else render();
+  });
 });

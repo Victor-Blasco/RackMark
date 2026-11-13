@@ -1,0 +1,415 @@
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
+import type { CardioRow, DailyWellbeing, Measure, Settings, StrengthRow } from '../types';
+import { deleteKey, getAll, loadSettings, putMany, saveSettings, wipeAll } from './db';
+import { fs } from './firebase';
+
+export type DataKind = 'strength' | 'cardio' | 'measures' | 'wellbeing';
+export type DataRecord = StrengthRow | CardioRow | Measure | DailyWellbeing;
+
+export interface RemoteBucket {
+  kind: DataKind;
+  items: Record<string, DataRecord>;
+  deleted?: Record<string, number>;
+  updatedAt: number;
+}
+
+export interface RemoteSettingsDoc {
+  data: Settings;
+  updatedAt: number;
+  wipedAt?: number;
+}
+
+export interface SyncMeta {
+  uid?: string;
+  lastSyncAt?: number;
+  settingsDirtyAt?: number;
+  pendingWipeAt?: number;
+  dirtyKeys: Record<string, Record<string, number>>;
+  deleted: Record<string, Record<string, number>>;
+  remoteUpdated: Record<string, number>;
+}
+
+const META_KEY = 'gymapp_sync_meta_v1';
+const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const KINDS: DataKind[] = ['strength', 'cardio', 'measures', 'wellbeing'];
+
+const emptyMeta = (uid?: string): SyncMeta => ({
+  uid,
+  dirtyKeys: {},
+  deleted: {},
+  remoteUpdated: {},
+});
+
+export function loadSyncMeta(): SyncMeta {
+  if (typeof localStorage === 'undefined') return emptyMeta();
+  try {
+    const raw = localStorage.getItem(META_KEY);
+    if (!raw) return emptyMeta();
+    const parsed = JSON.parse(raw) as Partial<SyncMeta>;
+    return {
+      ...emptyMeta(parsed.uid),
+      ...parsed,
+      dirtyKeys: parsed.dirtyKeys ?? {},
+      deleted: parsed.deleted ?? {},
+      remoteUpdated: parsed.remoteUpdated ?? {},
+    };
+  } catch {
+    return emptyMeta();
+  }
+}
+
+export function saveSyncMeta(meta: SyncMeta): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(META_KEY, JSON.stringify(meta));
+}
+
+export function bucketIdFor(kind: DataKind, date: string): string {
+  if (kind === 'cardio' || kind === 'measures') return `${kind}_all`;
+  const year = /^\d{4}/.test(date) ? date.slice(0, 4) : 'legacy';
+  return `${kind}_${year}`;
+}
+
+export function recordKey(kind: DataKind, item: DataRecord): string {
+  return kind === 'strength' || kind === 'cardio'
+    ? (item as StrengthRow | CardioRow).id
+    : (item as Measure | DailyWellbeing).date;
+}
+
+export function stripUndefined<T>(val: T): T {
+  if (Array.isArray(val)) return val.map(stripUndefined) as T;
+  if (val && typeof val === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return val;
+}
+
+export function groupRecordsByBucket(
+  kind: DataKind,
+  rows: DataRecord[],
+): Record<string, Record<string, DataRecord>> {
+  const buckets: Record<string, Record<string, DataRecord>> = {};
+  for (const row of rows) {
+    const bId = bucketIdFor(kind, row.date);
+    (buckets[bId] ??= {})[recordKey(kind, row)] = stripUndefined(row);
+  }
+  return buckets;
+}
+
+function pruneOldTombstones(tombstones: Record<string, number>, now: number): Record<string, number> {
+  const cutoff = now - TOMBSTONE_TTL_MS;
+  const out: Record<string, number> = {};
+  for (const [k, ts] of Object.entries(tombstones)) {
+    if (ts >= cutoff) out[k] = ts;
+  }
+  return out;
+}
+
+export function markBucketUpserts(kind: DataKind, items: DataRecord[], at = Date.now()): void {
+  if (!items.length) return;
+  const meta = loadSyncMeta();
+  for (const item of items) {
+    const bId = bucketIdFor(kind, item.date);
+    const key = recordKey(kind, item);
+    (meta.dirtyKeys[bId] ??= {})[key] = at;
+    if (meta.deleted[bId]) delete meta.deleted[bId][key];
+  }
+  saveSyncMeta(meta);
+}
+
+export function markBucketDeletes(
+  kind: DataKind,
+  entries: { key: string; date: string }[],
+  at = Date.now(),
+): void {
+  if (!entries.length) return;
+  const meta = loadSyncMeta();
+  for (const { key, date } of entries) {
+    const bId = bucketIdFor(kind, date);
+    (meta.deleted[bId] ??= {})[key] = at;
+    if (meta.dirtyKeys[bId]) delete meta.dirtyKeys[bId][key];
+  }
+  saveSyncMeta(meta);
+}
+
+export function markSettingsDirty(at = Date.now()): void {
+  const meta = loadSyncMeta();
+  meta.settingsDirtyAt = at;
+  saveSyncMeta(meta);
+}
+
+export function markWipePending(at = Date.now()): void {
+  const meta = loadSyncMeta();
+  meta.pendingWipeAt = at;
+  meta.dirtyKeys = {};
+  meta.deleted = {};
+  meta.settingsDirtyAt = at;
+  saveSyncMeta(meta);
+}
+
+export interface MergeBucketInput {
+  kind: DataKind;
+  localItems: Record<string, DataRecord>;
+  remoteBucket?: RemoteBucket;
+  localDirtyKeys: Record<string, number>;
+  localDeleted: Record<string, number>;
+  now?: number;
+}
+
+export interface MergeBucketResult {
+  merged: Record<string, DataRecord>;
+  deleted: Record<string, number>;
+  toPutLocally: DataRecord[];
+  toDeleteLocally: string[];
+  pushRemote: boolean;
+}
+
+export function mergeBucket({
+  kind,
+  localItems,
+  remoteBucket,
+  localDirtyKeys,
+  localDeleted,
+  now = Date.now(),
+}: MergeBucketInput): MergeBucketResult {
+  const remoteItems = remoteBucket?.items ?? {};
+  const remoteDeleted = remoteBucket?.deleted ?? {};
+  const remoteAt = remoteBucket?.updatedAt ?? 0;
+
+  const allKeys = new Set([
+    ...Object.keys(localItems),
+    ...Object.keys(remoteItems),
+    ...Object.keys(localDeleted),
+    ...Object.keys(remoteDeleted),
+  ]);
+
+  const merged: Record<string, DataRecord> = {};
+  const deleted = pruneOldTombstones({ ...remoteDeleted, ...localDeleted }, now);
+  for (const k of Object.keys(deleted)) {
+    deleted[k] = Math.max(remoteDeleted[k] ?? 0, localDeleted[k] ?? 0);
+  }
+
+  const toPutLocally: DataRecord[] = [];
+  const toDeleteLocally: string[] = [];
+
+  for (const k of allKeys) {
+    const loc = localItems[k];
+    const rem = remoteItems[k];
+    const touchL = localDirtyKeys[k] ?? 0;
+    const delL = localDeleted[k] ?? 0;
+    const delR = remoteDeleted[k] ?? 0;
+    const delT = Math.max(delL, delR);
+
+    // Ignore deletion if locally touched more recently than tombstone
+    const tombstoned = delT > 0 && touchL <= delT;
+    if (tombstoned && (!rem || delL > remoteAt)) {
+      if (loc) toDeleteLocally.push(k);
+      continue;
+    }
+
+    if (loc && rem) {
+      const mergedItem =
+        kind === 'wellbeing'
+          ? stripUndefined(touchL > remoteAt ? { ...rem, ...loc } : { ...loc, ...rem })
+          : stripUndefined(touchL > remoteAt ? loc : rem);
+      merged[k] = mergedItem;
+      delete deleted[k];
+      if (JSON.stringify(mergedItem) !== JSON.stringify(stripUndefined(loc))) {
+        toPutLocally.push(mergedItem);
+      }
+    } else if (rem) {
+      const cleanRem = stripUndefined(rem);
+      merged[k] = cleanRem;
+      delete deleted[k];
+      toPutLocally.push(cleanRem);
+    } else if (loc) {
+      merged[k] = stripUndefined(loc);
+      delete deleted[k];
+    }
+  }
+
+  const remoteClean = stripUndefined(remoteItems);
+  const remoteDelClean = remoteBucket?.deleted ?? {};
+  const pushRemote =
+    !remoteBucket ||
+    JSON.stringify(merged) !== JSON.stringify(remoteClean) ||
+    JSON.stringify(deleted) !== JSON.stringify(remoteDelClean);
+
+  return { merged, deleted, toPutLocally, toDeleteLocally, pushRemote };
+}
+
+export interface SyncReport {
+  pushedBuckets: number;
+  pulledItems: number;
+  deletedItems: number;
+  settingsDirection: 'pushed' | 'pulled' | 'none';
+}
+
+function hasCustomSettings(s: Settings): boolean {
+  return Boolean(
+    s.geminiKey ||
+      s.ai ||
+      s.phases.length > 0 ||
+      Object.keys(s.customNames).length > 0 ||
+      Object.keys(s.refNames).length > 0 ||
+      Object.keys(s.aliases).length > 0 ||
+      Object.keys(s.notes).length > 0,
+  );
+}
+
+export async function syncWithCloud(uid: string): Promise<SyncReport> {
+  let meta = loadSyncMeta();
+  if (meta.uid && meta.uid !== uid) {
+    meta = emptyMeta(uid);
+  }
+  meta.uid = uid;
+  const now = Date.now();
+
+  const settingsRef = doc(fs, 'users', uid, 'sync', 'settings');
+  const bucketsCol = collection(fs, 'users', uid, 'buckets');
+
+  const [settingsSnap, bucketsSnap] = await Promise.all([getDoc(settingsRef), getDocs(bucketsCol)]);
+  const remoteSettings = settingsSnap.exists() ? (settingsSnap.data() as RemoteSettingsDoc) : null;
+
+  // Handle pending local wipe first if newer than any cloud update
+  if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
+    const batch = writeBatch(fs);
+    bucketsSnap.forEach((d) => batch.delete(d.ref));
+    const localSettings = await loadSettings();
+    const docBody: RemoteSettingsDoc = {
+      data: stripUndefined(localSettings),
+      updatedAt: now,
+      wipedAt: meta.pendingWipeAt,
+    };
+    batch.set(settingsRef, docBody);
+    await batch.commit();
+    meta.pendingWipeAt = undefined;
+    meta.settingsDirtyAt = undefined;
+    meta.dirtyKeys = {};
+    meta.deleted = {};
+    meta.remoteUpdated = { settings: now };
+    meta.lastSyncAt = now;
+    saveSyncMeta(meta);
+    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed' };
+  }
+
+  // Handle remote wipe triggered on another device
+  if (
+    remoteSettings?.wipedAt &&
+    remoteSettings.wipedAt > (meta.lastSyncAt ?? 0) &&
+    remoteSettings.wipedAt > (meta.settingsDirtyAt ?? 0)
+  ) {
+    await wipeAll();
+    await saveSettings(remoteSettings.data);
+    meta = emptyMeta(uid);
+    meta.remoteUpdated.settings = remoteSettings.updatedAt;
+    meta.lastSyncAt = now;
+    saveSyncMeta(meta);
+    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled' };
+  }
+
+  // Sync settings (if local had rich settings prior to first cloud link and remote is bare default, push local)
+  const localSettings = await loadSettings();
+  const localWinsInitial =
+    !meta.remoteUpdated.settings &&
+    !meta.settingsDirtyAt &&
+    remoteSettings != null &&
+    hasCustomSettings(localSettings) &&
+    !hasCustomSettings(remoteSettings.data);
+  let settingsDirection: SyncReport['settingsDirection'] = 'none';
+  if (!remoteSettings || localWinsInitial || (meta.settingsDirtyAt ?? 0) > remoteSettings.updatedAt) {
+    const updatedAt = Math.max(now, meta.settingsDirtyAt ?? now);
+    await setDoc(settingsRef, { data: stripUndefined(localSettings), updatedAt } satisfies RemoteSettingsDoc);
+    meta.settingsDirtyAt = undefined;
+    meta.remoteUpdated.settings = updatedAt;
+    settingsDirection = 'pushed';
+  } else if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
+    await saveSettings(remoteSettings.data);
+    meta.settingsDirtyAt = undefined;
+    meta.remoteUpdated.settings = remoteSettings.updatedAt;
+    settingsDirection = 'pulled';
+  }
+
+  // Load local collections and index remote buckets
+  const remoteMap: Record<string, RemoteBucket> = {};
+  bucketsSnap.forEach((d) => {
+    remoteMap[d.id] = d.data() as RemoteBucket;
+  });
+
+  const allLocalBuckets: { kind: DataKind; id: string; items: Record<string, DataRecord> }[] = [];
+  for (const kind of KINDS) {
+    const rows = await getAll<DataRecord>(kind);
+    const grouped = groupRecordsByBucket(kind, rows);
+    for (const [bId, items] of Object.entries(grouped)) {
+      allLocalBuckets.push({ kind, id: bId, items });
+    }
+  }
+
+  const localBucketById = new Map(allLocalBuckets.map((b) => [b.id, b]));
+  const allBucketIds = new Set([...localBucketById.keys(), ...Object.keys(remoteMap)]);
+
+  let pushedBuckets = 0;
+  let pulledItems = 0;
+  let deletedItems = 0;
+  const toWriteRemote: { id: string; doc: RemoteBucket }[] = [];
+
+  for (const bId of allBucketIds) {
+    const localEntry = localBucketById.get(bId);
+    const remoteEntry = remoteMap[bId];
+    const kind = (localEntry?.kind ?? remoteEntry?.kind ?? bId.split('_')[0]) as DataKind;
+
+    const res = mergeBucket({
+      kind,
+      localItems: localEntry?.items ?? {},
+      remoteBucket: remoteEntry,
+      localDirtyKeys: meta.dirtyKeys[bId] ?? {},
+      localDeleted: meta.deleted[bId] ?? {},
+      now,
+    });
+
+    if (res.toPutLocally.length) {
+      await putMany(kind, res.toPutLocally);
+      pulledItems += res.toPutLocally.length;
+    }
+    for (const key of res.toDeleteLocally) {
+      await deleteKey(kind, key);
+      deletedItems++;
+    }
+
+    if (res.pushRemote) {
+      if (Object.keys(res.merged).length === 0 && Object.keys(res.deleted).length === 0) {
+        if (remoteEntry) await deleteDoc(doc(fs, 'users', uid, 'buckets', bId));
+      } else {
+        const nextDoc: RemoteBucket = {
+          kind,
+          items: res.merged,
+          deleted: res.deleted,
+          updatedAt: now,
+        };
+        toWriteRemote.push({ id: bId, doc: nextDoc });
+        meta.remoteUpdated[bId] = now;
+      }
+      pushedBuckets++;
+    } else if (remoteEntry) {
+      meta.remoteUpdated[bId] = remoteEntry.updatedAt;
+    }
+
+    delete meta.dirtyKeys[bId];
+    meta.deleted[bId] = res.deleted;
+  }
+
+  if (toWriteRemote.length) {
+    const batch = writeBatch(fs);
+    for (const { id, doc: body } of toWriteRemote) {
+      batch.set(doc(fs, 'users', uid, 'buckets', id), body);
+    }
+    await batch.commit();
+  }
+
+  meta.lastSyncAt = now;
+  saveSyncMeta(meta);
+  return { pushedBuckets, pulledItems, deletedItems, settingsDirection };
+}

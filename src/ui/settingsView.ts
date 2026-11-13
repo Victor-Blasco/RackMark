@@ -16,8 +16,24 @@ export function viewSettings(S: State): string {
   const sel = (name: string, opts: string[]) =>
     `<option value="" ${name ? '' : 'selected'}>—</option>${opts.map((o) => `<option ${o === name ? 'selected' : ''}>${esc(o)}</option>`).join('')}`;
   const names = known.filter((n) => !n.startsWith('Samsung #'));
+  const syncWhen = S.lastSync
+    ? new Date(S.lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : null;
+  const cloudCard = S.user
+    ? `<div class="card space-y-3"><div class="flex flex-wrap items-center justify-between gap-2">
+        <div><h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
+          <p class="text-xs text-gray-300 mt-0.5">${esc(S.user.displayName ?? 'Usuario')} · <span class="text-gray-400">${esc(S.user.email ?? '')}</span></p>
+          <p class="text-xs text-emerald-400 mt-0.5">${S.syncing ? 'Sincronizando…' : syncWhen ? `Última sincronización: ${esc(syncWhen)}` : 'Conectado'}</p></div>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn" data-act="cloudSync" ${S.syncing ? 'disabled' : ''}>${icon('refresh', 'h-4 w-4')} Sincronizar ahora</button>
+          <button class="btn !border-coralRed/50 text-coralRed" data-act="cloudLogout" ${S.syncing ? 'disabled' : ''}>Cerrar sesión</button></div></div></div>`
+    : `<div class="card space-y-3"><div class="flex flex-wrap items-center justify-between gap-3">
+        <div><h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Inicia sesión con Google para sincronizar entrenamientos, medidas, sueño/FC y ajustes entre dispositivos.</p></div>
+        <button class="btn btn-p" data-act="cloudLogin" ${S.syncing ? 'disabled' : ''}>${icon('upload', 'h-4 w-4')} Iniciar sesión con Google</button></div></div>`;
 
   return `
+  ${cloudCard}
   <div class="card space-y-3"><h3 class="font-bold text-white">Importar datos</h3>
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
       <label class="block"><span class="lbl">Samsung Health: ZIP completo o CSV (exercise, custom_exercise, sleep, pedometer/step_daily_trend, vitality_score)</span>
@@ -34,7 +50,7 @@ export function viewSettings(S: State): string {
   <div class="card space-y-3"><h3 class="font-bold text-white">IA (Gemini)</h3>
     <label class="block"><span class="lbl">Clave de API de Google AI Studio</span>
       <input class="inp" type="password" placeholder="AIza…" value="${esc(s.geminiKey ?? '')}" data-change="geminiKey" autocomplete="off" spellcheck="false"></label>
-    <p class="text-xs text-gray-400">Se guarda solo en este dispositivo y se envía únicamente a Google al pulsar «Generar análisis».</p></div>
+    <p class="text-xs text-gray-400">Se guarda en este dispositivo (y en tu cuenta privada si inicias sesión) y se envía únicamente a Google al pulsar «Generar análisis».</p></div>
 
   <div class="card space-y-3"><h3 class="font-bold text-white">Rutinas y objetivos</h3>
     ${DAYS.map((d) => `<div><h4 class="mb-1 text-sm font-bold" style="color:${DAY_COLOR[d]}">${d}</h4>

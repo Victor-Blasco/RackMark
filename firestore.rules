@@ -1,0 +1,159 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Single-user / per-user multi-device sync scoped under the
+    // authenticated Firebase Auth UID (Google Sign-In).
+    //
+    // Collection: /users/{userId}/sync
+    // Document ID: 'settings' (fixed singleton per user)
+    // Fields:
+    //   - data: map (required, size <= 30) - serialized GymApp Settings
+    //       Optional typed/bounded subfields inside data:
+    //       - routines: map (size <= 20)
+    //       - profile: map (size <= 20)
+    //       - customNames: map (size <= 500)
+    //       - refNames: map (size <= 500)
+    //       - aliases: map (size <= 500)
+    //       - muscles: map (size <= 500)
+    //       - notes: map (size <= 500)
+    //       - phases: list (size <= 100)
+    //       - geminiKey: string (size <= 256)
+    //       - ai: map (size <= 20)
+    //   - updatedAt: number (required, 0 <= val <= 100000000000000) - client epoch ms
+    //   - wipedAt: number (optional, 0 <= val <= 100000000000000) - client epoch ms of cloud wipe
+    //
+    // Collection: /users/{userId}/buckets
+    // Document ID: '<kind>_<suffix>' matching ^(strength|cardio|measures|wellbeing)_[a-z0-9]{2,16}$
+    // Fields:
+    //   - kind: string (required, immutable on update, in ['strength', 'cardio', 'measures', 'wellbeing'], matches bucketId prefix)
+    //   - items: map (required, size <= 5000) - keyed record map
+    //   - deleted: map (optional, size <= 5000) - keyed tombstone timestamps
+    //   - updatedAt: number (required, 0 <= val <= 100000000000000) - client epoch ms
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request comes from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user owns the target userId path
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Validate required top-level fields exist
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate document contains only allowed top-level fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate immutable fields did not change on update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate finite non-negative epoch ms timestamp (rejects negative, NaN, Infinity)
+    function isValidEpochMs(val) {
+      return val is number && val >= 0 && val <= 100000000000000;
+    }
+
+    function isOptionalMapMax(obj, key, maxSize) {
+      return !(key in obj) || (obj[key] is map && obj[key].size() <= maxSize);
+    }
+
+    function isOptionalListMax(obj, key, maxSize) {
+      return !(key in obj) || (obj[key] is list && obj[key].size() <= maxSize);
+    }
+
+    function isOptionalStringMax(obj, key, maxLen) {
+      return !(key in obj) || (obj[key] is string && obj[key].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidSettingsPayload(d) {
+      return d is map
+        && d.size() <= 30
+        && isOptionalMapMax(d, 'routines', 20)
+        && isOptionalMapMax(d, 'profile', 20)
+        && isOptionalMapMax(d, 'customNames', 500)
+        && isOptionalMapMax(d, 'refNames', 500)
+        && isOptionalMapMax(d, 'aliases', 500)
+        && isOptionalMapMax(d, 'muscles', 500)
+        && isOptionalMapMax(d, 'notes', 500)
+        && isOptionalListMax(d, 'phases', 100)
+        && isOptionalStringMax(d, 'geminiKey', 256)
+        && isOptionalMapMax(d, 'ai', 20);
+    }
+
+    function isValidSyncSettings(docData) {
+      return hasRequiredFields(['data', 'updatedAt'])
+        && hasOnlyAllowedFields(['data', 'updatedAt', 'wipedAt'])
+        && isValidSettingsPayload(docData.data)
+        && isValidEpochMs(docData.updatedAt)
+        && (!('wipedAt' in docData) || isValidEpochMs(docData.wipedAt));
+    }
+
+    function isValidBucketId(bucketId) {
+      return bucketId.matches('^(strength|cardio|measures|wellbeing)_[a-z0-9]{2,16}$');
+    }
+
+    function isValidBucket(bucketId, docData) {
+      return hasRequiredFields(['kind', 'items', 'updatedAt'])
+        && hasOnlyAllowedFields(['kind', 'items', 'deleted', 'updatedAt'])
+        && docData.kind is string
+        && docData.kind in ['strength', 'cardio', 'measures', 'wellbeing']
+        && bucketId.matches('^' + docData.kind + '_[a-z0-9]{2,16}$')
+        && docData.items is map
+        && docData.items.size() <= 5000
+        && isOptionalMapMax(docData, 'deleted', 5000)
+        && isValidEpochMs(docData.updatedAt);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId}/sync/{docId} {
+      allow read, delete: if isOwner(userId) && docId == 'settings';
+      allow create, update: if isOwner(userId)
+        && docId == 'settings'
+        && isValidSyncSettings(request.resource.data);
+    }
+
+    match /users/{userId}/buckets/{bucketId} {
+      // Split get/list so getDocs(collection(fs, 'users', uid, 'buckets')) is statically authorized for the owner
+      allow get, delete: if isOwner(userId) && isValidBucketId(bucketId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && isValidBucketId(bucketId)
+        && isValidBucket(bucketId, request.resource.data);
+      allow update: if isOwner(userId)
+        && isValidBucketId(bucketId)
+        && isValidBucket(bucketId, request.resource.data)
+        && areImmutableFieldsUnchanged(['kind']);
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
