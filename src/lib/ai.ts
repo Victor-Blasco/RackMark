@@ -160,7 +160,7 @@ export async function generateAnalysis(
     '    }\n' +
     '  }\n' +
     '}\n\n' +
-    'Escribe en español con tono profesional, motivador y fundamentado en ciencia deportiva.\n\nDATOS DEL USUARIO:\n' + JSON.stringify(payload);
+    'Escribe en español con tono profesional, motivador y fundamentado en ciencia deportiva. Sé conciso y directo para lectura rápida en móvil: máximo 2-3 frases por sección y 1 frase corta por highlight.\n\nDATOS DEL USUARIO:\n' + JSON.stringify(payload);
 
   const errors: string[] = [];
   for (const model of MODELS) {

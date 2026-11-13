@@ -8,6 +8,26 @@ Chart.defaults.color = '#9CA3AF';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.maintainAspectRatio = false;
 
+export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo';
+export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
+  { key: '1M', label: '1M', days: 30 },
+  { key: '3M', label: '3M', days: 90 },
+  { key: '6M', label: '6M', days: 180 },
+  { key: '1A', label: '1A', days: 365 },
+  { key: 'Todo', label: 'Todo' },
+];
+
+export function rangeCutoff(r: RangeKey): string | null {
+  const days = RANGES.find((x) => x.key === r)?.days;
+  return days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
+}
+
+export function rangePicker(scope: string, active: RangeKey): string {
+  return `<div role="group" aria-label="Filtro temporal" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
+    ${RANGES.map((r) => `<button data-act="setRange" data-arg="${scope}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
+  </div>`;
+}
+
 /** Estado global de la aplicación en memoria. */
 export interface State {
   tab: string;
@@ -22,6 +42,9 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   logFilter?: string;
+  aiTab?: number;
+  dayExtra?: Record<string, boolean>;
+  ranges?: Record<string, RangeKey>;
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
@@ -67,7 +90,7 @@ export function resetCharts() {
 export function chart(id: string, cfg: ChartConfiguration) {
   jobs.push(() => {
     const el = document.getElementById(id) as HTMLCanvasElement | null;
-    if (!el) return;
+    if (!el || el.getBoundingClientRect().width === 0) return;
     charts.set(id, new Chart(el, cfg) as unknown as Chart);
   });
 }

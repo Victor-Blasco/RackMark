@@ -57,7 +57,7 @@ export function viewBody(S: State): string {
   </div>
   <form id="f-measure" class="card space-y-3"><h3 class="font-bold text-white">Añadir / editar medición</h3>
     <p class="text-xs text-gray-400">Si ya existe una medición en esa fecha, se actualiza. Se rellenan los valores de la última medición para que solo cambies lo necesario.</p>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
       <label class="block"><span class="lbl">Fecha</span><input class="inp font-mono" type="date" name="date" value="${today}" required></label>
       ${cols.map((f) => `<label class="block"><span class="lbl">${f.label} (${f.unit})</span><input class="inp font-mono tabular-nums" inputmode="decimal" name="${f.key}" value="${last[f.key] ?? ''}"></label>`).join('')}
       <label class="col-span-2 block"><span class="lbl">Nota (opcional)</span><input class="inp" name="note" placeholder="p. ej. empieza la defi…"></label>

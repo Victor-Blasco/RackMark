@@ -11,6 +11,7 @@ import { MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type
 import { norm } from './lib/seed';
 import { icon, type IconName } from './ui/icons';
 import { defaultSetsForEx, initLogDraft, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewDay, viewHome, viewLog, viewSettings, viewVolume, type State } from './ui/views';
+import type { RangeKey } from './ui/shared';
 
 registerSW({ immediate: true });
 
@@ -260,7 +261,7 @@ function render() {
   ${renderSidebar(statsText, draftCount)}
   ${renderMobileHeader(statsText)}
   <div class="lg:pl-64">
-    <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl space-y-4 p-3 pb-28 sm:p-5 lg:p-6 lg:pb-10 focus:outline-none">${html}</main>
+    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-3 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">${html}</main>
   </div>
   ${renderMobileNav(draftCount)}
   ${S.toast ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm shadow-xl lg:bottom-6 lg:left-64">${S.toast}</div>` : ''}`;
@@ -468,7 +469,19 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     toast('Sesión manual borrada.');
   },
   selEx: (el) => { const [d, n] = arg(el).split('|'); S.sel[d] = n; render(); },
+  setDayScope: (el) => {
+    const [d, mode] = arg(el).split('|');
+    (S.dayExtra ??= {})[d] = mode === 'extra';
+    delete S.sel[d];
+    render();
+  },
+  setRange: (el) => {
+    const [scope, key] = arg(el).split('|');
+    (S.ranges ??= {})[scope] = key as RangeKey;
+    render();
+  },
   selMuscle: (el) => { S.muscleSel = arg(el); render(); },
+  aiTab: (el) => { S.aiTab = Math.max(0, +arg(el) || 0); render(); },
   delMeasure: async (el) => {
     const key = arg(el);
     if (!confirm('¿Borrar esta medición?')) return;
@@ -486,6 +499,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (S.busy) return; S.busy = 'ai'; render();
     try {
       S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing);
+      S.aiTab = 0;
       await saveSettings(S.settings);
       markSettingsDirty();
       queueSync();
@@ -651,6 +665,7 @@ window.addEventListener('hashchange', () => {
 });
 
 window.addEventListener('online', () => queueSync());
+window.matchMedia('(min-width: 1024px)').addEventListener('change', () => render());
 
 reload().then(async () => {
   await consumeRedirectAuth();

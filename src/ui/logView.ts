@@ -145,16 +145,18 @@ export function viewLog(S: State): string {
 
   <div class="card space-y-2.5">
     <h3 class="text-sm font-bold text-white">Añadir ejercicio de la lista</h3>
-    <div class="flex flex-wrap gap-2">
-      <select id="logAddSelect" class="inp min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
-        <option value="">Selecciona cualquier ejercicio (${avail.length})…</option>
-        ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
-      </select>
-      <button class="btn" data-act="logAddEx">+ Añadir de la lista</button>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <input id="logNewExName" class="inp min-w-[180px] flex-1" placeholder="Ej. Press inclinado con mancuernas…" aria-label="Nombre de ejercicio nuevo">
-      <button class="btn" data-act="logAddCustomEx">+ Crear y añadir</button>
+    <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+      <div class="flex flex-wrap gap-2">
+        <select id="logAddSelect" class="inp min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
+          <option value="">Selecciona cualquier ejercicio (${avail.length})…</option>
+          ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+        </select>
+        <button class="btn" data-act="logAddEx">+ Añadir de la lista</button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <input id="logNewExName" class="inp min-w-[180px] flex-1" placeholder="Ej. Press inclinado con mancuernas…" aria-label="Nombre de ejercicio nuevo">
+        <button class="btn" data-act="logAddCustomEx">+ Crear y añadir</button>
+      </div>
     </div>
     ${quick.length ? `
     <div class="flex flex-wrap items-center gap-1.5 pt-1">
@@ -163,7 +165,7 @@ export function viewLog(S: State): string {
     </div>` : ''}
   </div>
 
-  ${draft.exercises.length ? `<div class="space-y-3">
+  ${draft.exercises.length ? `<div class="grid grid-cols-1 gap-3 xl:grid-cols-2 items-start">
     ${draft.exercises.map((ex, ei) => {
       const k = norm(ex.name);
       const hist = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
@@ -219,7 +221,7 @@ export function viewLog(S: State): string {
   ${recentSessions.length ? `
   <div class="card space-y-2">
     <h3 class="font-bold text-white">Últimas sesiones registradas</h3>
-    <div class="space-y-2">
+    <div class="grid grid-cols-1 gap-x-6 gap-y-2 xl:grid-cols-2">
       ${recentSessions.map((s) => {
         const isManual = manualSessionIds.has(s.id);
         return `
