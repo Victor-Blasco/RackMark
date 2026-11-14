@@ -63,6 +63,18 @@ export function saveSyncMeta(meta: SyncMeta): void {
   localStorage.setItem(META_KEY, JSON.stringify(meta));
 }
 
+export function clearSyncMeta(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(META_KEY);
+}
+
+export function hasUnsyncedChanges(meta: SyncMeta = loadSyncMeta()): boolean {
+  if (meta.settingsDirtyAt || meta.pendingWipeAt) return true;
+  const hasKeys = (buckets: Record<string, Record<string, number>>) =>
+    Object.values(buckets).some((m) => Object.keys(m).length > 0);
+  return hasKeys(meta.dirtyKeys) || hasKeys(meta.deleted);
+}
+
 export function bucketIdFor(kind: DataKind, date: string): string {
   if (kind === 'cardio' || kind === 'measures') return `${kind}_all`;
   const year = /^\d{4}/.test(date) ? date.slice(0, 4) : 'legacy';
@@ -75,12 +87,17 @@ export function recordKey(kind: DataKind, item: DataRecord): string {
     : (item as Measure | DailyWellbeing).date;
 }
 
+const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 export function stripUndefined<T>(val: T): T {
-  if (Array.isArray(val)) return val.map(stripUndefined) as T;
+  if (typeof val === 'number') return (Number.isFinite(val) ? val : undefined) as T;
+  if (Array.isArray(val)) return val.map(stripUndefined).filter((x) => x !== undefined) as T;
   if (val && typeof val === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(val)) {
-      if (v !== undefined) out[k] = stripUndefined(v);
+      if (UNSAFE_KEYS.has(k) || v === undefined) continue;
+      const clean = stripUndefined(v);
+      if (clean !== undefined) out[k] = clean;
     }
     return out as T;
   }
@@ -246,6 +263,7 @@ export interface SyncReport {
   pulledItems: number;
   deletedItems: number;
   settingsDirection: 'pushed' | 'pulled' | 'none';
+  accountSwitched?: boolean;
 }
 
 function hasCustomSettings(s: Settings): boolean {
@@ -262,8 +280,14 @@ function hasCustomSettings(s: Settings): boolean {
 
 export async function syncWithCloud(uid: string): Promise<SyncReport> {
   let meta = loadSyncMeta();
+  let accountSwitched = false;
   if (meta.uid && meta.uid !== uid) {
+    // Impide fugar datos locales de una cuenta anterior hacia la nueva cuenta.
+    await wipeAll();
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('gymapp_log_draft');
     meta = emptyMeta(uid);
+    saveSyncMeta(meta);
+    accountSwitched = true;
   }
   meta.uid = uid;
   const now = Date.now();
@@ -293,7 +317,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     meta.remoteUpdated = { settings: now };
     meta.lastSyncAt = now;
     saveSyncMeta(meta);
-    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed' };
+    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed', accountSwitched };
   }
 
   // Handle remote wipe triggered on another device
@@ -303,12 +327,13 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     remoteSettings.wipedAt > (meta.settingsDirtyAt ?? 0)
   ) {
     await wipeAll();
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('gymapp_log_draft');
     await saveSettings(remoteSettings.data);
     meta = emptyMeta(uid);
     meta.remoteUpdated.settings = remoteSettings.updatedAt;
     meta.lastSyncAt = now;
     saveSyncMeta(meta);
-    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled' };
+    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled', accountSwitched };
   }
 
   // Sync settings (if local had rich settings prior to first cloud link and remote is bare default, push local)
@@ -385,7 +410,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
       } else {
         const nextDoc: RemoteBucket = {
           kind,
-          items: res.merged,
+          items: stripUndefined(res.merged),
           deleted: res.deleted,
           updatedAt: now,
         };
@@ -411,5 +436,5 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
 
   meta.lastSyncAt = now;
   saveSyncMeta(meta);
-  return { pushedBuckets, pulledItems, deletedItems, settingsDirection };
+  return { pushedBuckets, pulledItems, deletedItems, settingsDirection, accountSwitched };
 }

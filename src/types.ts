@@ -1,4 +1,4 @@
-export type DayName = 'Push' | 'Pull' | 'Leg';
+export type DayName = string;
 export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
 
 export interface SetRec { w: number; r: number }
@@ -64,6 +64,8 @@ export interface Measure {
   bf?: number; weight?: number; muscle?: number; note?: string;
 }
 
+export const BASIC_MEASURE_KEYS: (keyof Measure)[] = ['weight', 'bf', 'muscle', 'waist'];
+
 export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }[] = [
   { key: 'weight', label: 'Peso', unit: 'kg' },
   { key: 'bf', label: '% Grasa', unit: '%' },
@@ -84,6 +86,7 @@ export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }
 
 export interface RoutineEx { name: string; sets: number; reps: number }
 export interface MuscleMap { p: string; s: string[] }
+export type AiTone = 'simple' | 'technical';
 export interface AiEntry { status?: string; prescription?: string; biomech?: string }
 export interface AiSection {
   title: string;
@@ -93,6 +96,7 @@ export interface AiSection {
 
 export interface AiResult {
   date: string;
+  tone?: AiTone;
   summary?: string;
   overview?: {
     overallStatus: string;       // ej: "En progresión positiva", "Superávit efectivo", etc.
@@ -102,8 +106,11 @@ export interface AiResult {
   byExercise: Record<string, AiEntry>;
 }
 
+export interface RoutineMeta { color?: string; sub?: string }
+
 export interface Settings {
   routines: Record<DayName, RoutineEx[]>;
+  routineMeta?: Record<DayName, RoutineMeta>;
   customNames: Record<string, string>;   // ref -> nombre (de custom_exercise.csv)
   refNames: Record<string, string>;      // ref -> nombre manual (renombrar tipos Samsung)
   aliases: Record<string, string>;       // nombre -> nombre (fusionar)
@@ -112,5 +119,6 @@ export interface Settings {
   phases: { name: string; start: string }[];
   profile: { sex: string; age: number; height: number };
   geminiKey?: string;
+  aiTone?: AiTone;
   ai?: AiResult;
 }

@@ -1,8 +1,8 @@
 import { musclesOf, resolveName } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
-import { DAYS, type DayName, type LogDraft, type LogExDraft } from '../types';
+import type { DayName, LogDraft, LogExDraft } from '../types';
 import { icon } from './icons';
-import { DAY_COLOR, empty, esc, fmtDate, short, type State } from './shared';
+import { empty, esc, fmtDate, routineColor, routineNames, short, type State } from './shared';
 
 /**
  * Devuelve la lista ordenada y deduplicada de todos los nombres de ejercicios conocidos.
@@ -18,7 +18,7 @@ export function allExerciseNames(S: State): string[] {
     const k = norm(t);
     if (!byNorm.has(k)) byNorm.set(k, t);
   };
-  DAYS.forEach((d) => S.settings.routines[d].forEach((r) => add(r.name)));
+  routineNames(S.settings).forEach((d) => (S.settings.routines[d] ?? []).forEach((r) => add(r.name)));
   CATALOG_EXERCISES.forEach(add);
   Object.values(S.settings.customNames).forEach(add);
   Object.values(S.settings.refNames).forEach(add);
@@ -66,7 +66,7 @@ export function initLogDraft(S: State, day: DayName | 'Libre', date: string): Lo
   const used = new Set<string>();
 
   if (day !== 'Libre') {
-    for (const r of S.settings.routines[day]) {
+    for (const r of S.settings.routines[day] ?? []) {
       const k = norm(r.name);
       used.add(k);
       const saved = savedByNorm.get(k);
@@ -98,15 +98,22 @@ export function initLogDraft(S: State, day: DayName | 'Libre', date: string): Lo
  */
 export function viewLog(S: State): string {
   const today = new Date().toISOString().slice(0, 10);
-  const draft = S.logDraft ?? (S.logDraft = initLogDraft(S, 'Push', today));
+  const routines = routineNames(S.settings);
+  const draft = S.logDraft ?? (S.logDraft = initLogDraft(S, routines[0] ?? 'Libre', today));
   const all = allExerciseNames(S);
   const inDraft = new Set(draft.exercises.map((e) => norm(e.name)));
   const avail = all.filter((n) => !inDraft.has(norm(n)));
+  const dayMuscles = new Set(
+    draft.day === 'Libre'
+      ? []
+      : (S.settings.routines[draft.day] ?? []).map((r) => musclesOf(r.name, S.settings)?.p).filter((m): m is string => Boolean(m)),
+  );
   const quick = avail
     .filter((n) => {
       if (draft.day === 'Libre') return true;
       const m = musclesOf(n, S.settings);
-      return m ? MUSCLE_DAY[m.p] === draft.day : false;
+      if (!m) return false;
+      return dayMuscles.size ? dayMuscles.has(m.p) : MUSCLE_DAY[m.p] === draft.day;
     })
     .sort((a, b) => (S.analysis.exercises.get(b)?.n ?? 0) - (S.analysis.exercises.get(a)?.n ?? 0))
     .slice(0, 6);
@@ -134,17 +141,20 @@ export function viewLog(S: State): string {
         <input class="inp !w-auto font-mono" type="date" value="${esc(draft.date)}" data-change="logDate" aria-label="Fecha de la sesión">
       </label>
       <div class="flex flex-wrap gap-1.5" role="group" aria-label="Rutina de la sesión">
-        ${(['Push', 'Pull', 'Leg', 'Libre'] as const).map((d) => {
+        ${[...routines, 'Libre'].map((d, idx) => {
           const on = draft.day === d;
-          const col = d === 'Libre' ? '#9CA3AF' : DAY_COLOR[d];
-          return `<button data-act="logDay" data-arg="${d}" aria-pressed="${on}" class="tab ${on ? 'tab-on' : ''}" style="${on && d !== 'Libre' ? `border-color:${col};color:${col}` : ''}">${d}</button>`;
+          const col = d === 'Libre' ? '#9CA3AF' : routineColor(d, S.settings, idx);
+          return `<button data-act="logDay" data-arg="${esc(d)}" aria-pressed="${on}" class="tab ${on ? 'tab-on' : ''}" style="${on && d !== 'Libre' ? `border-color:${col};color:${col}` : ''}">${esc(d)}</button>`;
         }).join('')}
       </div>
     </div>
   </div>
 
   <div class="card space-y-2.5">
-    <h3 class="text-sm font-bold text-white">Añadir ejercicio de la lista</h3>
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h3 class="text-sm font-bold text-white">Añadir ejercicio de la lista</h3>
+      <button class="btn !border-electricBlue/40 !py-1.5 !text-xs text-blue-300" data-act="openExModalLog">+ Crear ejercicio nuevo</button>
+    </div>
     <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
       <div class="flex flex-wrap gap-2">
         <select id="logAddSelect" class="inp min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
@@ -154,8 +164,8 @@ export function viewLog(S: State): string {
         <button class="btn" data-act="logAddEx">+ Añadir de la lista</button>
       </div>
       <div class="flex flex-wrap gap-2">
-        <input id="logNewExName" class="inp min-w-[180px] flex-1" placeholder="Ej. Press inclinado con mancuernas…" aria-label="Nombre de ejercicio nuevo">
-        <button class="btn" data-act="logAddCustomEx">+ Crear y añadir</button>
+        <input id="logNewExName" class="inp min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo">
+        <button class="btn" data-act="logAddCustomEx">+ Añadir rápido</button>
       </div>
     </div>
     ${quick.length ? `
@@ -169,7 +179,7 @@ export function viewLog(S: State): string {
     ${draft.exercises.map((ex, ei) => {
       const k = norm(ex.name);
       const hist = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
-      const tgt = draft.day !== 'Libre' ? S.settings.routines[draft.day].find((r) => norm(r.name) === k) : hist?.target;
+      const tgt = draft.day !== 'Libre' ? (S.settings.routines[draft.day] ?? []).find((r) => norm(r.name) === k) : hist?.target;
       const lastRef = hist?.last ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin historial previo';
       return `
       <div class="card space-y-2.5 ${ex.done ? 'border-white/15' : 'opacity-60'}">
@@ -228,7 +238,7 @@ export function viewLog(S: State): string {
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-gray-800 pt-2 text-xs">
           <div>
             <span class="font-mono tabular-nums font-semibold text-white">${fmtDate(s.date)}</span>
-            <span class="ml-1.5 font-bold" style="color:${s.day ? DAY_COLOR[s.day] : '#9CA3AF'}">${s.day ?? 'Otro'}</span>
+            <span class="ml-1.5 font-bold" style="color:${s.day ? routineColor(s.day, S.settings, Math.max(0, routines.indexOf(s.day))) : '#9CA3AF'}">${esc(s.day ?? 'Otro')}</span>
             <span class="ml-1.5 text-gray-400 tabular-nums">· ${s.exercises.length} ej. · ${s.sets} series</span>
             <div class="text-[11px] text-gray-500">${esc(s.exercises.join(', '))}</div>
           </div>

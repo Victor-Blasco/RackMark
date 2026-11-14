@@ -45,14 +45,16 @@ export interface Analysis {
 
 function dayOfExercise(name: string, s: Settings): DayName | null {
   const k = norm(name);
-  for (const d of ['Push', 'Pull', 'Leg'] as DayName[]) if (s.routines[d]?.some((e) => norm(e.name) === k)) return d;
+  const routineKeys = Object.keys(s.routines);
+  for (const d of routineKeys) if (s.routines[d]?.some((e) => norm(e.name) === k)) return d;
   const m = musclesOf(name, s);
-  return m ? (MUSCLE_DAY[m.p] ?? null) : null;
+  const mapped = m ? (MUSCLE_DAY[m.p] ?? null) : null;
+  return mapped && s.routines[mapped] ? mapped : null;
 }
 
 function targetOf(name: string, s: Settings): { day: DayName; t: RoutineEx } | null {
   const k = norm(name);
-  for (const d of ['Push', 'Pull', 'Leg'] as DayName[]) {
+  for (const d of Object.keys(s.routines)) {
     const t = s.routines[d]?.find((e) => norm(e.name) === k);
     if (t) return { day: d, t };
   }
@@ -186,8 +188,9 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
     return { id, date: v.date, day, exercises: [...v.names], sets: v.sets, ...summarizePhysio(v.phys) };
   }).sort((a, b) => a.date.localeCompare(b.date));
 
-  const byDay: Record<DayName, ExStats[]> = { Push: [], Pull: [], Leg: [] };
-  for (const d of ['Push', 'Pull', 'Leg'] as DayName[]) {
+  const byDay: Record<DayName, ExStats[]> = {};
+  for (const d of Object.keys(s.routines)) {
+    byDay[d] = [];
     const added = new Set<string>();
     for (const r of s.routines[d]) {
       const base = [...exercises.values()].find((e) => norm(e.name) === norm(r.name));

@@ -1,8 +1,8 @@
 import { epley, isoWeekStart, weeklyVolume } from '../lib/analysis';
 import { MUSCLES } from '../lib/seed';
-import { DAYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
+import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
 import { icon } from './icons';
-import { DAY_COLOR, chart, esc, fmtDate, kpi, noData, r1, short, type State } from './shared';
+import { chart, esc, fmtDate, kpi, noData, r1, routineColor, routineNames, routineShort, short, type State } from './shared';
 
 const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
   arms: { label: 'Brazos', keys: ['armL', 'armR'] },
@@ -10,15 +10,21 @@ const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
   trunk: { label: 'Torso / Cintura / Hombros / Glúteo', keys: ['torso', 'waist', 'shoulders', 'glute'] },
   calves: { label: 'Gemelos y rodillas', keys: ['calfL', 'calfR', 'kneeL', 'kneeR'] },
 };
+const PERIM_GROUPS: { title: string; keys: (keyof Measure)[] }[] = [
+  { title: 'Torso y cadera', keys: ['torso', 'shoulders', 'glute'] },
+  { title: 'Brazos', keys: ['armL', 'armR'] },
+  { title: 'Piernas', keys: ['thighL', 'thighR', 'kneeL', 'kneeR', 'calfL', 'calfR'] },
+];
+const PERIM_ALL_KEYS: (keyof Measure)[] = PERIM_GROUPS.flatMap((g) => g.keys);
 const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#A78BFA', '#22D3EE'];
-const DAY_SHORT: Record<DayName, string> = { Push: 'Pu', Pull: 'Pl', Leg: 'Lg' };
 
 /** Renderiza la vista de medidas antropométricas y composición corporal. */
 export function viewBody(S: State): string {
   const ms = S.measures;
   const today = new Date().toISOString().slice(0, 10);
-  const last = ms[ms.length - 1] ?? ({} as Measure);
-  const comp = ms.filter((m) => m.weight != null);
+  const activeDate = S.measureDate ?? today;
+  const currentEntry = ms.find((m) => m.date === activeDate);
+  const comp = ms.filter((m) => m.weight != null || m.bf != null || m.muscle != null);
   if (comp.length) {
     chart('c-comp', {
       type: 'line',
@@ -34,39 +40,83 @@ export function viewBody(S: State): string {
     });
   }
   const pk = PERIM[S.perimeter] ?? PERIM.arms;
-  chart('c-perim', {
-    type: 'line',
-    data: {
-      labels: ms.map((m) => short(m.date)),
-      datasets: pk.keys.map((k, i) => ({
-        label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
-        data: ms.map((m) => (m[k] as number | undefined) ?? null),
-        borderColor: PAL[i],
-        tension: 0.25,
-        spanGaps: true,
-      })),
-    },
-  });
-  const cols = MEASURE_FIELDS;
+  const hasGroupPerim = ms.some((m) => pk.keys.some((k) => m[k] != null));
+  if (hasGroupPerim) {
+    chart('c-perim', {
+      type: 'line',
+      data: {
+        labels: ms.map((m) => short(m.date)),
+        datasets: pk.keys.map((k, i) => ({
+          label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
+          data: ms.map((m) => (m[k] as number | undefined) ?? null),
+          borderColor: PAL[i],
+          tension: 0.25,
+          spanGaps: true,
+        })),
+      },
+    });
+  }
+
+  const basicFields = MEASURE_FIELDS.filter((f) => BASIC_MEASURE_KEYS.includes(f.key));
+  const hasPerimsInCurrent = Boolean(currentEntry && PERIM_ALL_KEYS.some((k) => currentEntry[k] != null));
+  const perimOpen = S.measurePerimOpen ?? hasPerimsInCurrent;
+  const fieldInput = (f: (typeof MEASURE_FIELDS)[number]) => {
+    const val = currentEntry?.[f.key] != null ? String(currentEntry[f.key]) : '';
+    const lastKnown = [...ms].reverse().find((m) => m[f.key] != null)?.[f.key];
+    const ph = typeof lastKnown === 'number' ? `Últ: ${r1(lastKnown)}` : '—';
+    return `<label class="block"><span class="lbl">${f.label} (${f.unit})</span><input class="inp font-mono tabular-nums" inputmode="decimal" name="${f.key}" value="${esc(val)}" placeholder="${esc(ph)}"></label>`;
+  };
+  const visibleCols = MEASURE_FIELDS.filter((f) => ms.some((m) => m[f.key] != null));
+  const tableCols = visibleCols.length ? visibleCols : basicFields;
+
   return `
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-    <div class="card"><h3 class="mb-2 font-bold text-white">Composición corporal (${comp.length} registros)</h3><div class="chart-box"><canvas id="c-comp"></canvas></div></div>
+    <div class="card"><h3 class="mb-2 font-bold text-white">Composición corporal (${comp.length} registros)</h3>
+      ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Añade tu peso o % de grasa abajo para ver la evolución.</p>`}</div>
     <div class="card"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Perímetros (cm)</h3>
       <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-      <div class="chart-box"><canvas id="c-perim"></canvas></div></div>
+      ${hasGroupPerim ? `<div class="chart-box"><canvas id="c-perim"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin registros en ${esc(pk.label.toLowerCase())}. Puedes añadir medidas con cinta abajo si las controlas.</p>`}</div>
   </div>
-  <form id="f-measure" class="card space-y-3"><h3 class="font-bold text-white">Añadir / editar medición</h3>
-    <p class="text-xs text-gray-400">Si ya existe una medición en esa fecha, se actualiza. Se rellenan los valores de la última medición para que solo cambies lo necesario.</p>
-    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
-      <label class="block"><span class="lbl">Fecha</span><input class="inp font-mono" type="date" name="date" value="${today}" required></label>
-      ${cols.map((f) => `<label class="block"><span class="lbl">${f.label} (${f.unit})</span><input class="inp font-mono tabular-nums" inputmode="decimal" name="${f.key}" value="${last[f.key] ?? ''}"></label>`).join('')}
-      <label class="col-span-2 block"><span class="lbl">Nota (opcional)</span><input class="inp" name="note" placeholder="p. ej. empieza la defi…"></label>
+  <form id="f-measure" class="card space-y-4">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 class="font-bold text-white">Añadir / editar medición</h3>
+        <p class="text-xs text-gray-400">Rellena solo lo que hayas medido hoy (el resto se muestra como referencia). Si guardas otro dato en la misma fecha, se combina sin borrar los anteriores.</p>
+      </div>
+      ${currentEntry ? `<div class="flex items-center gap-2"><span class="rounded-full border border-electricBlue/40 bg-electricBlue/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-200">Editando ${fmtDate(activeDate)}</span>${activeDate !== today ? `<button type="button" class="btn !py-1 !text-xs" data-act="clearMeasureDate">Ir a hoy</button>` : ''}</div>` : ''}
     </div>
-    <button class="btn-primary" type="submit">${icon('save', 'h-4 w-4')} Guardar medición</button></form>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <label class="block"><span class="lbl">Fecha</span><input class="inp font-mono" type="date" name="date" value="${esc(activeDate)}" data-change="measureDate" required></label>
+      ${basicFields.map(fieldInput).join('')}
+      <label class="col-span-2 sm:col-span-1 lg:col-span-1 block"><span class="lbl">Nota (opcional)</span><input class="inp" name="note" value="${esc(currentEntry?.note ?? '')}" placeholder="p. ej. en ayunas…"></label>
+    </div>
+
+    <div>
+      <button type="button" data-act="toggleMeasurePerim" aria-expanded="${perimOpen}" class="btn !py-1.5 !text-xs">
+        ${perimOpen ? '− Ocultar perímetros con cinta' : '+ Añadir perímetros con cinta (opcional)'}
+      </button>
+    </div>
+
+    ${perimOpen ? `
+    <div class="space-y-3 rounded-xl border border-white/10 bg-gray-900/40 p-3.5">
+      ${PERIM_GROUPS.map((g) => `
+        <div class="space-y-2">
+          <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">${esc(g.title)}</p>
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            ${g.keys.map((k) => fieldInput(MEASURE_FIELDS.find((f) => f.key === k)!)).join('')}
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="btn-primary" type="submit">${icon('save', 'h-4 w-4')} ${currentEntry ? 'Actualizar medición' : 'Guardar medición'}</button>
+    </div>
+  </form>
   <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Registro histórico (N = ${ms.length})</h3>
-    <table class="w-full min-w-[900px] text-right text-xs"><thead class="text-gray-400"><tr><th class="py-1.5 text-left">Fecha</th>${cols.map((f) => `<th>${f.label}</th>`).join('')}<th></th></tr></thead><tbody>
-    ${[...ms].reverse().map((m) => `<tr class="border-t border-gray-800 font-mono tabular-nums"><td class="py-1.5 text-left">${fmtDate(m.date)}${m.note ? `<div class="font-sans text-[10px] text-amberGold">${esc(m.note)}</div>` : ''}</td>${cols.map((f) => `<td>${m[f.key] ?? ''}</td>`).join('')}<td><button class="rounded p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="delMeasure" data-arg="${m.date}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
-    </tbody></table></div>`;
+    ${ms.length ? `<table class="w-full text-right text-xs"><thead class="text-gray-400"><tr><th class="py-1.5 pr-3 text-left">Fecha</th>${tableCols.map((f) => `<th class="px-2">${f.label}</th>`).join('')}<th class="pl-2"></th></tr></thead><tbody>
+    ${[...ms].reverse().map((m) => `<tr class="border-t border-gray-800 font-mono tabular-nums ${m.date === activeDate ? 'bg-electricBlue/10' : ''}"><td class="py-1.5 pr-3 text-left whitespace-nowrap">${fmtDate(m.date)}${m.note ? `<div class="font-sans text-[10px] text-amberGold">${esc(m.note)}</div>` : ''}</td>${tableCols.map((f) => `<td class="px-2">${esc(m[f.key] ?? '')}</td>`).join('')}<td class="pl-2 whitespace-nowrap"><button class="rounded p-1 text-blue-300 hover:bg-electricBlue/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="editMeasure" data-arg="${esc(m.date)}" aria-label="Editar medición del ${fmtDate(m.date)}">${icon('edit', 'h-3.5 w-3.5')}</button><button class="rounded p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="delMeasure" data-arg="${esc(m.date)}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
+    </tbody></table>` : `<p class="py-6 text-center text-sm text-gray-500">Todavía no hay mediciones guardadas.</p>`}</div>`;
 }
 
 /** Renderiza la matriz de series efectivas semanales por grupo muscular. */
@@ -94,6 +144,7 @@ export function viewVolume(S: State): string {
 
 /** Renderiza el calendario de adherencia semanal y rachas de entrenamiento. */
 export function viewAdherence(S: State): string {
+  const routines = routineNames(S.settings);
   const byDate = new Map<string, DayName | null>();
   S.analysis.sessions.forEach((s) => { if (!byDate.has(s.date) || s.day) byDate.set(s.date, s.day ?? byDate.get(s.date) ?? null); });
   const wk0 = isoWeekStart(new Date().toISOString().slice(0, 10));
@@ -111,10 +162,11 @@ export function viewAdherence(S: State): string {
     const iso = d.toISOString().slice(0, 10);
     const t = byDate.get(iso);
     const has = byDate.has(iso);
-    const bg = has ? (t ? DAY_COLOR[t] : '#6B7280') : 'rgba(255,255,255,0.05)';
+    const rIdx = t ? routines.indexOf(t) : -1;
+    const bg = has ? (t ? routineColor(t, S.settings, Math.max(0, rIdx)) : '#6B7280') : 'rgba(255,255,255,0.05)';
     const label = `${fmtDate(iso)}: ${has ? (t ?? 'Otro entrenamiento') : 'Sin sesión'}`;
-    const code = has ? (t ? DAY_SHORT[t] : '·') : '';
-    return `<div role="img" aria-label="${label}" title="${label}" class="flex h-5 w-5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95" style="background:${bg}">${code}</div>`;
+    const code = has ? (t ? routineShort(t) : '·') : '';
+    return `<div role="img" aria-label="${esc(label)}" title="${esc(label)}" class="flex h-5 w-5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95" style="background:${bg}">${code}</div>`;
   };
   const perWeek = new Map<string, number>();
   byDate.forEach((_, d) => { const w = isoWeekStart(d); perWeek.set(w, (perWeek.get(w) ?? 0) + 1); });
@@ -122,9 +174,9 @@ export function viewAdherence(S: State): string {
   const avg = last8.reduce((a, w) => a + (perWeek.get(w) ?? 0), 0) / 8;
   let streak = 0;
   for (let i = cols.length - 2; i >= 0 && (perWeek.get(cols[i]) ?? 0) >= 3; i--) streak++;
-  const counts: Record<string, number> = { Push: 0, Pull: 0, Leg: 0 };
+  const counts: Record<string, number> = Object.fromEntries(routines.map((r) => [r, 0]));
   const lim = cols[cols.length - 9];
-  byDate.forEach((t, d) => { if (t && d >= lim) counts[t]++; });
+  byDate.forEach((t, d) => { if (t && d >= lim) counts[t] = (counts[t] ?? 0) + 1; });
   const cardio = S.cardio.filter((c) => c.date >= lim);
   const well56 = S.wellbeing.filter((w) => w.date >= lim);
   const hasSleep = well56.some((w) => w.sleepMin != null || w.hrv != null);
@@ -155,13 +207,13 @@ export function viewAdherence(S: State): string {
   <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
     ${kpi('Media semanal (8 sem.)', r1(avg), 'días entrenados')}
     ${kpi('Racha ≥3 días/sem.', String(streak), 'semanas completas')}
-    ${kpi('Push / Pull / Leg', `${counts.Push}/${counts.Pull}/${counts.Leg}`, 'últimas 8 semanas')}
+    ${kpi('Reparto (8 sem.)', routines.map((r) => counts[r] ?? 0).join('/'), routines.map((r) => routineShort(r)).join(' / '))}
     ${kpi('Cardio (8 sem.)', String(cardio.length), `${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km · ${Math.round(cardio.reduce((a, c) => a + c.durMin, 0))} min`)}
   </div>
   <div class="card overflow-x-auto"><h3 class="mb-2 font-bold text-white">Calendario (últimas ${W} semanas)</h3>
     <div class="flex gap-1.5"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-500">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
     ${cols.map((w) => `<div class="flex flex-col gap-1.5">${[0, 1, 2, 3, 4, 5, 6].map((i) => cell(w, i)).join('')}</div>`).join('')}</div>
-    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${DAYS.map((d) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${DAY_COLOR[d]}">${DAY_SHORT[d]}</span>${d}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${routines.map((d, idx) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${routineColor(d, S.settings, idx)}">${esc(routineShort(d))}</span>${esc(d)}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
   ${hasSleep || hasSteps ? `
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     ${hasSleep ? `<div class="card"><h3 class="mb-2 font-bold text-white">Sueño y HRV nocturna (8 sem.)</h3><div class="chart-box"><canvas id="c-well-sleep"></canvas></div></div>` : ''}
@@ -176,17 +228,16 @@ export function viewAdherence(S: State): string {
 
 /** Renderiza la calculadora de 1RM y el planificador nutricional Katch-McArdle. */
 export function viewCalc(S: State): string {
-  const last = [...S.measures].reverse().find((m) => m.weight != null && m.bf != null) ?? S.measures[S.measures.length - 1];
-  const w = last?.weight ?? 70;
-  const bf = last?.bf ?? 15;
-  const presets = DAYS.flatMap((d) => S.analysis.byDay[d]).filter((e) => e.last).map((e) => {
+  const w = [...S.measures].reverse().find((m) => m.weight != null)?.weight ?? 70;
+  const bf = [...S.measures].reverse().find((m) => m.bf != null)?.bf ?? 15;
+  const presets = routineNames(S.settings).flatMap((d) => S.analysis.byDay[d] ?? []).filter((e) => e.last).map((e) => {
     const best = e.last!.sets.filter((s) => s.w === e.last!.top).sort((a, b) => b.r - a.r)[0];
     return { n: e.name, w: best.w, r: best.r };
   });
   const first = presets[0] ?? { w: 50, r: 9 };
   return `<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
   <div class="card space-y-3"><h3 class="font-bold text-white">Calculadora de 1RM</h3>
-    <label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${p.w}|${p.r}">${esc(p.n)} (${p.w} kg × ${p.r})</option>`).join('')}</select></label>
+    <label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${esc(p.w)}|${esc(p.r)}">${esc(p.n)} (${esc(p.w)} kg × ${esc(p.r)})</option>`).join('')}</select></label>
     <div class="grid grid-cols-3 gap-3">
       <label class="block"><span class="lbl">Peso (kg)</span><input id="calcW" class="inp font-mono tabular-nums" type="number" step="0.5" value="${first.w}" data-input="calc"></label>
       <label class="block"><span class="lbl">Reps</span><input id="calcR" class="inp font-mono tabular-nums" type="number" min="1" max="30" value="${first.r}" data-input="calc"></label>
@@ -196,7 +247,7 @@ export function viewCalc(S: State): string {
   <div class="card space-y-3"><h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% BF)</h3>
     <p class="text-xs text-gray-400">Katch-McArdle con tu masa libre de grasa real (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55">PPL 3-4 días (×1,55)</option><option value="1.65" selected>PPL 5-6 días + pasos (×1,65)</option><option value="1.75">Intenso (×1,75)</option></select></label>
+      <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55">Fuerza 3-4 días (×1,55)</option><option value="1.65" selected>Fuerza 5-6 días + pasos (×1,65)</option><option value="1.75">Intenso (×1,75)</option></select></label>
       <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0">Mantenimiento (+0)</option><option value="225" selected>Lean bulk (+225)</option><option value="350">Superávit estándar (+350)</option><option value="-350">Mini-cut (−350)</option></select></label></div>
     <input type="hidden" id="nuW" value="${w}"><input type="hidden" id="nuBf" value="${bf}">
     <div class="grid grid-cols-3 gap-3 text-center" id="nuOut"></div><div class="grid grid-cols-3 gap-3" id="nuMacros"></div></div></div>`;

@@ -1,14 +1,69 @@
-import { currentPhase, resolveName, type ExStats } from '../lib/analysis';
+import type { ChartConfiguration } from 'chart.js';
+import { currentPhase, resolveName, type ExSession, type ExStats } from '../lib/analysis';
 import { norm } from '../lib/seed';
-import { DAYS, type DayName } from '../types';
+import type { AiTone, DayName, Measure } from '../types';
 import { icon } from './icons';
-import { DAY_COLOR, RANGES, chart, empty, esc, fmtDate, noData, r1, rangeCutoff, rangePicker, short, type RangeKey, type State } from './shared';
+import { RANGES, chart, esc, fmtDate, noData, r1, rangeCutoff, rangePicker, routineColor, routineNames, short, type RangeKey, type State } from './shared';
 
 export { resetCharts, runChartJobs, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
+export { viewData } from './dataView';
+export { renderModals, viewPlan } from './planView';
 export { viewSettings } from './settingsView';
 export { runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
 export { resolveName, norm };
+
+function aiToneToggle(tone: AiTone): string {
+  return `<div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    <button type="button" data-act="setAiTone" data-arg="simple" aria-pressed="${tone === 'simple'}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Sencillo</button>
+    <button type="button" data-act="setAiTone" data-arg="technical" aria-pressed="${tone === 'technical'}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Técnico</button>
+  </div>`;
+}
+
+/** Configura la gráfica de carga (peso máx y pulso opcional) mostrando series y repes en el tooltip. */
+function exerciseChartConfig(sessions: ExSession[], color: string, includeHr: boolean): ChartConfiguration<'line'> {
+  const hasHr = includeHr && sessions.some((x) => x.avgHr != null);
+  return {
+    type: 'line',
+    data: {
+      labels: sessions.map((x) => short(x.date)),
+      datasets: [
+        {
+          label: 'Peso máx (kg)',
+          data: sessions.map((x) => x.top),
+          borderColor: color,
+          backgroundColor: color,
+          tension: 0.25,
+          yAxisID: 'y',
+        },
+        ...(hasHr ? [{ label: 'FC media (lpm)', data: sessions.map((x) => x.avgHr ?? null), borderColor: '#22D3EE', backgroundColor: '#22D3EE', tension: 0.25, spanGaps: true, yAxisID: 'y1' }] : []),
+      ],
+    },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const s = items[0] ? sessions[items[0].dataIndex] : undefined;
+              return s ? `${s.date.slice(8, 10)}/${s.date.slice(5, 7)}/${s.date.slice(0, 4)}` : '';
+            },
+            label: (ctx) => {
+              const s = sessions[ctx.dataIndex];
+              if (ctx.datasetIndex === 0 && s) return `Peso máx: ${r1(s.top)} kg × ${s.repsAtTop}`;
+              return `${ctx.dataset.label}: ${Math.round(ctx.parsed.y ?? 0)} lpm`;
+            },
+            afterBody: (items) => {
+              const s = items[0] ? sessions[items[0].dataIndex] : undefined;
+              return s ? `Series: ${s.sets.map((x) => `${x.w}×${x.r}`).join(' · ')}` : '';
+            },
+          },
+        },
+      },
+      ...(hasHr ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } } : {}),
+    },
+  };
+}
 
 const delta = (a?: number, b?: number, u = '') => (a != null && b != null ? `${a - b >= 0 ? '+' : ''}${r1(a - b)}${u}` : '');
 const mean = (vals: (number | undefined)[]) => {
@@ -26,9 +81,9 @@ const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string }
 
 function statCell(label: string, value: string, sub = '', color = 'text-white'): string {
   return `<div class="min-w-0">
-    <span class="block text-xs text-gray-400">${label}</span>
-    <span class="mt-0.5 block font-mono tabular-nums text-xl sm:text-2xl font-extrabold ${color}">${value}</span>
-    ${sub ? `<span class="mt-0.5 block text-xs text-gray-500 truncate">${sub}</span>` : ''}
+    <span class="block text-xs text-gray-400">${esc(label)}</span>
+    <span class="mt-0.5 block font-mono tabular-nums text-xl sm:text-2xl font-extrabold ${color}">${esc(value)}</span>
+    ${sub ? `<span class="mt-0.5 block text-xs text-gray-500 truncate">${esc(sub)}</span>` : ''}
   </div>`;
 }
 
@@ -46,7 +101,7 @@ function aiStepLabel(title: string): string {
   return title.split(/\s+/).slice(0, 2).join(' ');
 }
 
-function renderAiReport(S: State): string {
+export function renderAiReport(S: State): string {
   const ai = S.settings.ai;
   if (!ai) return '';
 
@@ -88,14 +143,20 @@ function renderAiReport(S: State): string {
 
   const activeIdx = Math.min(Math.max(0, S.aiTab ?? 0), steps.length - 1);
   const current = steps[activeIdx];
+  const activeTone: AiTone = S.settings.aiTone === 'simple' ? 'simple' : 'technical';
+  const reportTone: AiTone = ai.tone === 'simple' ? 'simple' : 'technical';
+  const toneChanged = reportTone !== activeTone;
 
-  return `<section aria-label="Informe de IA" class="card border border-electricBlue/30 bg-gradient-to-br from-cardDark via-cardDark to-blue-950/15 space-y-4">
+  return `<section id="ai-report" aria-label="Informe de IA" class="card border border-electricBlue/30 bg-gradient-to-br from-cardDark via-cardDark to-blue-950/15 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h3>
-        <p class="text-xs text-gray-400">Actualizado el ${fmtDate(ai.date)}</p>
+        <p class="text-xs text-gray-400">Actualizado el ${fmtDate(ai.date)} · modo ${reportTone === 'simple' ? 'Sencillo' : 'Técnico'}${toneChanged ? ` <span class="text-amberGold">(cambiado a ${activeTone === 'simple' ? 'Sencillo' : 'Técnico'} · pulsa Actualizar)</span>` : ''}</p>
       </div>
-      <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('refresh', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Actualizar'}</button>
+      <div class="flex flex-wrap items-center gap-2">
+        ${aiToneToggle(activeTone)}
+        <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('refresh', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Actualizar'}</button>
+      </div>
     </div>
 
     ${steps.length > 1 ? `
@@ -138,17 +199,31 @@ function filterExByRange(e: ExStats, cutoff: string | null): ExStats {
   };
 }
 
+function lastMetric(ms: Measure[], cutoff: string | null, key: keyof Measure) {
+  const vals = ms.filter((m) => typeof m[key] === 'number');
+  const cur = vals[vals.length - 1];
+  const prev = cutoff ? (vals.length > 1 ? vals[0] : undefined) : vals[vals.length - 2];
+  return {
+    val: cur?.[key] as number | undefined,
+    prev: prev?.[key] as number | undefined,
+    date: cur?.date,
+  };
+}
+
 /** Renderiza la vista principal de resumen con filtro temporal, tarjetas agrupadas, informe IA por pestañas, gráficas y bloque. */
 export function viewHome(S: State): string {
-  const range: RangeKey = S.ranges?.home ?? 'Todo';
+  const range: RangeKey = S.ranges?.home ?? '1M';
   const cutoff = rangeCutoff(range);
   const rangeDays = RANGES.find((r) => r.key === range)?.days;
 
   const msAll = S.measures;
   const ms = cutoff ? msAll.filter((m) => m.date >= cutoff) : msAll;
   const last = ms[ms.length - 1];
-  const prev = cutoff ? (ms.length > 1 ? ms[0] : undefined) : ms[ms.length - 2];
   const deltaSuffix = cutoff ? ` en ${range}` : ' vs anterior';
+  const mWeight = lastMetric(ms, cutoff, 'weight');
+  const mBf = lastMetric(ms, cutoff, 'bf');
+  const mMuscle = lastMetric(ms, cutoff, 'muscle');
+  const mWaist = lastMetric(ms, cutoff, 'waist');
 
   const sessAll = S.analysis.sessions;
   const sess = cutoff ? sessAll.filter((x) => x.date >= cutoff) : sessAll;
@@ -174,27 +249,15 @@ export function viewHome(S: State): string {
   const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, cutoff) : undefined;
 
-  if (curEx && curEx.sessions.length) {
-    chart('c-home-ex', {
-      type: 'line',
-      data: {
-        labels: curEx.sessions.map((x) => short(x.date)),
-        datasets: [
-          { label: 'Peso máx (kg)', data: curEx.sessions.map((x) => x.top), borderColor: '#3B82F6', backgroundColor: '#3B82F6', tension: 0.25, yAxisID: 'y' },
-          { label: 'e1RM (kg)', data: curEx.sessions.map((x) => x.e1rm), borderColor: '#10B981', backgroundColor: '#10B981', borderDash: [5, 4], tension: 0.25, yAxisID: 'y' },
-        ],
-      },
-      options: { interaction: { mode: 'index', intersect: false } },
-    });
-  }
-  const mm = ms.filter((m) => m.weight != null);
+  if (curEx && curEx.sessions.length) chart('c-home-ex', exerciseChartConfig(curEx.sessions, '#3B82F6', false));
+  const mm = ms.filter((m) => m.weight != null || m.bf != null);
   if (mm.length) {
     chart('c-home-body', {
       type: 'line',
       data: {
         labels: mm.map((m) => short(m.date)),
         datasets: [
-          { label: 'Peso (kg)', data: mm.map((m) => m.weight!), borderColor: '#3B82F6', yAxisID: 'y', tension: 0.25 },
+          { label: 'Peso (kg)', data: mm.map((m) => m.weight ?? null), borderColor: '#3B82F6', yAxisID: 'y', tension: 0.25, spanGaps: true },
           { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
         ],
       },
@@ -202,9 +265,10 @@ export function viewHome(S: State): string {
     });
   }
 
-  const rows = DAYS.flatMap((d) => S.analysis.byDay[d].map((e) => ({ d, e: filterExByRange(e, cutoff) })));
+  const routines = routineNames(S.settings);
+  const rows = routines.flatMap((d, idx) => (S.analysis.byDay[d] ?? []).map((e) => ({ d, c: routineColor(d, S.settings, idx), e: filterExByRange(e, cutoff) })));
   const ai = S.settings.ai;
-  const lastDayColor = lastS?.day && DAY_COLOR[lastS.day] ? `style="color:${DAY_COLOR[lastS.day]}"` : '';
+  const lastDayColor = lastS?.day ? `style="color:${routineColor(lastS.day, S.settings, Math.max(0, routines.indexOf(lastS.day)))}"` : '';
   const summaryCols = showWellbeing ? 'lg:grid-cols-3' : 'lg:grid-cols-2';
   const dFmt = (a?: number, b?: number, u = '') => {
     const val = delta(a, b, u);
@@ -226,17 +290,17 @@ export function viewHome(S: State): string {
         <span class="text-xs text-gray-400 truncate">${phase ? `${esc(phase.name)} · ${short(phase.start)}` : 'Sin fase'}</span>
       </div>
       <div class="grid grid-cols-2 gap-x-5 gap-y-4">
-        ${statCell('Peso', last?.weight != null ? `${r1(last.weight)} kg` : '—', dFmt(last?.weight, prev?.weight, ' kg') || (last ? fmtDate(last.date) : ''))}
-        ${statCell('% Grasa', last?.bf != null ? `${r1(last.bf)}%` : '—', dFmt(last?.bf, prev?.bf, '%'), 'text-coralRed')}
-        ${statCell('Masa muscular', last?.muscle != null ? `${r1(last.muscle)} kg` : '—', dFmt(last?.muscle, prev?.muscle, ' kg'), 'text-emeraldGreen')}
-        ${statCell('Cintura', last?.waist != null ? `${r1(last.waist)} cm` : '—', dFmt(last?.waist, prev?.waist, ' cm'), 'text-amberGold')}
+        ${statCell('Peso', mWeight.val != null ? `${r1(mWeight.val)} kg` : '—', dFmt(mWeight.val, mWeight.prev, ' kg') || (mWeight.date ? fmtDate(mWeight.date) : ''))}
+        ${statCell('% Grasa', mBf.val != null ? `${r1(mBf.val)}%` : '—', dFmt(mBf.val, mBf.prev, '%') || (mBf.date ? fmtDate(mBf.date) : ''), 'text-coralRed')}
+        ${statCell('Masa muscular', mMuscle.val != null ? `${r1(mMuscle.val)} kg` : '—', dFmt(mMuscle.val, mMuscle.prev, ' kg') || (mMuscle.date ? fmtDate(mMuscle.date) : ''), 'text-emeraldGreen')}
+        ${statCell('Cintura', mWaist.val != null ? `${r1(mWaist.val)} cm` : '—', dFmt(mWaist.val, mWaist.prev, ' cm') || (mWaist.date ? fmtDate(mWaist.date) : ''), 'text-amberGold')}
       </div>
     </section>
 
     <section class="card flex flex-col justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-baseline justify-between gap-2">
-          <h3 class="text-sm font-bold text-white">Entrenamiento PPL</h3>
+          <h3 class="text-sm font-bold text-white">Último entreno</h3>
           <span class="text-xs text-gray-400">${lastS ? fmtDate(lastS.date) : `Sin sesiones${cutoff ? ` (${range})` : ''}`}</span>
         </div>
         <p class="pt-1 font-mono tabular-nums text-2xl font-extrabold text-white" ${lastDayColor}>${lastS ? esc(lastS.day ?? 'Sesión') : '—'}</p>
@@ -266,8 +330,8 @@ export function viewHome(S: State): string {
   ${renderAiReport(S)}
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-    <div class="card"><div class="mb-3 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Evolución de cargas</h3>
-      <select class="inp !w-auto max-w-[60%]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>
+    <div class="card"><div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><h3 class="font-bold text-white">Evolución de cargas</h3><p class="text-[11px] text-gray-400">Peso máx (kg) · toca un punto para ver repes</p></div>
+      <select class="inp w-full sm:!w-auto sm:max-w-[55%]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select></div>
       ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin sesiones para este ejercicio en ${range}.</p>`}</div>
     <div class="card"><h3 class="mb-3 font-bold text-white">Peso y % de grasa</h3>
       ${mm.length ? `<div class="chart-box"><canvas id="c-home-body"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin mediciones de peso en ${range}.</p>`}</div>
@@ -276,23 +340,23 @@ export function viewHome(S: State): string {
   <section class="card space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="font-bold text-white">Control de cargas del bloque</h3>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <button class="btn-primary !py-1.5 !text-xs sm:!text-sm" data-act="goLog">+ Registrar entreno</button>
-        ${!ai ? `<button class="btn !py-1.5 !text-xs sm:!text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('sparkle', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>` : ''}
+        ${!ai ? `${aiToneToggle(S.settings.aiTone === 'simple' ? 'simple' : 'technical')}<button class="btn !py-1.5 !text-xs sm:!text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('sparkle', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>` : ''}
       </div>
     </div>
 
     <div class="md:hidden divide-y divide-white/5">
-      ${rows.map(({ d, e }) => `
+      ${rows.map(({ d, c, e }) => `
         <div class="py-3 space-y-1.5">
           <div class="flex items-start justify-between gap-2">
             <p class="text-sm font-semibold text-white leading-snug">
-              <span style="color:${DAY_COLOR[d]}" class="mr-1.5 text-xs font-bold uppercase">${d}</span>${esc(e.name)}
+              <span style="color:${c}" class="mr-1.5 text-xs font-bold uppercase">${esc(d)}</span>${esc(e.name)}
             </p>
             ${e.target ? `<span class="shrink-0 font-mono text-xs text-gray-400 tabular-nums">${e.target.sets}×${e.target.reps}</span>` : ''}
           </div>
           <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-            <span class="font-mono text-xs text-gray-300 tabular-nums">${e.last ? `${short(e.last.date)} · ${e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin registros'}</span>
+            <span class="font-mono text-xs text-gray-300 tabular-nums">${e.last ? `${short(e.last.date)} · ${esc(e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · '))}` : 'Sin registros'}</span>
             ${statusInline(e, ai?.byExercise[e.name]?.status)}
           </div>
         </div>`).join('')}
@@ -304,13 +368,13 @@ export function viewHome(S: State): string {
           <tr><th class="py-2 pr-3">Día</th><th class="pr-3">Ejercicio</th><th class="pr-3 text-right">Obj.</th><th class="pr-3 text-right">Última</th><th class="pr-3">Series</th><th>Estado</th></tr>
         </thead>
         <tbody class="divide-y divide-gray-800/70">
-          ${rows.map(({ d, e }) => `
+          ${rows.map(({ d, c, e }) => `
             <tr>
-              <td class="py-2.5 pr-3"><span style="color:${DAY_COLOR[d]}" class="font-bold">${d}</span></td>
+              <td class="py-2.5 pr-3"><span style="color:${c}" class="font-bold">${esc(d)}</span></td>
               <td class="pr-3 text-gray-100">${esc(e.name)}</td>
               <td class="num-col pr-3 text-gray-400">${e.target ? `${e.target.sets}×${e.target.reps}` : ''}</td>
               <td class="num-col pr-3 text-xs text-gray-400">${e.last ? fmtDate(e.last.date) : ''}</td>
-              <td class="pr-3 font-mono tabular-nums text-xs text-gray-200">${e.last ? e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ') : ''}</td>
+              <td class="pr-3 font-mono tabular-nums text-xs text-gray-200">${e.last ? esc(e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')) : ''}</td>
               <td class="py-2.5">${statusInline(e, ai?.byExercise[e.name]?.status)}</td>
             </tr>`).join('')}
         </tbody>
@@ -357,7 +421,7 @@ function renderDayDetail(
     </div>
 
     <div>
-      <p class="mb-2 text-xs font-semibold text-gray-400">Progresión (peso máx, e1RM${e.sessions.some((s) => s.avgHr != null) ? ' y pulso' : ''})</p>
+      <p class="mb-2 text-xs font-semibold text-gray-400">Progresión (peso máx${e.sessions.some((s) => s.avgHr != null) ? ' y pulso' : ''} · toca un punto para ver repes)</p>
       ${e.sessions.length ? `<div class="chart-box"><canvas id="${canvasId}"></canvas></div>` : `<p class="py-8 text-center text-sm text-gray-500">Sin registros para este ejercicio en ${range}.</p>`}
     </div>
 
@@ -367,24 +431,32 @@ function renderDayDetail(
     ${recent.length ? `<div class="space-y-2 pt-1">
       <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Últimas sesiones</p>
       <div class="grid grid-cols-1 gap-2 xl:grid-cols-2">
-        ${recent.map((x) => `
+        ${recent.map((x) => {
+          const meta = [
+            x.avgHr ? `<span class="text-cyan-300">${Math.round(x.avgHr)}${x.maxHr ? `/${Math.round(x.maxHr)}` : ''} lpm</span>` : '',
+            x.durMin ? `${Math.round(x.durMin)}m` : '',
+          ].filter(Boolean).join(' · ');
+          return `
           <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl bg-gray-900/70 px-3 py-2 text-xs sm:text-sm">
             <span class="font-mono text-gray-400 tabular-nums">${fmtDate(x.date)}</span>
-            <span class="font-mono text-gray-100 tabular-nums">${x.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}</span>
-            <span class="font-mono text-xs text-gray-400 tabular-nums">e1RM ${r1(x.e1rm)}${x.avgHr ? ` · <span class="text-cyan-300">${x.avgHr}${x.maxHr ? `/${x.maxHr}` : ''} lpm</span>` : ''}${x.durMin ? ` · ${Math.round(x.durMin)}m` : ''}</span>
+            <span class="font-mono text-gray-100 tabular-nums">${esc(x.sets.map((s) => `${s.w}×${s.r}`).join(' · '))}</span>
+            ${meta ? `<span class="font-mono text-xs text-gray-400 tabular-nums">${meta}</span>` : ''}
             ${x.note ? `<span class="w-full text-xs text-amberGold">${esc(x.note)}</span>` : ''}
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>` : ''}
   </div>`;
 }
 
-/** Renderiza la vista de detalle de una rutina (`Push`, `Pull` o `Leg`) en formato Maestro + Detalle (y acordeón en móvil). */
+/** Renderiza la vista de detalle de una rutina en formato Maestro + Detalle (y acordeón en móvil). */
 export function viewDay(S: State, day: DayName): string {
-  const range: RangeKey = S.ranges?.[day] ?? 'Todo';
+  const range: RangeKey = S.ranges?.[day] ?? '1M';
   const cutoff = rangeCutoff(range);
+  const routines = routineNames(S.settings);
+  const dayColor = routineColor(day, S.settings, Math.max(0, routines.indexOf(day)));
 
-  const primary = S.analysis.byDay[day].map((e) => filterExByRange(e, cutoff));
+  const primary = (S.analysis.byDay[day] ?? []).map((e) => filterExByRange(e, cutoff));
   const primaryNorms = new Set(primary.map((e) => norm(e.name)));
   const extraAll = [...S.analysis.exercises.values()]
     .filter((e) => !primaryNorms.has(norm(e.name)) && !e.name.startsWith('Samsung #') && (e.day === day || e.day == null))
@@ -393,7 +465,10 @@ export function viewDay(S: State, day: DayName): string {
     .sort((a, b) => (a.day === day ? 0 : 1) - (b.day === day ? 0 : 1) || b.n - a.n);
 
   if (!primary.length && !extraAll.length) {
-    return noData(S) || empty('No hay ejercicios con datos para esta rutina. Revisa la rutina en Ajustes.');
+    return noData(S) || `<div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
+      <p>No hay ejercicios con datos para esta rutina.</p>
+      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="plan">Configurar rutina en Plan</button>
+    </div>`;
   }
 
   const showingExtra = Boolean(S.dayExtra?.[day]) && extraAll.length > 0;
@@ -407,22 +482,7 @@ export function viewDay(S: State, day: DayName): string {
   const registerDayChart = (canvasId: string, exName: string) => {
     const e = allPool.find((x) => x.name === exName)!;
     if (!e.sessions.length) return;
-    const hasHr = e.sessions.some((x) => x.avgHr != null);
-    chart(canvasId, {
-      type: 'line',
-      data: {
-        labels: e.sessions.map((x) => short(x.date)),
-        datasets: [
-          { label: 'Peso máx (kg)', data: e.sessions.map((x) => x.top), borderColor: DAY_COLOR[day], backgroundColor: DAY_COLOR[day], tension: 0.25, yAxisID: 'y' },
-          { label: 'e1RM (kg)', data: e.sessions.map((x) => x.e1rm), borderColor: '#F59E0B', borderDash: [5, 4], tension: 0.25, yAxisID: 'y' },
-          ...(hasHr ? [{ label: 'FC media (lpm)', data: e.sessions.map((x) => x.avgHr ?? null), borderColor: '#22D3EE', backgroundColor: '#22D3EE', tension: 0.25, spanGaps: true, yAxisID: 'y1' }] : []),
-        ],
-      },
-      options: {
-        interaction: { mode: 'index', intersect: false },
-        ...(hasHr ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } } : {}),
-      },
-    });
+    chart(canvasId, exerciseChartConfig(e.sessions, dayColor, true));
   };
 
   registerDayChart('c-day', desktopCur);
@@ -434,10 +494,11 @@ export function viewDay(S: State, day: DayName): string {
   const ai = S.settings.ai?.byExercise ?? {};
   const desktopEx = allPool.find((x) => x.name === desktopCur)!;
 
+  const dEsc = esc(day);
   const scopeToggle = extraAll.length && primary.length
     ? `<div role="tablist" aria-label="Filtro de ejercicios" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-        <button role="tab" aria-selected="${!showingExtra}" data-act="setDayScope" data-arg="${day}|routine" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">En rutina (${primary.length})</button>
-        <button role="tab" aria-selected="${showingExtra}" data-act="setDayScope" data-arg="${day}|extra" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Anteriores (${extraAll.length})</button>
+        <button role="tab" aria-selected="${!showingExtra}" data-act="setDayScope" data-arg="${dEsc}|routine" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">En rutina (${primary.length})</button>
+        <button role="tab" aria-selected="${showingExtra}" data-act="setDayScope" data-arg="${dEsc}|extra" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Anteriores (${extraAll.length})</button>
       </div>`
     : '';
 
@@ -445,14 +506,18 @@ export function viewDay(S: State, day: DayName): string {
   <div class="card space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div class="space-y-0.5">
-        <div class="flex items-center gap-2.5">
-          <span class="h-3 w-3 rounded-full" style="background-color:${DAY_COLOR[day]}" aria-hidden="true"></span>
-          <h2 class="text-lg font-extrabold text-white">Rutina ${day}</h2>
+        <div class="flex items-center gap-2">
+          <span class="h-3 w-3 shrink-0 rounded-full" style="background-color:${dayColor}" aria-hidden="true"></span>
+          <h2 class="text-lg font-extrabold text-white">Rutina ${esc(day)}</h2>
           <span class="text-xs text-gray-400">· ${sess.length} sesiones${cutoff ? ` (${range})` : ''}</span>
         </div>
         <p class="text-xs sm:text-sm text-gray-400 tabular-nums">${lastS ? `Última: ${fmtDate(lastS.date)} · ${lastS.sets} series${lastS.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}${lastS.avgHr ? ` · Pulso ${lastS.avgHr}${lastS.maxHr ? `/${lastS.maxHr}` : ''} lpm` : ''}${lastS.kcal ? ` · ${lastS.kcal} kcal` : ''}` : `Sin sesiones en ${range}`}</p>
       </div>
-      <button class="btn-primary w-full sm:w-auto !py-2 !text-xs sm:!text-sm" data-act="goLog" data-arg="${day}">+ Registrar ${day}</button>
+      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        ${S.analysis.unmapped.length ? `<button class="btn !border-amberGold/40 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${S.analysis.unmapped.length} sin nombre</button>` : ''}
+        <button class="btn !py-1.5 !text-xs sm:!text-sm" data-act="tab" data-arg="plan">${icon('edit', 'h-3.5 w-3.5')} Editar rutina</button>
+        <button class="btn-primary flex-1 sm:flex-initial !py-2 !text-xs sm:!text-sm" data-act="goLog" data-arg="${dEsc}">+ Registrar ${dEsc}</button>
+      </div>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
       ${scopeToggle || '<span></span>'}
@@ -467,7 +532,7 @@ export function viewDay(S: State, day: DayName): string {
       const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
       const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${range}`;
       return `<div class="rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark/85 overflow-hidden">
-        <button data-act="selEx" data-arg="${day}|${open ? '__closed__' : esc(x.name)}" aria-expanded="${open}" class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]">
+        <button data-act="selEx" data-arg="${dEsc}|${open ? '__closed__' : esc(x.name)}" aria-expanded="${open}" class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]">
           <div class="min-w-0 space-y-1">
             <p class="text-sm font-bold text-white truncate">${esc(x.name)}</p>
             <p class="text-xs font-mono text-gray-400 tabular-nums truncate">${lastTxt}</p>
@@ -484,13 +549,13 @@ export function viewDay(S: State, day: DayName): string {
 
   <!-- Escritorio: maestro izquierda + detalle fijo derecha -->
   <div class="hidden lg:grid lg:grid-cols-12 lg:gap-5 xl:gap-6 lg:items-start">
-    <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-label="Ejercicios de ${day}">
+    <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-label="Ejercicios de ${dEsc}">
       ${visibleList.map((x) => {
         const sel = x.name === desktopCur;
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
         const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${range}`;
         const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
-        return `<button data-act="selEx" data-arg="${day}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark/85 hover:border-white/25'}">
+        return `<button data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark/85 hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-bold text-white truncate">${esc(x.name)}</span>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc(ai[x.name]?.status ?? x.status)}"></span>

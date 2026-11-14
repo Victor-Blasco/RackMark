@@ -173,6 +173,9 @@ const isSleep = (n: string) => /shealth\.sleep\.\d+\.csv$/i.test(n);
 const isSteps = (n: string) => /shealth\.(?:tracker\.pedometer_day_summary|step_daily_trend)\.\d+\.csv$/i.test(n);
 const isVitality = (n: string) => /shealth\.vitality_score\.\d+\.csv$/i.test(n);
 
+const MAX_IMPORT_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_ZIP_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
+
 /** Acepta archivos CSV sueltos y/o ZIP de la exportación de Samsung Health. */
 export async function importSamsungFiles(files: File[]): Promise<SamsungImport> {
   const wellMap = new Map<string, DailyWellbeing>();
@@ -192,15 +195,32 @@ export async function importSamsungFiles(files: File[]): Promise<SamsungImport> 
     else if (isVitality(b)) mergeMap(parseVitalityCsv(text));
   };
   for (const f of files) {
+    if (f.size > MAX_IMPORT_FILE_BYTES) {
+      throw new Error(`Archivo demasiado grande (${Math.round(f.size / (1024 * 1024))} MB). Máximo permitido: 50 MB.`);
+    }
     if (/\.zip$/i.test(f.name)) {
       const buf = new Uint8Array(await f.arrayBuffer());
+      let totalDeclaredBytes = 0;
       const entries = unzipSync(buf, {
         filter: (e) => {
           const b = base(e.name);
-          return isCustom(b) || isExercise(b) || isSleep(b) || isSteps(b) || isVitality(b);
+          const matched = isCustom(b) || isExercise(b) || isSleep(b) || isSteps(b) || isVitality(b);
+          if (!matched) return false;
+          totalDeclaredBytes += e.originalSize ?? e.size ?? 0;
+          if (totalDeclaredBytes > MAX_ZIP_UNCOMPRESSED_BYTES) {
+            throw new Error('Archivo ZIP demasiado grande al descomprimir.');
+          }
+          return true;
         },
       });
-      for (const [name, data] of Object.entries(entries)) handle(name, strFromU8(data));
+      let totalUnpackedBytes = 0;
+      for (const [name, data] of Object.entries(entries)) {
+        totalUnpackedBytes += data.byteLength;
+        if (totalUnpackedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) {
+          throw new Error('Archivo ZIP demasiado grande al descomprimir.');
+        }
+        handle(name, strFromU8(data));
+      }
     } else if (/\.csv$/i.test(f.name)) {
       handle(f.name, await f.text());
     }

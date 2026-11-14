@@ -1,5 +1,5 @@
 import { AIError, getGenerativeModel } from 'firebase/ai';
-import type { AiResult, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
+import type { AiResult, AiTone, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
 import type { Analysis } from './analysis';
 import { currentPhase } from './analysis';
 import { getAiBackend } from './firebase';
@@ -42,8 +42,8 @@ export function buildPayload(
   const since7 = daysAgo(7);
 
   const exercises: Record<string, unknown> = {};
-  for (const d of ['Push', 'Pull', 'Leg'] as const) {
-    for (const e of a.byDay[d]) {
+  for (const d of Object.keys(a.byDay)) {
+    for (const e of a.byDay[d] ?? []) {
       exercises[e.name] = {
         dia: d, objetivo: e.target ? `${e.target.sets}x${e.target.reps}` : undefined,
         estado_reglas: e.status,
@@ -107,6 +107,109 @@ export function buildPayload(
   };
 }
 
+const TONE_SPEC: Record<
+  AiTone,
+  {
+    intro: string;
+    titles: [string, string, string, string];
+    sectionHints: [string, string, string, string];
+    exerciseHint: { status: string; prescription: string; biomech: string };
+    closing: string;
+  }
+> = {
+  simple: {
+    intro:
+      'Eres un entrenador personal cercano y claro que explica los progresos de forma sencilla y sin tecnicismos. ' +
+      'Analiza todos los datos disponibles (peso corporal, medidas, entrenamientos de fuerza, cardio, sueño, pulso y pasos diarios) y traduce los patrones en conclusiones fáciles de entender y aplicar hoy mismo. ' +
+      'Evita jerga técnica o abreviaturas especializadas; habla en términos cotidianos como recuperación general, fuerza estimada, pasos diarios o descanso entre series. ' +
+      'Ten en cuenta que saltos grandes de peso en máquinas pueden deberse simplemente a usar otra máquina o sistema de poleas.',
+    titles: [
+      'Peso y forma física',
+      'Progreso en fuerza',
+      'Descanso, pasos y energía',
+      'Qué hacer en las próximas semanas',
+    ],
+    sectionHints: [
+      'Resume en lenguaje llano si el peso, la cintura o la masa muscular avanzan en la dirección de la fase actual junto con los pasos diarios y el cardio.',
+      'Explica de forma directa en qué ejercicios estás subiendo kilos o repeticiones y dónde conviene mantener o ajustar.',
+      'Comenta si estás durmiendo suficiente, cómo responde tu pulso al esfuerzo y si los pasos diarios acompañan.',
+      'Propón 2-3 ajustes prácticos y fáciles de seguir para la semana que viene (descansos, esfuerzo, sueño o actividad diaria).',
+    ],
+    exerciseHint: {
+      status: "Estado claro de 1-3 palabras (ej: 'Subiendo bien', 'Récord personal', 'Cuidar descanso')",
+      prescription: 'Consejo práctico y directo para el próximo entreno (peso, repeticiones o si conviene descansar un poco más entre series)',
+      biomech: '1-2 frases sencillas sobre técnica, sensación muscular o ritmo de las series',
+    },
+    closing:
+      'Escribe en español cotidiano, ameno y motivador para alguien que quiere entender su progreso de un vistazo. Máximo 2-3 frases por sección y 1 frase corta por highlight.',
+  },
+  technical: {
+    intro:
+      'Eres un fisiólogo y entrenador de fuerza e hipertrofia de élite basado en la máxima evidencia científica. ' +
+      'Analiza de forma integral TODOS los datos disponibles del usuario: antropometría, rendimiento y cargas en fuerza PPL, respuesta cardíaca por ejercicio/sesión (fc_media, fc_max, duración), sesiones de cardio, sueño, HRV nocturna, FC en reposo, puntuación de vitalidad y pasos diarios (NEAT). ' +
+      'Cruza explícitamente estos factores: distingue si un estancamiento o bajada de rendimiento se debe a fatiga del SNC/poco sueño/caída de HRV, descansos cortos con pulso disparado o falta de progresión local; y relaciona cambios de peso/% graso con los pasos diarios (NEAT) y el gasto de cardio. ' +
+      'Ten en cuenta que saltos bruscos de peso en máquinas pueden deberse a cambios de poleas, placas o máquinas; interprétalo con criterio técnico.',
+    titles: [
+      'Composición Corporal y Antropometría',
+      'Rendimiento y Sobrecarga Progresiva PPL',
+      'Recuperación, Sueño, NEAT y Respuesta Cardíaca',
+      'Estrategia para el Próximo Mesociclo',
+    ],
+    sectionHints: [
+      'Análisis de peso, % graso, masa muscular, perímetros clave y balance energético junto con pasos/NEAT y cardio.',
+      'Análisis de ganancias de fuerza, patrones donde destacas y ejercicios con meseta o demanda cardiovascular alta.',
+      'Evaluación de horas y eficiencia de sueño, tendencia de HRV/FC reposo, densidad/pulso en las sesiones de fuerza y pasos diarios.',
+      'Recomendaciones concretas de nutrición/NEAT, ajustes de volumen, descansos entre series y posible descarga si hace falta.',
+    ],
+    exerciseHint: {
+      status: "Estado corto (ej: 'Progresando (+2.5kg)', 'Récord Personal', 'Descanso Insuficiente')",
+      prescription: 'Acción táctica exacta para la próxima sesión (reps, peso, pausa teniendo en cuenta su FC si existe)',
+      biomech: '1-2 frases de análisis biomecánico, estímulo muscular y respuesta cardiovascular si aplica',
+    },
+    closing:
+      'Escribe en español con tono profesional, motivador y fundamentado en ciencia deportiva. Sé conciso y directo para lectura rápida en móvil: máximo 2-3 frases por sección y 1 frase corta por highlight.',
+  },
+};
+
+/** Construye el prompt JSON estructurado adaptado al nivel técnico solicitado. */
+export function buildPrompt(payload: unknown, tone: AiTone = 'technical'): string {
+  const spec = TONE_SPEC[tone];
+  const sectionsJson = spec.titles
+    .map(
+      (title, i) =>
+        `      {\n        "title": "${title}",\n        "verdict": "good" | "warning" | "neutral",\n        "text": "${spec.sectionHints[i]}"\n      }`,
+    )
+    .join(',\n');
+
+  return (
+    `${spec.intro}\n\n` +
+    'Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:\n' +
+    '{\n' +
+    '  "summary": "Resumen ejecutivo directo de 2-3 frases integrando fuerza, composición corporal, recuperación y actividad.",\n' +
+    '  "overview": {\n' +
+    '    "overallStatus": "Frase corta de estado global",\n' +
+    '    "highlights": [\n' +
+    '      "Punto fuerte 1 sobre tu progresión en fuerza o récords",\n' +
+    '      "Punto clave sobre composición corporal, pasos diarios o cardio",\n' +
+    '      "Aspecto clave de descanso, sueño o respuesta cardíaca"\n' +
+    '    ],\n' +
+    '    "sections": [\n' +
+    `${sectionsJson}\n` +
+    '    ]\n' +
+    '  },\n' +
+    '  "byExercise": {\n' +
+    '    "<nombre exacto del ejercicio>": {\n' +
+    `      "status": "${spec.exerciseHint.status}",\n` +
+    `      "prescription": "${spec.exerciseHint.prescription}",\n` +
+    `      "biomech": "${spec.exerciseHint.biomech}"\n` +
+    '    }\n' +
+    '  }\n' +
+    '}\n\n' +
+    `${spec.closing}\n\nDATOS DEL USUARIO:\n` +
+    JSON.stringify(payload)
+  );
+}
+
 export async function generateAnalysis(
   a: Analysis,
   ms: Measure[],
@@ -114,54 +217,9 @@ export async function generateAnalysis(
   cardio: CardioRow[] = [],
   wellbeing: DailyWellbeing[] = [],
 ): Promise<AiResult> {
+  const tone: AiTone = s.aiTone === 'simple' ? 'simple' : 'technical';
   const payload = buildPayload(a, ms, s, cardio, wellbeing);
-  const prompt =
-    'Eres un fisiólogo y entrenador de fuerza e hipertrofia de élite basado en la máxima evidencia científica. ' +
-    'Analiza de forma integral TODOS los datos disponibles del usuario: antropometría, rendimiento y cargas en fuerza PPL, respuesta cardíaca por ejercicio/sesión (fc_media, fc_max, duración), sesiones de cardio, sueño, HRV nocturna, FC en reposo, puntuación de vitalidad y pasos diarios (NEAT). ' +
-    'Cruza explícitamente estos factores: distingue si un estancamiento o bajada de rendimiento se debe a fatiga del SNC/poco sueño/caída de HRV, descansos cortos con pulso disparado o falta de progresión local; y relaciona cambios de peso/% graso con los pasos diarios (NEAT) y el gasto de cardio. ' +
-    'Ten en cuenta que saltos bruscos de peso en máquinas pueden deberse a cambios de poleas, placas o máquinas; interprétalo con criterio técnico.\n\n' +
-    'Debes responder ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:\n' +
-    '{\n' +
-    '  "summary": "Resumen ejecutivo directo de 2-3 frases integrando fuerza, composición corporal, recuperación y NEAT.",\n' +
-    '  "overview": {\n' +
-    '    "overallStatus": "Frase corta de estado global (ej: \'Fase de definición sólida con buena recuperación\')",\n' +
-    '    "highlights": [\n' +
-    '      "Punto fuerte 1 sobre tu progresión en cargas o récord",\n' +
-    '      "Punto clave sobre composición corporal, NEAT o cardio",\n' +
-    '      "Aspecto clave de recuperación (sueño, HRV, FC reposo o pulso intra-entreno)"\n' +
-    '    ],\n' +
-    '    "sections": [\n' +
-    '      {\n' +
-    '        "title": "Composición Corporal y Antropometría",\n' +
-    '        "verdict": "good" | "warning" | "neutral",\n' +
-    '        "text": "Análisis de peso, % graso, masa muscular, perímetros clave y balance energético junto con pasos/NEAT y cardio."\n' +
-    '      },\n' +
-    '      {\n' +
-    '        "title": "Rendimiento y Sobrecarga Progresiva PPL",\n' +
-    '        "verdict": "good" | "warning" | "neutral",\n' +
-    '        "text": "Análisis de ganancias de fuerza, patrones donde destacas y ejercicios con meseta o demanda cardiovascular alta."\n' +
-    '      },\n' +
-    '      {\n' +
-    '        "title": "Recuperación, Sueño, NEAT y Respuesta Cardíaca",\n' +
-    '        "verdict": "good" | "warning" | "neutral",\n' +
-    '        "text": "Evaluación de horas y eficiencia de sueño, tendencia de HRV/FC reposo, densidad/pulso en las sesiones de fuerza y pasos diarios."\n' +
-    '      },\n' +
-    '      {\n' +
-    '        "title": "Estrategia para el Próximo Mesociclo",\n' +
-    '        "verdict": "good" | "warning" | "neutral",\n' +
-    '        "text": "Recomendaciones concretas de nutrición/NEAT, ajustes de volumen, descansos entre series y posible descarga si hace falta."\n' +
-    '      }\n' +
-    '    ]\n' +
-    '  },\n' +
-    '  "byExercise": {\n' +
-    '    "<nombre exacto del ejercicio>": {\n' +
-    '      "status": "Estado corto (ej: \'Progresando (+2.5kg)\', \'Récord Personal\', \'Descanso Insuficiente\')",\n' +
-    '      "prescription": "Acción táctica exacta para la próxima sesión (reps, peso, pausa teniendo en cuenta su FC si existe)",\n' +
-    '      "biomech": "1-2 frases de análisis biomecánico, estímulo muscular y respuesta cardiovascular si aplica"\n' +
-    '    }\n' +
-    '  }\n' +
-    '}\n\n' +
-    'Escribe en español con tono profesional, motivador y fundamentado en ciencia deportiva. Sé conciso y directo para lectura rápida en móvil: máximo 2-3 frases por sección y 1 frase corta por highlight.\n\nDATOS DEL USUARIO:\n' + JSON.stringify(payload);
+  const prompt = buildPrompt(payload, tone);
 
   const ai = getAiBackend();
   const errors: string[] = [];
@@ -177,6 +235,7 @@ export async function generateAnalysis(
       const parsed = JSON.parse(clean);
       return {
         date: new Date().toISOString().slice(0, 10),
+        tone,
         summary: parsed.summary,
         overview: parsed.overview,
         byExercise: parsed.byExercise ?? {},

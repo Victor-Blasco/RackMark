@@ -1,6 +1,7 @@
 import { Chart, registerables, type ChartConfiguration } from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
+import { ROUTINE_COLORS } from '../lib/seed';
 import type { CardioRow, DailyWellbeing, LogDraft, Measure, Settings, StrengthRow } from '../types';
 
 Chart.register(...registerables);
@@ -24,7 +25,7 @@ export function rangeCutoff(r: RangeKey): string | null {
 
 export function rangePicker(scope: string, active: RangeKey): string {
   return `<div role="group" aria-label="Filtro temporal" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
-    ${RANGES.map((r) => `<button data-act="setRange" data-arg="${scope}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
+    ${RANGES.map((r) => `<button data-act="setRange" data-arg="${esc(scope)}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
   </div>`;
 }
 
@@ -42,9 +43,14 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   logFilter?: string;
+  planTab?: 'routines' | 'exercises';
   aiTab?: number;
   dayExtra?: Record<string, boolean>;
   ranges?: Record<string, RangeKey>;
+  measureDate?: string;
+  measurePerimOpen?: boolean;
+  exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
+  routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
@@ -58,15 +64,35 @@ export const esc = (s: unknown) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a `DD/MM/YYYY`. */
-export const fmtDate = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+export const fmtDate = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`);
 
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a formato corto `DD/MM`. */
-export const short = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}`;
+export const short = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}`);
 
 /** Redondea a 1 decimal usando coma decimal española. */
 export const r1 = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
 
 export const DAY_COLOR: Record<string, string> = { Push: '#F43F5E', Pull: '#3B82F6', Leg: '#10B981' };
+
+/** Devuelve la lista ordenada de rutinas definidas en los ajustes (o PPL por defecto). */
+export function routineNames(s: Settings): string[] {
+  const keys = Object.keys(s.routines ?? {});
+  return keys.length ? keys : ['Push', 'Pull', 'Leg'];
+}
+
+/** Devuelve el color hex asignado a una rutina, con fallback por defecto o por índice. */
+export function routineColor(name: string, s?: Settings, idx = 0): string {
+  return s?.routineMeta?.[name]?.color ?? DAY_COLOR[name] ?? ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
+}
+
+/** Devuelve una abreviatura de 2 caracteres para badges compactos de calendario/adherencia. */
+export function routineShort(name: string): string {
+  if (name === 'Push') return 'Pu';
+  if (name === 'Pull') return 'Pl';
+  if (name === 'Leg') return 'Lg';
+  const clean = name.replace(/[^a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ]/g, '').trim();
+  return (clean.slice(0, 2) || name.slice(0, 2) || '·').replace(/^./, (c) => c.toUpperCase());
+}
 
 const charts = new Map<string, Chart>();
 type ChartJob = () => void;
@@ -86,12 +112,80 @@ export function resetCharts() {
   jobs = [];
 }
 
+/** Añade offset, ticks legibles en móvil, leyenda compacta y puntos adaptativos sin pisar opciones explícitas. */
+export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguration {
+  const opts = { ...(cfg.options ?? {}) } as Record<string, unknown>;
+  const rawScales = (opts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const scales: Record<string, Record<string, unknown>> = { ...rawScales };
+  const rawPlugins = (opts.plugins as Record<string, Record<string, unknown>> | undefined) ?? {};
+  const rawLegend = rawPlugins.legend ?? {};
+  const datasets = (cfg.data?.datasets ?? []) as unknown as Record<string, unknown>[];
+  const pointCount = cfg.data?.labels?.length ?? 0;
+
+  if (cfg.type === 'line') {
+    const xScale = scales.x ?? {};
+    const xTicks = (xScale.ticks as Record<string, unknown> | undefined) ?? {};
+    scales.x = {
+      offset: true,
+      ...xScale,
+      ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 }, ...xTicks },
+    };
+    const yKeys = Object.keys(scales).filter((k) => k.startsWith('y'));
+    if (!yKeys.length) yKeys.push('y');
+    for (const k of yKeys) {
+      const yScale = scales[k] ?? {};
+      const yTicks = (yScale.ticks as Record<string, unknown> | undefined) ?? {};
+      scales[k] = { offset: true, ...yScale, ticks: { maxTicksLimit: 6, font: { size: 11 }, ...yTicks } };
+    }
+  } else if (cfg.type === 'bar') {
+    const xScale = scales.x ?? {};
+    const xTicks = (xScale.ticks as Record<string, unknown> | undefined) ?? {};
+    scales.x = { ...xScale, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 }, ...xTicks } };
+    scales.y = { beginAtZero: true, grace: '8%', ...scales.y };
+  }
+
+  const nextDatasets = cfg.type === 'line'
+    ? datasets.map((ds) => ({
+        borderWidth: 2,
+        pointRadius: pointCount > 24 ? 0 : 2.5,
+        pointHoverRadius: 5,
+        pointHitRadius: 18,
+        ...ds,
+      }))
+    : datasets;
+
+  const legend = {
+    display: datasets.length > 1,
+    ...rawLegend,
+    labels: {
+      usePointStyle: true,
+      boxWidth: 8,
+      boxHeight: 8,
+      padding: 12,
+      font: { size: 11 },
+      ...((rawLegend.labels as Record<string, unknown> | undefined) ?? {}),
+    },
+  };
+
+  return {
+    ...cfg,
+    data: { ...cfg.data, datasets: nextDatasets },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      ...opts,
+      plugins: { ...rawPlugins, legend },
+      scales,
+    },
+  } as ChartConfiguration;
+}
+
 /** Programa la creación de una gráfica Chart.js tras montar el `<canvas>` en el DOM. */
 export function chart(id: string, cfg: ChartConfiguration) {
+  const normalized = normalizeChartConfig(cfg);
   jobs.push(() => {
     const el = document.getElementById(id) as HTMLCanvasElement | null;
     if (!el || el.getBoundingClientRect().width === 0) return;
-    charts.set(id, new Chart(el, cfg) as unknown as Chart);
+    charts.set(id, new Chart(el, normalized) as unknown as Chart);
   });
 }
 
@@ -112,4 +206,10 @@ export function empty(msg: string) {
 export const noData = (S: State) =>
   S.strength.length
     ? ''
-    : empty('Aún no hay datos. Registra un entrenamiento en <b>+ Entrenar</b> o ve a <b>Ajustes</b> para importar tu exportación de Samsung Health (ZIP o CSV) y tus medidas (CSV).');
+    : `<div class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-300">
+        <p>Aún no hay entrenamientos guardados. Registra tu primera sesión o importa tus datos previos.</p>
+        <div class="flex shrink-0 flex-wrap gap-2">
+          <button class="btn-primary !py-1.5 !text-xs" data-act="goLog">+ Registrar entreno</button>
+          <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="data">Importar datos</button>
+        </div>
+      </div>`;

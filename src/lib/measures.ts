@@ -45,9 +45,14 @@ export function parseMeasuresCsv(text: string): MeasuresImport {
   const labelCol = header.findIndex((h) => nk(h).startsWith('sexo'));
   const readProfile = (label: string, value: string) => {
     const l = nk(label);
-    if (l.startsWith('sexo')) profile.sex = value;
-    else if (l.startsWith('edad')) profile.age = Number(value);
-    else if (l.startsWith('altura')) profile.height = Number(value);
+    if (l.startsWith('sexo')) profile.sex = value.trim();
+    else if (l.startsWith('edad')) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0) profile.age = n;
+    } else if (l.startsWith('altura')) {
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 0) profile.height = n;
+    }
   };
   if (labelCol >= 0) readProfile(header[labelCol], header[labelCol + 1] ?? '');
 
