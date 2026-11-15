@@ -4,9 +4,20 @@ import { buildPrompt } from '../src/lib/ai';
 import { analyze, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { norm } from '../src/lib/seed';
+import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
 import { allExerciseNames, initLogDraft, manualSessionId } from '../src/ui/logView';
 import { moveItem } from '../src/ui/reorder';
-import { inRange, isAiFreshForEx, normalizeChartConfig, resolveRange, type State } from '../src/ui/shared';
+import {
+  inRange,
+  isAiFreshForEx,
+  movingAverage7d,
+  normalizeChartConfig,
+  resetCharts,
+  resolveRange,
+  weightDeltaColor,
+  type State,
+} from '../src/ui/shared';
+import { viewHome } from '../src/ui/views';
 
 describe('ai tone & chart axis offset', () => {
   it('adapta el prompt de IA según el tono simple o técnico manteniendo la estructura JSON', () => {
@@ -332,5 +343,92 @@ describe('live logger draft, judge & ai freshness (P0)', () => {
     const fakeState = { settings } as unknown as State;
     expect(isAiFreshForEx(fakeState, { last: { date: '2026-11-10' } } as never)).toBe(true);
     expect(isAiFreshForEx(fakeState, { last: { date: '2026-11-15' } } as never)).toBe(false);
+  });
+});
+
+describe('P1 analytics, trends & empty states', () => {
+  it('calcula media móvil de 7 días naturales incluyendo huecos y ventana límite', () => {
+    const out = movingAverage7d([
+      { date: '2026-11-01', weight: 80 },
+      { date: '2026-11-03', weight: 79 },
+      { date: '2026-11-07', weight: 78 },
+      { date: '2026-11-10', weight: 77 },
+      { date: '2026-11-11', weight: undefined },
+    ]);
+    // 01/11: [80] -> 80
+    // 03/11: [80, 79] -> 79.5
+    // 07/11 (diff 6d desde 01/11): [80, 79, 78] -> 79
+    // 10/11 (01/11 ya queda a 9d; entran 07/11 y 10/11? diff 07->10=3d, diff 03->10=7d > 6): [78, 77] -> 77.5
+    // 11/11 (07/11=4d, 10/11=1d, 11/11=undef): [78, 77] -> 77.5
+    expect(out).toEqual([80, 79.5, 79, 77.5, 77.5]);
+  });
+
+  it('colorea delta de peso coherentemente según la fase nutricional', () => {
+    expect(weightDeltaColor(-0.5, 'Definición')).toBe('text-emerald-400');
+    expect(weightDeltaColor(0.8, 'Definición')).toBe('text-amberGold');
+    expect(weightDeltaColor(0.6, 'Volumen')).toBe('text-emerald-400');
+    expect(weightDeltaColor(-0.5, 'Volumen')).toBe('text-amberGold');
+    expect(weightDeltaColor(0.2, 'Mantenimiento')).toBe('text-emerald-400');
+    expect(weightDeltaColor(1.2, 'Mantenimiento')).toBe('text-blue-300');
+  });
+
+  it('respeta el fallback de resolveRange y desactiva animaciones por defecto en Chart.js', () => {
+    const emptyRanges = {} as unknown as State;
+    expect(resolveRange(emptyRanges, 'home').key).toBe('1M');
+    expect(resolveRange(emptyRanges, 'body', 'Todo').key).toBe('Todo');
+    expect(resolveRange(emptyRanges, 'volume', '3M').key).toBe('3M');
+
+    const cfg = normalizeChartConfig({
+      type: 'line',
+      data: { labels: ['01/11'], datasets: [{ label: 'Peso', data: [75] }] },
+    });
+    expect((cfg.options as Record<string, unknown>).animation).toBe(false);
+
+    const explicitAnim = normalizeChartConfig({
+      type: 'line',
+      data: { labels: ['01/11'], datasets: [{ label: 'Peso', data: [75] }] },
+      options: { animation: { duration: 120 } },
+    });
+    expect((explicitAnim.options as Record<string, unknown>).animation).toEqual({ duration: 120 });
+  });
+
+  it('muestra estados vacíos accionables sin gráficas ni tablas a cero y etiqueta ejemplos en calculadoras', () => {
+    const settings = sanitizeSettings({});
+    const emptyState: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const volHtml = viewVolume(emptyState);
+    expect(volHtml).toContain('+ Registrar entreno');
+    expect(volHtml).toContain('Importar datos');
+    expect(volHtml).not.toContain('<canvas');
+    expect(volHtml).not.toContain('min-w-[640px]');
+
+    const adhHtml = viewAdherence(emptyState);
+    expect(adhHtml).toContain('+ Registrar entreno');
+    expect(adhHtml).not.toContain('<canvas');
+    expect(adhHtml).not.toContain('Calendario (últimas');
+
+    const homeHtml = viewHome(emptyState);
+    expect(homeHtml).toContain('+ Empezar primer entreno hoy');
+    expect(homeHtml).not.toContain('<canvas');
+    expect(homeHtml).not.toContain('ai-report');
+
+    const calcHtml = viewCalc(emptyState);
+    expect(calcHtml).toContain('Valores de ejemplo');
+
+    const bodyHtml = viewBody(emptyState);
+    expect(bodyHtml).toContain('Filtro temporal');
+
+    resetCharts();
   });
 });

@@ -101,7 +101,7 @@ export function viewSettings(S: State): string {
         <p>App Check (reCAPTCHA Enterprise): <span class="${isAppCheckConfigured ? 'text-emerald-400' : 'text-amberGold'} font-semibold">${isAppCheckConfigured ? 'configurado' : 'pendiente de VITE_RECAPTCHA_SITE_KEY'}</span></p>
         ${s.ai ? `<p>Último informe guardado: ${fmtDate(s.ai.date)} · modo <span class="font-semibold text-gray-200">${s.ai.tone === 'simple' ? 'Sencillo' : 'Técnico'}</span></p>` : ''}
       </div>
-      <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('sparkle', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}</button>
+      <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}</button>
     </div>
   </div>
 

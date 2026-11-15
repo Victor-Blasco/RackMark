@@ -1,9 +1,27 @@
 import type { ChartConfiguration } from 'chart.js';
 import { currentPhase, resolveName, type ExSession, type ExStats } from '../lib/analysis';
-import { norm } from '../lib/seed';
+import { norm, ROUTINE_TEMPLATES } from '../lib/seed';
 import type { AiTone, DayName, Measure } from '../types';
 import { icon } from './icons';
-import { chart, esc, fmtDate, inRange, isAiFreshForEx, noData, r1, rangePicker, resolveRange, routineColor, routineNames, routineShort, short, type DateBounds, type State } from './shared';
+import {
+  chart,
+  esc,
+  fmtDate,
+  inRange,
+  isAiFreshForEx,
+  movingAverage7d,
+  noData,
+  r1,
+  rangePicker,
+  resolveRange,
+  routineColor,
+  routineNames,
+  routineShort,
+  short,
+  weightDeltaColor,
+  type DateBounds,
+  type State,
+} from './shared';
 
 export { resetCharts, runChartJobs, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
@@ -13,6 +31,8 @@ export { viewSettings } from './settingsView';
 export { runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
 export { resolveName, norm };
 
+type ExMetric = 'top' | 'e1rm' | 'volume';
+
 function aiToneToggle(tone: AiTone): string {
   return `<div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
     <button type="button" data-act="setAiTone" data-arg="simple" aria-pressed="${tone === 'simple'}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Sencillo</button>
@@ -20,23 +40,32 @@ function aiToneToggle(tone: AiTone): string {
   </div>`;
 }
 
-/** Configura la gráfica de carga (peso máx y pulso opcional) mostrando series y repes en el tooltip. */
-function exerciseChartConfig(sessions: ExSession[], color: string, includeHr: boolean): ChartConfiguration<'line'> {
-  const hasHr = includeHr && sessions.some((x) => x.avgHr != null);
+function exMetricToggle(active: ExMetric): string {
+  const opts: [ExMetric, string][] = [['top', 'Peso máx'], ['e1rm', 'e1RM'], ['volume', 'Tonelaje']];
+  return `<div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    ${opts.map(([k, lbl]) => `<button type="button" data-act="setExMetric" data-arg="${k}" aria-pressed="${active === k}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === k ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${lbl}</button>`).join('')}
+  </div>`;
+}
+
+/** Configura la gráfica de carga (Peso máx, e1RM o Tonelaje) en un único eje Y con detalle completo en el tooltip. */
+function exerciseChartConfig(sessions: ExSession[], color: string, metric: ExMetric = 'top'): ChartConfiguration<'line'> {
+  const label = metric === 'e1rm' ? 'e1RM est. (kg)' : metric === 'volume' ? 'Tonelaje (kg)' : 'Peso máx (kg)';
+  const data = sessions.map((x) =>
+    metric === 'e1rm' ? Math.round(x.e1rm * 10) / 10 : metric === 'volume' ? Math.round(x.volume) : x.top,
+  );
   return {
     type: 'line',
     data: {
       labels: sessions.map((x) => short(x.date)),
       datasets: [
         {
-          label: 'Peso máx (kg)',
-          data: sessions.map((x) => x.top),
+          label,
+          data,
           borderColor: color,
           backgroundColor: color,
           tension: 0.25,
           yAxisID: 'y',
         },
-        ...(hasHr ? [{ label: 'FC media (lpm)', data: sessions.map((x) => x.avgHr ?? null), borderColor: '#22D3EE', backgroundColor: '#22D3EE', tension: 0.25, spanGaps: true, yAxisID: 'y1' }] : []),
       ],
     },
     options: {
@@ -50,17 +79,19 @@ function exerciseChartConfig(sessions: ExSession[], color: string, includeHr: bo
             },
             label: (ctx) => {
               const s = sessions[ctx.dataIndex];
-              if (ctx.datasetIndex === 0 && s) return `Peso máx: ${r1(s.top)} kg × ${s.repsAtTop}`;
-              return `${ctx.dataset.label}: ${Math.round(ctx.parsed.y ?? 0)} lpm`;
+              if (!s) return '';
+              return `Peso máx: ${r1(s.top)} kg × ${s.repsAtTop} · e1RM: ${r1(s.e1rm)} kg · Tonelaje: ${Math.round(s.volume)} kg`;
             },
             afterBody: (items) => {
               const s = items[0] ? sessions[items[0].dataIndex] : undefined;
-              return s ? `Series: ${s.sets.map((x) => `${x.w}×${x.r}`).join(' · ')}` : '';
+              if (!s) return [];
+              const lines = [`Series: ${s.sets.map((x) => `${x.w}×${x.r}`).join(' · ')}`];
+              if (s.avgHr != null) lines.push(`FC media: ${Math.round(s.avgHr)} lpm${s.maxHr ? ` (máx ${Math.round(s.maxHr)})` : ''}`);
+              return lines;
             },
           },
         },
       },
-      ...(hasHr ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } } : {}),
     },
   };
 }
@@ -139,7 +170,7 @@ export function renderAiReport(S: State): string {
   const reportTone: AiTone = ai.tone === 'simple' ? 'simple' : 'technical';
   const toneChanged = reportTone !== activeTone;
 
-  return `<section id="ai-report" aria-label="Informe de IA" class="card border border-electricBlue/30 bg-gradient-to-br from-cardDark via-cardDark to-blue-950/15 space-y-4">
+  return `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-gray-800 bg-cardDark p-4 sm:p-5 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h3>
@@ -160,16 +191,9 @@ export function renderAiReport(S: State): string {
         </button>`).join('')}
     </div>` : ''}
 
-    <div role="tabpanel" class="space-y-3 py-1">
+    <div role="tabpanel" class="space-y-3 pt-1">
       ${current.body}
     </div>
-
-    ${steps.length > 1 ? `
-    <div class="flex items-center justify-between border-t border-white/5 pt-3 text-xs sm:text-sm">
-      <button class="btn !py-1.5 !px-3 !text-xs sm:!text-sm" data-act="aiTab" data-arg="${activeIdx - 1}" ${activeIdx === 0 ? 'disabled' : ''}>← Anterior</button>
-      <span class="text-gray-400 tabular-nums">Paso ${activeIdx + 1} de ${steps.length}</span>
-      <button class="btn !py-1.5 !px-3 !text-xs sm:!text-sm" data-act="aiTab" data-arg="${activeIdx + 1}" ${activeIdx === steps.length - 1 ? 'disabled' : ''}>Siguiente →</button>
-    </div>` : ''}
   </section>`;
 }
 
@@ -205,9 +229,10 @@ function lastMetric(ms: Measure[], hasFilter: boolean, key: keyof Measure) {
 function renderLoadControlBlock(
   rows: { d: DayName; c: string; e: ExStats }[],
   S: State,
+  hasFilter: boolean,
 ): string {
   const ai = S.settings.ai;
-  const freshStatus = (e: ExStats) => (isAiFreshForEx(S, S.analysis.exercises.get(e.name) ?? e) ? ai?.byExercise[e.name]?.status : undefined);
+  const freshStatus = (e: ExStats) => (!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(e.name) ?? e) ? ai?.byExercise[e.name]?.status : undefined);
   const tableHtml = `
     <div class="hidden md:block overflow-x-auto">
       <table class="table-fixed w-full text-left text-sm">
@@ -264,8 +289,69 @@ function renderLoadControlBlock(
   </section>`;
 }
 
-/** Renderiza la vista principal de resumen con diseño híbrido (hero compacto, secciones abiertas e Informe IA destacado). */
+function renderOnboardingHome(S: State): string {
+  const routines = routineNames(S.settings);
+  const tpls = Object.entries(ROUTINE_TEMPLATES);
+  return `<div class="space-y-6">
+  <section class="rounded-2xl border border-white/10 bg-cardDark p-5 sm:p-6 space-y-5">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="space-y-1">
+        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Primeros pasos</span>
+        <h2 class="text-xl sm:text-2xl font-extrabold text-white">Tu cuaderno de entrenamiento está listo</h2>
+        <p class="text-sm text-gray-300 max-w-2xl">Registra tu primer entreno directamente desde aquí o elige una distribución base. Si ya tienes historial en Samsung Health o CSV, puedes importarlo cuando quieras.</p>
+      </div>
+      <button class="btn-primary shrink-0 !min-h-[44px] !px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
+    </div>
+
+    <div class="space-y-2 border-t border-white/10 pt-4">
+      <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Iniciar directamente una rutina activa</p>
+      <div class="flex flex-wrap gap-2">
+        ${routines.map((r, idx) => {
+          const hex = routineColor(r, S.settings, idx);
+          const count = S.settings.routines[r]?.length ?? 0;
+          return `<button type="button" class="btn !min-h-[44px]" data-act="goLog" data-arg="${esc(r)}">
+            <span class="h-2.5 w-2.5 rounded-full" style="background:${hex}" aria-hidden="true"></span>
+            <span>${esc(r)}</span>
+            <span class="text-xs text-gray-400 tabular-nums">(${count})</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-3 pb-5 border-b border-white/10">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 class="text-base font-bold text-white">Plantillas de rutina</h3>
+        <p class="text-xs text-gray-400">Cambia la distribución en un toque o edita los ejercicios a tu gusto.</p>
+      </div>
+      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="plan">Personalizar en Plan y rutinas</button>
+    </div>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      ${tpls.map(([key, tpl]) => `
+        <button type="button" data-act="rtApplyTpl" data-arg="${esc(key)}" class="rounded-2xl border border-white/10 bg-cardDark p-4 text-left transition-colors hover:border-electricBlue/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
+          <div class="text-sm font-bold text-white">${esc(tpl.label)}</div>
+          <p class="mt-1 text-xs text-gray-400 leading-relaxed">${esc(tpl.desc)}</p>
+        </button>`).join('')}
+    </div>
+  </section>
+
+  <section class="flex flex-wrap items-center justify-between gap-3">
+    <div class="text-sm text-gray-300">¿Prefieres empezar registrando tu peso inicial o trayendo datos previos?</div>
+    <div class="flex flex-wrap gap-2">
+      <button class="btn !min-h-[44px]" data-act="tab" data-arg="body">${icon('body', 'h-4 w-4')} Registrar primeras medidas</button>
+      <button class="btn !min-h-[44px]" data-act="tab" data-arg="data">${icon('upload', 'h-4 w-4')} Importar Samsung Health / CSV</button>
+    </div>
+  </section>
+</div>`;
+}
+
+/** Renderiza la vista principal de resumen con diseño híbrido (hero compacto, secciones abiertas e Informe IA sobrio). */
 export function viewHome(S: State): string {
+  if (!S.strength.length && !S.measures.length && !S.cardio.length && !S.wellbeing.length) {
+    return renderOnboardingHome(S);
+  }
+
   const bounds = resolveRange(S, 'home');
   const hasFilter = Boolean(bounds.from || bounds.to);
   const rangeLabel = bounds.label;
@@ -300,17 +386,20 @@ export function viewHome(S: State): string {
   const ex = [...S.analysis.exercises.values()].filter((e) => e.day).sort((a, b) => b.n - a.n);
   const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
+  const metric: ExMetric = S.exMetric ?? 'top';
 
-  if (curEx && curEx.sessions.length) chart('c-home-ex', exerciseChartConfig(curEx.sessions, '#3B82F6', false));
+  if (curEx && curEx.sessions.length) chart('c-home-ex', exerciseChartConfig(curEx.sessions, '#3B82F6', metric));
   const mm = ms.filter((m) => m.weight != null || m.bf != null);
   if (mm.length) {
+    const trend7 = movingAverage7d(mm);
     chart('c-home-body', {
       type: 'line',
       data: {
         labels: mm.map((m) => short(m.date)),
         datasets: [
-          { label: 'Peso (kg)', data: mm.map((m) => m.weight ?? null), borderColor: '#3B82F6', yAxisID: 'y', tension: 0.25, spanGaps: true },
-          { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
+          { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
+          { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
+          { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F43F5E', backgroundColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
         ],
       },
       options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } },
@@ -324,6 +413,7 @@ export function viewHome(S: State): string {
   const lastDayHex = lastS?.day ? routineColor(lastS.day, S.settings, Math.max(0, routines.indexOf(lastS.day))) : '#3B82F6';
   const lastBadge = lastS ? routineShort(lastS.day ?? 'Sesión') : '—';
   const wDelta = delta(mWeight.val, mWeight.prev, '');
+  const wDeltaCls = mWeight.val != null && mWeight.prev != null ? weightDeltaColor(mWeight.val - mWeight.prev, phase?.name) : 'text-emerald-400';
   const bfDelta = delta(mBf.val, mBf.prev, '%');
 
   const fourthMetric = showWellbeing
@@ -349,7 +439,7 @@ export function viewHome(S: State): string {
 
   const aiPanel = ai
     ? renderAiReport(S)
-    : `<section id="ai-report" aria-label="Informe de IA" class="card border border-electricBlue/30 bg-gradient-to-br from-cardDark via-cardDark to-blue-950/15 space-y-3.5">
+    : `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-gray-800 bg-cardDark p-4 sm:p-5 space-y-3.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="text-base font-extrabold text-white">Informe IA</h3>
@@ -357,7 +447,7 @@ export function viewHome(S: State): string {
           </div>
           ${aiToneToggle(tone)}
         </div>
-        <button class="btn-primary w-full !py-2 !text-xs sm:!text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('sparkle', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>
+        <button class="btn-primary w-full !py-2 !text-xs sm:!text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>
       </section>`;
 
   return `<div class="space-y-6">
@@ -387,7 +477,7 @@ export function viewHome(S: State): string {
           <span class="text-gray-400 block">Peso</span>
           <div class="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
             <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-white">${mWeight.val != null ? `${r1(mWeight.val)} kg` : '—'}</span>
-            ${wDelta ? `<span class="whitespace-nowrap tabular-nums font-semibold text-emerald-400">${esc(wDelta)}</span>` : mWeight.date ? `<span class="whitespace-nowrap tabular-nums text-gray-500">${short(mWeight.date)}</span>` : ''}
+            ${wDelta ? `<span class="whitespace-nowrap tabular-nums font-semibold ${wDeltaCls}">${esc(wDelta)}</span>` : mWeight.date ? `<span class="whitespace-nowrap tabular-nums text-gray-500">${short(mWeight.date)}</span>` : ''}
           </div>
         </div>
         <div class="min-w-0">
@@ -400,7 +490,7 @@ export function viewHome(S: State): string {
         <div class="min-w-0">
           <span class="text-gray-400 block">Músculo / Cintura</span>
           <div class="mt-0.5 flex flex-wrap items-baseline gap-x-1">
-            <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-emeraldGreen">${mMuscle.val != null ? r1(mMuscle.val) : '—'}</span>
+            <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-emeraldGreen">${mMuscle.val != null ? `${r1(mMuscle.val)} kg` : '—'}</span>
             <span class="whitespace-nowrap tabular-nums text-sm font-semibold text-gray-300">/ ${mWaist.val != null ? `${r1(mWaist.val)} cm` : '—'}</span>
           </div>
         </div>
@@ -426,9 +516,12 @@ export function viewHome(S: State): string {
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 class="text-base font-bold text-white">Evolución de cargas</h3>
-          <p class="text-xs text-gray-400">Peso máx (kg) · toca un punto para ver repes</p>
+          <p class="text-xs text-gray-400">Toca un punto para ver repes, e1RM y tonelaje</p>
         </div>
-        <select class="inp !w-auto max-w-full sm:max-w-[55%]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+        <div class="flex flex-wrap items-center gap-2 max-w-full">
+          ${exMetricToggle(metric)}
+          <select class="inp !w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+        </div>
       </div>
       ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin sesiones para este ejercicio en ${esc(rangeLabel)}.</p>`}
     </div>
@@ -436,13 +529,13 @@ export function viewHome(S: State): string {
     <div class="min-w-0 space-y-2">
       <div>
         <h3 class="text-base font-bold text-white">Peso y % de grasa</h3>
-        <p class="text-xs text-gray-400">Ventana: ${esc(rangeLabel)}</p>
+        <p class="text-xs text-gray-400">Tendencia media 7 días + registros (${esc(rangeLabel)})</p>
       </div>
       ${mm.length ? `<div class="chart-box"><canvas id="c-home-body"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin mediciones de peso en ${esc(rangeLabel)}.</p>`}
     </div>
   </section>
 
-  ${renderLoadControlBlock(rows, S)}
+  ${renderLoadControlBlock(rows, S, hasFilter)}
 </div>`;
 }
 
@@ -452,13 +545,16 @@ function renderDayDetail(
   canvasId: string,
   historyLimit: number,
   rangeLabel: string,
+  hasFilter: boolean,
   embedded = false,
 ): string {
   const ai = S.settings.ai?.byExercise ?? {};
-  const a = isAiFreshForEx(S, S.analysis.exercises.get(e.name) ?? e) ? ai[e.name] : undefined;
+  const a = !hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(e.name) ?? e) ? ai[e.name] : undefined;
   const userNote = S.settings.notes[e.name]?.trim() ?? '';
   const aiBiomech = a?.biomech?.trim() ?? '';
   const recent = [...e.sessions].reverse().slice(0, historyLimit);
+  const metric: ExMetric = S.exMetric ?? 'top';
+  const prescLabel = a?.prescription && S.settings.ai?.date ? `Próxima sesión · IA (${short(S.settings.ai.date)})` : 'Próxima sesión';
 
   return `<div class="${embedded ? 'border-t border-white/10 bg-[#0D1320]/70 p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark/60 p-4 sm:p-5 space-y-5'}">
     <div class="flex flex-wrap items-start justify-between gap-2">
@@ -469,11 +565,14 @@ function renderDayDetail(
           <span class="text-xs text-gray-400 tabular-nums">Objetivo ${e.target ? `${e.target.sets}×${e.target.reps}` : '—'} · ${e.n} sesiones</span>
         </div>
       </div>
-      <button class="btn !py-1.5 !text-xs" data-act="editNote" data-arg="${esc(e.name)}">${icon('edit', 'h-3.5 w-3.5')} Nota</button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="btn-primary !py-1.5 !text-xs" data-act="goLog" ${e.day ? `data-arg="${esc(e.day)}"` : ''}>Entrenar hoy</button>
+        <button class="btn !py-1.5 !text-xs" data-act="editNote" data-arg="${esc(e.name)}">${icon('edit', 'h-3.5 w-3.5')} Nota</button>
+      </div>
     </div>
 
     <div class="border-l-2 border-emeraldGreen pl-3.5 py-0.5">
-      <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Próxima sesión</p>
+      <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400">${prescLabel}</p>
       <p class="mt-1 text-sm sm:text-[15px] text-gray-100 leading-relaxed">${esc(a?.prescription ?? e.prescription)}</p>
     </div>
 
@@ -483,8 +582,11 @@ function renderDayDetail(
       <div><span class="block text-xs text-gray-400">FC media</span><span class="mt-0.5 block text-base sm:text-lg font-bold text-cyan-300 tabular-nums">${e.avgHr ? `${e.avgHr} lpm` : '—'}</span></div>
     </div>
 
-    <div>
-      <p class="mb-2 text-xs font-semibold text-gray-400">Progresión (peso máx${e.sessions.some((s) => s.avgHr != null) ? ' y pulso' : ''} · toca un punto para ver repes)</p>
+    <div class="space-y-2">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <p class="text-xs font-semibold text-gray-400">Progresión · toca un punto para ver repes, e1RM y pulso</p>
+        ${exMetricToggle(metric)}
+      </div>
       ${e.sessions.length ? `<div class="chart-box"><canvas id="${canvasId}"></canvas></div>` : `<p class="py-8 text-center text-sm text-gray-500">Sin registros para este ejercicio en ${esc(rangeLabel)}.</p>`}
     </div>
 
@@ -544,10 +646,11 @@ export function viewDay(S: State, day: DayName): string {
   const desktopCur = rawSel && visibleList.some((e) => e.name === rawSel) ? rawSel : visibleList[0].name;
   const mobileCur = rawSel === '__closed__' ? undefined : desktopCur;
 
+  const metric: ExMetric = S.exMetric ?? 'top';
   const registerDayChart = (canvasId: string, exName: string) => {
     const e = allPool.find((x) => x.name === exName)!;
     if (!e.sessions.length) return;
-    chart(canvasId, exerciseChartConfig(e.sessions, dayColor, true));
+    chart(canvasId, exerciseChartConfig(e.sessions, dayColor, metric));
   };
 
   registerDayChart('c-day', desktopCur);
@@ -603,11 +706,11 @@ export function viewDay(S: State, day: DayName): string {
             <p class="text-[13px] font-medium text-gray-300 tabular-nums truncate">${lastTxt}</p>
           </div>
           <div class="shrink-0 flex items-center gap-2.5">
-            <span class="h-2.5 w-2.5 rounded-full ${st.dot}" title="${esc((isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>
+            <span class="h-2.5 w-2.5 rounded-full ${st.dot}" title="${esc((!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>
             <span class="text-xs text-gray-400">${open ? '▲' : '▼'}</span>
           </div>
         </button>
-        ${open ? renderDayDetail(S, x, 'c-day-mob', 8, rangeLabel, true) : ''}
+        ${open ? renderDayDetail(S, x, 'c-day-mob', 8, rangeLabel, hasFilter, true) : ''}
       </div>`;
     }).join('')}
   </div>
@@ -623,7 +726,7 @@ export function viewDay(S: State, day: DayName): string {
         return `<button data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark/85 hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-bold text-white truncate">${esc(x.name)}</span>
-            <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc((isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>
+            <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc((!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>
           </div>
           <div class="mt-1 flex items-center justify-between gap-2 text-[13px] text-gray-300">
             <span class="font-medium tabular-nums truncate">${lastTxt}</span>
@@ -633,7 +736,7 @@ export function viewDay(S: State, day: DayName): string {
       }).join('')}
     </div>
     <div class="lg:col-span-7 xl:col-span-8 lg:sticky lg:top-6">
-      ${renderDayDetail(S, desktopEx, 'c-day', 20, rangeLabel, false)}
+      ${renderDayDetail(S, desktopEx, 'c-day', 20, rangeLabel, hasFilter, false)}
     </div>
   </div>
 </div>`;

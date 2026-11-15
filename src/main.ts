@@ -842,6 +842,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     render();
   },
   selMuscle: (el) => { S.muscleSel = arg(el); render(); },
+  setExMetric: (el) => {
+    const m = arg(el);
+    S.exMetric = m === 'e1rm' || m === 'volume' ? m : 'top';
+    render();
+  },
   aiTab: (el) => {
     S.aiTab = Math.max(0, +arg(el) || 0);
     const panel = document.getElementById('ai-report');
@@ -1395,8 +1400,6 @@ initSortableLists(root, async (scope, from, to) => {
 reload().then(async () => {
   await consumeRedirectAuth();
   S.lastSync = loadSyncMeta().lastSyncAt;
-  const first = !S.strength.length && !S.measures.length;
-  if (first && !location.hash) setTab('data');
   render();
   subscribeAuth((user) => {
     const wasReady = Boolean(S.authReady);
