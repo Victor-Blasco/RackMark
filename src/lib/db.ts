@@ -247,7 +247,10 @@ export function parseBackup(jsonText: string): Backup {
           if (!isObj(s)) return [];
           const w = fin(s.w);
           const reps = fin(s.r);
-          return w !== undefined && w >= 0 && reps !== undefined && reps > 0 ? [{ w, r: reps }] : [];
+          const restSec = fin(s.restSec);
+          return w !== undefined && w >= 0 && reps !== undefined && reps > 0
+            ? [{ w, r: reps, ...(restSec !== undefined && restSec >= 0 ? { restSec: Math.round(restSec) } : {}) }]
+            : [];
         });
         const row: StrengthRow = {
           id: r.id,

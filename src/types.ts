@@ -1,7 +1,7 @@
 export type DayName = string;
 export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
 
-export interface SetRec { w: number; r: number; done?: boolean }
+export interface SetRec { w: number; r: number; done?: boolean; restSec?: number }
 
 /** Una fila de fuerza de Samsung Health = un ejercicio dentro de una sesión. */
 export interface StrengthRow {
@@ -20,11 +20,22 @@ export interface StrengthRow {
   day?: DayName;         // rutina asignada manualmente
 }
 
+export interface LogExMeta {
+  id?: string;
+  ts?: number;
+  durMin?: number;
+  avgHr?: number;
+  maxHr?: number;
+  minHr?: number;
+  kcal?: number;
+}
+
 export interface LogExDraft {
   name: string;
   done: boolean;
   sets: SetRec[];
   note: string;
+  meta?: LogExMeta;
 }
 
 export interface LogDraft {
@@ -32,9 +43,23 @@ export interface LogDraft {
   day: DayName | 'Libre';
   exercises: LogExDraft[];
   sessionId?: string;
+  startedAt?: number;
   dirty?: boolean;
+}
+
+export interface LiveWorkout {
+  date: string;
+  day: DayName | 'Libre';
+  startedAt: number;
+  curIdx: number;
+  exercises: LogExDraft[];
+  targetRestSec: number;
+  restStartedAt?: number;
   restUntil?: number;
-  restSec?: number;
+  restRef?: { ei: number; si: number };
+  lastCompletedExIdx?: number;
+  pickerMode?: 'swap' | 'add';
+  exMenuOpen?: boolean;
 }
 
 export interface CardioRow {

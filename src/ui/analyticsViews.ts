@@ -17,6 +17,7 @@ import {
   routineNames,
   routineShort,
   short,
+  todayIso,
   type DateBounds,
   type State,
 } from './shared';
@@ -51,7 +52,7 @@ function aiInsightBanner(S: State, pattern: RegExp): string {
 }
 
 function weeksForBounds(bounds: DateBounds, dates: string[], defaultWeeks: number, minW = 4, maxW = 26): string[] {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const endIso = bounds.to ?? today;
   const wk0 = isoWeekStart(endIso);
   let count = bounds.days ? Math.ceil(bounds.days / 7) : defaultWeeks;
@@ -79,7 +80,7 @@ export function viewBody(S: State): string {
   const bounds = resolveRange(S, 'body', 'Todo');
   const hasFilter = Boolean(bounds.from || bounds.to);
   const msInRange = hasFilter ? ms.filter((m) => inRange(m.date, bounds)) : ms;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const activeDate = S.measureDate ?? today;
   const currentEntry = ms.find((m) => m.date === activeDate);
   const comp = msInRange.filter((m) => m.weight != null || m.bf != null || m.muscle != null);

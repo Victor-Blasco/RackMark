@@ -3,6 +3,7 @@ import type { AiResult, AiTone, CardioRow, DailyWellbeing, Measure, Settings } f
 import type { Analysis } from './analysis';
 import { currentPhase } from './analysis';
 import { app } from './firebase';
+import { todayIso } from './seed';
 
 let aiInstance: AI | undefined;
 function getAiBackend(): AI {
@@ -41,7 +42,7 @@ export function buildPayload(
   cardio: CardioRow[] = [],
   wellbeing: DailyWellbeing[] = [],
 ) {
-  const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const daysAgo = (n: number) => todayIso(new Date(Date.now() - n * 864e5));
   const since56 = daysAgo(56);
   const since28 = daysAgo(28);
   const since7 = daysAgo(7);
@@ -239,7 +240,7 @@ export async function generateAnalysis(
       const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
       const parsed = JSON.parse(clean);
       return {
-        date: new Date().toISOString().slice(0, 10),
+        date: todayIso(),
         tone,
         summary: parsed.summary,
         overview: parsed.overview,

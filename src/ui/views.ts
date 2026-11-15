@@ -18,6 +18,7 @@ import {
   routineNames,
   routineShort,
   short,
+  todayIso,
   weightDeltaColor,
   type DateBounds,
   type State,
@@ -25,6 +26,7 @@ import {
 
 export { resetCharts, runChartJobs, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
+export { initLiveWorkout, viewWorkout } from './workoutView';
 export { viewData } from './dataView';
 export { renderModals, viewPlan } from './planView';
 export { viewSettings } from './settingsView';
@@ -371,8 +373,8 @@ export function viewHome(S: State): string {
   const sessAll = S.analysis.sessions;
   const sess = hasFilter ? sessAll.filter((x) => inRange(x.date, bounds)) : sessAll;
   const lastS = sess[sess.length - 1];
-  const since28 = new Date(Date.now() - 28 * 864e5).toISOString().slice(0, 10);
-  const since7 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+  const since28 = todayIso(new Date(Date.now() - 28 * 864e5));
+  const since7 = todayIso(new Date(Date.now() - 7 * 864e5));
   const activeDays = new Set((hasFilter ? sess : sess.filter((x) => x.date >= since28)).map((x) => x.date)).size;
   const weeks = rangeDays ? Math.max(1, rangeDays / 7) : 4;
   const phase = currentPhase(S.settings);
@@ -471,7 +473,10 @@ export function viewHome(S: State): string {
           </p>
         </div>
       </div>
-      <button class="btn-primary !px-4 !py-2 !text-xs sm:!text-sm" data-act="goLog">+ Entrenar hoy</button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button class="btn-primary !min-h-[44px] !px-4 !py-2 !text-xs sm:!text-sm" data-act="startWorkout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno</button>
+        <button class="btn !min-h-[44px] !px-3 !py-2 !text-xs sm:!text-sm" data-act="goLog">${icon('edit', 'h-3.5 w-3.5')} Registrar hecho</button>
+      </div>
     </div>
 
     <div class="pt-3 border-t border-white/10 space-y-4">
@@ -685,9 +690,10 @@ export function viewDay(S: State, day: DayName): string {
         <p class="text-xs sm:text-sm text-gray-400 tabular-nums">${lastS ? `Última: ${fmtDate(lastS.date)} · ${lastS.sets} series${lastS.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}${lastS.avgHr ? ` · Pulso ${lastS.avgHr}${lastS.maxHr ? `/${lastS.maxHr}` : ''} lpm` : ''}${lastS.kcal ? ` · ${lastS.kcal} kcal` : ''}` : `Sin sesiones en ${esc(rangeLabel)}`}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-        ${S.analysis.unmapped.length ? `<button class="btn !border-amberGold/40 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${S.analysis.unmapped.length} sin nombre</button>` : ''}
-        <button class="btn !py-1.5 !text-xs sm:!text-sm" data-act="tab" data-arg="plan">${icon('edit', 'h-3.5 w-3.5')} Editar rutina</button>
-        <button class="btn-primary flex-1 sm:flex-initial !py-2 !text-xs sm:!text-sm" data-act="goLog" data-arg="${dEsc}">+ Registrar ${dEsc}</button>
+        ${S.analysis.unmapped.length ? `<button class="btn !min-h-[44px] !border-amberGold/40 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${S.analysis.unmapped.length} sin nombre</button>` : ''}
+        <button class="btn !min-h-[44px] !py-1.5 !text-xs sm:!text-sm" data-act="tab" data-arg="plan">${icon('edit', 'h-3.5 w-3.5')} Editar rutina</button>
+        <button class="btn !min-h-[44px] !py-1.5 !text-xs sm:!text-sm" data-act="goLog" data-arg="${dEsc}">Registrar hecho</button>
+        <button class="btn-primary flex-1 sm:flex-initial !min-h-[44px] !py-2 !text-xs sm:!text-sm" data-act="startWorkout" data-arg="${dEsc}">${icon('play', 'h-3.5 w-3.5')} Iniciar ${dEsc}</button>
       </div>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">

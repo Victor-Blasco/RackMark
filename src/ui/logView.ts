@@ -1,8 +1,8 @@
 import { musclesOf, resolveName } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
-import type { DayName, LogDraft, LogExDraft, SetRec } from '../types';
+import type { DayName, LogDraft, LogExDraft, LogExMeta, SetRec } from '../types';
 import { icon } from './icons';
-import { empty, esc, fmtDate, isAiFreshForEx, routineColor, routineNames, short, type State } from './shared';
+import { empty, esc, fmtDate, isAiFreshForEx, routineColor, routineNames, short, todayIso, type State } from './shared';
 
 /**
  * Devuelve la lista ordenada y deduplicada de todos los nombres de ejercicios conocidos.
@@ -58,9 +58,10 @@ export function defaultSetsForEx(
   return Array.from({ length: fallbackSets }, () => ({ w: 0, r: fallbackReps, done }));
 }
 
-function extractTargetWeight(text: string): number | null {
+/** Extrae el peso objetivo en kg sugerido por una prescripción explícita (no captura deltas relativos). */
+export function extractTargetWeight(text: string): number | null {
   const actMatch = text.match(/(?:^|[.\s])(?:sube a|baja a|mant[eé]n|usa|objetivo:?)\s+(\d+(?:[.,]\d+)?)\s*kg/i);
-  const raw = actMatch?.[1] ?? text.match(/(\d+(?:[.,]\d+)?)\s*kg/i)?.[1];
+  const raw = actMatch?.[1];
   if (!raw) return null;
   const val = parseFloat(raw.replace(',', '.'));
   return Number.isFinite(val) && val >= 0 ? val : null;
@@ -94,12 +95,30 @@ export function initLogDraft(
         return rowDay === day && (r.sessionId === legacySid || !r.id.startsWith('manual-'));
       });
 
-  const savedByNorm = new Map<string, { name: string; sets: SetRec[]; notes: string[] }>();
+  const savedByNorm = new Map<string, { name: string; sets: SetRec[]; notes: string[]; meta?: LogExMeta }>();
   for (const r of onDate) {
     const name = resolveName(r.ref, S.settings);
     const k = norm(name);
-    const cur = savedByNorm.get(k) ?? { name, sets: [], notes: [] };
-    cur.sets.push(...r.sets.map((s) => ({ w: s.w, r: s.r, done: true })));
+    const cur = savedByNorm.get(k) ?? {
+      name,
+      sets: [],
+      notes: [],
+      meta: {
+        id: r.id,
+        ts: r.ts,
+        ...(r.durMin != null ? { durMin: r.durMin } : {}),
+        ...(r.avgHr != null ? { avgHr: r.avgHr } : {}),
+        ...(r.maxHr != null ? { maxHr: r.maxHr } : {}),
+        ...(r.minHr != null ? { minHr: r.minHr } : {}),
+        ...(r.kcal != null ? { kcal: r.kcal } : {}),
+      },
+    };
+    cur.sets.push(...r.sets.map((s) => ({
+      w: s.w,
+      r: s.r,
+      done: s.r > 0,
+      ...(s.restSec != null ? { restSec: s.restSec } : {}),
+    })));
     if (r.note?.trim()) cur.notes.push(r.note.trim());
     savedByNorm.set(k, cur);
   }
@@ -113,7 +132,7 @@ export function initLogDraft(
       used.add(k);
       const saved = savedByNorm.get(k);
       if (saved) {
-        exercises.push({ name: r.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · ') });
+        exercises.push({ name: r.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · '), ...(saved.meta ? { meta: saved.meta } : {}) });
       } else {
         exercises.push({
           name: r.name,
@@ -127,7 +146,7 @@ export function initLogDraft(
   for (const [k, saved] of savedByNorm) {
     if (used.has(k)) continue;
     used.add(k);
-    exercises.push({ name: saved.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · ') });
+    exercises.push({ name: saved.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · '), ...(saved.meta ? { meta: saved.meta } : {}) });
   }
 
   return {
@@ -136,34 +155,71 @@ export function initLogDraft(
     exercises,
     sessionId: sessionId ?? (onDate[0]?.sessionId || targetSid),
     dirty: false,
-    restSec: S.logDraft?.restSec ?? 90,
   };
 }
 
-function fmtMMSS(sec: number): string {
+/** Calcula contexto histórico, prescripción, notas y contadores de series para un ejercicio del borrador/sesión. */
+export function exerciseContext(S: State, day: DayName | 'Libre', ex: LogExDraft) {
+  const k = norm(ex.name);
+  const hist = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
+  const tgt = day !== 'Libre' ? (S.settings.routines[day] ?? []).find((r) => norm(r.name) === k) : hist?.target;
+  const lastRef = hist?.last ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin historial previo';
+  const freshAi = isAiFreshForEx(S, hist) ? S.settings.ai?.byExercise[ex.name] : undefined;
+  const prescription = freshAi?.prescription ?? hist?.prescription ?? '';
+  const targetW = prescription ? extractTargetWeight(prescription) : null;
+  const fixedNote = S.settings.notes[ex.name]?.trim() ?? '';
+  const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
+  const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
+  const showApplyBtn = targetW != null && ex.sets.some((s) => !s.done && s.w !== targetW);
+  return { hist, tgt, lastRef, prescription, targetW, fixedNote, doneInEx, allDoneInEx, showApplyBtn };
+}
+
+/** Devuelve ejercicios disponibles y hasta 6 sugerencias musculares afines al día elegido. */
+export function quickExSuggestions(S: State, day: DayName | 'Libre', currentNames: string[], limit = 6) {
+  const inUse = new Set(currentNames.map((n) => norm(n)));
+  const avail = allExerciseNames(S).filter((n) => !inUse.has(norm(n)));
+  const dayMuscles = new Set(
+    day === 'Libre'
+      ? []
+      : (S.settings.routines[day] ?? []).map((r) => musclesOf(r.name, S.settings)?.p).filter((m): m is string => Boolean(m)),
+  );
+  const quick = avail
+    .filter((n) => {
+      if (day === 'Libre') return true;
+      const m = musclesOf(n, S.settings);
+      if (!m) return false;
+      return dayMuscles.size ? dayMuscles.has(m.p) : MUSCLE_DAY[m.p] === day;
+    })
+    .sort((a, b) => (S.analysis.exercises.get(b)?.n ?? 0) - (S.analysis.exercises.get(a)?.n ?? 0))
+    .slice(0, limit);
+  return { avail, quick };
+}
+
+/** Formatea segundos enteros a `M:SS` para el cronómetro de descanso. */
+export function fmtMMSS(sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** Renderiza la barra de cronómetro de descanso no bloqueante para la vista de registro en vivo. */
-export function renderRestTimerBar(draft: LogDraft): string {
-  const restSec = draft.restSec ?? 90;
-  const until = draft.restUntil;
+/** Renderiza la barra ligera de cronómetro de descanso para el entrenamiento en vivo paso a paso. */
+export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: number }): string {
+  const restSec = timer.targetRestSec ?? 90;
+  const until = timer.restUntil;
   const remSec = until != null ? Math.max(0, Math.ceil((until - Date.now()) / 1000)) : 0;
   const presets = [60, 90, 120, 180];
 
   if (until != null && remSec > 0) {
     return `
-    <div id="rest-timer-bar" class="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:bottom-4 z-20 rounded-2xl border border-electricBlue/50 bg-[#0D1320] px-3.5 py-2.5 shadow-xl">
+    <div id="rest-timer-bar" data-rest-state="running" class="border-l-4 border-electricBlue bg-electricBlue/10 px-3 py-2 rounded-r-xl">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-3">
-          <span class="tabular-nums text-2xl font-extrabold text-white">${fmtMMSS(remSec)}</span>
-          <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso en curso</span>
+        <div class="flex items-center gap-2.5">
+          <span id="rest-timer-val" class="tabular-nums text-2xl font-extrabold text-white">${fmtMMSS(remSec)}</span>
+          <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
         </div>
         <div class="flex items-center gap-1.5">
           <button type="button" class="btn !min-h-[44px] !px-3 tabular-nums" data-act="restAdjust" data-arg="-15" aria-label="Restar 15 segundos">−15s</button>
           <button type="button" class="btn !min-h-[44px] !px-3 tabular-nums" data-act="restAdjust" data-arg="30" aria-label="Sumar 30 segundos">+30s</button>
-          <button type="button" class="btn !min-h-[44px] !border-emeraldGreen/50 !px-3 text-emerald-300" data-act="restStop">Saltar</button>
+          <button type="button" class="btn !min-h-[44px] !border-emeraldGreen/50 !px-3 text-emerald-300" data-act="restStop">Listo</button>
         </div>
       </div>
     </div>`;
@@ -171,11 +227,11 @@ export function renderRestTimerBar(draft: LogDraft): string {
 
   if (until != null && remSec === 0) {
     return `
-    <div id="rest-timer-bar" class="sticky bottom-[calc(4.25rem+env(safe-area-inset-bottom))] lg:bottom-4 z-20 rounded-2xl border border-emeraldGreen/60 bg-[#0D1320] px-3.5 py-2.5 shadow-xl">
+    <div id="rest-timer-bar" data-rest-state="done" class="border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           <span class="h-2.5 w-2.5 rounded-full bg-emeraldGreen" aria-hidden="true"></span>
-          <span class="text-sm font-bold text-emerald-300">Descanso completado · listo para la siguiente serie</span>
+          <span class="text-sm font-bold text-emerald-300">¡Descanso listo!</span>
         </div>
         <div class="flex items-center gap-1.5">
           ${presets.map((p) => `<button type="button" class="btn !min-h-[44px] !px-2.5 text-xs tabular-nums" data-act="restStart" data-arg="${p}">${p}s</button>`).join('')}
@@ -186,41 +242,57 @@ export function renderRestTimerBar(draft: LogDraft): string {
   }
 
   return `
-  <div id="rest-timer-bar" class="flex flex-wrap items-center justify-between gap-2 border-y border-white/10 py-2.5 text-xs">
-    <span class="text-gray-400">Descanso automático al marcar ✓: <b class="text-gray-200 tabular-nums">${restSec}s</b></span>
-    <div class="flex flex-wrap items-center gap-1.5">
-      ${presets.map((p) => `<button type="button" class="btn !min-h-[44px] !px-3 !py-1.5 text-xs tabular-nums ${p === restSec ? '!border-electricBlue text-blue-300' : ''}" data-act="restStart" data-arg="${p}">${p}s</button>`).join('')}
+  <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
+    <span class="text-gray-400">Descanso auto: <b class="text-white tabular-nums">${restSec}s</b></span>
+    <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
+      ${presets.map((p) => `<button type="button" class="min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}" data-act="liveSetRestPreset" data-arg="${p}">${p}s</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+export interface StepperOpts {
+  label: string;
+  labelCls?: string;
+  wrapCls?: string;
+  value: number;
+  step: string;
+  inputMode: 'decimal' | 'numeric';
+  dataAttr: string;
+  inputAria: string;
+  stepAct: string;
+  stepArgPrefix: string;
+  delta: number;
+  decAria: string;
+  incAria: string;
+  btnCls?: string;
+  inpCls?: string;
+}
+
+/** Renderiza un control numérico táctil `− | valor | +` con etiqueta explícita. */
+export function renderStepper(o: StepperOpts): string {
+  const btn = o.btnCls ?? 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
+  const inp = o.inpCls ?? 'inp !h-11 min-w-[44px] flex-1 !rounded-none !border-x-0 !px-1 !py-0 text-center font-bold tabular-nums';
+  return `<div class="${o.wrapCls ?? 'flex-1 min-w-[132px]'}">
+    <span class="${o.labelCls ?? 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400'}">${esc(o.label)}</span>
+    <div class="flex items-center">
+      <button type="button" class="${btn} rounded-l-xl" style="touch-action:manipulation" data-act="${o.stepAct}" data-arg="${o.stepArgPrefix}|-${o.delta}" aria-label="${esc(o.decAria)}">−</button>
+      <input class="${inp}" type="number" step="${o.step}" min="0" inputmode="${o.inputMode}" value="${o.value}" ${o.dataAttr} aria-label="${esc(o.inputAria)}">
+      <button type="button" class="${btn} rounded-r-xl" style="touch-action:manipulation" data-act="${o.stepAct}" data-arg="${o.stepArgPrefix}|${o.delta}" aria-label="${esc(o.incAria)}">+</button>
     </div>
   </div>`;
 }
 
 /**
- * Renderiza la vista de registro rápido de entrenamientos (`Registrar entreno`).
+ * Renderiza la vista de registro manual para añadir o editar un entrenamiento ya hecho (`Registrar entreno`).
  *
  * @param S - Estado global de la aplicación.
  * @returns HTML completo de la pestaña `log`.
  */
 export function viewLog(S: State): string {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const routines = routineNames(S.settings);
   const draft = S.logDraft ?? (S.logDraft = initLogDraft(S, routines[0] ?? 'Libre', today));
-  const all = allExerciseNames(S);
-  const inDraft = new Set(draft.exercises.map((e) => norm(e.name)));
-  const avail = all.filter((n) => !inDraft.has(norm(n)));
-  const dayMuscles = new Set(
-    draft.day === 'Libre'
-      ? []
-      : (S.settings.routines[draft.day] ?? []).map((r) => musclesOf(r.name, S.settings)?.p).filter((m): m is string => Boolean(m)),
-  );
-  const quick = avail
-    .filter((n) => {
-      if (draft.day === 'Libre') return true;
-      const m = musclesOf(n, S.settings);
-      if (!m) return false;
-      return dayMuscles.size ? dayMuscles.has(m.p) : MUSCLE_DAY[m.p] === draft.day;
-    })
-    .sort((a, b) => (S.analysis.exercises.get(b)?.n ?? 0) - (S.analysis.exercises.get(a)?.n ?? 0))
-    .slice(0, 6);
+  const { avail, quick } = quickExSuggestions(S, draft.day, draft.exercises.map((e) => e.name));
 
   const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
   const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
@@ -231,10 +303,12 @@ export function viewLog(S: State): string {
   <div class="space-y-3 pb-4 border-b border-white/10">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h2 class="text-lg font-extrabold text-white">Registrar entrenamiento</h2>
-        <p id="logCountSummary" class="text-xs sm:text-sm text-gray-300 tabular-nums">${doneExCount}/${draft.exercises.length} ejercicios · ${doneSetsCount}/${totalSetsCount} series marcadas ✓</p>
+        <h2 class="text-lg font-extrabold text-white">Registrar entreno ya hecho</h2>
+        <p class="text-xs text-gray-400">Añade o edita una sesión completada con sus cargas, reps y tiempo de descanso exacto.</p>
+        <p id="logCountSummary" class="mt-0.5 text-xs sm:text-sm text-gray-300 tabular-nums">${doneExCount}/${draft.exercises.length} ejercicios · ${doneSetsCount}/${totalSetsCount} series marcadas ✓</p>
       </div>
       <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn !min-h-[44px] !border-electricBlue/50 text-xs sm:text-sm text-blue-300" data-act="tab" data-arg="workout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno en vivo</button>
         <a href="#log-add-section" class="btn !min-h-[44px] !py-1.5 text-xs sm:text-sm">+ Añadir ejercicio</a>
         <button class="btn !min-h-[44px] !py-1.5 text-xs sm:text-sm" data-act="logReset">${icon('reset', 'h-3.5 w-3.5')} Reiniciar</button>
         <button class="btn-primary !min-h-[44px] !py-1.5" data-act="logSave">${icon('save', 'h-4 w-4')} Guardar (${doneSetsCount})</button>
@@ -257,24 +331,14 @@ export function viewLog(S: State): string {
 
   ${draft.exercises.length ? `<div data-sort-list="log" class="grid grid-cols-1 gap-3 xl:grid-cols-2 items-start">
     ${draft.exercises.map((ex, ei) => {
-      const k = norm(ex.name);
-      const hist = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
-      const tgt = draft.day !== 'Libre' ? (S.settings.routines[draft.day] ?? []).find((r) => norm(r.name) === k) : hist?.target;
-      const lastRef = hist?.last ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin historial previo';
-      const freshAi = isAiFreshForEx(S, hist) ? S.settings.ai?.byExercise[ex.name] : undefined;
-      const prescription = freshAi?.prescription ?? hist?.prescription ?? '';
-      const targetW = prescription ? extractTargetWeight(prescription) : null;
-      const fixedNote = S.settings.notes[ex.name]?.trim() ?? '';
-      const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
-      const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
-      const showApplyBtn = targetW != null && ex.sets.some((s) => !s.done && s.w !== targetW);
+      const { tgt, lastRef, prescription, targetW, fixedNote, doneInEx, allDoneInEx, showApplyBtn } = exerciseContext(S, draft.day, ex);
       const total = draft.exercises.length;
       return `
-      <div data-sort-item data-sort-idx="${ei}" data-ex-idx="${ei}" class="rounded-2xl border bg-cardDark px-2.5 py-3.5 sm:p-4 space-y-3 transition-colors ${allDoneInEx ? 'border-emeraldGreen/50' : doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10'}">
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex flex-1 min-w-0 items-start gap-2">
-            <button type="button" data-sort-handle class="mt-0.5 flex h-10 w-8 shrink-0 touch-none cursor-grab active:cursor-grabbing select-none items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar para reordenar ${esc(ex.name)}" title="Arrastrar para reordenar">${icon('grip', 'h-4 w-4')}</button>
-            <button type="button" data-act="logToggleEx" data-arg="${ei}" aria-pressed="${allDoneInEx}" class="flex flex-1 min-w-0 items-start gap-2.5 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
+      <div data-sort-item data-sort-idx="${ei}" data-ex-idx="${ei}" class="border-t pt-4 sm:rounded-2xl sm:border sm:bg-cardDark sm:p-4 space-y-3 transition-colors ${allDoneInEx ? 'border-emeraldGreen/50' : doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10'}">
+        <div class="flex flex-wrap sm:flex-nowrap items-start justify-between gap-2">
+          <div class="flex flex-1 min-w-[190px] items-start gap-2">
+            <button type="button" data-sort-handle class="flex h-11 w-11 shrink-0 touch-none cursor-grab active:cursor-grabbing select-none items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar para reordenar ${esc(ex.name)}" title="Arrastrar para reordenar">${icon('grip', 'h-4 w-4')}</button>
+            <button type="button" data-act="logToggleEx" data-arg="${ei}" aria-pressed="${allDoneInEx}" class="flex flex-1 min-w-0 min-h-[44px] items-start gap-2.5 text-left rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
               <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${allDoneInEx ? 'border-emeraldGreen bg-emeraldGreen/20 text-emeraldGreen' : doneInEx > 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-300' : 'border-gray-600 text-transparent'}">${icon('check', 'h-4 w-4')}</span>
               <div class="min-w-0">
                 <div class="font-bold text-white leading-snug">${esc(ex.name)} ${tgt ? `<span class="ml-1 tabular-nums text-[13px] font-normal text-gray-400">(${tgt.sets}×${tgt.reps})</span>` : ''} <span data-ex-counter="${ei}" class="ml-1 tabular-nums text-xs font-semibold ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${doneInEx}/${ex.sets.length}</span></div>
@@ -282,40 +346,65 @@ export function viewLog(S: State): string {
               </div>
             </button>
           </div>
-          <div class="flex shrink-0 items-center gap-0.5">
-            <button type="button" class="flex h-10 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logMoveEx" data-arg="${ei}|-1" ${ei === 0 ? 'disabled' : ''} aria-label="Subir ${esc(ex.name)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
-            <button type="button" class="flex h-10 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logMoveEx" data-arg="${ei}|1" ${ei === total - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(ex.name)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
-            <button type="button" class="flex h-10 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-coralRed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logRemoveEx" data-arg="${ei}" aria-label="Quitar ${esc(ex.name)} de la sesión">${icon('close', 'h-4 w-4')}</button>
+          <div class="ml-auto flex shrink-0 items-center gap-0.5">
+            <button type="button" class="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logMoveEx" data-arg="${ei}|-1" ${ei === 0 ? 'disabled' : ''} aria-label="Subir ${esc(ex.name)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
+            <button type="button" class="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logMoveEx" data-arg="${ei}|1" ${ei === total - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(ex.name)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
+            <button type="button" class="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 hover:text-coralRed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="logRemoveEx" data-arg="${ei}" aria-label="Quitar ${esc(ex.name)} de la sesión">${icon('close', 'h-4 w-4')}</button>
           </div>
         </div>
 
         ${prescription || fixedNote ? `
         <div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-          ${prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(prescription)}</span>${showApplyBtn ? `<button type="button" class="btn !min-h-[36px] !px-2.5 !py-1 text-xs text-emerald-300 !border-emeraldGreen/40" data-act="logApplyWeight" data-arg="${ei}|${targetW}">Aplicar ${targetW} kg</button>` : ''}</div>` : ''}
+          ${prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(prescription)}</span>${showApplyBtn ? `<button type="button" class="btn !min-h-[44px] !px-3 !py-1.5 text-xs text-emerald-300 !border-emeraldGreen/40" data-act="logApplyWeight" data-arg="${ei}|${targetW}">Aplicar ${targetW} kg</button>` : ''}</div>` : ''}
           ${fixedNote ? `<p class="text-gray-300"><span class="font-semibold text-white">Fija:</span> ${esc(fixedNote)}</p>` : ''}
         </div>` : ''}
 
-        <div class="space-y-2">
-          <div class="flex items-center gap-1.5 px-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+        <div class="divide-y divide-white/10">
+          <div class="hidden sm:flex items-center gap-1.5 px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
             <span class="w-5 shrink-0"></span>
             <span class="flex-1 text-center">Peso (kg · ±2,5)</span>
             <span class="flex-1 text-center">Reps (±1)</span>
+            <span class="w-20 shrink-0 text-center">Desc (s)</span>
             <span class="w-11 shrink-0 text-center">OK</span>
           </div>
           ${ex.sets.map((s, si) => `
-          <div data-set-row="${ei}|${si}" class="flex items-center gap-1.5 rounded-xl p-1 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}">
+          <div data-set-row="${ei}|${si}" class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}">
             <span class="w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-400'}">S${si + 1}</span>
-            <div class="flex flex-1 min-w-0 items-center">
-              <button type="button" class="flex h-11 w-9 sm:w-11 shrink-0 items-center justify-center rounded-l-xl border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95" style="touch-action:manipulation" data-act="logStepW" data-arg="${ei}|${si}|-2.5" aria-label="Restar 2,5 kg a serie ${si + 1} de ${esc(ex.name)}">−</button>
-              <input class="inp !h-11 min-w-[44px] flex-1 !rounded-none !border-x-0 !px-1 !py-0 text-center font-bold tabular-nums" type="number" step="0.5" min="0" inputmode="decimal" value="${s.w}" data-log-w="${ei}|${si}" aria-label="Peso en kg serie ${si + 1} de ${esc(ex.name)}">
-              <button type="button" class="flex h-11 w-9 sm:w-11 shrink-0 items-center justify-center rounded-r-xl border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95" style="touch-action:manipulation" data-act="logStepW" data-arg="${ei}|${si}|2.5" aria-label="Sumar 2,5 kg a serie ${si + 1} de ${esc(ex.name)}">+</button>
+            ${renderStepper({
+              label: 'Peso (kg)',
+              labelCls: 'mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400',
+              value: s.w,
+              step: '0.5',
+              inputMode: 'decimal',
+              dataAttr: `data-log-w="${ei}|${si}"`,
+              inputAria: `Peso en kg serie ${si + 1} de ${ex.name}`,
+              stepAct: 'logStepW',
+              stepArgPrefix: `${ei}|${si}`,
+              delta: 2.5,
+              decAria: `Restar 2,5 kg a serie ${si + 1} de ${ex.name}`,
+              incAria: `Sumar 2,5 kg a serie ${si + 1} de ${ex.name}`,
+              btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
+            })}
+            ${renderStepper({
+              label: 'Reps',
+              labelCls: 'mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400',
+              value: s.r,
+              step: '1',
+              inputMode: 'numeric',
+              dataAttr: `data-log-r="${ei}|${si}"`,
+              inputAria: `Repeticiones serie ${si + 1} de ${ex.name}`,
+              stepAct: 'logStepR',
+              stepArgPrefix: `${ei}|${si}`,
+              delta: 1,
+              decAria: `Restar 1 repetición a serie ${si + 1} de ${ex.name}`,
+              incAria: `Sumar 1 repetición a serie ${si + 1} de ${ex.name}`,
+              btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
+            })}
+            <div class="shrink-0">
+              <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">Desc (s)</span>
+              <input class="inp !h-11 w-20 !px-2 !py-0 text-center text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
             </div>
-            <div class="flex flex-1 min-w-0 items-center">
-              <button type="button" class="flex h-11 w-8 sm:w-11 shrink-0 items-center justify-center rounded-l-xl border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95" style="touch-action:manipulation" data-act="logStepR" data-arg="${ei}|${si}|-1" aria-label="Restar 1 repetición a serie ${si + 1} de ${esc(ex.name)}">−</button>
-              <input class="inp !h-11 min-w-[38px] flex-1 !rounded-none !border-x-0 !px-1 !py-0 text-center font-bold tabular-nums" type="number" step="1" min="0" inputmode="numeric" value="${s.r}" data-log-r="${ei}|${si}" aria-label="Repeticiones serie ${si + 1} de ${esc(ex.name)}">
-              <button type="button" class="flex h-11 w-8 sm:w-11 shrink-0 items-center justify-center rounded-r-xl border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95" style="touch-action:manipulation" data-act="logStepR" data-arg="${ei}|${si}|1" aria-label="Sumar 1 repetición a serie ${si + 1} de ${esc(ex.name)}">+</button>
-            </div>
-            <button type="button" data-act="logToggleSet" data-arg="${ei}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${esc(ex.name)}" class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}" style="touch-action:manipulation">${icon('check', 'h-5 w-5')}</button>
+            <button type="button" data-act="logToggleSet" data-arg="${ei}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${esc(ex.name)}" class="ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}" style="touch-action:manipulation">${icon('check', 'h-5 w-5')}</button>
           </div>`).join('')}
         </div>
 
@@ -328,8 +417,6 @@ export function viewLog(S: State): string {
       </div>`;
     }).join('')}
   </div>` : empty('No hay ejercicios en el borrador. Elige una rutina arriba o añade ejercicios abajo.')}
-
-  ${renderRestTimerBar(draft)}
 
   <div class="flex flex-wrap items-center justify-between gap-2">
     <button class="btn !min-h-[44px]" data-act="logReset">${icon('reset', 'h-4 w-4')} Reiniciar borrador</button>
@@ -357,7 +444,7 @@ export function viewLog(S: State): string {
     ${quick.length ? `
     <div class="flex flex-wrap items-center gap-1.5 pt-1">
       <span class="text-xs text-gray-400">Sugeridos:</span>
-      ${quick.map((n) => `<button data-act="logAddQuick" data-arg="${esc(n)}" class="btn !min-h-[40px] !rounded-full !px-3 !py-1 text-xs font-normal text-gray-200">+ ${esc(n)}</button>`).join('')}
+      ${quick.map((n) => `<button data-act="logAddQuick" data-arg="${esc(n)}" class="btn !min-h-[44px] !rounded-full !px-3.5 !py-1.5 text-xs font-normal text-gray-200">+ ${esc(n)}</button>`).join('')}
     </div>` : ''}
   </section>
 
@@ -376,8 +463,8 @@ export function viewLog(S: State): string {
             <div class="text-xs text-gray-400 truncate" title="${esc(s.exercises.join(', '))}">${esc(s.exercises.join(', '))}</div>
           </div>
           <div class="flex shrink-0 items-center gap-1.5">
-            <button class="btn !min-h-[40px] !px-2.5 !py-1.5 text-xs" data-act="logEditSession" data-arg="${esc(s.id)}|${esc(s.date)}|${esc(s.day ?? 'Libre')}">${icon('edit', 'h-3.5 w-3.5')} <span class="hidden sm:inline">Cargar / Editar</span><span class="sm:hidden">Editar</span></button>
-            <button class="btn !min-h-[40px] !border-coralRed/50 !px-2.5 !py-1.5 text-xs text-coralRed" data-act="logDelSession" data-arg="${esc(s.id)}|${esc(s.date)}" aria-label="Borrar sesión del ${fmtDate(s.date)}" title="Borrar sesión">${icon('trash', 'h-3.5 w-3.5')}</button>
+            <button class="btn !min-h-[44px] !px-3 !py-2 text-xs" data-act="logEditSession" data-arg="${esc(s.id)}|${esc(s.date)}|${esc(s.day ?? 'Libre')}">${icon('edit', 'h-3.5 w-3.5')} <span class="hidden sm:inline">Cargar / Editar</span><span class="sm:hidden">Editar</span></button>
+            <button class="btn !min-h-[44px] min-w-[44px] !border-coralRed/50 !px-2.5 !py-2 text-xs text-coralRed" data-act="logDelSession" data-arg="${esc(s.id)}|${esc(s.date)}" aria-label="Borrar sesión del ${fmtDate(s.date)}" title="Borrar sesión">${icon('trash', 'h-3.5 w-3.5')}</button>
           </div>
         </div>`).join('')}
     </div>

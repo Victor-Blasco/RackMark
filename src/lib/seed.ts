@@ -3,6 +3,14 @@ import type { MuscleMap, Settings } from '../types';
 export const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
+/** Devuelve la fecha local en formato `YYYY-MM-DD` sin sesgo UTC. */
+export function todayIso(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 /** Tipos predefinidos de fuerza de Samsung Health (EXERCISE_TYPE 10004–10027). */
 export const BUILTIN_REF_NAMES: Record<string, string> = {
   'type:10004': 'Flexiones',

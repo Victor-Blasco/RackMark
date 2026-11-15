@@ -4,9 +4,9 @@ import { buildPrompt } from '../src/lib/ai';
 import { analyze, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { importSamsungInWorker } from '../src/lib/samsung';
-import { norm } from '../src/lib/seed';
+import { DEFAULT_SETTINGS, norm } from '../src/lib/seed';
 import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
-import { allExerciseNames, initLogDraft, manualSessionId } from '../src/ui/logView';
+import { allExerciseNames, extractTargetWeight, fmtMMSS, initLogDraft, manualSessionId, renderRestTimerBar, viewLog } from '../src/ui/logView';
 import { plannedWeeklyVolume, renderModals, viewPlan } from '../src/ui/planView';
 import { moveItem } from '../src/ui/reorder';
 import {
@@ -17,11 +17,13 @@ import {
   resetCharts,
   resolveRange,
   routineShort,
+  todayIso,
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
 import { viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
+import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -669,5 +671,213 @@ describe('onboarding wizard & athlete profile', () => {
     expect(settingsHtml).toContain('data-change="pfDays"');
 
     resetCharts();
+  });
+
+  it('corrige P0: todayIso local, extractTargetWeight sin falsos deltas, telemetría en initLogDraft y timer estable', () => {
+    const earlyLocal = new Date(2026, 10, 15, 0, 15, 0);
+    expect(todayIso(earlyLocal)).toBe('2026-11-15');
+    expect(todayIso(new Date(2026, 0, 5, 23, 59, 0))).toBe('2026-01-05');
+
+    expect(extractTargetWeight('Buen progreso (+2.5 kg vs media reciente)')).toBeNull();
+    expect(extractTargetWeight('Sube a 82.5 kg en la próxima sesión')).toBe(82.5);
+    expect(extractTargetWeight('Usa 45,5 kg y controla la bajada')).toBe(45.5);
+    expect(extractTargetWeight('Objetivo: 100 kg')).toBe(100);
+
+    const settings = sanitizeSettings({});
+    const samsungRow = {
+      id: 'sam-123',
+      sessionId: 'sess-sam-1',
+      ts: 1763200000000,
+      date: '2026-11-15',
+      ref: 'type:10011',
+      day: 'Empuje' as const,
+      sets: [{ w: 80, r: 8 }, { w: 80, r: 7 }],
+      durMin: 18,
+      avgHr: 128,
+      maxHr: 152,
+      minHr: 96,
+      kcal: 145,
+      note: 'buena técnica',
+    };
+    const state: State = {
+      tab: 'log',
+      strength: [samsungRow],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([samsungRow], settings),
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    };
+
+    const draft = initLogDraft(state, 'Empuje', '2026-11-15', 'sess-sam-1');
+    const bench = draft.exercises.find((e) => e.meta?.id === 'sam-123');
+    expect(bench).toBeDefined();
+    expect(bench?.meta).toEqual({
+      id: 'sam-123',
+      ts: 1763200000000,
+      durMin: 18,
+      avgHr: 128,
+      maxHr: 152,
+      minHr: 96,
+      kcal: 145,
+    });
+
+    expect(fmtMMSS(95)).toBe('1:35');
+    expect(fmtMMSS(0)).toBe('0:00');
+    const live = initLiveWorkout(state, 'Push');
+    const runningHtml = renderRestTimerBar({ ...live, restUntil: Date.now() + 65_000 });
+    expect(runningHtml).toContain('data-rest-state="running"');
+    expect(runningHtml).toContain('id="rest-timer-val"');
+    expect(renderRestTimerBar({ ...live, restUntil: Date.now() - 1000 })).toContain('data-rest-state="done"');
+    expect(renderRestTimerBar({ ...live, restUntil: undefined })).toContain('data-rest-state="idle"');
+
+    const logHtml = viewLog({ ...state, logDraft: draft });
+    expect(logHtml).not.toContain('id="rest-timer-bar"');
+    expect(logHtml).toContain('data-log-rest="');
+    expect(logHtml).toContain('data-act="tab" data-arg="workout"');
+    expect(logHtml).toContain('Peso (kg)');
+    expect(logHtml).toContain('Reps');
+    expect(logHtml).toContain('flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5');
+    expect(logHtml).toContain('min-w-[132px]');
+    expect(logHtml).toContain('!min-h-[44px]');
+    expect(logHtml).toContain('min-w-[44px]');
+  });
+});
+
+describe('live workout & manual rest separation', () => {
+  const makeState = (strengthRows: State['strength'] = []): State => ({
+    tab: 'workout',
+    strength: strengthRows,
+    cardio: [],
+    measures: [],
+    wellbeing: [],
+    settings: structuredClone(DEFAULT_SETTINGS),
+    analysis: analyze(strengthRows, DEFAULT_SETTINGS),
+    sel: {},
+    perimeter: 'waist',
+    muscleSel: '',
+  });
+
+  it('muestra selector de rutina y sugiere Toca hoy cuando no hay liveWorkout activo', () => {
+    const pushSession = {
+      id: 's1',
+      sessionId: 'manual-2026-11-10-Push',
+      ts: Date.parse('2026-11-10T12:00:00Z'),
+      date: '2026-11-10',
+      ref: 'name:Press Banca',
+      day: 'Push',
+      sets: [{ w: 80, r: 8, restSec: 105 }],
+    };
+    const state = makeState([pushSession]);
+    const html = viewWorkout(state);
+    expect(html).toContain('Iniciar entrenamiento');
+    expect(html).toContain('Toca hoy');
+    expect(html).toContain('data-act="liveStart" data-arg="Pull"');
+    expect(html).toContain('data-act="liveStart" data-arg="Libre"');
+    expect(html).toContain('data-act="tab" data-arg="log"');
+
+    const homeHtml = viewHome(state);
+    expect(homeHtml).toContain('data-act="startWorkout"');
+    expect(homeHtml).toContain('data-act="goLog"');
+  });
+
+  it('renderiza solo el ejercicio activo en liveWorkout, paneles swap/add, aviso de avance y conserva restSec', () => {
+    const state = makeState([
+      {
+        id: 's1',
+        sessionId: 'manual-2026-11-10-Push',
+        ts: Date.parse('2026-11-10T12:00:00Z'),
+        date: '2026-11-10',
+        ref: 'name:Press horizontal en máquina',
+        day: 'Push',
+        sets: [
+          { w: 80, r: 8, restSec: 110 },
+          { w: 80, r: 8, restSec: 95 },
+        ],
+      },
+    ]);
+
+    const live = initLiveWorkout(state, 'Push');
+    expect(live.exercises.length).toBeGreaterThan(1);
+    const step1Html = viewWorkout({ ...state, liveWorkout: live });
+    expect(step1Html).toContain('id="rest-timer-bar"');
+    expect(step1Html).toContain('data-live-set="0|0"');
+    expect(step1Html).toContain('data-live-rest="0|0"');
+    expect(step1Html).toContain('Peso (kg)');
+    expect(step1Html).toContain('Reps');
+    expect(step1Html).toContain('data-act="liveToggleMenu"');
+    expect(step1Html).not.toContain('role="tablist"');
+    expect(step1Html).not.toContain('bg-cardDark');
+    expect(step1Html).toContain('id="live-ex-menu-wrap" data-open="false"');
+    expect(step1Html).toContain('grid-rows-[0fr]');
+    expect(step1Html).toContain('data-act="liveAddSet"');
+    expect(step1Html).toContain('data-act="liveOpenPicker" data-arg="swap"');
+    expect(step1Html).toContain('data-act="liveOpenPicker" data-arg="add"');
+    expect(step1Html).not.toContain('data-live-set="1|0"');
+
+    const menuHtml = viewWorkout({
+      ...state,
+      liveWorkout: { ...live, exMenuOpen: true },
+    });
+    expect(menuHtml).toContain('id="live-ex-menu-wrap" data-open="true"');
+    expect(menuHtml).toContain('grid-rows-[1fr]');
+    expect(menuHtml).toContain('id="live-ex-menu"');
+    expect(menuHtml).toContain('rounded-2xl');
+    expect(menuHtml).toContain('data-act="liveGoEx" data-arg="1"');
+    expect(menuHtml).toContain('Obj 2×10');
+    expect(menuHtml).toContain('Últ. 80 kg × 8');
+
+    const step2Html = viewWorkout({
+      ...state,
+      liveWorkout: { ...live, curIdx: 1, lastCompletedExIdx: 0 },
+    });
+    expect(step2Html).toContain('data-live-set="1|0"');
+    expect(step2Html).not.toContain('data-live-set="0|0"');
+    expect(step2Html).toContain('data-act="liveAddExtraSetPrev"');
+
+    const swapHtml = viewWorkout({
+      ...state,
+      liveWorkout: { ...live, pickerMode: 'swap' },
+    });
+    expect(swapHtml).toContain('Cambiar &quot;');
+    expect(swapHtml).toContain('id="livePickerSelect"');
+    expect(swapHtml).toContain('id="livePickerCustom"');
+
+    const libreLive = initLiveWorkout(state, 'Libre');
+    const libreHtml = viewWorkout({ ...state, liveWorkout: libreLive });
+    expect(libreHtml).toContain('Añadir ejercicio a este entreno');
+
+    // Round-trip de restSec en initLogDraft y parseBackup
+    const logDraft = initLogDraft(state, 'Push', '2026-11-10', 'manual-2026-11-10-Push');
+    expect(logDraft.exercises[0].sets[0].restSec).toBe(110);
+    expect(logDraft.exercises[0].sets[1].restSec).toBe(95);
+
+    const parsed = parseBackup(
+      JSON.stringify({
+        version: 1,
+        exportedAt: '2026-11-10T12:00:00Z',
+        strength: [
+          {
+            id: 'r1',
+            sessionId: 's1',
+            ts: 1700000000000,
+            date: '2026-11-10',
+            ref: 'name:Press Banca',
+            sets: [
+              { w: 80, r: 8, restSec: 95 },
+              { w: 80, r: 8, restSec: -5 },
+            ],
+          },
+        ],
+        cardio: [],
+        measures: [],
+        settings: DEFAULT_SETTINGS,
+      }),
+    );
+    expect(parsed.strength[0].sets[0].restSec).toBe(95);
+    expect(parsed.strength[0].sets[1].restSec).toBeUndefined();
   });
 });

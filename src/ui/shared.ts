@@ -1,9 +1,11 @@
 import { Chart, registerables, type ChartConfiguration } from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
-import { ROUTINE_COLORS } from '../lib/seed';
-import type { AiSection, CardioRow, DailyWellbeing, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import { ROUTINE_COLORS, todayIso } from '../lib/seed';
+import type { AiSection, CardioRow, DailyWellbeing, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
 import type { WizardDraft } from './wizardView';
+
+export { todayIso };
 
 Chart.register(...registerables);
 Chart.defaults.color = '#9CA3AF';
@@ -22,7 +24,7 @@ export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
 
 export function rangeCutoff(r: RangeKey): string | null {
   const days = RANGES.find((x) => x.key === r)?.days;
-  return days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
+  return days ? todayIso(new Date(Date.now() - days * 864e5)) : null;
 }
 
 export function rangePicker(scope: string, active: RangeKey, custom?: { from?: string; to?: string }): string {
@@ -58,6 +60,7 @@ export interface State {
   perimeter: string;
   muscleSel: string;
   logDraft?: LogDraft;
+  liveWorkout?: LiveWorkout;
   logFilter?: string;
   planTab?: 'routines' | 'exercises';
   aiTab?: number;

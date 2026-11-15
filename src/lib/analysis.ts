@@ -1,5 +1,5 @@
 import type { DayName, Settings, StrengthRow, MuscleMap, Measure, RoutineEx } from '../types';
-import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, norm } from './seed';
+import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, norm, todayIso } from './seed';
 
 export const epley = (w: number, r: number) => (r <= 1 ? w : w * (1 + r / 30));
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
@@ -239,7 +239,7 @@ export function latestWith<K extends keyof Measure>(ms: Measure[], key: K): Meas
   return [...ms].reverse().find((m) => m[key] != null);
 }
 
-export function currentPhase(s: Settings, today = new Date().toISOString().slice(0, 10)) {
+export function currentPhase(s: Settings, today = todayIso()) {
   const p = [...s.phases].sort((a, b) => a.start.localeCompare(b.start)).filter((x) => x.start <= today);
   return p[p.length - 1];
 }
