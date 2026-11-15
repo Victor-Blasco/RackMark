@@ -1,7 +1,6 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
-import { generateAnalysis } from './lib/ai';
 import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, parseBackup, putMany, saveSettings, wipeAll } from './lib/db';
 import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from './lib/firebase';
 import { clearSyncMeta, hasUnsyncedChanges, loadSyncMeta, markBucketDeletes, markBucketUpserts, markSettingsDirty, markWipePending, syncWithCloud } from './lib/sync';
@@ -904,6 +903,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (S.busy) return;
     S.busy = 'ai'; lastAiAt = Date.now(); render();
     try {
+      const { generateAnalysis } = await import('./lib/ai');
       S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing);
       S.aiTab = 0;
       await saveSettings(S.settings);

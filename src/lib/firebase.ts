@@ -1,5 +1,4 @@
 import { initializeApp } from 'firebase/app';
-import { getAI, GoogleAIBackend, type AI } from 'firebase/ai';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import {
   getAuth,
@@ -42,12 +41,6 @@ if (typeof window !== 'undefined' && recaptchaSiteKey) {
   });
 }
 export { appCheckInstance as appCheck };
-
-let aiInstance: AI | undefined;
-/** Devuelve la instancia compartida de Firebase AI Logic (Gemini Developer API). */
-export function getAiBackend(): AI {
-  return (aiInstance ??= getAI(app, { backend: new GoogleAIBackend() }));
-}
 
 export type CloudUser = Pick<User, 'uid' | 'email' | 'displayName' | 'photoURL'>;
 

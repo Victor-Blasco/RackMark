@@ -1,8 +1,13 @@
-import { AIError, getGenerativeModel } from 'firebase/ai';
+import { AIError, getAI, getGenerativeModel, GoogleAIBackend, type AI } from 'firebase/ai';
 import type { AiResult, AiTone, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
 import type { Analysis } from './analysis';
 import { currentPhase } from './analysis';
-import { getAiBackend } from './firebase';
+import { app } from './firebase';
+
+let aiInstance: AI | undefined;
+function getAiBackend(): AI {
+  return (aiInstance ??= getAI(app, { backend: new GoogleAIBackend() }));
+}
 
 const MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'];
 
