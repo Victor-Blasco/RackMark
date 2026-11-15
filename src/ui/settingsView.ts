@@ -60,14 +60,36 @@ export function viewSettings(S: State): string {
     ${cloudCard}
 
     <div class="space-y-3">
-      <div>
-        <h3 class="font-bold text-white">Perfil del atleta</h3>
-        <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético (Katch-McArdle) y contextualizar el informe de IA.</p>
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h3 class="font-bold text-white">Perfil del atleta</h3>
+          <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético (Katch-McArdle) y contextualizar el informe de IA.</p>
+        </div>
+        <button type="button" class="btn !py-1 !text-xs !border-electricBlue/40 text-blue-300" data-act="openWizard">Asistente inicial</button>
       </div>
       <div class="grid grid-cols-3 gap-3">
-        <label class="block"><span class="lbl">Sexo</span><input class="inp" value="${esc(s.profile.sex)}" data-change="pfSex"></label>
-        <label class="block"><span class="lbl">Edad</span><input class="inp tabular-nums font-medium" type="number" value="${esc(s.profile.age)}" data-change="pfAge"></label>
-        <label class="block"><span class="lbl">Altura (cm)</span><input class="inp tabular-nums font-medium" type="number" value="${esc(s.profile.height)}" data-change="pfHeight"></label>
+        <label class="block"><span class="lbl">Sexo</span><select class="inp" data-change="pfSex"><option value="hombre" ${s.profile.sex === 'hombre' ? 'selected' : ''}>Hombre</option><option value="mujer" ${s.profile.sex === 'mujer' ? 'selected' : ''}>Mujer</option>${s.profile.sex && s.profile.sex !== 'hombre' && s.profile.sex !== 'mujer' ? `<option value="${esc(s.profile.sex)}" selected>${esc(s.profile.sex)}</option>` : ''}</select></label>
+        <label class="block"><span class="lbl">Edad</span><input class="inp tabular-nums font-medium" type="number" min="12" max="110" value="${esc(s.profile.age)}" data-change="pfAge"></label>
+        <label class="block"><span class="lbl">Altura (cm)</span><input class="inp tabular-nums font-medium" type="number" min="100" max="250" value="${esc(s.profile.height)}" data-change="pfHeight"></label>
+      </div>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <label class="block"><span class="lbl">Objetivo</span><select class="inp" data-change="pfGoal">
+          <option value="" ${!s.profile.goal ? 'selected' : ''}>Sin definir</option>
+          <option value="bulk" ${s.profile.goal === 'bulk' ? 'selected' : ''}>Ganar músculo</option>
+          <option value="cut" ${s.profile.goal === 'cut' ? 'selected' : ''}>Definición</option>
+          <option value="recomp" ${s.profile.goal === 'recomp' ? 'selected' : ''}>Recomposición</option>
+          <option value="strength" ${s.profile.goal === 'strength' ? 'selected' : ''}>Fuerza máxima</option>
+        </select></label>
+        <label class="block"><span class="lbl">Experiencia</span><select class="inp" data-change="pfExp">
+          <option value="" ${!s.profile.experience ? 'selected' : ''}>Sin definir</option>
+          <option value="beginner" ${s.profile.experience === 'beginner' ? 'selected' : ''}>Principiante (&lt;1 año)</option>
+          <option value="intermediate" ${s.profile.experience === 'intermediate' ? 'selected' : ''}>Intermedio (1–3 años)</option>
+          <option value="advanced" ${s.profile.experience === 'advanced' ? 'selected' : ''}>Avanzado (+3 años)</option>
+        </select></label>
+        <label class="block"><span class="lbl">Días / semana</span><select class="inp tabular-nums" data-change="pfDays">
+          <option value="" ${!s.profile.daysPerWeek ? 'selected' : ''}>Sin definir</option>
+          ${[3, 4, 5, 6].map((d) => `<option value="${d}" ${s.profile.daysPerWeek === d ? 'selected' : ''}>${d} días</option>`).join('')}
+        </select></label>
       </div>
     </div>
   </div>

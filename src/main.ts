@@ -6,12 +6,13 @@ import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from 
 import { clearSyncMeta, hasUnsyncedChanges, loadSyncMeta, markBucketDeletes, markBucketUpserts, markSettingsDirty, markWipePending, syncWithCloud } from './lib/sync';
 import { importSamsungInWorker } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
-import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type LogDraft, type Measure, type RoutineEx, type StrengthRow } from './types';
-import { ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
+import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type ExperienceLevel, type LogDraft, type Measure, type RoutineEx, type StrengthRow, type TrainingGoal } from './types';
+import { DEFAULT_SETTINGS, ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
 import { icon, type IconName } from './ui/icons';
 import { allExerciseNames, manualSessionId, renderRestTimerBar } from './ui/logView';
 import { defaultSetsForEx, initLogDraft, renderAiReport, renderModals, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, type State } from './ui/views';
 import { esc, routineColor, routineNames, type RangeKey } from './ui/shared';
+import { createWizardDraft, daysActivityFactor, goalCalorieDelta, goalPhaseName, recommendTemplate } from './ui/wizardView';
 import { initSortableLists, moveItem } from './ui/reorder';
 
 registerSW({ immediate: true });
@@ -367,6 +368,7 @@ function render() {
   </div>
   ${renderMobileNav(draftCount)}
   ${renderModals(S)}`;
+  if (S.wizard?.anim) S.wizard.anim = undefined;
   runChartJobs(); runCalc();
   window.scrollTo(0, y);
   if (activeSel) {
@@ -402,6 +404,11 @@ async function runSync(showToast = false) {
     const changed = Boolean(res.accountSwitched || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled');
     if (changed) {
       await reload();
+    }
+    if (!S.settings.onboardingCompleted && S.strength.length === 0 && S.measures.length === 0 && !S.wizard) {
+      S.wizard = createWizardDraft(S);
+      render();
+    } else if (changed) {
       render();
     }
     if (showToast) {
@@ -580,9 +587,93 @@ function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> 
   return new Promise((resolve) => { confirmResolver = resolve; });
 }
 
+function syncWizardStep1Dom() {
+  const w = S.wizard;
+  if (!w || w.step !== 1) return;
+  const val = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value;
+  const age = val('wizAge'); if (age !== undefined) w.age = age;
+  const height = val('wizHeight'); if (height !== undefined) w.height = height;
+  const weight = val('wizWeight'); if (weight !== undefined) w.weight = weight;
+  const bf = val('wizBf'); if (bf !== undefined) w.bf = bf;
+  const waist = val('wizWaist'); if (waist !== undefined) w.waist = waist;
+}
+
+function applyTemplateToState(tplKey: string): string | undefined {
+  const tpl = ROUTINE_TEMPLATES[tplKey];
+  if (!tpl) return undefined;
+  S.settings.routines = structuredClone(tpl.routines);
+  S.settings.routineMeta = structuredClone(tpl.meta);
+  const remaining = routineNames(S.settings);
+  if (!isRoutineTab(lastRoutine)) lastRoutine = remaining[0] ?? 'Push';
+  if (S.sel.home && !S.settings.routines[S.sel.home]) delete S.sel.home;
+  if (S.logDraft && S.logDraft.day !== 'Libre' && !S.settings.routines[S.logDraft.day]) {
+    S.logDraft.day = remaining[0] ?? 'Libre';
+    saveDraft(S.logDraft);
+  }
+  return tpl.label;
+}
+
 const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
+  openWizard: () => {
+    S.wizard = createWizardDraft(S);
+    render();
+    document.getElementById('wizAge')?.focus();
+  },
+  wizardSkip: async () => {
+    S.wizard = undefined;
+    if (!S.settings.onboardingCompleted) {
+      S.settings.onboardingCompleted = true;
+      await persist();
+      return;
+    }
+    render();
+  },
+  wizardBack: () => {
+    if (!S.wizard || S.wizard.step <= 1) return;
+    S.wizard.step = (S.wizard.step - 1) as 1 | 2;
+    S.wizard.anim = 'prev';
+    render();
+  },
+  wizardPickSex: (el) => {
+    if (!S.wizard) return;
+    syncWizardStep1Dom();
+    S.wizard.sex = arg(el) === 'mujer' ? 'mujer' : 'hombre';
+    render();
+  },
+  wizardPickGoal: (el) => {
+    if (!S.wizard) return;
+    S.wizard.goal = arg(el) as TrainingGoal;
+    render();
+  },
+  wizardPickExp: (el) => {
+    if (!S.wizard) return;
+    const exp = arg(el) as ExperienceLevel;
+    S.wizard.experience = exp;
+    S.wizard.templateKey = recommendTemplate(S.wizard.daysPerWeek, exp);
+    S.wizard.aiTone = exp === 'beginner' ? 'simple' : 'technical';
+    render();
+  },
+  wizardPickDays: (el) => {
+    if (!S.wizard) return;
+    const d = Number(arg(el));
+    if (d === 3 || d === 4 || d === 5 || d === 6) {
+      S.wizard.daysPerWeek = d;
+      S.wizard.templateKey = recommendTemplate(d, S.wizard.experience);
+      render();
+    }
+  },
+  wizardPickTpl: (el) => {
+    if (!S.wizard) return;
+    S.wizard.templateKey = arg(el);
+    render();
+  },
+  wizardPickTone: (el) => {
+    if (!S.wizard) return;
+    S.wizard.aiTone = arg(el) === 'simple' ? 'simple' : 'technical';
+    render();
+  },
   tab: (el) => { setTab(arg(el)); render(); window.scrollTo(0, 0); },
   openExDetail: (el) => {
     const [day, ex] = splitPair(arg(el));
@@ -1026,22 +1117,15 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     toast(`Rutina "${name}" eliminada.`);
   },
   rtApplyTpl: async (el) => {
-    const tpl = ROUTINE_TEMPLATES[arg(el)];
+    const key = arg(el);
+    const tpl = ROUTINE_TEMPLATES[key];
     if (!tpl) return;
     if (!(await askConfirm({
       title: `Aplicar plantilla "${tpl.label}"`,
       message: 'Reemplazará la distribución actual de rutinas y objetivos.',
       confirmLabel: 'Aplicar plantilla',
     }))) return;
-    S.settings.routines = structuredClone(tpl.routines);
-    S.settings.routineMeta = structuredClone(tpl.meta);
-    const remaining = routineNames(S.settings);
-    if (!isRoutineTab(lastRoutine)) lastRoutine = remaining[0] ?? 'Push';
-    if (S.sel.home && !S.settings.routines[S.sel.home]) delete S.sel.home;
-    if (S.logDraft && S.logDraft.day !== 'Libre' && !S.settings.routines[S.logDraft.day]) {
-      S.logDraft.day = remaining[0] ?? 'Libre';
-      saveDraft(S.logDraft);
-    }
+    applyTemplateToState(key);
     await persist();
     toast(`Plantilla "${tpl.label}" aplicada.`);
   },
@@ -1188,6 +1272,22 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   pfSex: async (el) => { S.settings.profile.sex = el.value; await persist(); },
   pfAge: async (el) => { S.settings.profile.age = +el.value; await persist(); },
   pfHeight: async (el) => { S.settings.profile.height = +el.value; await persist(); },
+  pfGoal: async (el) => {
+    if (el.value === 'bulk' || el.value === 'cut' || el.value === 'recomp' || el.value === 'strength') S.settings.profile.goal = el.value;
+    else delete S.settings.profile.goal;
+    await persist();
+  },
+  pfExp: async (el) => {
+    if (el.value === 'beginner' || el.value === 'intermediate' || el.value === 'advanced') S.settings.profile.experience = el.value;
+    else delete S.settings.profile.experience;
+    await persist();
+  },
+  pfDays: async (el) => {
+    const n = Number(el.value);
+    if (Number.isFinite(n) && n >= 1 && n <= 7) S.settings.profile.daysPerWeek = Math.round(n);
+    else delete S.settings.profile.daysPerWeek;
+    await persist();
+  },
 };
 
 root.addEventListener('click', (e) => {
@@ -1410,11 +1510,88 @@ root.addEventListener('submit', async (e) => {
     S.noteModal = undefined;
     await persist();
     toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
+  } else if (f.id === 'f-wizard' && S.wizard) {
+    const w = S.wizard;
+    if (w.step === 1) {
+      syncWizardStep1Dom();
+      const age = num(w.age);
+      const height = num(w.height);
+      if (age == null || age < 12 || age > 110) { toast('Introduce una edad válida (12–110 años).'); return; }
+      if (height == null || height < 100 || height > 250) { toast('Introduce una altura válida (100–250 cm).'); return; }
+      const weight = w.weight.trim() ? num(w.weight) : undefined;
+      if (weight !== undefined && (weight < 25 || weight > 300)) { toast('Introduce un peso válido (25–300 kg).'); return; }
+      w.step = 2;
+      w.anim = 'next';
+      render();
+      return;
+    }
+    if (w.step === 2) {
+      w.step = 3;
+      w.anim = 'next';
+      render();
+      return;
+    }
+    const wasOnboarded = Boolean(S.settings.onboardingCompleted);
+    const today = new Date().toISOString().slice(0, 10);
+    const age = Math.round(num(w.age) || S.settings.profile.age || 25);
+    const height = Math.round(num(w.height) || S.settings.profile.height || 170);
+    S.settings.profile = {
+      sex: w.sex,
+      age,
+      height,
+      goal: w.goal,
+      experience: w.experience,
+      daysPerWeek: w.daysPerWeek,
+    };
+    S.settings.aiTone = w.aiTone;
+    S.settings.onboardingCompleted = true;
+
+    if (w.templateKey !== 'keep') {
+      applyTemplateToState(w.templateKey);
+    }
+
+    const phaseName = goalPhaseName(w.goal);
+    const defaultStart = DEFAULT_SETTINGS.phases[0]?.start;
+    if (!wasOnboarded && !S.strength.length && S.settings.phases.length === 1 && S.settings.phases[0].start === defaultStart) {
+      S.settings.phases = [{ name: phaseName, start: today }];
+    } else {
+      const existingPhase = S.settings.phases.find((p) => p.start === today);
+      if (existingPhase) existingPhase.name = phaseName;
+      else S.settings.phases.push({ name: phaseName, start: today });
+    }
+
+    S.calcDraft = {
+      ...S.calcDraft,
+      act: daysActivityFactor(w.daysPerWeek),
+      goal: goalCalorieDelta(w.goal),
+    };
+
+    const weightVal = num(w.weight);
+    const bfVal = num(w.bf);
+    const waistVal = num(w.waist);
+    if (weightVal != null || bfVal != null || waistVal != null) {
+      const existingMeasure = S.measures.find((x) => x.date === today);
+      const m: Measure = { ...(existingMeasure ?? { date: today }) };
+      if (weightVal != null && weightVal >= 20 && weightVal <= 350) m.weight = weightVal;
+      if (bfVal != null && bfVal >= 2 && bfVal <= 70) m.bf = bfVal;
+      if (waistVal != null && waistVal >= 35 && waistVal <= 220) m.waist = waistVal;
+      await putMany('measures', [m]);
+      markBucketUpserts('measures', [m]);
+    }
+
+    S.wizard = undefined;
+    await saveSettings(S.settings);
+    markSettingsDirty();
+    await reload();
+    render();
+    queueSync();
+    toast('Perfil y plan inicial configurados.');
   }
 });
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (S.confirmModal) { resolveConfirm(false); return; }
+  if (S.wizard) { void actions.wizardSkip(root); return; }
   if (S.exModal || S.routineModal || S.noteModal) {
     S.exModal = undefined;
     S.routineModal = undefined;

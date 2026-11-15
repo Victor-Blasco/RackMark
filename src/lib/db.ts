@@ -122,6 +122,23 @@ export function sanitizeSettings(raw: unknown): Settings {
     if (age !== undefined && age > 0 && age < 130) base.profile.age = age;
     const height = fin(raw.profile.height);
     if (height !== undefined && height > 40 && height < 270) base.profile.height = height;
+    if (
+      raw.profile.goal === 'bulk' ||
+      raw.profile.goal === 'cut' ||
+      raw.profile.goal === 'recomp' ||
+      raw.profile.goal === 'strength'
+    ) {
+      base.profile.goal = raw.profile.goal;
+    }
+    if (
+      raw.profile.experience === 'beginner' ||
+      raw.profile.experience === 'intermediate' ||
+      raw.profile.experience === 'advanced'
+    ) {
+      base.profile.experience = raw.profile.experience;
+    }
+    const dpw = fin(raw.profile.daysPerWeek);
+    if (dpw !== undefined && dpw >= 1 && dpw <= 7) base.profile.daysPerWeek = Math.round(dpw);
   }
 
   if (isObj(raw.routines)) {
@@ -175,6 +192,8 @@ export function sanitizeSettings(raw: unknown): Settings {
         : [],
     );
   }
+
+  if (typeof raw.onboardingCompleted === 'boolean') base.onboardingCompleted = raw.onboardingCompleted;
 
   if (raw.aiTone === 'simple' || raw.aiTone === 'technical') base.aiTone = raw.aiTone;
 

@@ -36,6 +36,9 @@ body {
     -moz-appearance: textfield;
     appearance: textfield;
   }
+  select.inp {
+    @apply truncate;
+  }
   select.inp,
   select.inp option {
     background-color: #111827;
@@ -73,5 +76,42 @@ body {
   }
   .chart-box {
     @apply relative h-[240px] w-full sm:h-[280px] lg:h-[340px];
+  }
+}
+
+@keyframes wizardModalIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes wizardBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes wizardStepNext {
+  from { opacity: 0; transform: translateX(22px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes wizardStepPrev {
+  from { opacity: 0; transform: translateX(-22px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes wizardBarFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.wizard-modal-in { animation: wizardModalIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wizard-backdrop-in { animation: wizardBackdropIn 180ms ease-out both; }
+.wizard-step-next { animation: wizardStepNext 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wizard-step-prev { animation: wizardStepPrev 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wizard-bar-fill { transform-origin: left; animation: wizardBarFill 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-modal-in,
+  .wizard-backdrop-in,
+  .wizard-step-next,
+  .wizard-step-prev,
+  .wizard-bar-fill {
+    animation: none;
   }
 }

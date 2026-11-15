@@ -17,13 +17,14 @@ service cloud.firestore {
     //       Optional typed/bounded subfields inside data:
     //       - routines: map (1..20 entries, dynamic user-defined routine names)
     //       - routineMeta: map (optional, size <= 20)
-    //       - profile: map (keys in ['sex', 'age', 'height']; sex string <= 64, age 0..150, height 0..300)
+    //       - profile: map (keys in ['sex', 'age', 'height', 'goal', 'experience', 'daysPerWeek']; sex string <= 64, age 0..150, height 0..300, goal optional in ['bulk', 'cut', 'recomp', 'strength'], experience optional in ['beginner', 'intermediate', 'advanced'], daysPerWeek optional number 1..7)
     //       - customNames: map (size <= 500)
     //       - refNames: map (size <= 500)
     //       - aliases: map (size <= 500)
     //       - muscles: map (size <= 500)
     //       - notes: map (size <= 500)
     //       - phases: list (size <= 100)
+    //       - onboardingCompleted: bool (optional)
     //       - geminiKey: string (size <= 256, optional legacy field)
     //       - aiTone: string (optional, in ['simple', 'technical'])
     //       - ai: map (keys in ['date', 'tone', 'summary', 'overview', 'byExercise']; tone optional in ['simple', 'technical'])
@@ -96,10 +97,13 @@ service cloud.firestore {
 
     function isValidProfile(p) {
       return p is map
-        && p.keys().hasOnly(['sex', 'age', 'height'])
+        && p.keys().hasOnly(['sex', 'age', 'height', 'goal', 'experience', 'daysPerWeek'])
         && isOptionalStringMax(p, 'sex', 64)
         && (!('age' in p) || (p.age is number && p.age >= 0 && p.age <= 150))
-        && (!('height' in p) || (p.height is number && p.height >= 0 && p.height <= 300));
+        && (!('height' in p) || (p.height is number && p.height >= 0 && p.height <= 300))
+        && (!('goal' in p) || (p.goal is string && p.goal in ['bulk', 'cut', 'recomp', 'strength']))
+        && (!('experience' in p) || (p.experience is string && p.experience in ['beginner', 'intermediate', 'advanced']))
+        && (!('daysPerWeek' in p) || (p.daysPerWeek is number && p.daysPerWeek >= 1 && p.daysPerWeek <= 7));
     }
 
     function isValidRoutines(r) {
@@ -122,7 +126,8 @@ service cloud.firestore {
       return d is map
         && d.keys().hasOnly([
           'routines', 'routineMeta', 'profile', 'customNames', 'refNames',
-          'aliases', 'muscles', 'notes', 'phases', 'geminiKey', 'aiTone', 'ai'
+          'aliases', 'muscles', 'notes', 'phases', 'onboardingCompleted',
+          'geminiKey', 'aiTone', 'ai'
         ])
         && (!('routines' in d) || isValidRoutines(d.routines))
         && isOptionalMapMax(d, 'routineMeta', 20)
@@ -133,6 +138,7 @@ service cloud.firestore {
         && isOptionalMapMax(d, 'muscles', 500)
         && isOptionalMapMax(d, 'notes', 500)
         && isOptionalListMax(d, 'phases', 100)
+        && (!('onboardingCompleted' in d) || d.onboardingCompleted is bool)
         && isOptionalStringMax(d, 'geminiKey', 256)
         && (!('aiTone' in d) || (d.aiTone is string && d.aiTone in ['simple', 'technical']))
         && (!('ai' in d) || isValidAiResult(d.ai));

@@ -300,7 +300,10 @@ function renderOnboardingHome(S: State): string {
         <h2 class="text-xl sm:text-2xl font-extrabold text-white">Tu cuaderno de entrenamiento está listo</h2>
         <p class="text-sm text-gray-300 max-w-2xl">Registra tu primer entreno directamente desde aquí o elige una distribución base. Si ya tienes historial en Samsung Health o CSV, puedes importarlo cuando quieras.</p>
       </div>
-      <button class="btn-primary shrink-0 !min-h-[44px] !px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
+      <div class="flex flex-wrap gap-2 shrink-0">
+        <button type="button" class="btn !border-electricBlue/50 !min-h-[44px] text-blue-300" data-act="openWizard">Configurar perfil y objetivo (1 min)</button>
+        <button class="btn-primary shrink-0 !min-h-[44px] !px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
+      </div>
     </div>
 
     <div class="space-y-2 border-t border-white/10 pt-4">

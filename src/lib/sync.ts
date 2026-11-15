@@ -273,7 +273,11 @@ export interface SyncReport {
 
 function hasCustomSettings(s: Settings): boolean {
   return Boolean(
-    s.geminiKey ||
+    s.onboardingCompleted ||
+      s.profile.goal ||
+      s.profile.experience ||
+      s.profile.daysPerWeek ||
+      s.geminiKey ||
       s.ai ||
       s.phases.length > 0 ||
       Object.keys(s.customNames).length > 0 ||

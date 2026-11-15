@@ -21,6 +21,15 @@ import {
   type State,
 } from '../src/ui/shared';
 import { viewHome } from '../src/ui/views';
+import { viewSettings } from '../src/ui/settingsView';
+import {
+  createWizardDraft,
+  daysActivityFactor,
+  goalCalorieDelta,
+  goalPhaseName,
+  recommendTemplate,
+  renderWizardModal,
+} from '../src/ui/wizardView';
 
 describe('ai tone & chart axis offset', () => {
   it('adapta el prompt de IA según el tono simple o técnico manteniendo la estructura JSON', () => {
@@ -537,6 +546,127 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
 
     const emptyImport = await importSamsungInWorker([]);
     expect(emptyImport.strength).toEqual([]);
+
+    resetCharts();
+  });
+});
+
+describe('onboarding wizard & athlete profile', () => {
+  it('conserva campos válidos de objetivo, experiencia, frecuencia y onboardingCompleted y sanea inválidos', () => {
+    const valid = sanitizeSettings({
+      onboardingCompleted: true,
+      profile: {
+        sex: 'mujer',
+        age: 29,
+        height: 165,
+        goal: 'cut',
+        experience: 'beginner',
+        daysPerWeek: 3,
+      },
+    });
+    expect(valid.onboardingCompleted).toBe(true);
+    expect(valid.profile.goal).toBe('cut');
+    expect(valid.profile.experience).toBe('beginner');
+    expect(valid.profile.daysPerWeek).toBe(3);
+
+    const invalid = sanitizeSettings({
+      onboardingCompleted: 'yes',
+      profile: {
+        sex: 'hombre',
+        age: 30,
+        height: 175,
+        goal: 'olympia',
+        experience: 'pro-max',
+        daysPerWeek: 12,
+      },
+    });
+    expect(invalid.onboardingCompleted).toBeUndefined();
+    expect(invalid.profile.goal).toBeUndefined();
+    expect(invalid.profile.experience).toBeUndefined();
+    expect(invalid.profile.daysPerWeek).toBeUndefined();
+  });
+
+  it('calcula plantilla recomendada, fase inicial, ajuste calórico y factor de actividad', () => {
+    expect(recommendTemplate(3, 'beginner')).toBe('fullBody');
+    expect(recommendTemplate(3, 'intermediate')).toBe('ppl');
+    expect(recommendTemplate(4, 'beginner')).toBe('upperLower');
+    expect(recommendTemplate(5, 'advanced')).toBe('ppl');
+
+    expect(goalPhaseName('bulk')).toBe('Volumen limpio');
+    expect(goalPhaseName('cut')).toBe('Definición');
+    expect(goalPhaseName('recomp')).toBe('Mantenimiento');
+    expect(goalPhaseName('strength')).toBe('Fuerza');
+
+    expect(goalCalorieDelta('bulk')).toBe('225');
+    expect(goalCalorieDelta('cut')).toBe('-350');
+    expect(goalCalorieDelta('recomp')).toBe('0');
+    expect(goalCalorieDelta('strength')).toBe('225');
+
+    expect(daysActivityFactor(3)).toBe('1.55');
+    expect(daysActivityFactor(5)).toBe('1.65');
+    expect(daysActivityFactor(6)).toBe('1.75');
+  });
+
+  it('renderiza los 3 pasos del wizard y los accesos manuales en Inicio y Ajustes', () => {
+    const settings = sanitizeSettings({
+      aiTone: 'simple',
+      profile: { sex: 'mujer', age: 26, height: 164, goal: 'recomp', experience: 'beginner', daysPerWeek: 3 },
+    });
+    const baseState: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [{ date: '2026-11-15', weight: 61.5, bf: 22 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    };
+
+    const draft = createWizardDraft(baseState);
+    expect(draft.step).toBe(1);
+    expect(draft.sex).toBe('mujer');
+    expect(draft.weight).toBe('61.5');
+    expect(draft.templateKey).toBe('fullBody');
+    expect(draft.aiTone).toBe('simple');
+
+    const step1Html = renderModals({ ...baseState, wizard: draft });
+    expect(step1Html).toContain('id="wizard-modal"');
+    expect(step1Html).toContain('id="f-wizard"');
+    expect(step1Html).toContain('id="wizAge"');
+    expect(step1Html).toContain('Omitir');
+    expect(step1Html).toContain('wizard-modal-in');
+    expect(step1Html).not.toContain('backdrop-blur');
+
+    const step2Html = renderWizardModal({ ...baseState, wizard: { ...draft, step: 2, anim: 'next' } });
+    expect(step2Html).toContain('Objetivo principal');
+    expect(step2Html).toContain('data-act="wizardPickGoal"');
+    expect(step2Html).toContain('data-act="wizardBack"');
+    expect(step2Html).toContain('wizard-step-next');
+    expect(step2Html).toContain('wizard-bar-fill');
+
+    const stepBackHtml = renderWizardModal({ ...baseState, wizard: { ...draft, step: 1, anim: 'prev' } });
+    expect(stepBackHtml).toContain('wizard-step-prev');
+
+    const stepStaticHtml = renderWizardModal({ ...baseState, wizard: { ...draft, step: 2, anim: undefined } });
+    expect(stepStaticHtml).not.toContain('wizard-step-next');
+    expect(stepStaticHtml).not.toContain('wizard-step-prev');
+
+    const step3Html = renderWizardModal({ ...baseState, wizard: { ...draft, step: 3, anim: undefined } });
+    expect(step3Html).toContain('Recomendada');
+    expect(step3Html).toContain('data-act="wizardPickTpl"');
+    expect(step3Html).toContain('data-act="wizardPickTone"');
+
+    const homeHtml = viewHome({ ...baseState, measures: [] });
+    expect(homeHtml).toContain('data-act="openWizard"');
+
+    const settingsHtml = viewSettings(baseState);
+    expect(settingsHtml).toContain('data-act="openWizard"');
+    expect(settingsHtml).toContain('data-change="pfGoal"');
+    expect(settingsHtml).toContain('data-change="pfExp"');
+    expect(settingsHtml).toContain('data-change="pfDays"');
 
     resetCharts();
   });

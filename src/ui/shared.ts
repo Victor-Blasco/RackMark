@@ -3,6 +3,7 @@ import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS } from '../lib/seed';
 import type { AiSection, CardioRow, DailyWellbeing, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import type { WizardDraft } from './wizardView';
 
 Chart.register(...registerables);
 Chart.defaults.color = '#9CA3AF';
@@ -72,6 +73,7 @@ export interface State {
   routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
   confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
   noteModal?: { exName: string; value: string };
+  wizard?: WizardDraft;
   planSearch?: string;
   planTargetRoutine?: string;
   authReady?: boolean;

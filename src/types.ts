@@ -112,6 +112,18 @@ export interface AiResult {
 
 export interface RoutineMeta { color?: string; sub?: string }
 
+export type TrainingGoal = 'bulk' | 'cut' | 'recomp' | 'strength';
+export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
+
+export interface AthleteProfile {
+  sex: string;
+  age: number;
+  height: number;
+  goal?: TrainingGoal;
+  experience?: ExperienceLevel;
+  daysPerWeek?: number;
+}
+
 export interface Settings {
   routines: Record<DayName, RoutineEx[]>;
   routineMeta?: Record<DayName, RoutineMeta>;
@@ -121,7 +133,8 @@ export interface Settings {
   muscles: Record<string, MuscleMap>;    // nombre normalizado -> músculos
   notes: Record<string, string>;         // nombre -> nota biomecánica editable
   phases: { name: string; start: string }[];
-  profile: { sex: string; age: number; height: number };
+  profile: AthleteProfile;
+  onboardingCompleted?: boolean;
   geminiKey?: string;
   aiTone?: AiTone;
   ai?: AiResult;

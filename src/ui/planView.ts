@@ -4,6 +4,7 @@ import type { Settings } from '../types';
 import { icon } from './icons';
 import { allExerciseNames } from './logView';
 import { esc, fmtDate, routineColor, routineNames, type State } from './shared';
+import { renderWizardModal } from './wizardView';
 
 /** Calcula las series efectivas semanales planificadas por músculo según `settings.routines`. */
 export function plannedWeeklyVolume(s: Settings): Map<string, number> {
@@ -46,6 +47,7 @@ export function renderModals(S: State): string {
       </div>
     </div>`;
   }
+  if (S.wizard) return renderWizardModal(S);
   if (S.exModal) {
     const routines = routineNames(S.settings);
     const target = S.exModal.routine ?? '';
@@ -288,7 +290,7 @@ export function viewPlan(S: State): string {
           ${Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => `<button type="button" data-act="rtApplyTpl" data-arg="${k}" title="${esc(tpl.desc)}" class="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors">${esc(tpl.label)}</button>`).join('')}
         </div>
 
-        <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4">
           ${routines.map((d, idx) => {
             const col = routineColor(d, s, idx);
             const sub = s.routineMeta?.[d]?.sub;
@@ -308,15 +310,19 @@ export function viewPlan(S: State): string {
                 </div>
               </div>
               <div data-sort-list="rt:${esc(d)}" class="space-y-1.5">
-                ${list.map((r, i) => `<div data-sort-item data-sort-idx="${i}" class="flex items-center gap-1 rounded-xl bg-white/[0.02] px-1 py-0.5 transition-shadow">
-                  <button type="button" data-sort-handle class="shrink-0 touch-none cursor-grab active:cursor-grabbing select-none rounded p-1 text-gray-400 hover:bg-white/5 hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Arrastrar para reordenar">${icon('grip', 'h-3.5 w-3.5')}</button>
-                  <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
-                  <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-400" aria-hidden="true">×</span>
-                  <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
-                  <div class="flex shrink-0 items-center">
-                    <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
-                    <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
-                    <button class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button>
+                ${list.map((r, i) => `<div data-sort-item data-sort-idx="${i}" class="flex flex-col sm:flex-row sm:items-center gap-1.5 rounded-xl bg-white/[0.02] p-1.5 sm:px-1.5 sm:py-1 transition-shadow">
+                  <div class="flex min-w-0 flex-1 items-center gap-1.5">
+                    <button type="button" data-sort-handle class="shrink-0 touch-none cursor-grab active:cursor-grabbing select-none rounded p-1 text-gray-400 hover:bg-white/5 hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Arrastrar para reordenar">${icon('grip', 'h-3.5 w-3.5')}</button>
+                    <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
+                  </div>
+                  <div class="flex shrink-0 items-center justify-end gap-1 pl-6 sm:pl-0">
+                    <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-400" aria-hidden="true">×</span>
+                    <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
+                    <div class="flex shrink-0 items-center">
+                      <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
+                      <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
+                      <button type="button" class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button>
+                    </div>
                   </div>
                 </div>`).join('')}
               </div>
