@@ -1,0 +1,228 @@
+# Guía de Estilo, UX y Arquitectura — GymApp
+
+Documento rector del diseño visual, ergonomía por dispositivo, fronteras de arquitectura e invariantes técnicos de **GymApp** (PWA *offline-first* en español para seguimiento de fuerza, composición corporal, bienestar y planificación).
+
+> Toda modificación de interfaz, estado o persistencia debe respetar las reglas resumidas en [GEMINI.md](../GEMINI.md) y detalladas en esta guía.
+
+---
+
+## 1. Visión y Principios del Producto
+
+GymApp combina dos necesidades operativas opuestas dentro de una misma PWA:
+
+1. **Captura sin fricción durante el entrenamiento.** En el gimnasio no hay margen para jerarquías profundas, pantallas recargadas ni temporizadores intrusivos cuando solo se quiere anotar un peso o marcar una serie.
+2. **Análisis profundo fuera del gimnasio.** En casa o en escritorio el usuario evalúa tendencias de fuerza, volumen semanal por grupo muscular, adherencia, métricas corporales, bienestar importado de Samsung Health y recomendaciones de Coach IA.
+
+### Principio rector: Contexto Gimnasio vs. Contexto Laboratorio
+
+| Dimensión | Contexto Gimnasio (Móvil / En vivo) | Contexto Laboratorio (Escritorio / Histórico) |
+| :--- | :--- | :--- |
+| **Vistas principales** | `Entrenar` -> `En vivo` (`src/ui/workoutView.ts`), `Registrar hecho` (`src/ui/logView.ts`), barra inferior móvil | `Resumen`, `Rutinas` (`Push`/`Pull`/`Leg`...), `Planificación`, `Composición`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes` |
+| **Carga cognitiva** | **Mínima**: un único ejercicio activo en pantalla durante el entreno en vivo | **Alta controlada**: maestro-detalle, tablas comparativas, múltiples gráficas con rango temporal |
+| **Superficie visual** | Lienzo plano `#090D16` con divisores `1px`; cero cards anidadas | Lienzo plano `#090D16` con paneles elevados solo en detalle lateral sticky, modales e informe IA |
+| **Prioridad operativa** | Ergonomía con una mano (`>= 44px`), sin auto-zoom iOS, cero pérdidas de foco/datos | Precisión analítica, edición rápida de rutinas, drag & drop FLIP y exportación/sincronización |
+
+---
+
+## 2. Estrategia por Dispositivo y Reglas de UX
+
+### 2.1 Navegación Responsive (`src/main.ts`)
+
+- **Escritorio (`lg:` y superior):** Barra lateral fija (`lg:w-64`, `renderSidebar`) con secciones agrupadas y acceso directo a rutinas, análisis y herramientas.
+- **Móvil (`< lg`):** Cabecera superior sticky (`renderMobileHeader`) + barra inferior fija (`renderMobileNav`) orientada al pulgar, priorizando `Resumen`, `Rutinas`, `Análisis` y `Entrenar`.
+- El enfoque de teclado y accesibilidad parte del enlace de salto `#main-content` en `index.html`.
+
+### 2.2 Flujos de Entrenamiento: Separación Estricta (`Entrenar`)
+
+El usuario distingue explícitamente entre entrenar **ahora mismo** y registrar un entreno **ya terminado**:
+
+1. **Modo `En vivo` (`src/ui/workoutView.ts`):**
+   - Muestra **un solo ejercicio a la vez**, evitando listados largos o sliders horizontales que dispersen la atención.
+   - Etiquetas explícitas sobre los campos numéricos (`Peso (kg)` y `Reps`) para evitar dudas con el cansancio del entrenamiento.
+   - Temporizador de descanso automático configurable (`60s`, `90s`, `120s`, `180s`) disparado al completar serie, con avance natural hacia las series y el siguiente ejercicio (`liveGoEx`).
+   - Flexibilidad real de gimnasio: permitir **añadir/quitar series**, **cambiar el ejercicio por otro** o **añadir un ejercicio adicional** sobre la marcha sin salir de la sesión.
+   - Selector de ejercicios mediante **menú tipo hamburguesa animado** (`#live-ex-menu-wrap` / `#live-ex-menu`) con vista rápida de objetivo (`Obj SxR`), historial resumido y acceso a añadir ejercicio.
+2. **Modo `Registrar hecho` (`src/ui/logView.ts`):**
+   - Pensado para anotar sesiones ya finalizadas sin lanzar temporizadores en segundo plano ni interrumpir la captura manual.
+   - El descanso es un dato opcional editable por el usuario si desea dejar constancia de él.
+
+### 2.3 Reglas Obligatorias de Ergonomía Táctil (Móvil)
+
+- **Tamaño mínimo táctil:** Todo botón, chip, enlace o control interactivo de uso frecuente debe alcanzar **`>= 44px × 44px`** (`min-h-[44px]` / `h-11`).
+- **Prevención de doble tap / zoom iOS:** Mantener `touch-action: manipulation` en controles táctiles y usar **`text-base sm:text-sm`** (`16px` en móvil, `14px` en escritorio) en todos los `<input>` numéricos y de texto.
+- **Botones primarios claros:** Acciones de confirmación (`Terminar`, `Listo`, `Guardar`) con jerarquía inequívoca y separación física suficiente frente a acciones destructivas (`Descartar`, `Eliminar`).
+
+### 2.4 Reglas de Escritorio, Tablas y Accesibilidad (A11y)
+
+- Tablas de datos con **`table-fixed`** y alineación numérica consistente para evitar bailes horizontales al filtrar o cambiar de rango.
+- Patrón **maestro-detalle sticky** en `viewDay` (`src/ui/views.ts`) y `viewPlan` (`src/ui/planView.ts`).
+- Reordenación mediante **Pointer Events + FLIP** (`src/ui/reorder.ts`), acompañada siempre de controles alternativos accesibles (`↑` / `↓` o equivalentes) utilizables sin gestos de arrastre.
+- **Jerarquía de encabezados (`<h1>`) y ARIA:** Garantizar un `<h1>` visible también en escritorio (actualmente el único `<h1>` reside en la cabecera móvil `lg:hidden` de `src/main.ts`), añadir `role="option"` en los ítems de `role="listbox"` de `viewDay`, navegación con flechas en `role="tablist"` y *focus trap* + retorno de foco al cerrar los modales (`#confirm-modal`, `#ex-modal`, `#rt-modal`, `#note-modal`, `#wizard-modal`).
+- **Diálogos consistentes:** Usar `#confirm-modal` (`askConfirm`) en lugar de `window.confirm()` nativo (actualmente residual en `liveStart` y `liveDiscard` de `src/main.ts`).
+
+---
+
+## 3. Sistema de Diseño Visual y Antipatrones
+
+### 3.1 Paleta Oficial (`tailwind.config.js`)
+
+| Token Tailwind | Hex | Uso canónico |
+| :--- | :--- | :--- |
+| `bgDark` | `#090D16` | Lienzo principal de la aplicación y fondo base (`index.html`) |
+| `cardDark` | `#111827` | Superficie elevada reservada para bloques autónomos, modales o panel maestro-detalle |
+| `borderDark` | `#1F2937` | Bordes estructurales de controles, inputs y separadores sutiles |
+| `electricBlue` | `#3B82F6` | Acción primaria, foco activo, serie en curso, acento de marca |
+| `emeraldGreen` | `#10B981` | Éxito, serie/objetivo completado, tendencia o adherencia positiva |
+| `amberGold` | `#F59E0B` | Precaución, advertencia moderada, indicador intermedio o temporizador de aviso |
+| `coralRed` | `#F43F5E` | Error, acción destructiva, déficit crítico o fatiga alta (`text-rose-300` para textos/badges legibles) |
+
+- **Paleta de rutinas (`ROUTINE_COLORS` en `src/lib/seed.ts`):** `['#F43F5E', '#3B82F6', '#10B981', '#F59E0B', '#A855F7', '#06B6D4', '#EC4899', '#84CC16']`.
+- **Paleta multi-serie en gráficas (`PAL` en `src/ui/analyticsViews.ts`):** `['#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#A78BFA', '#22D3EE']`.
+
+> **Normalización de tokens y fondos ad-hoc:** `borderDark` (`#1F2937`) no se usa en `src/` (las vistas emplean `border-white/10`, `border-white/15`, `border-gray-800` y `border-gray-700`). Además conviven varios tonos oscuros literales fuera de `tailwind.config.js` (`#0B101B` en barras/sidebar de `src/main.ts`, `#0D1320` en detalle embebido de `src/ui/views.ts`, `#0E1525` en el menú/panel de `src/ui/workoutView.ts`, `#0F1624` en modales de `src/ui/planView.ts` y `src/ui/wizardView.ts`, y `#121A2B` durante drag activo en `src/ui/reorder.ts`). **Regla:** no introducir nuevos códigos hex literales; cualquier refactor debe mapear estas capas y los bordes a tokens semánticos en `tailwind.config.js`.
+
+### 3.2 Semántica de Color y Conflicto Actual de `coralRed`
+
+Actualmente `coralRed` (`#F43F5E`) cumple dos funciones que compiten visualmente:
+- **Semántica de alerta/peligro:** acciones destructivas (`dataView.ts`, `planView.ts`, `settingsView.ts`, `logView.ts`, `workoutView.ts`), volumen semanal bajo `< 8` series (`analyticsViews.ts`, `planView.ts`) y veredicto `'warning'` del Coach IA (`views.ts`).
+- **Semántica neutra de métrica o categoría:** `DAY_COLOR.Push` (`shared.ts`), `% Grasa` (`views.ts`, `analyticsViews.ts`), `Pulso` (`views.ts`) y objetivo `Proteína 2,2 g/kg` (`analyticsViews.ts`).
+
+**Directriz:** en código nuevo y refactors visuales, reservar `coralRed` (y derivados `rose-*`) para riesgo, error, alerta o borrado destructivo, y desplazar las métricas fisiológicas neutras hacia acentos informativos no alarmantes (violeta, cyan, índigo o azul) salvo cuando superen un umbral de alerta real.
+
+### 3.3 Regla Anti *Card-itis* y Jerarquía de Superficies
+
+El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentro de múltiples cajas con bordes y fondos distintos.
+
+1. **Plano por defecto:** El contenido principal descansa directamente sobre `bgDark` (`#090D16`), estructurado mediante aire vertical y divisores horizontales `1px` (`border-b border-white/10`, `divide-y divide-white/5`).
+2. **Prohibido anidar cards dentro de cards:** Nunca colocar una tarjeta redondeada con borde y fondo distinto dentro de otra tarjeta en flujos operativos (`workoutView.ts`, `logView.ts`).
+3. **Cuándo sí usar superficie elevada (`bg-cardDark` / `rounded-2xl`):**
+   - Capas flotantes o transitorias (`#live-ex-menu`, panel de cambio/añadido de ejercicio).
+   - Modales y asistente de bienvenida (`renderModals`, `wizardView.ts`).
+   - Bloques narrativos autónomos diferenciados (`#ai-report`).
+   - Panel derecho de detalle en escritorio (`renderDayDetail` fuera de acordeón embebido).
+   - Tarjetas discretas de selección única/múltiple (`viewPlan`, selector de tono IA) o zona de peligro (`dataView.ts`).
+
+### 3.4 Tipografía y Contraste (`src/style.css`)
+
+- **Tipografía base:** `Inter Variable` (`@fontsource-variable/inter`) con `antialiased` en `<body>` y pila monoespaciada para datos técnicos cuando corresponda.
+- **Estabilidad numérica (`.num-col` / `tabular-nums`):** Obligatorio en pesos, repeticiones, tiempos de descanso, volúmenes, series completadas, porcentajes y celdas numéricas de tabla.
+- **Contraste mínimo en tema oscuro:** Usar como mínimo **`text-gray-400`** para metadatos, subtítulos e instrucciones secundarias. **Prohibido introducir `text-gray-500`** en texto legible (eliminar gradualmente las 6 ocurrencias restantes en `src/main.ts`, `src/ui/analyticsViews.ts` y `src/ui/workoutView.ts`).
+
+### 3.5 Controles (`src/style.css`) y Prohibición de Nuevos `!important`
+
+- Clases compartidas en `src/style.css`: `.card`, `.btn`, `.btn-primary`, `.inp`, `.lbl`, `.tab` / `.tab-on`, `.nav-item` / `.nav-item-on` / `.nav-sec-lbl`, `.bnav-item` / `.bnav-item-on`, `.num-col`, `.chart-box`.
+- Los inputs numéricos ocultan spinners nativos y los `<select>` mantienen paleta oscura legible (`#F9FAFB` sobre fondo oscuro).
+- **Deuda técnica conocida (`!`):** `.btn` y `.inp` fijan espaciado y ancho en `src/style.css`, lo que provocó **212 overrides `!important` (`!`)** distribuidos en `src/ui/` y `src/main.ts`. **Regla:** no añadir nuevos modificadores `!` de Tailwind; al tocar una vista o componente, sustituir los overrides `!` por clases base o variantes limpias (ej. `.btn-sm` vs `.btn-touch`).
+
+### 3.6 Iconografía (`src/ui/icons.ts`)
+
+- Todos los iconos funcionales de interfaz usan SVG de **Phosphor Icons Bold** (`viewBox="0 0 256 256"`) renderizados mediante `icon(name, cls)` (27 iconos definidos).
+- **Prohibido usar emojis como iconos de navegación o acción** en la UI de aplicación.
+- No mantener iconos muertos en `icons.ts` (actualmente `sparkle` e `info` tienen 0 usos: asignarlos donde aporten claridad o eliminarlos en limpieza).
+
+### 3.7 Gráficas (`Chart.js` en `src/ui/shared.ts` y `analyticsViews.ts`)
+
+- Instanciar todas las gráficas exclusivamente a través de **`normalizeChartConfig()`**, **`chart()`** y **`runChartJobs()`** definidos en `src/ui/shared.ts`.
+- **Un eje `y` por defecto:** Mantener una sola escala vertical salvo cuando convivan magnitudes de distinta unidad (por ejemplo, `y` en `kg` y `y1` en `% grasa` o `HRV`).
+- Respetar los selectores temporales unificados (`rangePicker`, `resolveRange`, `inRange`) y medias móviles (`movingAverage7d`).
+- Evitar llamadas innecesarias a `resetCharts()` en acciones que no modifican los datos graficados.
+
+### 3.8 Animaciones y Microinteracciones
+
+- Los paneles desplegables y menús contextuales deben animar altura mediante **`grid-template-rows` (`grid-rows-[0fr]` -> `grid-rows-[1fr]`)** + transición de opacidad sobre contenedor interno `overflow-hidden`, **sin desmontar el nodo** ni provocar saltos bruscos de layout (patrón aplicado en `#live-ex-menu-wrap` de `src/ui/workoutView.ts`).
+- Toda animación o transición nueva —incluidas las transiciones FLIP en `src/ui/reorder.ts`— debe respetar **`prefers-reduced-motion: reduce`** (actualmente cubierto en CSS solo para `.wizard-*` y utilidades `motion-reduce:` puntuales).
+
+---
+
+## 4. Arquitectura, Persistencia y Reglas de Estado
+
+### 4.1 Mapa de Módulos y Fronteras Estrictas
+
+```text
+src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
+    ▲
+    ├── src/lib/*  (db, sync, firebase, samsung, samsungWorker, measures, analysis, ai, seed)
+    │       ▲      · Solo importa ../types, ./ sibling y librerías externas
+    │       │      · PROHIBIDO importar src/ui/* o tocar el DOM
+    │       │
+    └── src/ui/*   (shared, icons, views, workoutView, logView, planView, analyticsViews,
+            ▲       dataView, settingsView, wizardView, reorder)
+            │      · Renderiza HTML sanitizado y configs Chart.js; sin acceso directo a IDB/Firestore
+            │
+        src/main.ts (orquestador único: State, ciclo de render, delegación, SW, parches DOM)
+```
+
+- **Carga diferida y Workers:**
+  - `src/lib/ai.ts` se importa dinámicamente bajo demanda en `src/main.ts` para no penalizar el arranque inicial.
+  - La descompresión e importación pesada de Samsung Health (`fflate` + `papaparse`) se ejecuta en `src/lib/samsungWorker.ts` fuera del hilo principal.
+  - En `vite.config.ts`, `rolldownOptions.codeSplitting` separa `firebase-firestore`, `firebase-auth` y `charts`.
+
+### 4.2 Capas de Persistencia y Sincronización
+
+| Capa | Módulos | Qué almacena | Regla clave |
+| :--- | :--- | :--- | :--- |
+| **IndexedDB (`gymapp` v2)** | `src/lib/db.ts` | 5 *object stores* con el histórico local (fuerza, cardio, bienestar, medidas, ajustes/estado) | Fuente de verdad local *offline-first* |
+| **`localStorage`** | `src/main.ts`, `workoutView.ts`, `logView.ts`, `sync.ts` | Borradores activos (`LogDraft`, `LiveWorkout`) y metadatos de sync | Nunca almacenar secretos ni datos masivos históricos |
+| **Cloud Firestore** | `src/lib/sync.ts`, `src/lib/firebase.ts` | Configuración (`settings`) y `buckets` (`items`/`deleted` por `{kind}_{year\|all}`) por `uid` | Protegido por `firestore.rules` (solo propietario con email verificado) |
+
+#### Invariantes de Esquema en `firestore.rules` y Sincronización (`src/lib/sync.ts`)
+
+Cualquier cambio en `Settings`, rutinas, fases o buckets de sincronización **exige revisar `firestore.rules`** (mediante el subagente `firestore-rules-author`) y validar `tests/sync.test.ts` + `tests/security.test.ts`:
+- Propiedad estricta por `uid` autenticado con correo verificado.
+- `routines`: mínimo `1`, máximo `20` rutinas; mapas auxiliares `<= 500`; `phases <= 100`.
+- `buckets`: colecciones `items` y `deleted` con máximo `5000` entradas (`cardio_all`, `measures_all`, `strength_<YYYY|legacy>`, `wellbeing_<YYYY|legacy>`).
+- Marcas temporales en milisegundos epoch con margen máximo de `+24h` por desfase de reloj; los tombstones tienen TTL de 90 días.
+- Campo `kind` inmutable en documentos de sincronización; regla `deny` por defecto al final de `firestore.rules`.
+- Campo legacy opcional `geminiKey` acotado a `<= 256` caracteres hasta su retirada definitiva.
+- **Saneamiento y limpieza de sesión:** toda escritura o ingesta de `Settings` (incluyendo pulls remotos en `sync.ts` e importaciones en `main.ts`) debe pasar por `sanitizeSettings()`, un `remote wipe` debe limpiar tanto `gymapp_log_draft` como `gymapp_live_workout`, y los lotes `writeBatch(fs)` deben respetar el límite de 500 operaciones de Firestore.
+
+### 4.3 Regla Crítica de Fechas Locales
+
+- Para generar o comparar la fecha del día actual del usuario, utilizar **`todayIso()`** en `src/lib/seed.ts` (calculada en hora local).
+- **Prohibido usar `new Date().toISOString().slice(0, 10)` directamente** para fechas de entrenamiento o bienestar del usuario, ya que provoca saltos de día en zonas horarias distintas de UTC cerca de medianoche (solo aceptable en manipulaciones de rangos ISO ya normalizados).
+
+### 4.4 Ciclo de Render, Foco y Parches DOM (`src/main.ts`)
+
+- Gran parte de las vistas reconstruyen `#app` vía `root.innerHTML`; sin embargo, en flujos de alta frecuencia se deben usar **parches DOM selectivos** (como ya hacen `syncSetDom`, `updateLogCountersDom`, `updateSyncDom`, `updateRestBarDom`, `logStepW`/`logStepR`/`logToggleSet` y `liveToggleMenu`) para evitar:
+  - Pérdida de foco (`focusSelector`) o cierre del teclado virtual en móvil.
+  - Saltos de posición de scroll.
+  - Destrucción y reconstrucción innecesaria de gráficas `Chart.js` (`resetCharts()`).
+- **Pendiente de migrar a parche selectivo:** `liveStepW`, `liveStepR`, `liveToggleSet` y `planSearch` en `src/main.ts` siguen disparando `render()` completo. Al añadir interacciones nuevas, evitar `root.innerHTML` cuando baste actualizar nodos identificados por `data-*` o `id`.
+
+---
+
+## 5. Seguridad, Calidad, Verificación y Hoja de Ruta
+
+### 5.1 Reglas de Seguridad y Calidad de Código
+
+- **Prevención XSS:** Todo contenido textual dinámico (nombres de rutinas, ejercicios, notas, CSV importados, errores) interpolado en plantillas HTML debe envolverse con **`esc()`** (`src/ui/shared.ts`).
+- **Validación en fronteras externas:** Sanitizar entradas en importación JSON/CSV (`parseBackup`, prevención de contaminación de prototipos, limpieza con `stripUndefined` antes de persistir/sincronizar en Firestore).
+- **CSP (`firebase.json`):** Mantener compatibles los scripts, estilos y Web Workers con la cabecera CSP (`default-src 'self'`, `worker-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `style-src 'self' 'unsafe-inline'`, `COOP same-origin-allow-popups`, `X-Frame-Options DENY`).
+- **Calidad de código:** Funciones pequeñas, retorno temprano, cero helpers *passthrough* triviales y evitar programación defensiva redundante sobre tipos internos ya garantizados por TypeScript.
+
+### 5.2 Comandos de Verificación
+
+Ejecutar desde la raíz del worktree activo (o añadiendo `--prefix .worktrees/auditoria-v2` desde la raíz del repo):
+
+```bash
+# Suite de tests unitarios y contratos (Vitest: tests/features.test.ts, sync.test.ts, security.test.ts, parsers.test.ts)
+npm test
+
+# Comprobación estricta de tipos TypeScript + bundle de producción (tsc --noEmit && vite build)
+npm run build
+```
+
+Todo cambio con impacto visual o interactivo debe verificarse también en navegador en viewport móvil (`~390px`) y escritorio (`~1440px`), prestando especial atención al flujo completo en `Entrenar` (`En vivo` y `Registrar hecho`) y al comportamiento sin errores en consola.
+
+### 5.3 Deuda Técnica Priorizada (Pendiente de Auditoría v2)
+
+| Prioridad | Área | Hallazgo verificado en código | Acción objetivo |
+| :--- | :--- | :--- | :--- |
+| **Alta** | **PWA / Offline** | `vite.config.ts` usa `registerType: 'autoUpdate'` | Migrar a `'prompt'` con aviso discreto para evitar recargas inesperadas en mitad de un entrenamiento |
+| **Alta** | **Arquitectura / DOM** | `src/main.ts` (`2210` líneas) y handlers frecuentes (`liveStepW`, `liveStepR`, `liveToggleSet`, `planSearch`) ejecutan `render()` completo con `resetCharts()` | Extraer handlers por dominio/vista y ampliar parches DOM selectivos sin destruir gráficas ni foco/scroll |
+| **Alta** | **Sync e Integridad** | `syncWithCloud` usa `writeBatch` sin trocear (límite 500 ops), `sync.ts` omite `sanitizeSettings()` en pull y no borra `gymapp_live_workout` en remote wipe; `liveStart`/`liveDiscard` usan `confirm()` nativo | Trocear batches, aplicar `sanitizeSettings()` en toda ingesta/pull, limpiar `LIVE_WORKOUT_KEY` en wipe/reset y usar `#confirm-modal` |
+| **Media** | **Ergonomía Táctil** | `64` líneas interactivas `< 44px` (`planView.ts` `p-1`/`h-8`, `workoutView.ts` `min-h-[36px]`/`min-h-[40px]`, cabecera móvil `h-9` y `.btn !py-1.5`) | Estandarizar variantes `.btn-touch` (`>= 44px`) en móvil y limitar tamaños compactos a controles secundarios de escritorio |
+| **Media** | **Accesibilidad** | Sin `<h1>` en escritorio (`<h1>` solo en header `lg:hidden`), modales sin *focus trap*/retorno de foco, `listbox` sin `option` y `reorder.ts` sin `prefers-reduced-motion` | Añadir `<h1>` por vista en escritorio, gestión de foco modal, roles ARIA completos y respetar `prefers-reduced-motion` en FLIP |
+| **Media** | **CSS / Tokens** | `212` usos de `!` (`!important`) en 10 archivos, token `borderDark` sin uso y 5 hex oscuros ad-hoc (`#0B101B`..`#121A2B`) | Separar variantes limpias en `src/style.css` y unificar colores y bordes en `tailwind.config.js` |
+| **Media** | **Semántica / Contraste** | `6` usos de `text-gray-500` + `placeholder-gray-500` y sobrecarga semántica de `coralRed` (`% Grasa`, `Pulso`, `Proteína`, `Push`) | Subir textos legibles mínimo a `text-gray-400` y desacoplar colores de métricas neutras del rojo de peligro |
+| **Baja** | **Limpieza y Tests** | Iconos sin uso (`sparkle`, `info` en `src/ui/icons.ts`), campo legacy `geminiKey` (`types.ts`, `sync.ts`, `firestore.rules`); Vitest corre solo en Node y `parsers.test.ts` omite CSV reales si faltan rutas locales | Depurar iconos muertos y `geminiKey` legacy; añadir tests DOM/integración (ej. `jsdom`/`happy-dom`) sobre `main.ts`, `liveWorkout` y emulador/reglas |
