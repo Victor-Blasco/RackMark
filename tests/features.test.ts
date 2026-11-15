@@ -3,9 +3,11 @@ import type { ChartConfiguration } from 'chart.js';
 import { buildPrompt } from '../src/lib/ai';
 import { analyze, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
+import { importSamsungInWorker } from '../src/lib/samsung';
 import { norm } from '../src/lib/seed';
 import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
 import { allExerciseNames, initLogDraft, manualSessionId } from '../src/ui/logView';
+import { plannedWeeklyVolume, renderModals, viewPlan } from '../src/ui/planView';
 import { moveItem } from '../src/ui/reorder';
 import {
   inRange,
@@ -14,6 +16,7 @@ import {
   normalizeChartConfig,
   resetCharts,
   resolveRange,
+  routineShort,
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
@@ -428,6 +431,112 @@ describe('P1 analytics, trends & empty states', () => {
 
     const bodyHtml = viewBody(emptyState);
     expect(bodyHtml).toContain('Filtro temporal');
+
+    resetCharts();
+  });
+});
+
+describe('P2 desktop lab, routineShort & planned volume', () => {
+  it('genera abreviaturas cortas sin colisiones y conserva Pu/Pl/Lg', () => {
+    expect(routineShort('Push')).toBe('Pu');
+    expect(routineShort('Pull')).toBe('Pl');
+    expect(routineShort('Leg')).toBe('Lg');
+    expect(routineShort('Full Body A')).toBe('FBA');
+    expect(routineShort('Full Body B')).toBe('FBB');
+    expect(routineShort('Pecho y Tríceps')).toBe('PT');
+    expect(routineShort('Pecho')).toBe('Pe');
+    expect(routineShort('Pierna')).toBe('Pi');
+    expect(routineShort('')).toBe('·');
+  });
+
+  it('calcula el volumen semanal planificado sumando principal=1 y secundario=0,5', () => {
+    const settings = sanitizeSettings({
+      routines: {
+        Torso: [
+          { name: 'Press Banca X', sets: 4, reps: 8 },
+          { name: 'Remo Barra X', sets: 4, reps: 10 },
+        ],
+      },
+      muscles: {
+        [norm('Press Banca X')]: { p: 'Pecho', s: ['Tríceps', 'Hombro'] },
+        [norm('Remo Barra X')]: { p: 'Espalda', s: ['Bíceps'] },
+      },
+    });
+    const vol = plannedWeeklyVolume(settings);
+    expect(vol.get('Pecho')).toBe(4);
+    expect(vol.get('Espalda')).toBe(4);
+    expect(vol.get('Tríceps')).toBe(2);
+    expect(vol.get('Hombro')).toBe(2);
+    expect(vol.get('Bíceps')).toBe(2);
+  });
+
+  it('renderiza Modo Laboratorio en viewPlan, modal de notas y cross-links sin card-itis', async () => {
+    const settings = sanitizeSettings({
+      routines: {
+        Torso: [{ name: 'Press Banca X', sets: 4, reps: 8 }],
+      },
+      muscles: {
+        [norm('Press Banca X')]: { p: 'Pecho', s: ['Tríceps'] },
+        [norm('Sentadilla Hack')]: { p: 'Cuádriceps', s: ['Glúteo'] },
+      },
+    });
+    const recentTs = Date.now() - 2 * 864e5;
+    const recentDate = new Date(recentTs).toISOString().slice(0, 10);
+    const strength = [
+      { id: 's1', sessionId: 'ses1', ts: recentTs, date: recentDate, ref: 'name:Press Banca X', sets: [{ w: 80, r: 8 }] },
+    ];
+    const analysis = analyze(strength, settings);
+    const state: State = {
+      tab: 'plan',
+      strength,
+      cardio: [],
+      measures: [{ date: recentDate, weight: 75, bf: 14 }],
+      wellbeing: [],
+      settings,
+      analysis,
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+      planSearch: 'Hack',
+      planTargetRoutine: 'Torso',
+      noteModal: { exName: 'Press Banca X', value: 'Pausa 1s abajo' },
+    };
+
+    const planHtml = viewPlan(state);
+    expect(planHtml).toContain('lg:grid-cols-12');
+    expect(planHtml).toContain('Simulador de volumen semanal');
+    expect(planHtml).toContain('id="planExSearch"');
+    expect(planHtml).toContain('data-change="planTargetRoutine"');
+    expect(planHtml).toContain('data-act="rtQuickAdd"');
+    expect(planHtml).toContain('Sentadilla Hack');
+
+    const emptySearchHtml = viewPlan({ ...state, planSearch: 'zzzznoexiste' });
+    expect(emptySearchHtml).toContain('Sin resultados');
+
+    const modalHtml = renderModals(state);
+    expect(modalHtml).toContain('id="note-modal"');
+    expect(modalHtml).toContain('id="f-note-modal"');
+    expect(modalHtml).toContain('id="noteModalInput"');
+    expect(modalHtml).toContain('Pausa 1s abajo');
+    expect(modalHtml).not.toContain('backdrop-blur');
+
+    const homeHtml = viewHome(state);
+    expect(homeHtml).toContain('data-act="openExDetail"');
+    expect(homeHtml).toContain('Torso|Press Banca X');
+
+    const volHtml = viewVolume(state);
+    expect(volHtml).toContain('hidden md:block');
+    expect(volHtml).toContain('md:hidden');
+
+    const adhHtml = viewAdherence(state);
+    expect(adhHtml).toContain('hidden md:flex');
+    expect(adhHtml).toContain('flex md:hidden');
+
+    const calcHtml = viewCalc(state);
+    expect(calcHtml).toContain('divide-white/10');
+
+    const emptyImport = await importSamsungInWorker([]);
+    expect(emptyImport.strength).toEqual([]);
 
     resetCharts();
   });

@@ -1,8 +1,26 @@
 import { musclesOf } from '../lib/analysis';
 import { MUSCLES, ROUTINE_COLORS, ROUTINE_TEMPLATES } from '../lib/seed';
+import type { Settings } from '../types';
 import { icon } from './icons';
 import { allExerciseNames } from './logView';
 import { esc, fmtDate, routineColor, routineNames, type State } from './shared';
+
+/** Calcula las series efectivas semanales planificadas por músculo según `settings.routines`. */
+export function plannedWeeklyVolume(s: Settings): Map<string, number> {
+  const out = new Map<string, number>(MUSCLES.map((m) => [m, 0]));
+  for (const r of routineNames(s)) {
+    for (const item of s.routines[r] ?? []) {
+      if (!item.name || !(item.sets > 0)) continue;
+      const m = musclesOf(item.name, s);
+      if (!m) continue;
+      out.set(m.p, (out.get(m.p) ?? 0) + item.sets);
+      for (const sec of m.s) {
+        out.set(sec, (out.get(sec) ?? 0) + item.sets * 0.5);
+      }
+    }
+  }
+  return out;
+}
 
 const sel = (name: string, opts: string[]) =>
   `<option value="" ${name ? '' : 'selected'}>—</option>${opts.map((o) => `<option ${o === name ? 'selected' : ''}>${esc(o)}</option>`).join('')}`;
@@ -12,7 +30,7 @@ export function renderModals(S: State): string {
   if (S.confirmModal) {
     const cm = S.confirmModal;
     return `<div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" data-act="confirmNo" aria-hidden="true"></div>
+      <div class="fixed inset-0 bg-black/80" data-act="confirmNo" aria-hidden="true"></div>
       <div class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0F1624] p-5 shadow-2xl space-y-4">
         <div class="flex items-start gap-3">
           ${cm.danger ? `<div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coralRed/15 text-coralRed">${icon('warn', 'h-5 w-5')}</div>` : ''}
@@ -32,7 +50,7 @@ export function renderModals(S: State): string {
     const routines = routineNames(S.settings);
     const target = S.exModal.routine ?? '';
     return `<div id="ex-modal" role="dialog" aria-modal="true" aria-labelledby="exModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" data-act="closeModal" aria-hidden="true"></div>
+      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true"></div>
       <form id="f-new-ex" class="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-[#0F1624] p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between gap-2">
           <div>
@@ -96,7 +114,7 @@ export function renderModals(S: State): string {
     const rm = S.routineModal;
     const isEdit = rm.mode === 'edit';
     return `<div id="rt-modal" role="dialog" aria-modal="true" aria-labelledby="rtModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" data-act="closeModal" aria-hidden="true"></div>
+      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true"></div>
       <form id="f-routine-meta" class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0F1624] p-5 shadow-2xl space-y-4">
         <div class="flex items-center justify-between gap-2">
           <div>
@@ -130,6 +148,30 @@ export function renderModals(S: State): string {
         <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
           <button type="button" class="btn" data-act="closeModal">Cancelar</button>
           <button type="submit" class="btn-primary">${icon('save', 'h-4 w-4')} ${isEdit ? 'Guardar cambios' : 'Crear rutina'}</button>
+        </div>
+      </form>
+    </div>`;
+  }
+
+  if (S.noteModal) {
+    const nm = S.noteModal;
+    return `<div id="note-modal" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true"></div>
+      <form id="f-note-modal" class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0F1624] p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <h3 id="noteModalTitle" class="text-base font-extrabold text-white">Nota biomecánica</h3>
+            <p class="text-xs text-gray-400 truncate" title="${esc(nm.exName)}">${esc(nm.exName)}</p>
+          </div>
+          <button type="button" data-act="closeModal" aria-label="Cerrar modal" class="rounded-lg p-1.5 text-gray-400 hover:bg-white/5 hover:text-white">${icon('close', 'h-4 w-4')}</button>
+        </div>
+        <label class="block">
+          <span class="lbl">Ajustes de máquina, agarre o cues técnicos</span>
+          <textarea id="noteModalInput" class="inp min-h-[96px] resize-y" name="note" maxlength="400" placeholder="Ej. Asiento en 4, agarre neutro, pausa 1s abajo…">${esc(nm.value)}</textarea>
+        </label>
+        <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
+          <button type="button" class="btn" data-act="closeModal">Cancelar</button>
+          <button type="submit" class="btn-primary">${icon('save', 'h-4 w-4')} Guardar nota</button>
         </div>
       </form>
     </div>`;
@@ -203,68 +245,139 @@ export function viewPlan(S: State): string {
     </div>`;
   }
 
+  const volMap = plannedWeeklyVolume(s);
+  const totalPlannedSets = routines.reduce(
+    (acc, d) => acc + (s.routines[d] ?? []).reduce((sum, item) => sum + (item.name ? item.sets : 0), 0),
+    0,
+  );
+  const targetRoutine = S.planTargetRoutine && routines.includes(S.planTargetRoutine) ? S.planTargetRoutine : (routines[0] ?? '');
+  const q = (S.planSearch ?? '').trim().toLowerCase();
+  const catalogMatches = names.filter((n) => {
+    if (!q) return true;
+    if (n.toLowerCase().includes(q)) return true;
+    const m = musclesOf(n, s);
+    return m ? m.p.toLowerCase().includes(q) || m.s.some((sec) => sec.toLowerCase().includes(q)) : false;
+  });
+  const volRows = MUSCLES.map((m) => {
+    const v = volMap.get(m) ?? 0;
+    const labelV = v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ',');
+    const textCol = v === 0 ? 'text-gray-400' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold';
+    const barCol = v === 0 ? 'bg-white/10' : v < 8 ? 'bg-coralRed' : v <= 20 ? 'bg-emeraldGreen' : 'bg-amberGold';
+    const pct = Math.min(100, Math.round((v / 22) * 100));
+    return `<div class="grid grid-cols-[96px_1fr_40px] items-center gap-2 text-xs">
+      <span class="truncate text-gray-200">${esc(m)}</span>
+      <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]"><div class="h-full rounded-full ${barCol}" style="width:${pct}%"></div></div>
+      <span class="text-right tabular-nums font-bold ${textCol}">${labelV}</span>
+    </div>`;
+  }).join('');
+
   return `${header}
-  <div class="space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-2">
-      <div>
-        <h3 class="font-bold text-white">Rutinas y objetivos (series × reps)</h3>
-        <p class="text-xs text-gray-400">Define tus días de entrenamiento y objetivos, o aplica una plantilla rápida.</p>
-      </div>
-      <button class="btn-primary !py-1.5 !text-xs" data-act="rtModalNew">+ Nueva rutina</button>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-1.5 text-xs">
-      <span class="font-semibold text-gray-400">Plantillas rápidas:</span>
-      ${Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => `<button type="button" data-act="rtApplyTpl" data-arg="${k}" title="${esc(tpl.desc)}" class="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors">${esc(tpl.label)}</button>`).join('')}
-    </div>
-
-    <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
-      ${routines.map((d, idx) => {
-        const col = routineColor(d, s, idx);
-        const sub = s.routineMeta?.[d]?.sub;
-        const list = s.routines[d] ?? [];
-        return `
-        <div class="rounded-2xl border border-white/10 bg-cardDark/60 p-4">
-          <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-            <h4 class="flex items-center gap-2 text-sm font-bold min-w-0" style="color:${col}">
-              <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:${col}" aria-hidden="true"></span>
-              <span class="truncate">${esc(d)}</span>
-              ${sub ? `<span class="text-xs font-normal text-gray-400 truncate">· ${esc(sub)}</span>` : ''}
-            </h4>
-            <div class="flex items-center gap-1">
-              <button class="text-xs font-semibold text-gray-400 hover:text-white px-1.5 py-0.5 rounded" data-act="tab" data-arg="${esc(d)}">Detalle →</button>
-              <button class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white" data-act="rtModalEdit" data-arg="${esc(d)}" aria-label="Editar rutina ${esc(d)}">${icon('edit', 'h-3.5 w-3.5')}</button>
-              <button class="rounded p-1 text-coralRed hover:bg-coralRed/10 disabled:opacity-30 disabled:pointer-events-none" data-act="rtRemoveDay" data-arg="${esc(d)}" ${routines.length <= 1 ? 'disabled' : ''} aria-label="Eliminar rutina ${esc(d)}">${icon('trash', 'h-3.5 w-3.5')}</button>
-            </div>
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+    <div class="lg:col-span-8 space-y-6">
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="font-bold text-white">Rutinas y objetivos (series × reps)</h3>
+            <p class="text-xs text-gray-400">Define tus días de entrenamiento y objetivos, o aplica una plantilla rápida.</p>
           </div>
-          <div data-sort-list="rt:${esc(d)}" class="space-y-1.5">
-            ${list.map((r, i) => `<div data-sort-item data-sort-idx="${i}" class="flex items-center gap-1 rounded-xl bg-white/[0.02] px-1 py-0.5 transition-shadow">
-              <button type="button" data-sort-handle class="shrink-0 touch-none cursor-grab active:cursor-grabbing select-none rounded p-1 text-gray-500 hover:bg-white/5 hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Arrastrar para reordenar">${icon('grip', 'h-3.5 w-3.5')}</button>
-              <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
-              <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-500" aria-hidden="true">×</span>
-              <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
-              <div class="flex shrink-0 items-center">
-                <button type="button" class="rounded p-1 text-gray-500 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
-                <button type="button" class="rounded p-1 text-gray-500 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
-                <button class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button>
+          <button class="btn-primary !py-1.5 !text-xs" data-act="rtModalNew">+ Nueva rutina</button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="font-semibold text-gray-400">Plantillas rápidas:</span>
+          ${Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => `<button type="button" data-act="rtApplyTpl" data-arg="${k}" title="${esc(tpl.desc)}" class="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors">${esc(tpl.label)}</button>`).join('')}
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+          ${routines.map((d, idx) => {
+            const col = routineColor(d, s, idx);
+            const sub = s.routineMeta?.[d]?.sub;
+            const list = s.routines[d] ?? [];
+            return `
+            <div class="rounded-2xl border border-white/10 bg-cardDark p-4">
+              <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                <h4 class="flex items-center gap-2 text-sm font-bold min-w-0" style="color:${col}">
+                  <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:${col}" aria-hidden="true"></span>
+                  <span class="truncate">${esc(d)}</span>
+                  ${sub ? `<span class="text-xs font-normal text-gray-400 truncate">· ${esc(sub)}</span>` : ''}
+                </h4>
+                <div class="flex items-center gap-1">
+                  <button class="text-xs font-semibold text-gray-400 hover:text-white px-1.5 py-0.5 rounded" data-act="tab" data-arg="${esc(d)}">Detalle →</button>
+                  <button class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white" data-act="rtModalEdit" data-arg="${esc(d)}" aria-label="Editar rutina ${esc(d)}">${icon('edit', 'h-3.5 w-3.5')}</button>
+                  <button class="rounded p-1 text-coralRed hover:bg-coralRed/10 disabled:opacity-30 disabled:pointer-events-none" data-act="rtRemoveDay" data-arg="${esc(d)}" ${routines.length <= 1 ? 'disabled' : ''} aria-label="Eliminar rutina ${esc(d)}">${icon('trash', 'h-3.5 w-3.5')}</button>
+                </div>
               </div>
-            </div>`).join('')}
-          </div>
-          <div class="mt-2.5 flex flex-wrap gap-2">
-            <button class="btn !py-1.5 !text-xs" data-act="rtAdd" data-arg="${esc(d)}">+ Añadir fila</button>
-            <button class="btn !border-electricBlue/40 !py-1.5 !text-xs text-blue-300" data-act="openExModal" data-arg="${esc(d)}">+ Crear ejercicio</button>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  </div>
+              <div data-sort-list="rt:${esc(d)}" class="space-y-1.5">
+                ${list.map((r, i) => `<div data-sort-item data-sort-idx="${i}" class="flex items-center gap-1 rounded-xl bg-white/[0.02] px-1 py-0.5 transition-shadow">
+                  <button type="button" data-sort-handle class="shrink-0 touch-none cursor-grab active:cursor-grabbing select-none rounded p-1 text-gray-400 hover:bg-white/5 hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Arrastrar para reordenar">${icon('grip', 'h-3.5 w-3.5')}</button>
+                  <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
+                  <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-400" aria-hidden="true">×</span>
+                  <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
+                  <div class="flex shrink-0 items-center">
+                    <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
+                    <button type="button" class="rounded p-1 text-gray-400 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
+                    <button class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button>
+                  </div>
+                </div>`).join('')}
+              </div>
+              <div class="mt-2.5 flex flex-wrap gap-2">
+                <button class="btn !py-1.5 !text-xs" data-act="rtAdd" data-arg="${esc(d)}">+ Añadir fila</button>
+                <button class="btn !border-electricBlue/40 !py-1.5 !text-xs text-blue-300" data-act="openExModal" data-arg="${esc(d)}">+ Crear ejercicio</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
 
-  <div class="pt-5 border-t border-white/10 space-y-3">
-    <div>
-      <h3 class="font-bold text-white">Fases nutricionales y de entrenamiento</h3>
-      <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>
+      <div class="pt-5 border-t border-white/10 space-y-3">
+        <div>
+          <h3 class="font-bold text-white">Fases nutricionales y de entrenamiento</h3>
+          <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>
+        </div>
+        ${s.phases.length ? `<div class="space-y-1.5">${[...s.phases].sort((a, b) => a.start.localeCompare(b.start)).map((p, i) => `<div class="flex items-center gap-2 text-sm"><b>${esc(p.name)}</b> <span class="tabular-nums text-gray-400">desde ${fmtDate(p.start)}</span> <button class="rounded p-0.5 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="phaseDel" data-arg="${i}" aria-label="Borrar fase ${esc(p.name)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}</div>` : ''}
+        <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp !w-44" name="name" placeholder="Nombre (p. ej. Lean bulk)…" aria-label="Nombre de la fase" required><input class="inp !w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
+      </div>
     </div>
-    ${s.phases.length ? `<div class="space-y-1.5">${[...s.phases].sort((a, b) => a.start.localeCompare(b.start)).map((p, i) => `<div class="flex items-center gap-2 text-sm"><b>${esc(p.name)}</b> <span class="tabular-nums text-gray-400">desde ${fmtDate(p.start)}</span> <button class="rounded p-0.5 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="phaseDel" data-arg="${i}" aria-label="Borrar fase ${esc(p.name)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}</div>` : ''}
-    <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp !w-44" name="name" placeholder="Nombre (p. ej. Lean bulk)…" aria-label="Nombre de la fase" required><input class="inp !w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
+
+    <aside class="lg:col-span-4 lg:sticky lg:top-6 space-y-5">
+      <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
+        <div class="flex items-baseline justify-between gap-2">
+          <h3 class="text-sm font-bold text-white">Simulador de volumen semanal</h3>
+          <span class="tabular-nums text-xs font-semibold text-gray-400">${totalPlannedSets} series</span>
+        </div>
+        <p class="text-[11px] text-gray-400">Principal = 1, secundario = 0,5 · <span class="text-coralRed">&lt;8</span> · <span class="text-emeraldGreen">8–20</span> · <span class="text-amberGold">&gt;20</span></p>
+        <div class="space-y-1.5">${volRows}</div>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
+        <div class="flex items-baseline justify-between gap-2">
+          <h3 class="text-sm font-bold text-white">Catálogo rápido</h3>
+          <span class="tabular-nums text-xs text-gray-400">${catalogMatches.length}/${names.length}</span>
+        </div>
+        <label class="block">
+          <span class="lbl">Rutina destino</span>
+          <select class="inp" data-change="planTargetRoutine" aria-label="Rutina destino">${routines.map((d) => `<option value="${esc(d)}" ${d === targetRoutine ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select>
+        </label>
+        <label class="block">
+          <span class="lbl">Buscar ejercicio o músculo</span>
+          <input id="planExSearch" type="search" class="inp" data-input="planSearch" value="${esc(S.planSearch ?? '')}" placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo">
+        </label>
+        <div class="max-h-72 overflow-y-auto divide-y divide-white/[0.06]">
+          ${catalogMatches.length
+            ? catalogMatches.slice(0, 12).map((n) => {
+                const m = musclesOf(n, s);
+                return `<div class="flex items-center justify-between gap-2 py-2">
+                  <div class="min-w-0">
+                    <div class="truncate text-sm font-medium text-gray-100" title="${esc(n)}">${esc(n)}</div>
+                    ${m ? `<div class="truncate text-[11px] text-gray-400">${esc(m.p)}${m.s.length ? ` · ${esc(m.s.join(', '))}` : ''}</div>` : ''}
+                  </div>
+                  <button type="button" class="btn !py-1 !px-2.5 !text-xs shrink-0" data-act="rtQuickAdd" data-arg="${esc(targetRoutine)}|${esc(n)}" ${targetRoutine ? '' : 'disabled'}>+ Añadir</button>
+                </div>`;
+              }).join('')
+            : `<p class="py-3 text-center text-xs text-gray-400">Sin resultados para «${esc(S.planSearch ?? '')}».</p>`}
+        </div>
+        <button type="button" class="btn w-full justify-center !border-electricBlue/40 !py-1.5 !text-xs text-blue-300" data-act="openExModal" data-arg="${esc(targetRoutine)}">+ Crear nuevo ejercicio</button>
+      </div>
+    </aside>
   </div>`;
 }

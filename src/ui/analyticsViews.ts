@@ -41,7 +41,7 @@ function aiInsightBanner(S: State, pattern: RegExp): string {
   if (!sec || !aiDate) return '';
   const border = sec.verdict === 'warning' ? 'border-coralRed' : sec.verdict === 'good' ? 'border-emeraldGreen' : 'border-electricBlue';
   const titleC = sec.verdict === 'warning' ? 'text-rose-300' : sec.verdict === 'good' ? 'text-emerald-300' : 'text-blue-300';
-  return `<aside class="rounded-xl border border-white/10 border-l-2 ${border} bg-cardDark/80 px-4 py-3 space-y-1">
+  return `<aside class="rounded-xl border border-white/10 border-l-2 ${border} bg-cardDark px-4 py-3 space-y-1">
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
       <span class="font-bold ${titleC}">${esc(sec.title)}</span>
       <span class="text-gray-400 tabular-nums">Análisis IA (${short(aiDate)})</span>
@@ -186,7 +186,7 @@ export function viewBody(S: State): string {
   <div class="space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Registro histórico (N = ${msInRange.length}${hasFilter ? ` de ${ms.length}` : ''})</h3>
     ${msInRange.length ? `<table class="w-full text-right text-sm"><thead class="text-xs uppercase text-gray-400"><tr><th class="py-2 pr-3 text-left">Fecha</th>${tableCols.map((f) => `<th class="px-2">${f.label}</th>`).join('')}<th class="pl-2"></th></tr></thead><tbody>
     ${[...msInRange].reverse().map((m) => `<tr class="border-t border-gray-800 tabular-nums ${m.date === activeDate ? 'bg-electricBlue/10' : ''}"><td class="py-2 pr-3 text-left font-medium text-gray-200 whitespace-nowrap">${fmtDate(m.date)}${m.note ? `<div class="text-xs font-normal text-amberGold">${esc(m.note)}</div>` : ''}</td>${tableCols.map((f) => `<td class="px-2 font-medium text-gray-100">${esc(m[f.key] ?? '')}</td>`).join('')}<td class="pl-2 whitespace-nowrap"><button class="rounded p-1 text-blue-300 hover:bg-electricBlue/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="editMeasure" data-arg="${esc(m.date)}" aria-label="Editar medición del ${fmtDate(m.date)}">${icon('edit', 'h-3.5 w-3.5')}</button><button class="rounded p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="delMeasure" data-arg="${esc(m.date)}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
-    </tbody></table>` : `<p class="py-6 text-center text-sm text-gray-500">${ms.length ? `No hay mediciones en ${esc(bounds.label)}.` : 'Todavía no hay mediciones guardadas.'}</p>`}</div>`;
+    </tbody></table>` : `<p class="py-6 text-center text-sm text-gray-400">${ms.length ? `No hay mediciones en ${esc(bounds.label)}.` : 'Todavía no hay mediciones guardadas.'}</p>`}</div>`;
 }
 
 /** Renderiza la matriz de series efectivas semanales por grupo muscular. */
@@ -195,9 +195,14 @@ export function viewVolume(S: State): string {
   const bounds = resolveRange(S, 'volume', '3M');
   const vol = weeklyVolume(S.strength, S.settings);
   const weeks = weeksForBounds(bounds, S.strength.map((s) => s.date), 12, 4, 26);
-  const color = (v: number) => (v === 0 ? 'text-gray-600' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold');
+  const mobWeeks = weeks.slice(-6);
+  const color = (v: number) => (v === 0 ? 'text-gray-400' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold');
   const mark = (v: number) => (v === 0 ? '' : v < 8 ? '<span class="sr-only"> (bajo)</span><span aria-hidden="true">↓</span>' : v > 20 ? '<span class="sr-only"> (alto)</span><span aria-hidden="true">↑</span>' : '');
   const sel = S.muscleSel || 'Pecho';
+  const volTable = (cols: string[], cls: string) => `<table class="${cls}">
+    <thead class="text-xs text-gray-400"><tr><th class="py-2 text-left">Músculo</th>${cols.map((w) => `<th class="tabular-nums font-medium">${short(w)}</th>`).join('')}</tr></thead>
+    <tbody>${MUSCLES.map((m) => `<tr class="border-t border-gray-800"><td class="py-2 pr-2 text-left"><button type="button" data-act="selMuscle" data-arg="${esc(m)}" aria-pressed="${m === sel}" class="rounded-lg border px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${m === sel ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/25 hover:text-white'}">${esc(m)}</button></td>${cols.map((w) => { const v = vol.get(m)?.get(w) ?? 0; return `<td class="tabular-nums font-bold ${color(v)}">${v ? `${r1(v)}${mark(v)}` : '·'}</td>`; }).join('')}</tr>`).join('')}</tbody>
+  </table>`;
   chart('c-vol', { type: 'bar', data: { labels: weeks.map(short), datasets: [{ label: `Series efectivas · ${sel}`, data: weeks.map((w) => vol.get(sel)?.get(w) ?? 0), backgroundColor: '#3B82F6' }] } });
   return `
   <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
@@ -208,11 +213,11 @@ export function viewVolume(S: State): string {
     ${rangePicker('volume', bounds.key, S.customRanges?.volume)}
   </div>
   ${aiInsightBanner(S, /rendimiento|fuerza|sobrecarga|ppl|volumen/i)}
-  <div class="pb-5 border-b border-white/10 space-y-2 overflow-x-auto"><h3 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h3>
+  <div class="pb-5 border-b border-white/10 space-y-2"><h3 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h3>
     <p class="mb-2 text-xs text-gray-400">Músculo principal = 1 serie, secundario = 0,5. <span class="text-coralRed">&lt;8↓ bajo</span> · <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.</p>
-    <table class="w-full min-w-[640px] text-center text-sm"><thead class="text-xs text-gray-400"><tr><th class="py-2 text-left">Músculo</th>${weeks.map((w) => `<th class="tabular-nums font-medium">${short(w)}</th>`).join('')}</tr></thead><tbody>
-    ${MUSCLES.map((m) => `<tr class="border-t border-gray-800"><td class="py-2 pr-2 text-left"><button type="button" data-act="selMuscle" data-arg="${esc(m)}" aria-pressed="${m === sel}" class="rounded-lg border px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${m === sel ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/25 hover:text-white'}">${esc(m)}</button></td>${weeks.map((w) => { const v = vol.get(m)?.get(w) ?? 0; return `<td class="tabular-nums font-bold ${color(v)}">${v ? `${r1(v)}${mark(v)}` : '·'}</td>`; }).join('')}</tr>`).join('')}
-    </tbody></table></div>
+    <div class="hidden md:block overflow-x-auto">${volTable(weeks, 'w-full min-w-[640px] text-center text-sm')}</div>
+    <div class="md:hidden">${volTable(mobWeeks, 'w-full text-center text-xs')}</div>
+  </div>
   <div class="space-y-2"><h3 class="mb-2 font-bold text-white">Tendencia · ${esc(sel)}</h3><div class="chart-box"><canvas id="c-vol"></canvas></div></div>`;
 }
 
@@ -241,7 +246,7 @@ export function viewAdherence(S: State): string {
     const bg = has ? (t ? routineColor(t, S.settings, Math.max(0, rIdx)) : '#6B7280') : 'rgba(255,255,255,0.05)';
     const label = `${fmtDate(iso)}: ${has ? (t ?? 'Otro entrenamiento') : 'Sin sesión'}`;
     const code = has ? (t ? routineShort(t) : '·') : '';
-    return `<div role="img" aria-label="${esc(label)}" title="${esc(label)}" class="flex h-5 w-5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95" style="background:${bg}">${code}</div>`;
+    return `<div role="img" aria-label="${esc(label)}" title="${esc(label)}" class="flex h-5 min-w-[20px] px-0.5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95" style="background:${bg}">${code}</div>`;
   };
   const perWeek = new Map<string, number>();
   byDate.forEach((_, d) => { const w = isoWeekStart(d); perWeek.set(w, (perWeek.get(w) ?? 0) + 1); });
@@ -281,6 +286,7 @@ export function viewAdherence(S: State): string {
       },
     });
   }
+  const mobCols = cols.slice(-8);
   return `${S.strength.length ? '' : noData(S)}
   <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
     <div>
@@ -291,15 +297,17 @@ export function viewAdherence(S: State): string {
   </div>
   ${aiInsightBanner(S, /recuperaci|sueñ|suen|neat|card/i)}
   <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 pb-5 border-b border-white/10">
-    <div><span class="block text-xs text-gray-400">Media semanal (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${r1(avg)}</span><span class="block text-xs text-gray-500">días entrenados</span></div>
-    <div><span class="block text-xs text-gray-400">Racha ≥3 días/sem.</span><span class="tabular-nums text-xl font-extrabold text-white">${streak}</span><span class="block text-xs text-gray-500">semanas completas</span></div>
-    <div><span class="block text-xs text-gray-400">Reparto (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${routines.map((r) => counts[r] ?? 0).join('/')}</span><span class="block text-xs text-gray-500">${routines.map((r) => routineShort(r)).join(' / ')}</span></div>
-    <div><span class="block text-xs text-gray-400">Cardio (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${cardio.length}</span><span class="block text-xs text-gray-500">${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km · ${Math.round(cardio.reduce((a, c) => a + c.durMin, 0))} min</span></div>
+    <div><span class="block text-xs text-gray-400">Media semanal (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${r1(avg)}</span><span class="block text-xs text-gray-400">días entrenados</span></div>
+    <div><span class="block text-xs text-gray-400">Racha ≥3 días/sem.</span><span class="tabular-nums text-xl font-extrabold text-white">${streak}</span><span class="block text-xs text-gray-400">semanas completas</span></div>
+    <div><span class="block text-xs text-gray-400">Reparto (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${routines.map((r) => counts[r] ?? 0).join('/')}</span><span class="block text-xs text-gray-400">${routines.map((r) => routineShort(r)).join(' / ')}</span></div>
+    <div><span class="block text-xs text-gray-400">Cardio (${esc(bounds.label)})</span><span class="tabular-nums text-xl font-extrabold text-white">${cardio.length}</span><span class="block text-xs text-gray-400">${r1(cardio.reduce((a, c) => a + c.distKm, 0))} km · ${Math.round(cardio.reduce((a, c) => a + c.durMin, 0))} min</span></div>
   </div>
-  <div class="pb-5 border-b border-white/10 space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Calendario (últimas ${W} semanas)</h3>
-    <div class="flex gap-1.5"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-500">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
+  <div class="pb-5 border-b border-white/10 space-y-2"><h3 class="mb-2 font-bold text-white">Calendario (<span class="hidden md:inline">últimas ${W}</span><span class="md:hidden">últimas ${mobCols.length}</span> semanas)</h3>
+    <div class="hidden md:flex gap-1.5 overflow-x-auto"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-400">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
     ${cols.map((w) => `<div class="flex flex-col gap-1.5">${[0, 1, 2, 3, 4, 5, 6].map((i) => cell(w, i)).join('')}</div>`).join('')}</div>
-    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${routines.map((d, idx) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${routineColor(d, S.settings, idx)}">${esc(routineShort(d))}</span>${esc(d)}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
+    <div class="flex md:hidden gap-1.5"><div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-400">${dn.map((x) => `<div class="flex h-5 items-center">${x}</div>`).join('')}</div>
+    ${mobCols.map((w) => `<div class="flex flex-col gap-1.5">${[0, 1, 2, 3, 4, 5, 6].map((i) => cell(w, i)).join('')}</div>`).join('')}</div>
+    <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${routines.map((d, idx) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 min-w-[16px] px-0.5 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${routineColor(d, S.settings, idx)}">${esc(routineShort(d))}</span>${esc(d)}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
   ${hasSleep || hasSteps ? `
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
     ${hasSleep ? `<div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Sueño y HRV nocturna (${esc(bounds.label)})</h3><div class="chart-box"><canvas id="c-well-sleep"></canvas></div></div>` : ''}
@@ -341,8 +349,8 @@ export function viewCalc(S: State): string {
       <label class="block"><span class="lbl">Peso (kg)</span><input id="calcW" class="inp tabular-nums font-medium" type="number" step="0.5" value="${esc(cW)}" data-input="calc"></label>
       <label class="block"><span class="lbl">Reps</span><input id="calcR" class="inp tabular-nums font-medium" type="number" min="1" max="30" value="${esc(cR)}" data-input="calc"></label>
       <label class="block"><span class="lbl">RIR (0-5)</span><input id="calcRir" class="inp tabular-nums font-medium" type="number" min="0" max="5" value="${esc(cRir)}" data-input="calc"></label></div>
-    <div class="grid grid-cols-3 gap-3 text-center" id="calcOut"></div>
-    <div class="grid grid-cols-2 gap-2 text-center text-sm tabular-nums sm:grid-cols-4" id="calcZones"></div></div>
+    <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="calcOut"></div>
+    <div class="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/10 pb-3 text-sm tabular-nums sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-white/10 sm:text-center" id="calcZones"></div></div>
   <div class="space-y-3">
     <div>
       <h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% BF)</h3>
@@ -354,20 +362,24 @@ export function viewCalc(S: State): string {
       <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55" ${cAct === '1.55' ? 'selected' : ''}>Fuerza 3-4 días (×1,55)</option><option value="1.65" ${cAct === '1.65' ? 'selected' : ''}>Fuerza 5-6 días + pasos (×1,65)</option><option value="1.75" ${cAct === '1.75' ? 'selected' : ''}>Intenso (×1,75)</option></select></label>
       <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0" ${cGoal === '0' ? 'selected' : ''}>Mantenimiento (+0)</option><option value="225" ${cGoal === '225' ? 'selected' : ''}>Lean bulk (+225)</option><option value="350" ${cGoal === '350' ? 'selected' : ''}>Superávit estándar (+350)</option><option value="-350" ${cGoal === '-350' ? 'selected' : ''}>Mini-cut (−350)</option></select></label></div>
     <input type="hidden" id="nuW" value="${w}"><input type="hidden" id="nuBf" value="${bf}">
-    <div class="grid grid-cols-3 gap-3 text-center" id="nuOut"></div><div class="grid grid-cols-3 gap-3" id="nuMacros"></div></div></div>`;
+    <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="nuOut"></div>
+    <div class="grid grid-cols-3 divide-x divide-white/10 py-1 text-center" id="nuMacros"></div></div></div>`;
 }
 
 /** Recalcula los resultados de 1RM y macros en la vista de Calculadoras. */
 export function runCalc() {
   const g = (id: string) => document.getElementById(id) as HTMLInputElement | null;
+  const col = (l: string, v: string, c = 'text-white') =>
+    `<div class="px-2"><span class="block text-[11px] text-gray-400">${l}</span><span class="tabular-nums text-lg sm:text-xl font-extrabold ${c}">${v}</span></div>`;
   if (g('calcW')) {
     const w = parseFloat(g('calcW')!.value) || 0, r = parseInt(g('calcR')!.value, 10) || 1, rir = parseInt(g('calcRir')!.value, 10) || 0;
     const e = epley(w, r), e2 = w * (1 + (r + rir) / 30);
-    document.getElementById('calcOut')!.innerHTML = [['1RM (Epley)', e, 'text-electricBlue'], ['1RM ajustado RIR', e2, 'text-emeraldGreen']]
-      .map(([l, v, c]) => `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3"><span class="block text-xs text-gray-400">${l}</span><span class="tabular-nums text-xl font-extrabold ${c}">${r1(v as number)} kg</span></div>`).join('') +
-      `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3"><span class="block text-xs text-gray-400">Ratio / peso</span><span class="tabular-nums text-xl font-extrabold text-amberGold">${(e / (parseFloat(g('nuW')?.value ?? '70') || 70)).toFixed(2)}×</span></div>`;
+    document.getElementById('calcOut')!.innerHTML =
+      col('1RM (Epley)', `${r1(e)} kg`, 'text-electricBlue') +
+      col('1RM ajustado RIR', `${r1(e2)} kg`, 'text-emeraldGreen') +
+      col('Ratio / peso', `${(e / (parseFloat(g('nuW')?.value ?? '70') || 70)).toFixed(2)}×`, 'text-amberGold');
     document.getElementById('calcZones')!.innerHTML = [[0.85, '5–6 reps'], [0.8, '7–8 reps'], [0.75, '9–10 reps'], [0.7, '11–12 reps']]
-      .map(([p, l]) => `<div class="rounded-lg border border-gray-800 bg-gray-900 p-2"><span class="block text-[11px] text-gray-400">${Math.round((p as number) * 100)}% · ${l}</span><b>${r1(e * (p as number))} kg</b></div>`).join('');
+      .map(([p, l]) => `<div class="py-1 sm:px-2"><span class="block text-[11px] text-gray-400">${Math.round((p as number) * 100)}% · ${l}</span><b class="text-white">${r1(e * (p as number))} kg</b></div>`).join('');
   }
   if (g('nuW')) {
     const w = parseFloat(g('nuW')!.value), bf = parseFloat(g('nuBf')!.value);
@@ -375,8 +387,7 @@ export function runCalc() {
     const tdee = Math.round(bmr * parseFloat((document.getElementById('nuAct') as HTMLSelectElement).value));
     const target = tdee + parseInt((document.getElementById('nuGoal') as HTMLSelectElement).value, 10);
     const p = Math.round(w * 2.2), f = Math.round(w), pk = p * 4, fk = f * 9, ck = Math.max(0, target - pk - fk);
-    const box = (l: string, v: string, c = 'text-white') => `<div class="rounded-xl border border-gray-800 bg-gray-900 p-3 text-center"><span class="block text-[11px] text-gray-400">${l}</span><span class="tabular-nums text-lg font-extrabold ${c}">${v}</span></div>`;
-    document.getElementById('nuOut')!.innerHTML = box('TMB', `${bmr} kcal`) + box('TDEE', `${tdee} kcal`, 'text-electricBlue') + box('Objetivo', `${target} kcal`, 'text-emeraldGreen');
-    document.getElementById('nuMacros')!.innerHTML = box('Proteína 2,2 g/kg', `${p} g`, 'text-coralRed') + box('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + box('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
+    document.getElementById('nuOut')!.innerHTML = col('TMB', `${bmr} kcal`) + col('TDEE', `${tdee} kcal`, 'text-electricBlue') + col('Objetivo', `${target} kcal`, 'text-emeraldGreen');
+    document.getElementById('nuMacros')!.innerHTML = col('Proteína 2,2 g/kg', `${p} g`, 'text-coralRed') + col('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + col('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
   }
 }

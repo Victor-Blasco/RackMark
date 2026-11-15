@@ -20,7 +20,7 @@ export function viewSettings(S: State): string {
   const cloudCard = S.user
     ? `<div class="space-y-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
         <div class="flex items-start gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-electricBlue to-emeraldGreen text-sm font-extrabold text-white shadow-sm">${esc(initial)}</div>
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-electricBlue text-sm font-extrabold text-white shadow-sm">${esc(initial)}</div>
           <div class="min-w-0 flex-1">
             <h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
             <p class="text-sm text-gray-200 truncate mt-0.5">${esc(S.user.displayName ?? 'Usuario')}</p>

@@ -71,6 +71,9 @@ export interface State {
   exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
   routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
   confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
+  noteModal?: { exName: string; value: string };
+  planSearch?: string;
+  planTargetRoutine?: string;
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
@@ -195,13 +198,19 @@ export function routineColor(name: string, s?: Settings, idx = 0): string {
   return s?.routineMeta?.[name]?.color ?? DAY_COLOR[name] ?? ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
 }
 
-/** Devuelve una abreviatura de 2 caracteres para badges compactos de calendario/adherencia. */
+/** Devuelve una abreviatura corta y distintiva para badges compactos de calendario y adherencia. */
 export function routineShort(name: string): string {
-  if (name === 'Push') return 'Pu';
-  if (name === 'Pull') return 'Pl';
-  if (name === 'Leg') return 'Lg';
-  const clean = name.replace(/[^a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ]/g, '').trim();
-  return (clean.slice(0, 2) || name.slice(0, 2) || '·').replace(/^./, (c) => c.toUpperCase());
+  const trimmed = name.trim();
+  if (trimmed === 'Push') return 'Pu';
+  if (trimmed === 'Pull') return 'Pl';
+  if (trimmed === 'Leg') return 'Lg';
+  const words = trimmed.split(/[^a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ]+/).filter(Boolean);
+  if (!words.length) return '·';
+  if (words.length === 1) return words[0].slice(0, 2).replace(/^./, (c) => c.toUpperCase());
+  const skip = new Set(['y', 'e', 'de', 'del', 'la', 'el', 'con', 'and', 'or']);
+  const sig = words.filter((w) => !skip.has(w.toLowerCase()));
+  const pool = sig.length >= 2 ? sig : words;
+  return pool.slice(0, 3).map((w) => (/^\d+$/.test(w) ? w[0] : w[0].toUpperCase())).join('');
 }
 
 const charts = new Map<string, Chart>();
@@ -298,16 +307,6 @@ export function chart(id: string, cfg: ChartConfiguration) {
     if (!el || el.getBoundingClientRect().width === 0) return;
     charts.set(id, new Chart(el, normalized) as unknown as Chart);
   });
-}
-
-export const badge = (text: string, color: string) =>
-  `<span class="inline-block rounded-full border border-${color}/40 bg-${color}/15 px-2 py-0.5 text-[11px] font-bold text-${color}">${esc(text)}</span>`;
-
-export const statusBadge = (e: ExStats) => badge(e.status, e.statusColor === 'gray' ? 'gray-400' : e.statusColor);
-
-/** Renderiza una tarjeta KPI con alineación numérica tabular. */
-export function kpi(label: string, value: string, sub = '', color = 'text-white') {
-  return `<div class="card !p-3"><span class="block text-[11px] text-gray-400">${label}</span><span class="tabular-nums text-xl font-extrabold ${color}">${value}</span><span class="block text-[11px] text-gray-500">${sub}</span></div>`;
 }
 
 export function empty(msg: string) {

@@ -1,5 +1,5 @@
 import { icon } from './icons';
-import { kpi, type State } from './shared';
+import { type State } from './shared';
 
 /**
  * Renderiza la vista de gestión e importación de datos y copias de seguridad.
@@ -20,10 +20,10 @@ export function viewData(S: State): string {
       ${unmappedCount > 0 ? `<button class="btn !border-amberGold/50 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios Samsung sin nombre → Asignar</button>` : ''}
     </div>
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-2">
-      <div><span class="block text-xs text-gray-400">Fuerza</span><span class="tabular-nums text-xl font-extrabold text-white">${S.strength.length}</span><span class="block text-xs text-gray-500">ejercicios registrados</span></div>
-      <div><span class="block text-xs text-gray-400">Cardio</span><span class="tabular-nums text-xl font-extrabold text-white">${S.cardio.length}</span><span class="block text-xs text-gray-500">sesiones guardadas</span></div>
-      <div><span class="block text-xs text-gray-400">Bienestar</span><span class="tabular-nums text-xl font-extrabold text-white">${S.wellbeing.length}</span><span class="block text-xs text-gray-500">días de sueño y pasos</span></div>
-      <div><span class="block text-xs text-gray-400">Medidas</span><span class="tabular-nums text-xl font-extrabold text-white">${S.measures.length}</span><span class="block text-xs text-gray-500">registros corporales</span></div>
+      <div><span class="block text-xs text-gray-400">Fuerza</span><span class="tabular-nums text-xl font-extrabold text-white">${S.strength.length}</span><span class="block text-xs text-gray-400">ejercicios registrados</span></div>
+      <div><span class="block text-xs text-gray-400">Cardio</span><span class="tabular-nums text-xl font-extrabold text-white">${S.cardio.length}</span><span class="block text-xs text-gray-400">sesiones guardadas</span></div>
+      <div><span class="block text-xs text-gray-400">Bienestar</span><span class="tabular-nums text-xl font-extrabold text-white">${S.wellbeing.length}</span><span class="block text-xs text-gray-400">días de sueño y pasos</span></div>
+      <div><span class="block text-xs text-gray-400">Medidas</span><span class="tabular-nums text-xl font-extrabold text-white">${S.measures.length}</span><span class="block text-xs text-gray-400">registros corporales</span></div>
     </div>
   </div>
 

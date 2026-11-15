@@ -5,7 +5,7 @@ import { generateAnalysis } from './lib/ai';
 import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, parseBackup, putMany, saveSettings, wipeAll } from './lib/db';
 import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from './lib/firebase';
 import { clearSyncMeta, hasUnsyncedChanges, loadSyncMeta, markBucketDeletes, markBucketUpserts, markSettingsDirty, markWipePending, syncWithCloud } from './lib/sync';
-import { importSamsungFiles } from './lib/samsung';
+import { importSamsungInWorker } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type LogDraft, type Measure, type RoutineEx, type StrengthRow } from './types';
 import { ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
@@ -193,7 +193,7 @@ function renderSidebar(statsText: string, draftCount: number): string {
 
   return `<aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-gray-800/80 bg-[#0B101B]">
     <div class="flex items-center gap-3 border-b border-gray-800/80 px-4 py-4">
-      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
+      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
       <div class="min-w-0">
         <p class="truncate text-sm font-extrabold text-white">Panel PPL</p>
         <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
@@ -201,10 +201,10 @@ function renderSidebar(statsText: string, draftCount: number): string {
     </div>
 
     <div class="p-3">
-      <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${S.tab === 'log' ? 'bg-gradient-to-r from-electricBlue to-emeraldGreen ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}">
+      <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${S.tab === 'log' ? 'bg-electricBlue ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}">
         ${icon('plus', 'h-4 w-4')}
         <span>Registrar entreno</span>
-        ${draftCount > 0 ? `<span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200"><span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emeraldGreen"></span>${draftCount}</span>` : ''}
+        ${draftCount > 0 ? `<span class="ml-auto inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200"><span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen"></span>${draftCount}</span>` : ''}
       </button>
     </div>
 
@@ -248,7 +248,7 @@ function renderSidebar(statsText: string, draftCount: number): string {
         const st = syncStatusInfo();
         return S.user
           ? `<button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${S.tab === 'settings' ? 'border-electricBlue/40 bg-electricBlue/15' : 'border-white/5 bg-gray-900/60 hover:border-white/15'}">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-electricBlue to-emeraldGreen text-xs font-extrabold text-white">${esc(userInitial)}</span>
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-electricBlue text-xs font-extrabold text-white">${esc(userInitial)}</span>
               <div class="min-w-0 flex-1">
                 <p class="truncate text-xs font-bold text-white">${esc(S.user.displayName ?? 'Usuario')}</p>
                 <p data-sync-badge data-sync-base="truncate text-[10px]" class="truncate text-[10px] ${st.cls}">${st.text}</p>
@@ -297,10 +297,10 @@ function renderMobileHeader(statsText: string): string {
           }).join('')}</div>`
         : '';
 
-  return `<header class="sticky top-0 z-30 border-b border-gray-800 bg-bgDark/95 px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] backdrop-blur lg:hidden">
+  return `<header class="sticky top-0 z-30 border-b border-gray-800 bg-bgDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
     <div class="mx-auto flex max-w-6xl items-center justify-between gap-2.5">
       <div class="flex min-w-0 items-center gap-2.5">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
         <div class="min-w-0">
           <h1 class="truncate text-sm font-extrabold leading-tight text-white">${esc(headerTitle)}</h1>
           <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText} · <span data-sync-badge data-sync-base="font-medium" class="font-medium ${syncStatusInfo().cls}">${syncStatusInfo().text}</span></p>
@@ -323,7 +323,7 @@ function renderMobileHeader(statsText: string): string {
 function renderMobileNav(draftCount: number): string {
   const inRoutine = isRoutineTab(S.tab) || S.tab === 'plan';
   const inAnalytics = ANALYTICS_IDS.has(S.tab);
-  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-800 bg-[#0B101B]/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-800 bg-[#0B101B] px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
     <div class="mx-auto grid max-w-md grid-cols-4 items-center gap-1">
       <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="bnav-item ${S.tab === 'home' ? 'bnav-item-on' : ''}">
         ${icon('home', 'h-5 w-5')}
@@ -338,7 +338,7 @@ function renderMobileNav(draftCount: number): string {
         <span>Análisis</span>
       </button>
       <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="bnav-item">
-        <span class="relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm ${S.tab === 'log' ? 'bg-gradient-to-r from-electricBlue to-emeraldGreen ring-2 ring-blue-300/60' : 'bg-electricBlue'}">
+        <span class="relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm bg-electricBlue ${S.tab === 'log' ? 'ring-2 ring-blue-300/60' : ''}">
           ${icon('plus', 'h-4 w-4')}
           ${draftCount > 0 ? `<span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-[#0B101B]"></span>` : ''}
         </span>
@@ -436,8 +436,10 @@ async function persist() {
   queueSync();
 }
 function download(name: string, data: string, type: string) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([data], { type })); a.download = name; a.click();
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function addExToDraft(name: string, fallbackSets?: number, fallbackReps?: number) {
@@ -583,6 +585,14 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
   tab: (el) => { setTab(arg(el)); render(); window.scrollTo(0, 0); },
+  openExDetail: (el) => {
+    const [day, ex] = splitPair(arg(el));
+    if (!day || !ex) return;
+    S.sel[day] = ex;
+    setTab(day);
+    render();
+    window.scrollTo(0, 0);
+  },
   goLog: async (el) => {
     const day = arg(el) as DayName | '';
     const today = new Date().toISOString().slice(0, 10);
@@ -878,9 +888,14 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     render();
     queueSync();
   },
-  editNote: async (el) => {
-    const n = arg(el); const v = prompt(`Nota biomecánica para «${n}»`, S.settings.notes[n] ?? '');
-    if (v == null) return; S.settings.notes[n] = v; await persist();
+  editNote: (el) => {
+    const n = arg(el);
+    if (!n) return;
+    S.noteModal = { exName: n, value: S.settings.notes[n] ?? '' };
+    render();
+    const ta = document.getElementById('noteModalInput') as HTMLTextAreaElement | null;
+    ta?.focus();
+    ta?.setSelectionRange(ta.value.length, ta.value.length);
   },
   ai: async () => {
     if (!S.user) { toast('Inicia sesión con Google para generar análisis con IA.'); return; }
@@ -960,9 +975,10 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     document.getElementById('newExName')?.focus();
   },
   closeModal: () => {
-    if (!S.exModal && !S.routineModal) return;
+    if (!S.exModal && !S.routineModal && !S.noteModal) return;
     S.exModal = undefined;
     S.routineModal = undefined;
+    S.noteModal = undefined;
     render();
   },
   rtModalNew: () => {
@@ -1033,6 +1049,14 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const d = arg(el);
     (S.settings.routines[d] ??= []).push({ name: '', sets: 2, reps: 10 });
     await persist();
+  },
+  rtQuickAdd: async (el) => {
+    const [d, name] = splitPair(arg(el));
+    if (!d || !name) return;
+    S.planTargetRoutine = d;
+    (S.settings.routines[d] ??= []).push({ name, sets: 3, reps: 10 });
+    await persist();
+    toast(`Añadido «${name}» a ${d}`);
   },
   rtDel: async (el) => {
     const [d, i] = splitPair(arg(el));
@@ -1123,6 +1147,10 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
     if (goal) (S.calcDraft ??= {}).goal = goal.value;
     runCalc();
   },
+  planTargetRoutine: (el) => {
+    S.planTargetRoutine = el.value;
+    render();
+  },
   rtName: async (el) => {
     const [d, i] = splitPair(arg(el));
     if (el.value === '__new__') {
@@ -1166,6 +1194,13 @@ root.addEventListener('click', (e) => {
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
   if (el) void actions[el.dataset.act!]?.(el);
 });
+root.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = (e.target as HTMLElement).closest<HTMLElement>('[role="button"][data-act]');
+  if (!el) return;
+  e.preventDefault();
+  void actions[el.dataset.act!]?.(el);
+});
 root.addEventListener('change', async (e) => {
   const el = e.target as HTMLInputElement;
   if (el.dataset.change) { await changes[el.dataset.change]?.(el); return; }
@@ -1175,7 +1210,7 @@ root.addEventListener('change', async (e) => {
   try {
     if (kind === 'samsung') {
       toast('Procesando exportación…');
-      const imp = await importSamsungFiles(files);
+      const imp = await importSamsungInWorker(files);
       const before = S.strength.length;
       await putMany('strength', imp.strength); await putMany('cardio', imp.cardio);
       await mergeWellbeing(imp.wellbeing);
@@ -1231,6 +1266,11 @@ root.addEventListener('input', (e) => {
     else if (el.id === 'calcR') (S.calcDraft ??= {}).r = el.value;
     else if (el.id === 'calcRir') (S.calcDraft ??= {}).rir = el.value;
     runCalc();
+    return;
+  }
+  if (el.dataset.input === 'planSearch') {
+    S.planSearch = el.value;
+    render();
     return;
   }
   if (el.closest('#f-measure') && el.name && el.name !== 'date') {
@@ -1362,14 +1402,23 @@ root.addEventListener('submit', async (e) => {
     }
   } else if (f.id === 'f-phase') {
     S.settings.phases.push({ name: String(fd.get('name')), start: String(fd.get('start')) }); await persist();
+  } else if (f.id === 'f-note-modal' && S.noteModal) {
+    const { exName } = S.noteModal;
+    const val = String(fd.get('note') ?? '').trim();
+    if (val) S.settings.notes[exName] = val;
+    else delete S.settings.notes[exName];
+    S.noteModal = undefined;
+    await persist();
+    toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
   }
 });
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (S.confirmModal) { resolveConfirm(false); return; }
-  if (S.exModal || S.routineModal) {
+  if (S.exModal || S.routineModal || S.noteModal) {
     S.exModal = undefined;
     S.routineModal = undefined;
+    S.noteModal = undefined;
     render();
   }
 });

@@ -228,3 +228,28 @@ export async function importSamsungFiles(files: File[]): Promise<SamsungImport> 
   res.wellbeing = [...wellMap.values()].sort((a, b) => a.date.localeCompare(b.date));
   return res;
 }
+
+/** Ejecuta el parseo de archivos o ZIP de Samsung Health en un Web Worker para no bloquear el hilo principal. */
+export function importSamsungInWorker(files: File[]): Promise<SamsungImport> {
+  if (typeof Worker === 'undefined') return importSamsungFiles(files);
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL('./samsungWorker.ts', import.meta.url), { type: 'module' });
+    } catch {
+      importSamsungFiles(files).then(resolve, reject);
+      return;
+    }
+    const cleanup = () => worker.terminate();
+    worker.onmessage = (ev: MessageEvent<{ ok: true; res: SamsungImport } | { ok: false; error: string }>) => {
+      cleanup();
+      if (ev.data.ok) resolve(ev.data.res);
+      else reject(new Error(ev.data.error));
+    };
+    worker.onerror = (ev) => {
+      cleanup();
+      reject(new Error(ev.message || 'Error al procesar los archivos de Samsung Health'));
+    };
+    worker.postMessage(files);
+  });
+}

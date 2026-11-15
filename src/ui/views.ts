@@ -250,7 +250,7 @@ function renderLoadControlBlock(
           ${rows.map(({ d, c, e }) => {
             const aiSt = freshStatus(e);
             return `
-            <tr>
+            <tr data-act="openExDetail" data-arg="${esc(d)}|${esc(e.name)}" role="button" tabindex="0" class="cursor-pointer hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
               <td class="py-3 pr-3 truncate"><span style="color:${c}" class="font-bold">${esc(d)}</span></td>
               <td class="py-3 pr-3 font-medium text-white truncate" title="${esc(e.name)}">${esc(e.name)}</td>
               <td class="py-3 pr-3 text-right tabular-nums text-sm font-medium text-gray-300">${e.target ? `${e.target.sets}×${e.target.reps}` : '—'}</td>
@@ -266,16 +266,16 @@ function renderLoadControlBlock(
   const mobileHtml = `
     <div class="md:hidden divide-y divide-white/10">
       ${rows.map(({ d, c, e }) => `
-        <div class="py-3 space-y-1.5">
+        <div data-act="openExDetail" data-arg="${esc(d)}|${esc(e.name)}" role="button" tabindex="0" class="py-3 space-y-1.5 cursor-pointer rounded-xl px-1 -mx-1 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
           <div class="flex items-center justify-between gap-2">
             <div class="flex min-w-0 items-center gap-2">
-              <span style="color:${c}" class="w-12 shrink-0 truncate text-xs font-extrabold uppercase tracking-wide">${esc(d)}</span>
+              <span style="color:${c}" class="min-w-[3rem] max-w-[6.5rem] shrink-0 truncate text-xs font-extrabold uppercase tracking-wide">${esc(d)}</span>
               <span class="truncate text-[15px] font-semibold text-white" title="${esc(e.name)}">${esc(e.name)}</span>
             </div>
             <span class="shrink-0 rounded-md bg-white/[0.06] px-2 py-0.5 tabular-nums text-[13px] font-semibold text-gray-200">${e.target ? `${e.target.sets}×${e.target.reps}` : '—'}</span>
           </div>
-          <div class="pl-14 tabular-nums text-sm font-medium text-gray-200 truncate">${e.last ? `${short(e.last.date)} · ${esc(e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · '))}` : 'Sin registros'}</div>
-          <div class="pl-14 pt-0.5 truncate">${statusInline(e, freshStatus(e))}</div>
+          <div class="pl-1 tabular-nums text-sm font-medium text-gray-200 truncate">${e.last ? `${short(e.last.date)} · ${esc(e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · '))}` : 'Sin registros'}</div>
+          <div class="pl-1 pt-0.5 truncate">${statusInline(e, freshStatus(e))}</div>
         </div>`).join('')}
     </div>`;
 
@@ -477,14 +477,14 @@ export function viewHome(S: State): string {
           <span class="text-gray-400 block">Peso</span>
           <div class="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
             <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-white">${mWeight.val != null ? `${r1(mWeight.val)} kg` : '—'}</span>
-            ${wDelta ? `<span class="whitespace-nowrap tabular-nums font-semibold ${wDeltaCls}">${esc(wDelta)}</span>` : mWeight.date ? `<span class="whitespace-nowrap tabular-nums text-gray-500">${short(mWeight.date)}</span>` : ''}
+            ${wDelta ? `<span class="whitespace-nowrap tabular-nums font-semibold ${wDeltaCls}">${esc(wDelta)}</span>` : mWeight.date ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${short(mWeight.date)}</span>` : ''}
           </div>
         </div>
         <div class="min-w-0">
           <span class="text-gray-400 block">% Grasa</span>
           <div class="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
             <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-coralRed">${mBf.val != null ? `${r1(mBf.val)}%` : '—'}</span>
-            ${bfDelta ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${esc(bfDelta)}</span>` : mBf.date ? `<span class="whitespace-nowrap tabular-nums text-gray-500">${short(mBf.date)}</span>` : ''}
+            ${bfDelta ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${esc(bfDelta)}</span>` : mBf.date ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${short(mBf.date)}</span>` : ''}
           </div>
         </div>
         <div class="min-w-0">
@@ -523,7 +523,7 @@ export function viewHome(S: State): string {
           <select class="inp !w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
         </div>
       </div>
-      ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin sesiones para este ejercicio en ${esc(rangeLabel)}.</p>`}
+      ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin sesiones para este ejercicio en ${esc(rangeLabel)}.</p>`}
     </div>
 
     <div class="min-w-0 space-y-2">
@@ -531,7 +531,7 @@ export function viewHome(S: State): string {
         <h3 class="text-base font-bold text-white">Peso y % de grasa</h3>
         <p class="text-xs text-gray-400">Tendencia media 7 días + registros (${esc(rangeLabel)})</p>
       </div>
-      ${mm.length ? `<div class="chart-box"><canvas id="c-home-body"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin mediciones de peso en ${esc(rangeLabel)}.</p>`}
+      ${mm.length ? `<div class="chart-box"><canvas id="c-home-body"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin mediciones de peso en ${esc(rangeLabel)}.</p>`}
     </div>
   </section>
 
@@ -556,7 +556,7 @@ function renderDayDetail(
   const metric: ExMetric = S.exMetric ?? 'top';
   const prescLabel = a?.prescription && S.settings.ai?.date ? `Próxima sesión · IA (${short(S.settings.ai.date)})` : 'Próxima sesión';
 
-  return `<div class="${embedded ? 'border-t border-white/10 bg-[#0D1320]/70 p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark/60 p-4 sm:p-5 space-y-5'}">
+  return `<div class="${embedded ? 'border-t border-white/10 bg-[#0D1320] p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark p-4 sm:p-5 space-y-5'}">
     <div class="flex flex-wrap items-start justify-between gap-2">
       <div>
         ${embedded ? '' : `<h3 class="text-lg font-extrabold text-white">${esc(e.name)}</h3>`}
@@ -587,7 +587,7 @@ function renderDayDetail(
         <p class="text-xs font-semibold text-gray-400">Progresión · toca un punto para ver repes, e1RM y pulso</p>
         ${exMetricToggle(metric)}
       </div>
-      ${e.sessions.length ? `<div class="chart-box"><canvas id="${canvasId}"></canvas></div>` : `<p class="py-8 text-center text-sm text-gray-500">Sin registros para este ejercicio en ${esc(rangeLabel)}.</p>`}
+      ${e.sessions.length ? `<div class="chart-box"><canvas id="${canvasId}"></canvas></div>` : `<p class="py-8 text-center text-sm text-gray-400">Sin registros para este ejercicio en ${esc(rangeLabel)}.</p>`}
     </div>
 
     ${e.last?.note ? `<p class="flex items-start gap-2 text-xs sm:text-sm text-amberGold">${icon('note', 'h-4 w-4 mt-0.5')}<span>Última nota: ${esc(e.last.note)}</span></p>` : ''}
@@ -699,7 +699,7 @@ export function viewDay(S: State, day: DayName): string {
       const open = x.name === mobileCur;
       const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
       const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${esc(rangeLabel)}`;
-      return `<div class="rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark/85 overflow-hidden">
+      return `<div class="rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark overflow-hidden">
         <button data-act="selEx" data-arg="${dEsc}|${open ? '__closed__' : esc(x.name)}" aria-expanded="${open}" class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]">
           <div class="min-w-0 space-y-1">
             <p class="text-sm font-bold text-white truncate">${esc(x.name)}</p>
@@ -723,7 +723,7 @@ export function viewDay(S: State, day: DayName): string {
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
         const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${esc(rangeLabel)}`;
         const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
-        return `<button data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark/85 hover:border-white/25'}">
+        return `<button data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-bold text-white truncate">${esc(x.name)}</span>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc((!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>

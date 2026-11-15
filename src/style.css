@@ -14,7 +14,7 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-white/10 bg-cardDark/85 p-4 sm:p-5;
+    @apply rounded-2xl border border-white/10 bg-cardDark p-4 sm:p-5;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-semibold text-gray-200 transition-colors hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:pointer-events-none disabled:opacity-50;
@@ -59,7 +59,7 @@ body {
     @apply border-electricBlue/30 bg-electricBlue/15 text-blue-300;
   }
   .nav-sec-lbl {
-    @apply px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500;
+    @apply px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400;
   }
   .bnav-item {
     @apply flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold text-gray-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue;
@@ -69,11 +69,9 @@ body {
     @apply text-electricBlue;
   }
   .num-col {
-    @apply font-mono tabular-nums text-right;
+    @apply tabular-nums text-right;
   }
   .chart-box {
-    position: relative;
-    height: 280px;
-    width: 100%;
+    @apply relative h-[240px] w-full sm:h-[280px] lg:h-[340px];
   }
 }
