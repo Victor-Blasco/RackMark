@@ -1,7 +1,7 @@
 export type DayName = string;
 export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
 
-export interface SetRec { w: number; r: number }
+export interface SetRec { w: number; r: number; done?: boolean }
 
 /** Una fila de fuerza de Samsung Health = un ejercicio dentro de una sesión. */
 export interface StrengthRow {
@@ -31,6 +31,10 @@ export interface LogDraft {
   date: string;
   day: DayName | 'Libre';
   exercises: LogExDraft[];
+  sessionId?: string;
+  dirty?: boolean;
+  restUntil?: number;
+  restSec?: number;
 }
 
 export interface CardioRow {

@@ -7,8 +7,27 @@ import { esc, fmtDate, routineColor, routineNames, type State } from './shared';
 const sel = (name: string, opts: string[]) =>
   `<option value="" ${name ? '' : 'selected'}>—</option>${opts.map((o) => `<option ${o === name ? 'selected' : ''}>${esc(o)}</option>`).join('')}`;
 
-/** Renderiza los modales activos de creación de ejercicios y edición/creación de rutinas. */
+/** Renderiza los modales activos de creación de ejercicios, rutinas y confirmaciones. */
 export function renderModals(S: State): string {
+  if (S.confirmModal) {
+    const cm = S.confirmModal;
+    return `<div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" data-act="confirmNo" aria-hidden="true"></div>
+      <div class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0F1624] p-5 shadow-2xl space-y-4">
+        <div class="flex items-start gap-3">
+          ${cm.danger ? `<div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coralRed/15 text-coralRed">${icon('warn', 'h-5 w-5')}</div>` : ''}
+          <div class="min-w-0 flex-1">
+            <h3 id="confirmModalTitle" class="text-base font-extrabold text-white">${esc(cm.title)}</h3>
+            <p class="mt-1 text-sm text-gray-300 leading-relaxed">${esc(cm.message)}</p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
+          <button type="button" class="btn" data-act="confirmNo">Cancelar</button>
+          <button type="button" class="${cm.danger ? 'btn !border-coralRed/60 !bg-coralRed !text-white hover:!bg-coralRed/90' : 'btn-primary'}" data-act="confirmYes">${esc(cm.confirmLabel ?? 'Confirmar')}</button>
+        </div>
+      </div>
+    </div>`;
+  }
   if (S.exModal) {
     const routines = routineNames(S.settings);
     const target = S.exModal.routine ?? '';
@@ -37,11 +56,11 @@ export function renderModals(S: State): string {
           </label>
           <label class="block">
             <span class="lbl">Series objetivo</span>
-            <input class="inp font-mono tabular-nums" type="number" name="sets" min="1" max="20" value="3" required>
+            <input class="inp tabular-nums font-medium" type="number" name="sets" min="1" max="20" value="3" required>
           </label>
           <label class="block">
             <span class="lbl">Reps objetivo</span>
-            <input class="inp font-mono tabular-nums" type="number" name="reps" min="1" max="100" value="10" required>
+            <input class="inp tabular-nums font-medium" type="number" name="reps" min="1" max="100" value="10" required>
           </label>
         </div>
 
@@ -134,7 +153,7 @@ export function viewPlan(S: State): string {
   const unmappedCount = S.analysis.unmapped.length;
 
   const header = `
-  <div class="card flex flex-wrap items-center justify-between gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
     <div>
       <h2 class="text-lg font-extrabold text-white">Planificación y catálogo</h2>
       <p class="text-xs text-gray-400">Crea tus propias rutinas o usa una plantilla, define fases del bloque y gestiona los ejercicios.</p>
@@ -143,21 +162,21 @@ export function viewPlan(S: State): string {
       <button role="tab" aria-selected="${tab === 'routines'}" data-act="planTab" data-arg="routines" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'routines' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Rutinas y fases</button>
       <button role="tab" aria-selected="${tab === 'exercises'}" data-act="planTab" data-arg="exercises" class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'exercises' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">
         <span>Ejercicios y músculos</span>
-        ${unmappedCount > 0 ? `<span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amberGold">${unmappedCount}</span>` : ''}
+        ${unmappedCount > 0 ? `<span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 tabular-nums text-[11px] font-bold text-amberGold">${unmappedCount}</span>` : ''}
       </button>
     </div>
   </div>`;
 
   if (tab === 'exercises') {
     return `${header}
-    ${unmappedCount ? `<div class="card space-y-2 border-amberGold/40 bg-amberGold/5"><h3 class="font-bold text-white">Ejercicios de Samsung sin nombre (${unmappedCount})</h3>
+    ${unmappedCount ? `<div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2"><h3 class="font-bold text-white">Ejercicios de Samsung sin nombre (${unmappedCount})</h3>
       <p class="text-xs text-gray-300">Samsung Health no exporta el nombre de algunos ejercicios integrados. Asígnales nombre (si coincide con uno existente, se fusionan).</p>
       <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-6">
-        ${S.analysis.unmapped.sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<div class="flex items-center gap-2 text-sm"><span class="w-40 shrink-0 font-mono tabular-nums text-gray-400">${esc(u.ref)} · ${u.n}× · ${fmtDate(u.last)}</span><input class="inp" list="exnames" placeholder="Nombre del ejercicio…" data-change="refName" data-arg="${esc(u.ref)}" aria-label="Nombre para ${esc(u.ref)}"></div>`).join('')}
+        ${S.analysis.unmapped.sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<div class="flex items-center gap-2 text-sm"><span class="w-40 shrink-0 tabular-nums text-gray-400">${esc(u.ref)} · ${u.n}× · ${fmtDate(u.last)}</span><input class="inp" list="exnames" placeholder="Nombre del ejercicio…" data-change="refName" data-arg="${esc(u.ref)}" aria-label="Nombre para ${esc(u.ref)}"></div>`).join('')}
       </div>
       <datalist id="exnames">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></div>` : ''}
 
-    <div class="card space-y-2"><h3 class="font-bold text-white">Fusionar ejercicios (alias)</h3>
+    <div class="pb-5 border-b border-white/10 space-y-3"><h3 class="font-bold text-white">Fusionar ejercicios (alias)</h3>
       <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
       <div class="flex flex-wrap items-center gap-2">
         <select id="mergeFrom" class="inp !w-auto" aria-label="Ejercicio origen a fusionar">${sel('', known)}</select>
@@ -168,7 +187,7 @@ export function viewPlan(S: State): string {
       ${Object.entries(s.aliases).map(([a, b]) => `<div class="flex items-center gap-2 text-xs text-gray-400"><span>${esc(a)} → ${esc(b)}</span><button class="rounded p-0.5 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="unmerge" data-arg="${esc(a)}" aria-label="Deshacer fusión ${esc(a)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}
     </div>
 
-    <div class="card space-y-2 overflow-x-auto">
+    <div class="space-y-3 overflow-x-auto">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 class="font-bold text-white">Músculos por ejercicio (${names.length})</h3>
@@ -185,7 +204,7 @@ export function viewPlan(S: State): string {
   }
 
   return `${header}
-  <div class="card space-y-3">
+  <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="font-bold text-white">Rutinas y objetivos (series × reps)</h3>
@@ -194,18 +213,18 @@ export function viewPlan(S: State): string {
       <button class="btn-primary !py-1.5 !text-xs" data-act="rtModalNew">+ Nueva rutina</button>
     </div>
 
-    <div class="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/5 bg-gray-900/50 px-3 py-2 text-xs">
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
       <span class="font-semibold text-gray-400">Plantillas rápidas:</span>
-      ${Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => `<button type="button" data-act="rtApplyTpl" data-arg="${k}" title="${esc(tpl.desc)}" class="rounded-lg border border-white/10 bg-gray-900/80 px-2.5 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors">${esc(tpl.label)}</button>`).join('')}
+      ${Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => `<button type="button" data-act="rtApplyTpl" data-arg="${k}" title="${esc(tpl.desc)}" class="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors">${esc(tpl.label)}</button>`).join('')}
     </div>
 
-    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+    <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
       ${routines.map((d, idx) => {
         const col = routineColor(d, s, idx);
         const sub = s.routineMeta?.[d]?.sub;
         const list = s.routines[d] ?? [];
         return `
-        <div class="rounded-xl border border-white/5 bg-gray-900/40 p-3.5">
+        <div class="rounded-2xl border border-white/10 bg-cardDark/60 p-4">
           <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
             <h4 class="flex items-center gap-2 text-sm font-bold min-w-0" style="color:${col}">
               <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:${col}" aria-hidden="true"></span>
@@ -218,10 +237,19 @@ export function viewPlan(S: State): string {
               <button class="rounded p-1 text-coralRed hover:bg-coralRed/10 disabled:opacity-30 disabled:pointer-events-none" data-act="rtRemoveDay" data-arg="${esc(d)}" ${routines.length <= 1 ? 'disabled' : ''} aria-label="Eliminar rutina ${esc(d)}">${icon('trash', 'h-3.5 w-3.5')}</button>
             </div>
           </div>
-          ${list.map((r, i) => `<div class="mb-1.5 flex items-center gap-1.5"><select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
-            <input class="inp !w-12 !px-1.5 text-center font-mono tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-500" aria-hidden="true">×</span>
-            <input class="inp !w-12 !px-1.5 text-center font-mono tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
-            <button class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button></div>`).join('')}
+          <div data-sort-list="rt:${esc(d)}" class="space-y-1.5">
+            ${list.map((r, i) => `<div data-sort-item data-sort-idx="${i}" class="flex items-center gap-1 rounded-xl bg-white/[0.02] px-1 py-0.5 transition-shadow">
+              <button type="button" data-sort-handle class="shrink-0 touch-none cursor-grab active:cursor-grabbing select-none rounded p-1 text-gray-500 hover:bg-white/5 hover:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Arrastrar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Arrastrar para reordenar">${icon('grip', 'h-3.5 w-3.5')}</button>
+              <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
+              <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-500" aria-hidden="true">×</span>
+              <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
+              <div class="flex shrink-0 items-center">
+                <button type="button" class="rounded p-1 text-gray-500 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
+                <button type="button" class="rounded p-1 text-gray-500 hover:bg-white/5 hover:text-white disabled:opacity-25 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
+                <button class="rounded-lg p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="rtDel" data-arg="${esc(d)}|${i}" aria-label="Eliminar ${esc(r.name || `ejercicio ${i + 1}`)} de ${esc(d)}">${icon('close', 'h-4 w-4')}</button>
+              </div>
+            </div>`).join('')}
+          </div>
           <div class="mt-2.5 flex flex-wrap gap-2">
             <button class="btn !py-1.5 !text-xs" data-act="rtAdd" data-arg="${esc(d)}">+ Añadir fila</button>
             <button class="btn !border-electricBlue/40 !py-1.5 !text-xs text-blue-300" data-act="openExModal" data-arg="${esc(d)}">+ Crear ejercicio</button>
@@ -231,7 +259,7 @@ export function viewPlan(S: State): string {
     </div>
   </div>
 
-  <div class="card space-y-3">
+  <div class="pt-5 border-t border-white/10 space-y-3">
     <div>
       <h3 class="font-bold text-white">Fases nutricionales y de entrenamiento</h3>
       <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>

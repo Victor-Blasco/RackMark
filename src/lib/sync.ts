@@ -173,6 +173,7 @@ export interface MergeBucketInput {
   remoteBucket?: RemoteBucket;
   localDirtyKeys: Record<string, number>;
   localDeleted: Record<string, number>;
+  lastSyncedAt?: number;
   now?: number;
 }
 
@@ -190,6 +191,7 @@ export function mergeBucket({
   remoteBucket,
   localDirtyKeys,
   localDeleted,
+  lastSyncedAt = 0,
   now = Date.now(),
 }: MergeBucketInput): MergeBucketResult {
   const remoteItems = remoteBucket?.items ?? {};
@@ -220,9 +222,12 @@ export function mergeBucket({
     const delR = remoteDeleted[k] ?? 0;
     const delT = Math.max(delL, delR);
 
+    const localEdited = touchL > 0 && (touchL > remoteAt || touchL > lastSyncedAt);
+    const localDeletedAfterSync = delL > 0 && (delL > remoteAt || delL > lastSyncedAt);
+
     // Ignore deletion if locally touched more recently than tombstone
     const tombstoned = delT > 0 && touchL <= delT;
-    if (tombstoned && (!rem || delL > remoteAt)) {
+    if (tombstoned && (!rem || localDeletedAfterSync)) {
       if (loc) toDeleteLocally.push(k);
       continue;
     }
@@ -230,8 +235,8 @@ export function mergeBucket({
     if (loc && rem) {
       const mergedItem =
         kind === 'wellbeing'
-          ? stripUndefined(touchL > remoteAt ? { ...rem, ...loc } : { ...loc, ...rem })
-          : stripUndefined(touchL > remoteAt ? loc : rem);
+          ? stripUndefined(localEdited ? { ...rem, ...loc } : { ...loc, ...rem })
+          : stripUndefined(localEdited ? loc : rem);
       merged[k] = mergedItem;
       delete deleted[k];
       if (JSON.stringify(mergedItem) !== JSON.stringify(stripUndefined(loc))) {
@@ -392,6 +397,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
       remoteBucket: remoteEntry,
       localDirtyKeys: meta.dirtyKeys[bId] ?? {},
       localDeleted: meta.deleted[bId] ?? {},
+      lastSyncedAt: meta.remoteUpdated[bId] ?? meta.lastSyncAt ?? 0,
       now,
     });
 

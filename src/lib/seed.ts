@@ -3,18 +3,36 @@ import type { MuscleMap, Settings } from '../types';
 export const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
-/** Tipos integrados de Samsung Health identificados por comparación con el histórico. */
+/** Tipos predefinidos de fuerza de Samsung Health (EXERCISE_TYPE 10004–10027). */
 export const BUILTIN_REF_NAMES: Record<string, string> = {
+  'type:10004': 'Flexiones',
+  'type:10005': 'Dominadas',
+  'type:10006': 'Abdominales (sit-ups)',
+  'type:10011': 'Press de banca',
+  'type:10012': 'Sentadilla',
+  'type:10013': 'Zancadas',
+  'type:10014': 'Prensa de piernas',
   'type:10015': 'Extensiones de piernas',
   'type:10016': 'Curl de piernas sentado',
+  'type:10017': 'Extensiones lumbares',
   'type:10018': 'Jalones al pecho',
+  'type:10019': 'Peso muerto',
+  'type:10020': 'Press de hombros',
+  'type:10021': 'Elevaciones frontales',
   'type:10022': 'Elevaciones laterales',
+  'type:10023': 'Abdominales (crunches)',
+  'type:10024': 'Elevaciones de piernas',
+  'type:10025': 'Plancha',
+  'type:10026': 'Curl de bíceps',
+  'type:10027': 'Extensiones de tríceps',
 };
 
 const M = (p: string, ...s: string[]): MuscleMap => ({ p, s });
 
 const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Press horizontal en máquina', M('Pecho', 'Tríceps', 'Hombros')],
+  ['Press de banca', M('Pecho', 'Tríceps', 'Hombros')],
+  ['Flexiones', M('Pecho', 'Tríceps', 'Hombros')],
   ['Press inclinado en multipower', M('Pecho', 'Hombros', 'Tríceps')],
   ['Press de banca inclinado con mancuernas', M('Pecho', 'Hombros', 'Tríceps')],
   ['Press De Banca Plano Con Mancuernas', M('Pecho', 'Tríceps', 'Hombros')],
@@ -25,14 +43,19 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Fondos', M('Pecho', 'Tríceps', 'Hombros')],
   ['Press De Hombros En Máquina', M('Hombros', 'Tríceps')],
   ['Press de hombros Con Mancuernas', M('Hombros', 'Tríceps')],
+  ['Press de hombros', M('Hombros', 'Tríceps')],
+  ['Elevaciones frontales', M('Hombros')],
   ['Elevaciones laterales', M('Hombros')],
   ['Face Pull', M('Hombros', 'Espalda')],
   ['Peck-deck Inverso', M('Hombros', 'Espalda')],
   ['Extensiones de tríceps con barra', M('Tríceps')],
   ['Extensiones de tríceps unilateral', M('Tríceps')],
+  ['Extensiones de tríceps', M('Tríceps')],
   ['Jalones al pecho', M('Espalda', 'Bíceps')],
   ['Jalón Unilateral', M('Espalda', 'Bíceps')],
   ['Dominadas Con Lastre', M('Espalda', 'Bíceps')],
+  ['Dominadas', M('Espalda', 'Bíceps')],
+  ['Extensiones lumbares', M('Espalda', 'Glúteo', 'Isquios')],
   ['Remo Bajo Unilateral', M('Espalda', 'Bíceps')],
   ['Remo Unilateral', M('Espalda', 'Bíceps')],
   ['Remo En T', M('Espalda', 'Bíceps')],
@@ -42,20 +65,28 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Curl de bíceps Martillo', M('Bíceps')],
   ['Curl de bíceps Bayesian', M('Bíceps')],
   ['Curl de bíceps en banco inclinado', M('Bíceps')],
+  ['Curl de bíceps', M('Bíceps')],
   ['Sentadilla Hack', M('Cuádriceps', 'Glúteo')],
   ['Sentadilla', M('Cuádriceps', 'Glúteo', 'Aductores')],
   ['Sentadilla Pendular', M('Cuádriceps', 'Glúteo')],
+  ['Zancadas', M('Cuádriceps', 'Glúteo')],
+  ['Prensa de piernas', M('Cuádriceps', 'Glúteo')],
   ['Extensiones de piernas', M('Cuádriceps')],
   ['Curl de piernas sentado', M('Isquios')],
   ['Curl Femoral De Pie', M('Isquios')],
   ['RDL', M('Isquios', 'Glúteo')],
   ['Peso muerto Rumano', M('Isquios', 'Glúteo')],
+  ['Peso muerto', M('Isquios', 'Espalda', 'Glúteo')],
   ['Hip Thrust', M('Glúteo', 'Isquios')],
   ['Adductores', M('Aductores')],
   ['Abductores', M('Glúteo')],
   ['Sóleo Sentado', M('Gemelos')],
   ['Elevaciones de gemelos', M('Gemelos')],
   ['Abdominales En Maquina', M('Abdomen')],
+  ['Abdominales (sit-ups)', M('Abdomen')],
+  ['Abdominales (crunches)', M('Abdomen')],
+  ['Elevaciones de piernas', M('Abdomen')],
+  ['Plancha', M('Abdomen')],
 ];
 
 export const CATALOG_EXERCISES: string[] = CATALOG_ENTRIES.map(([name]) => name);

@@ -10,9 +10,10 @@ import { parseMeasuresCsv } from './lib/measures';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type LogDraft, type Measure, type RoutineEx, type StrengthRow } from './types';
 import { ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
 import { icon, type IconName } from './ui/icons';
-import { allExerciseNames } from './ui/logView';
+import { allExerciseNames, manualSessionId, renderRestTimerBar } from './ui/logView';
 import { defaultSetsForEx, initLogDraft, renderAiReport, renderModals, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, type State } from './ui/views';
 import { esc, routineColor, routineNames, type RangeKey } from './ui/shared';
+import { initSortableLists, moveItem } from './ui/reorder';
 
 registerSW({ immediate: true });
 
@@ -88,9 +89,49 @@ async function reload() {
   else if (!FIXED_TAB_IDS.has(S.tab)) S.tab = 'home';
 }
 
+let toastTimer: number | undefined;
+function renderToast() {
+  let layer = document.getElementById('toast-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'toast-layer';
+    document.body.appendChild(layer);
+  }
+  layer.innerHTML = S.toast
+    ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64">${esc(S.toast)}</div>`
+    : '';
+}
+
 function toast(msg: string) {
-  S.toast = msg; render();
-  setTimeout(() => { if (S.toast === msg) { S.toast = undefined; render(); } }, 5000);
+  S.toast = msg;
+  renderToast();
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    if (S.toast === msg) {
+      S.toast = undefined;
+      renderToast();
+    }
+  }, 5000);
+}
+
+function syncStatusInfo(): { text: string; cls: string } {
+  if (!S.user) return { text: navigator.onLine ? 'Solo local' : 'Sin conexión · local', cls: 'text-gray-400' };
+  if (S.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
+  if (!navigator.onLine) {
+    return hasUnsyncedChanges()
+      ? { text: 'Offline · pendiente de subir', cls: 'text-amberGold' }
+      : { text: 'Sin conexión · caché offline', cls: 'text-gray-400' };
+  }
+  if (hasUnsyncedChanges()) return { text: 'Pendiente de sincronizar', cls: 'text-amberGold' };
+  return { text: 'Sincronizado', cls: 'text-emerald-400' };
+}
+
+function updateSyncDom() {
+  const st = syncStatusInfo();
+  root.querySelectorAll<HTMLElement>('[data-sync-badge]').forEach((el) => {
+    el.textContent = st.text;
+    el.className = `${el.dataset.syncBase ?? 'truncate text-[10px]'} ${st.cls}`;
+  });
 }
 
 function view(): string {
@@ -111,6 +152,12 @@ function view(): string {
 function focusSelector(el: Element | null): string | null {
   if (!(el instanceof HTMLElement)) return null;
   if (el.id) return `#${CSS.escape(el.id)}`;
+  if (el.dataset.logW) return `[data-log-w="${CSS.escape(el.dataset.logW)}"]`;
+  if (el.dataset.logR) return `[data-log-r="${CSS.escape(el.dataset.logR)}"]`;
+  if (el.dataset.logNote != null) return `[data-log-note="${CSS.escape(el.dataset.logNote)}"]`;
+  if (el.closest('#f-measure') && (el as HTMLInputElement).name) {
+    return `#f-measure [name="${CSS.escape((el as HTMLInputElement).name)}"]`;
+  }
   if (el.dataset.act) {
     const argVal = el.dataset.arg != null ? `[data-arg="${CSS.escape(el.dataset.arg)}"]` : '';
     return `[data-act="${CSS.escape(el.dataset.act)}"]${argVal}`;
@@ -197,23 +244,29 @@ function renderSidebar(statsText: string, draftCount: number): string {
     </nav>
 
     <div class="mt-auto space-y-2 border-t border-gray-800/80 p-3">
-      ${S.user
-        ? `<button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${S.tab === 'settings' ? 'border-electricBlue/40 bg-electricBlue/15' : 'border-white/5 bg-gray-900/60 hover:border-white/15'}">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-electricBlue to-emeraldGreen text-xs font-extrabold text-white">${esc(userInitial)}</span>
-            <div class="min-w-0 flex-1">
-              <p class="truncate text-xs font-bold text-white">${esc(S.user.displayName ?? 'Usuario')}</p>
-              <p class="truncate text-[10px] text-emerald-400">${S.syncing ? 'Sincronizando…' : 'Cuenta y ajustes'}</p>
-            </div>
-            ${icon('gear', 'h-4 w-4 text-gray-400')}
-          </button>`
-        : `${S.authReady ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} class="flex w-full items-center gap-2.5 rounded-xl border border-electricBlue/35 bg-electricBlue/10 px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-electricBlue/20 active:scale-[0.98]">
-            ${icon('login', 'h-4 w-4')}
-            <span class="flex-1 text-left">Iniciar sesión · Google</span>
-          </button>` : ''}
-          <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
-            ${icon('gear', 'h-4 w-4')}
-            <span class="flex-1 text-left">Cuenta y ajustes</span>
-          </button>`}
+      ${(() => {
+        const st = syncStatusInfo();
+        return S.user
+          ? `<button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${S.tab === 'settings' ? 'border-electricBlue/40 bg-electricBlue/15' : 'border-white/5 bg-gray-900/60 hover:border-white/15'}">
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-electricBlue to-emeraldGreen text-xs font-extrabold text-white">${esc(userInitial)}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-xs font-bold text-white">${esc(S.user.displayName ?? 'Usuario')}</p>
+                <p data-sync-badge data-sync-base="truncate text-[10px]" class="truncate text-[10px] ${st.cls}">${st.text}</p>
+              </div>
+              ${icon('gear', 'h-4 w-4 text-gray-400')}
+            </button>`
+          : `${S.authReady ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} class="flex w-full items-center gap-2.5 rounded-xl border border-electricBlue/35 bg-electricBlue/10 px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-electricBlue/20 active:scale-[0.98]">
+              ${icon('login', 'h-4 w-4')}
+              <span class="flex-1 text-left">Iniciar sesión · Google</span>
+            </button>` : ''}
+            <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
+              ${icon('gear', 'h-4 w-4')}
+              <span class="min-w-0 flex-1 text-left">
+                <span class="block">Cuenta y ajustes</span>
+                <span data-sync-badge data-sync-base="block truncate text-[10px] font-normal" class="block truncate text-[10px] font-normal ${st.cls}">${st.text}</span>
+              </span>
+            </button>`;
+      })()}
     </div>
   </aside>`;
 }
@@ -250,7 +303,7 @@ function renderMobileHeader(statsText: string): string {
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-electricBlue to-emeraldGreen text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
         <div class="min-w-0">
           <h1 class="truncate text-sm font-extrabold leading-tight text-white">${esc(headerTitle)}</h1>
-          <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
+          <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText} · <span data-sync-badge data-sync-base="font-medium" class="font-medium ${syncStatusInfo().cls}">${syncStatusInfo().text}</span></p>
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-2">
@@ -295,27 +348,36 @@ function renderMobileNav(draftCount: number): string {
   </nav>`;
 }
 
-/** Re-renderiza el panel preservando posición de scroll y foco del control activo. */
+/** Re-renderiza el panel preservando posición de scroll, foco y selección de texto del control activo. */
 function render() {
   const y = window.scrollY;
-  const activeSel = focusSelector(document.activeElement);
+  const activeEl = document.activeElement;
+  const activeSel = focusSelector(activeEl);
+  const selStart = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement ? activeEl.selectionStart : null;
+  const selEnd = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement ? activeEl.selectionEnd : null;
   resetCharts();
   const html = view();
   const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'sin datos importados';
-  const draftCount = S.logDraft?.exercises.filter((e) => e.done).length ?? 0;
+  const draftCount = S.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
 
   root.innerHTML = `
   ${renderSidebar(statsText, draftCount)}
   ${renderMobileHeader(statsText)}
   <div class="lg:pl-64">
-    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-3 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">${html}</main>
+    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">${html}</main>
   </div>
   ${renderMobileNav(draftCount)}
-  ${renderModals(S)}
-  ${S.toast ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm shadow-xl lg:bottom-6 lg:left-64">${esc(S.toast)}</div>` : ''}`;
+  ${renderModals(S)}`;
   runChartJobs(); runCalc();
   window.scrollTo(0, y);
-  if (activeSel) root.querySelector<HTMLElement>(activeSel)?.focus({ preventScroll: true });
+  if (activeSel) {
+    const nextEl = root.querySelector<HTMLElement>(activeSel);
+    nextEl?.focus({ preventScroll: true });
+    if ((nextEl instanceof HTMLInputElement || nextEl instanceof HTMLTextAreaElement) && selStart != null && selEnd != null) {
+      try { nextEl.setSelectionRange(selStart, selEnd); } catch { /* algunos inputs como number/date no admiten setSelectionRange */ }
+    }
+  }
+  syncRestTicker();
 }
 
 const num = (v: string) => { const n = parseFloat(v.replace(',', '.')); return Number.isFinite(n) ? n : undefined; };
@@ -333,12 +395,16 @@ async function runSync(showToast = false) {
   if (syncInFlight) { syncPending = true; return; }
   syncInFlight = true;
   S.syncing = true;
-  render();
+  updateSyncDom();
   try {
     const res = await syncWithCloud(S.user.uid);
     S.lastSync = Date.now();
     if (res.accountSwitched) { S.logDraft = undefined; saveDraft(undefined); }
-    if (res.accountSwitched || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled') await reload();
+    const changed = Boolean(res.accountSwitched || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled');
+    if (changed) {
+      await reload();
+      render();
+    }
     if (showToast) {
       const msg = res.pulledItems || res.pushedBuckets || res.deletedItems || res.settingsDirection !== 'none'
         ? `Sincronizado (${res.pushedBuckets} subidos, ${res.pulledItems} descargados).`
@@ -346,16 +412,17 @@ async function runSync(showToast = false) {
       toast(msg);
     }
   } catch (e) {
-    toast(`Error de sincronización: ${(e as Error).message}`);
+    if (showToast) toast(`Error de sincronización: ${(e as Error).message}`);
   } finally {
     S.syncing = false;
     syncInFlight = false;
-    render();
+    updateSyncDom();
     if (syncPending) { syncPending = false; void runSync(false); }
   }
 }
 
 function queueSync() {
+  updateSyncDom();
   if (!S.user || !navigator.onLine) return;
   clearTimeout(syncTimer);
   syncTimer = window.setTimeout(() => { void runSync(false); }, 600);
@@ -379,52 +446,259 @@ function addExToDraft(name: string, fallbackSets?: number, fallbackReps?: number
   const today = new Date().toISOString().slice(0, 10);
   const firstRoutine = routineNames(S.settings)[0] ?? 'Libre';
   const draft = S.logDraft ?? (S.logDraft = initLogDraft(S, firstRoutine, today));
-  const existing = draft.exercises.find((e) => norm(e.name) === norm(clean));
-  if (existing) existing.done = true;
-  else draft.exercises.push({ name: clean, done: true, sets: defaultSetsForEx(S, clean, fallbackSets, fallbackReps), note: '' });
+  const existingIdx = draft.exercises.findIndex((e) => norm(e.name) === norm(clean));
+  if (existingIdx < 0) {
+    draft.exercises.push({ name: clean, done: false, sets: defaultSetsForEx(S, clean, fallbackSets, fallbackReps, false), note: '' });
+  }
+  draft.dirty = true;
   saveDraft(draft);
   render();
+  if (existingIdx >= 0) {
+    root.querySelector<HTMLElement>(`[data-ex-idx="${existingIdx}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+let restTimerInterval: number | undefined;
+function updateRestBarDom() {
+  const bar = document.getElementById('rest-timer-bar');
+  if (bar && S.logDraft) bar.outerHTML = renderRestTimerBar(S.logDraft);
+}
+function syncRestTicker() {
+  const until = S.logDraft?.restUntil;
+  const active = S.tab === 'log' && until != null && until > Date.now();
+  if (active && restTimerInterval == null) {
+    restTimerInterval = window.setInterval(() => {
+      if (S.tab !== 'log' || !S.logDraft || S.logDraft.restUntil == null) {
+        clearInterval(restTimerInterval);
+        restTimerInterval = undefined;
+        return;
+      }
+      updateRestBarDom();
+      if (S.logDraft.restUntil <= Date.now()) {
+        clearInterval(restTimerInterval);
+        restTimerInterval = undefined;
+        try { navigator.vibrate?.([40, 40, 40]); } catch { /* navigator.vibrate opcional */ }
+      }
+    }, 1000);
+  } else if (!active && restTimerInterval != null) {
+    clearInterval(restTimerInterval);
+    restTimerInterval = undefined;
+  }
+}
+
+function updateLogCountersDom(ei?: number) {
+  const draft = S.logDraft;
+  if (!draft) return;
+  const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
+  const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
+  const totalSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.length, 0);
+
+  const summary = document.getElementById('logCountSummary');
+  if (summary) summary.textContent = `${doneExCount}/${draft.exercises.length} ejercicios · ${doneSetsCount}/${totalSetsCount} series marcadas ✓`;
+
+  const saveBtns = root.querySelectorAll<HTMLButtonElement>('button[data-act="logSave"]');
+  saveBtns.forEach((btn, idx) => {
+    const label = idx === 0 ? ` Guardar (${doneSetsCount})` : ` Guardar sesión (${doneSetsCount} series)`;
+    const svg = btn.querySelector('svg');
+    btn.textContent = '';
+    if (svg) btn.appendChild(svg);
+    btn.appendChild(document.createTextNode(label));
+  });
+
+  if (ei != null && draft.exercises[ei]) {
+    const ex = draft.exercises[ei];
+    const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
+    const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
+    const counter = root.querySelector<HTMLElement>(`[data-ex-counter="${ei}"]`);
+    if (counter) {
+      counter.textContent = `${doneInEx}/${ex.sets.length}`;
+      counter.className = `ml-1 tabular-nums text-xs font-semibold ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
+    }
+    const card = root.querySelector<HTMLElement>(`[data-ex-idx="${ei}"]`);
+    if (card) {
+      card.classList.remove('border-emeraldGreen/50', 'border-electricBlue/50', 'border-white/10');
+      card.classList.add(allDoneInEx ? 'border-emeraldGreen/50' : doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10');
+    }
+    const toggleBtn = root.querySelector<HTMLElement>(`[data-act="logToggleEx"][data-arg="${ei}"]`);
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-pressed', String(allDoneInEx));
+      const box = toggleBtn.querySelector<HTMLElement>('span');
+      if (box) {
+        box.className = `mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${allDoneInEx ? 'border-emeraldGreen bg-emeraldGreen/20 text-emeraldGreen' : doneInEx > 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-300' : 'border-gray-600 text-transparent'}`;
+      }
+    }
+  }
+}
+
+function syncSetDom(ei: number, si: number) {
+  const ex = S.logDraft?.exercises[ei];
+  const s = ex?.sets[si];
+  if (!ex || !s) return;
+  const row = root.querySelector<HTMLElement>(`[data-set-row="${ei}|${si}"]`);
+  if (row) {
+    row.className = `flex items-center gap-1.5 rounded-xl p-1 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}`;
+    const label = row.querySelector<HTMLElement>('span');
+    if (label) label.className = `w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-400'}`;
+  }
+  const btn = root.querySelector<HTMLElement>(`[data-act="logToggleSet"][data-arg="${ei}|${si}"]`);
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(Boolean(s.done)));
+    btn.setAttribute('aria-label', `${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${ex.name}`);
+    btn.className = `flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}`;
+  }
+  updateLogCountersDom(ei);
+}
+
+async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, nextSessionId?: string): Promise<boolean> {
+  const cur = S.logDraft;
+  if (!cur?.dirty) return true;
+  const targetSid = nextSessionId ?? manualSessionId(nextDate, nextDay);
+  if (cur.day === nextDay && cur.date === nextDate && (cur.sessionId ?? manualSessionId(cur.date, cur.day)) === targetSid) {
+    return true;
+  }
+  return askConfirm({
+    title: 'Cambiar de sesión sin guardar',
+    message: 'Tienes series o cambios sin guardar en el entrenamiento actual. Si cambias ahora se descartarán.',
+    confirmLabel: 'Descartar cambios',
+    danger: true,
+  });
+}
+
+let confirmResolver: ((ok: boolean) => void) | null = null;
+function resolveConfirm(ok: boolean) {
+  const res = confirmResolver;
+  confirmResolver = null;
+  S.confirmModal = undefined;
+  render();
+  res?.(ok);
+}
+function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> {
+  if (confirmResolver) confirmResolver(false);
+  S.confirmModal = opts;
+  render();
+  return new Promise((resolve) => { confirmResolver = resolve; });
 }
 
 const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
+  confirmYes: () => resolveConfirm(true),
+  confirmNo: () => resolveConfirm(false),
   tab: (el) => { setTab(arg(el)); render(); window.scrollTo(0, 0); },
-  goLog: (el) => {
+  goLog: async (el) => {
     const day = arg(el) as DayName | '';
     const today = new Date().toISOString().slice(0, 10);
     if (day) {
-      S.logDraft = initLogDraft(S, day, S.logDraft?.date ?? today);
-      saveDraft(S.logDraft);
+      const sameDraft = S.logDraft && S.logDraft.day === day && S.logDraft.date === today;
+      if (!sameDraft) {
+        if (!(await confirmSwitchDraft(day, today))) return;
+        S.logDraft = initLogDraft(S, day, today);
+        saveDraft(S.logDraft);
+      }
     } else if (!S.logDraft) {
       S.logDraft = initLogDraft(S, routineNames(S.settings)[0] ?? 'Libre', today);
       saveDraft(S.logDraft);
     }
     setTab('log'); render(); window.scrollTo(0, 0);
   },
-  logDay: (el) => {
+  logDay: async (el) => {
     const day = arg(el) as DayName | 'Libre';
     const date = S.logDraft?.date ?? new Date().toISOString().slice(0, 10);
+    if (!(await confirmSwitchDraft(day, date))) return;
     S.logDraft = initLogDraft(S, day, date);
     saveDraft(S.logDraft);
     render();
   },
-  logReset: () => {
-    if (!confirm('¿Reiniciar el borrador actual a los valores por defecto de la rutina?')) return;
+  logReset: async () => {
+    if (!(await askConfirm({
+      title: 'Reiniciar borrador',
+      message: 'Se restaurarán los ejercicios y series por defecto de la rutina actual.',
+      confirmLabel: 'Reiniciar',
+      danger: true,
+    }))) return;
     const day = S.logDraft?.day ?? routineNames(S.settings)[0] ?? 'Libre';
     const date = S.logDraft?.date ?? new Date().toISOString().slice(0, 10);
-    S.logDraft = initLogDraft(S, day, date);
+    S.logDraft = initLogDraft(S, day, date, S.logDraft?.sessionId);
     saveDraft(S.logDraft);
     render();
   },
   logToggleEx: (el) => {
     const ex = S.logDraft?.exercises[+arg(el)];
-    if (!ex) return;
-    ex.done = !ex.done;
+    if (!ex || !S.logDraft) return;
+    const next = !ex.sets.every((s) => s.done);
+    ex.sets.forEach((s) => { s.done = next; });
+    ex.done = next;
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
     render();
+  },
+  logToggleSet: (el) => {
+    const [ei, si] = arg(el).split('|').map(Number);
+    const draft = S.logDraft;
+    const ex = draft?.exercises[ei];
+    const s = ex?.sets[si];
+    if (!draft || !ex || !s) return;
+    s.done = !s.done;
+    ex.done = ex.sets.some((x) => Boolean(x.done));
+    draft.dirty = true;
+    if (s.done) {
+      draft.restUntil = Date.now() + (draft.restSec ?? 90) * 1000;
+      try { navigator.vibrate?.(15); } catch { /* navigator.vibrate opcional */ }
+    }
+    saveDraft(draft);
+    syncSetDom(ei, si);
+    updateRestBarDom();
+    syncRestTicker();
+  },
+  logApplyWeight: (el) => {
+    const [eiStr, wStr] = arg(el).split('|');
+    const ei = +eiStr;
+    const targetW = parseFloat(wStr);
+    const draft = S.logDraft;
+    const ex = draft?.exercises[ei];
+    if (!draft || !ex || !Number.isFinite(targetW)) return;
+    for (const s of ex.sets) {
+      if (!s.done) s.w = Math.max(0, targetW);
+    }
+    draft.dirty = true;
+    saveDraft(draft);
+    render();
+  },
+  restStart: (el) => {
+    if (!S.logDraft) return;
+    const sec = Math.max(15, +arg(el) || 90);
+    S.logDraft.restSec = sec;
+    S.logDraft.restUntil = Date.now() + sec * 1000;
+    saveDraft(S.logDraft);
+    updateRestBarDom();
+    syncRestTicker();
+  },
+  restAdjust: (el) => {
+    if (!S.logDraft) return;
+    const deltaSec = +arg(el) || 0;
+    const base = Math.max(Date.now(), S.logDraft.restUntil ?? Date.now());
+    S.logDraft.restUntil = Math.max(Date.now() + 1000, base + deltaSec * 1000);
+    saveDraft(S.logDraft);
+    updateRestBarDom();
+    syncRestTicker();
+  },
+  restStop: () => {
+    if (!S.logDraft) return;
+    delete S.logDraft.restUntil;
+    saveDraft(S.logDraft);
+    updateRestBarDom();
+    syncRestTicker();
   },
   logRemoveEx: (el) => {
     if (!S.logDraft) return;
     S.logDraft.exercises.splice(+arg(el), 1);
+    S.logDraft.dirty = true;
+    saveDraft(S.logDraft);
+    render();
+  },
+  logMoveEx: (el) => {
+    if (!S.logDraft) return;
+    const [ei, dir] = arg(el).split('|').map(Number);
+    if (!moveItem(S.logDraft.exercises, ei, ei + dir)) return;
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
     render();
   },
@@ -439,49 +713,60 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   logAddQuick: (el) => addExToDraft(arg(el)),
   logAddSet: (el) => {
     const ex = S.logDraft?.exercises[+arg(el)];
-    if (!ex) return;
+    if (!ex || !S.logDraft) return;
     const last = ex.sets[ex.sets.length - 1];
-    ex.sets.push(last ? { ...last } : { w: 0, r: 10 });
+    ex.sets.push(last ? { w: last.w, r: last.r, done: false } : { w: 0, r: 10, done: false });
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
     render();
   },
   logDelSet: (el) => {
     const [ei, si] = arg(el).split('|').map(Number);
     const ex = S.logDraft?.exercises[ei];
-    if (!ex) return;
+    if (!ex || !S.logDraft) return;
     ex.sets.splice(si, 1);
-    if (!ex.sets.length) ex.done = false;
+    ex.done = ex.sets.some((s) => Boolean(s.done));
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
     render();
   },
   logStepW: (el) => {
     const [ei, si, step] = arg(el).split('|').map(Number);
     const s = S.logDraft?.exercises[ei]?.sets[si];
-    if (!s) return;
+    if (!s || !S.logDraft) return;
     s.w = Math.max(0, Math.round((s.w + step) * 10) / 10);
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
-    render();
+    const inp = root.querySelector<HTMLInputElement>(`[data-log-w="${ei}|${si}"]`);
+    if (inp) inp.value = String(s.w);
+    else render();
   },
   logStepR: (el) => {
     const [ei, si, step] = arg(el).split('|').map(Number);
     const s = S.logDraft?.exercises[ei]?.sets[si];
-    if (!s) return;
+    if (!s || !S.logDraft) return;
     s.r = Math.max(0, s.r + step);
+    S.logDraft.dirty = true;
     saveDraft(S.logDraft);
-    render();
+    const inp = root.querySelector<HTMLInputElement>(`[data-log-r="${ei}|${si}"]`);
+    if (inp) inp.value = String(s.r);
+    else render();
+    updateLogCountersDom(ei);
   },
   logSave: async () => {
     const draft = S.logDraft;
     if (!draft) return;
-    const active = draft.exercises.filter((e) => e.done);
+    const targetSessionId = draft.sessionId ?? manualSessionId(draft.date, draft.day);
     const rows: StrengthRow[] = [];
     const ts = Date.parse(`${draft.date}T12:00:00Z`) || Date.now();
-    for (const ex of active) {
-      const sets = ex.sets.filter((s) => s.r > 0).map((s) => ({ w: Math.max(0, Number(s.w) || 0), r: Math.max(1, Math.round(Number(s.r) || 0)) }));
+    for (const ex of draft.exercises) {
+      const sets = ex.sets
+        .filter((s) => s.done && s.r > 0)
+        .map((s) => ({ w: Math.max(0, Number(s.w) || 0), r: Math.max(1, Math.round(Number(s.r) || 0)) }));
       if (!sets.length) continue;
       rows.push({
-        id: `manual-${draft.date}-${norm(ex.name)}`,
-        sessionId: `manual-${draft.date}`,
+        id: `${targetSessionId}-${norm(ex.name)}`,
+        sessionId: targetSessionId,
         ts,
         date: draft.date,
         ref: `name:${ex.name.trim()}`,
@@ -490,47 +775,70 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
         ...(draft.day !== 'Libre' ? { day: draft.day } : {}),
       });
     }
-    if (!rows.length) { toast('Marca al menos un ejercicio con series y repeticiones (> 0).'); return; }
-    const oldManual = S.strength.filter((r) => r.id.startsWith('manual-') && r.date === draft.date);
-    for (const r of oldManual) await deleteKey('strength', r.id);
-    if (oldManual.length) markBucketDeletes('strength', oldManual.map((r) => ({ key: r.id, date: r.date })));
+    if (!rows.length) { toast('Marca con ✓ al menos una serie completada (con repeticiones > 0) antes de guardar.'); return; }
+    const legacySid = `manual-${draft.date}`;
+    const oldSessionRows = S.strength.filter((r) =>
+      r.sessionId === targetSessionId ||
+      (r.id.startsWith('manual-') && r.sessionId === legacySid && (r.day ?? 'Libre') === draft.day),
+    );
+    for (const r of oldSessionRows) await deleteKey('strength', r.id);
+    if (oldSessionRows.length) markBucketDeletes('strength', oldSessionRows.map((r) => ({ key: r.id, date: r.date })));
     await putMany('strength', rows);
     markBucketUpserts('strength', rows);
     const savedDay = draft.day;
     S.logDraft = undefined;
     saveDraft(undefined);
     await reload();
-    queueSync();
     if (savedDay !== 'Libre') setTab(savedDay);
-    toast(`Sesión guardada: ${rows.length} ejercicios.`);
+    render();
+    queueSync();
+    toast(`Sesión guardada: ${rows.length} ${rows.length === 1 ? 'ejercicio' : 'ejercicios'}.`);
   },
-  logEditSession: (el) => {
-    const [date, day] = arg(el).split('|');
-    S.logDraft = initLogDraft(S, (day as DayName | 'Libre') || 'Libre', date);
+  logEditSession: async (el) => {
+    const parts = arg(el).split('|');
+    const [sessionId, date, day] = parts.length >= 3 ? parts : ['', parts[0], parts[1]];
+    const nextDay = (day as DayName | 'Libre') || 'Libre';
+    if (!(await confirmSwitchDraft(nextDay, date, sessionId || undefined))) return;
+    S.logDraft = initLogDraft(S, nextDay, date, sessionId || undefined);
     saveDraft(S.logDraft);
     render();
     window.scrollTo(0, 0);
   },
   logDelSession: async (el) => {
     const [sessionId, date] = arg(el).split('|');
-    if (!confirm(`¿Borrar la sesión manual del ${date}?`)) return;
-    const toDel = S.strength.filter((r) => r.id.startsWith('manual-') && (r.sessionId === sessionId || r.date === date));
+    const byId = S.strength.filter((r) => r.sessionId === sessionId);
+    const toDel = byId.length ? byId : S.strength.filter((r) => r.date === date);
+    if (!toDel.length) return;
+    if (!(await askConfirm({
+      title: `Borrar sesión del ${date}`,
+      message: `Se eliminarán ${toDel.length} ${toDel.length === 1 ? 'ejercicio' : 'ejercicios'} de esta sesión. Esta acción no se puede deshacer.`,
+      confirmLabel: 'Borrar sesión',
+      danger: true,
+    }))) return;
     for (const r of toDel) await deleteKey('strength', r.id);
-    if (toDel.length) markBucketDeletes('strength', toDel.map((r) => ({ key: r.id, date: r.date })));
+    markBucketDeletes('strength', toDel.map((r) => ({ key: r.id, date: r.date })));
     await reload();
+    render();
     queueSync();
-    toast('Sesión manual borrada.');
+    toast('Sesión borrada.');
   },
-  selEx: (el) => { const [d, n] = arg(el).split('|'); S.sel[d] = n; render(); },
+  selEx: (el) => { const [d, n] = splitPair(arg(el)); S.sel[d] = n; render(); },
   setDayScope: (el) => {
-    const [d, mode] = arg(el).split('|');
+    const [d, mode] = splitPair(arg(el));
     (S.dayExtra ??= {})[d] = mode === 'extra';
     delete S.sel[d];
     render();
   },
   setRange: (el) => {
-    const [scope, key] = arg(el).split('|');
+    const [scope, key] = splitPair(arg(el));
     (S.ranges ??= {})[scope] = key as RangeKey;
+    if (key === 'Custom') {
+      const cur = ((S.customRanges ??= {})[scope] ??= {});
+      if (!cur.from && !cur.to) {
+        cur.from = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+        cur.to = new Date().toISOString().slice(0, 10);
+      }
+    }
     render();
   },
   selMuscle: (el) => { S.muscleSel = arg(el); render(); },
@@ -553,7 +861,12 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   },
   delMeasure: async (el) => {
     const key = arg(el);
-    if (!confirm('¿Borrar esta medición?')) return;
+    if (!(await askConfirm({
+      title: 'Borrar medición',
+      message: `¿Seguro que quieres eliminar el registro corporal del ${key}?`,
+      confirmLabel: 'Borrar',
+      danger: true,
+    }))) return;
     await deleteKey('measures', key);
     markBucketDeletes('measures', [{ key, date: key }]);
     await reload();
@@ -594,7 +907,12 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (S.user && navigator.onLine && hasUnsyncedChanges()) await runSync(false);
     if (
       hasUnsyncedChanges() &&
-      !confirm('Hay cambios locales sin subir a la nube. Si cierras sesión se limpiará la caché local de este dispositivo. ¿Continuar?')
+      !(await askConfirm({
+        title: 'Cerrar sesión con cambios locales',
+        message: 'Hay cambios locales sin subir a la nube. Si cierras sesión se limpiará la caché local de este dispositivo.',
+        confirmLabel: 'Cerrar sesión',
+        danger: true,
+      }))
     ) return;
     await signOutGoogle();
     await wipeAll();
@@ -610,12 +928,19 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   export: async () => download(`gymapp-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(await exportBackup()), 'application/json'),
   wipe: async () => {
     const msg = S.user
-      ? 'Se borrarán todos los datos de este dispositivo y de tu nube conectada. ¿Seguro?'
-      : 'Se borrarán todos los datos de este dispositivo. ¿Seguro?';
-    if (!confirm(msg)) return;
+      ? 'Se borrarán todos los datos de este dispositivo y de tu nube conectada. Esta acción es irreversible.'
+      : 'Se borrarán todos los datos almacenados en este dispositivo. Esta acción es irreversible.';
+    if (!(await askConfirm({
+      title: 'Borrar todos los datos',
+      message: msg,
+      confirmLabel: 'Borrar todo',
+      danger: true,
+    }))) return;
     await wipeAll();
     markWipePending();
+    S.measureDraft = undefined;
     await reload();
+    render();
     queueSync();
     toast('Datos borrados.');
   },
@@ -661,7 +986,12 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!name || !S.settings.routines[name]) return;
     if (names.length <= 1) { toast('Debes mantener al menos una rutina activa.'); return; }
     const count = S.settings.routines[name].length;
-    if (count > 0 && !confirm(`¿Eliminar la rutina "${name}" (${count} ejercicios)? El historial ya guardado se conservará.`)) return;
+    if (count > 0 && !(await askConfirm({
+      title: `Eliminar rutina "${name}"`,
+      message: `Contiene ${count} ${count === 1 ? 'ejercicio' : 'ejercicios'} configurados. El historial ya guardado se conservará.`,
+      confirmLabel: 'Eliminar rutina',
+      danger: true,
+    }))) return;
     delete S.settings.routines[name];
     if (S.settings.routineMeta) delete S.settings.routineMeta[name];
     const remaining = routineNames(S.settings);
@@ -677,7 +1007,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   rtApplyTpl: async (el) => {
     const tpl = ROUTINE_TEMPLATES[arg(el)];
     if (!tpl) return;
-    if (!confirm(`¿Aplicar la plantilla "${tpl.label}"? Reemplazará la distribución actual de rutinas.`)) return;
+    if (!(await askConfirm({
+      title: `Aplicar plantilla "${tpl.label}"`,
+      message: 'Reemplazará la distribución actual de rutinas y objetivos.',
+      confirmLabel: 'Aplicar plantilla',
+    }))) return;
     S.settings.routines = structuredClone(tpl.routines);
     S.settings.routineMeta = structuredClone(tpl.meta);
     const remaining = routineNames(S.settings);
@@ -700,6 +1034,15 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.settings.routines[d]?.splice(+i, 1);
     await persist();
   },
+  rtMove: async (el) => {
+    const parts = arg(el).split('|');
+    const dir = Number(parts.pop());
+    const idx = Number(parts.pop());
+    const d = parts.join('|');
+    const list = S.settings.routines[d];
+    if (!list || !moveItem(list, idx, idx + dir)) return;
+    await persist();
+  },
   toggleMeasurePerim: () => {
     const today = new Date().toISOString().slice(0, 10);
     const activeDate = S.measureDate ?? today;
@@ -713,12 +1056,14 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!d) return;
     S.measureDate = d;
     S.measurePerimOpen = undefined;
+    S.measureDraft = undefined;
     render();
     document.getElementById('f-measure')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   },
   clearMeasureDate: () => {
     S.measureDate = undefined;
     S.measurePerimOpen = undefined;
+    S.measureDraft = undefined;
     render();
   },
   merge: async () => {
@@ -731,8 +1076,12 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
 
 const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void | Promise<void>> = {
   selHome: (el) => { S.sel.home = el.value; render(); },
-  logDate: (el) => {
+  logDate: async (el) => {
     const day = S.logDraft?.day ?? routineNames(S.settings)[0] ?? 'Libre';
+    if (!(await confirmSwitchDraft(day, el.value))) {
+      if (S.logDraft) el.value = S.logDraft.date;
+      return;
+    }
     S.logDraft = initLogDraft(S, day, el.value);
     saveDraft(S.logDraft);
     render();
@@ -740,11 +1089,35 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   measureDate: (el) => {
     S.measureDate = el.value || undefined;
     S.measurePerimOpen = undefined;
+    S.measureDraft = undefined;
+    render();
+  },
+  rangeFrom: (el) => {
+    const scope = arg(el);
+    ((S.customRanges ??= {})[scope] ??= {}).from = el.value || undefined;
+    render();
+  },
+  rangeTo: (el) => {
+    const scope = arg(el);
+    ((S.customRanges ??= {})[scope] ??= {}).to = el.value || undefined;
     render();
   },
   selPerim: (el) => { S.perimeter = el.value; render(); },
-  calcPreset: (el) => { const [w, r] = el.value.split('|'); (document.getElementById('calcW') as HTMLInputElement).value = w; (document.getElementById('calcR') as HTMLInputElement).value = r; runCalc(); },
-  nutri: () => runCalc(),
+  calcPreset: (el) => {
+    const [w, r] = el.value.split('|');
+    (document.getElementById('calcW') as HTMLInputElement).value = w;
+    (document.getElementById('calcR') as HTMLInputElement).value = r;
+    (S.calcDraft ??= {}).w = w;
+    S.calcDraft.r = r;
+    runCalc();
+  },
+  nutri: () => {
+    const act = document.getElementById('nuAct') as HTMLSelectElement | null;
+    const goal = document.getElementById('nuGoal') as HTMLSelectElement | null;
+    if (act) (S.calcDraft ??= {}).act = act.value;
+    if (goal) (S.calcDraft ??= {}).goal = goal.value;
+    runCalc();
+  },
   rtName: async (el) => {
     const [d, i] = splitPair(arg(el));
     if (el.value === '__new__') {
@@ -808,6 +1181,7 @@ root.addEventListener('change', async (e) => {
       markBucketUpserts('wellbeing', imp.wellbeing);
       markSettingsDirty();
       await reload();
+      render();
       queueSync();
       const parts = [
         `${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos)`,
@@ -825,6 +1199,7 @@ root.addEventListener('change', async (e) => {
       markBucketUpserts('measures', m.measures);
       markSettingsDirty();
       await reload();
+      render();
       queueSync();
       toast(`Importadas ${m.measures.length} mediciones.`);
     } else if (kind === 'backup') {
@@ -837,6 +1212,7 @@ root.addEventListener('change', async (e) => {
       if (b.wellbeing?.length) markBucketUpserts('wellbeing', b.wellbeing);
       markSettingsDirty();
       await reload();
+      render();
       queueSync();
       toast('Copia restaurada.');
     }
@@ -845,19 +1221,34 @@ root.addEventListener('change', async (e) => {
 });
 root.addEventListener('input', (e) => {
   const el = e.target as HTMLInputElement;
-  if (el.dataset.input === 'calc') { runCalc(); return; }
+  if (el.dataset.input === 'calc') {
+    if (el.id === 'calcW') (S.calcDraft ??= {}).w = el.value;
+    else if (el.id === 'calcR') (S.calcDraft ??= {}).r = el.value;
+    else if (el.id === 'calcRir') (S.calcDraft ??= {}).rir = el.value;
+    runCalc();
+    return;
+  }
+  if (el.closest('#f-measure') && el.name && el.name !== 'date') {
+    (S.measureDraft ??= {})[el.name] = el.value;
+    return;
+  }
   if (!S.logDraft) return;
   if (el.dataset.logW) {
     const [ei, si] = el.dataset.logW.split('|').map(Number);
     const s = S.logDraft.exercises[ei]?.sets[si];
-    if (s) { s.w = Math.max(0, parseFloat(el.value.replace(',', '.')) || 0); saveDraft(S.logDraft); }
+    if (s) { s.w = Math.max(0, parseFloat(el.value.replace(',', '.')) || 0); S.logDraft.dirty = true; saveDraft(S.logDraft); }
   } else if (el.dataset.logR) {
     const [ei, si] = el.dataset.logR.split('|').map(Number);
     const s = S.logDraft.exercises[ei]?.sets[si];
-    if (s) { s.r = Math.max(0, parseInt(el.value, 10) || 0); saveDraft(S.logDraft); }
+    if (s) {
+      s.r = Math.max(0, parseInt(el.value, 10) || 0);
+      S.logDraft.dirty = true;
+      saveDraft(S.logDraft);
+      updateLogCountersDom(ei);
+    }
   } else if (el.dataset.logNote != null) {
     const ex = S.logDraft.exercises[+el.dataset.logNote];
-    if (ex) { ex.note = el.value; saveDraft(S.logDraft); }
+    if (ex) { ex.note = el.value; S.logDraft.dirty = true; saveDraft(S.logDraft); }
   }
 });
 root.addEventListener('submit', async (e) => {
@@ -884,7 +1275,8 @@ root.addEventListener('submit', async (e) => {
     await putMany('measures', [m]); markBucketUpserts('measures', [m]);
     S.measureDate = date;
     S.measurePerimOpen = undefined;
-    await reload(); queueSync(); toast('Medición guardada.');
+    S.measureDraft = undefined;
+    await reload(); render(); queueSync(); toast('Medición guardada.');
   } else if (f.id === 'f-new-ex') {
     const rawName = String(fd.get('name') ?? '').trim().slice(0, 80);
     if (!rawName) return;
@@ -968,7 +1360,9 @@ root.addEventListener('submit', async (e) => {
   }
 });
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && (S.exModal || S.routineModal)) {
+  if (e.key !== 'Escape') return;
+  if (S.confirmModal) { resolveConfirm(false); return; }
+  if (S.exModal || S.routineModal) {
     S.exModal = undefined;
     S.routineModal = undefined;
     render();
@@ -980,8 +1374,23 @@ window.addEventListener('hashchange', () => {
   if (next !== S.tab) { setTab(next); render(); }
 });
 
-window.addEventListener('online', () => queueSync());
+window.addEventListener('online', () => { updateSyncDom(); queueSync(); });
+window.addEventListener('offline', () => updateSyncDom());
 window.matchMedia('(min-width: 1024px)').addEventListener('change', () => render());
+
+initSortableLists(root, async (scope, from, to) => {
+  if (scope === 'log') {
+    if (!S.logDraft || !moveItem(S.logDraft.exercises, from, to)) return;
+    S.logDraft.dirty = true;
+    saveDraft(S.logDraft);
+    render();
+  } else if (scope.startsWith('rt:')) {
+    const d = scope.slice(3);
+    const list = S.settings.routines[d];
+    if (!list || !moveItem(list, from, to)) return;
+    await persist();
+  }
+});
 
 reload().then(async () => {
   await consumeRedirectAuth();
@@ -990,10 +1399,11 @@ reload().then(async () => {
   if (first && !location.hash) setTab('data');
   render();
   subscribeAuth((user) => {
+    const wasReady = Boolean(S.authReady);
     const changed = user?.uid !== S.user?.uid;
     S.authReady = true;
     S.user = user;
+    if (changed || !wasReady) render();
     if (user && changed && navigator.onLine) void runSync(false);
-    else render();
   });
 });

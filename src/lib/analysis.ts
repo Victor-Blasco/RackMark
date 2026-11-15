@@ -80,7 +80,7 @@ export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<
   }
   if (!prev && sessions.length > 1) {
     return { status: 'Cambio de carga', statusColor: 'amberGold',
-      prescription: `Carga muy distinta a las sesiones previas ( kg). ¿Cambio de máquina o unidad? Revisa los datos antes de decidir.` };
+      prescription: `Carga muy distinta a las sesiones previas (${last.top} kg). ¿Cambio de máquina o unidad? Revisa los datos antes de decidir.` };
   }
   if (prev && last.top > prev.top) {
     return { status: `Progresando (+${round(last.top - prev.top)} kg)`, statusColor: 'emeraldGreen',

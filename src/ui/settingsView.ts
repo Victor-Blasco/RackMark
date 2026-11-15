@@ -18,7 +18,7 @@ export function viewSettings(S: State): string {
   const initial = (S.user?.displayName ?? S.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
 
   const cloudCard = S.user
-    ? `<div class="card space-y-4">
+    ? `<div class="space-y-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
         <div class="flex items-start gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-electricBlue to-emeraldGreen text-sm font-extrabold text-white shadow-sm">${esc(initial)}</div>
           <div class="min-w-0 flex-1">
@@ -33,7 +33,7 @@ export function viewSettings(S: State): string {
           <button class="btn !border-coralRed/50 text-coralRed" data-act="cloudLogout" ${S.syncing ? 'disabled' : ''}>Cerrar sesión</button>
         </div>
       </div>`
-    : `<div class="card flex flex-col justify-between gap-4">
+    : `<div class="flex flex-col justify-between gap-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
         <div class="space-y-1.5">
           <h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
           <p class="text-xs text-gray-400 leading-relaxed">Inicia sesión con Google para sincronizar tus entrenamientos, medidas, sueño/FC y preferencias entre dispositivos, además de activar los informes de IA.</p>
@@ -56,23 +56,23 @@ export function viewSettings(S: State): string {
   };
 
   return `
-  <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 pb-5 border-b border-white/10">
     ${cloudCard}
 
-    <div class="card space-y-3">
+    <div class="space-y-3">
       <div>
         <h3 class="font-bold text-white">Perfil del atleta</h3>
         <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético (Katch-McArdle) y contextualizar el informe de IA.</p>
       </div>
       <div class="grid grid-cols-3 gap-3">
         <label class="block"><span class="lbl">Sexo</span><input class="inp" value="${esc(s.profile.sex)}" data-change="pfSex"></label>
-        <label class="block"><span class="lbl">Edad</span><input class="inp font-mono tabular-nums" type="number" value="${esc(s.profile.age)}" data-change="pfAge"></label>
-        <label class="block"><span class="lbl">Altura (cm)</span><input class="inp font-mono tabular-nums" type="number" value="${esc(s.profile.height)}" data-change="pfHeight"></label>
+        <label class="block"><span class="lbl">Edad</span><input class="inp tabular-nums font-medium" type="number" value="${esc(s.profile.age)}" data-change="pfAge"></label>
+        <label class="block"><span class="lbl">Altura (cm)</span><input class="inp tabular-nums font-medium" type="number" value="${esc(s.profile.height)}" data-change="pfHeight"></label>
       </div>
     </div>
   </div>
 
-  <div class="card space-y-4">
+  <div class="pb-5 border-b border-white/10 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="font-bold text-white">Preferencias del Coach IA</h3>
@@ -105,7 +105,7 @@ export function viewSettings(S: State): string {
     </div>
   </div>
 
-  <div class="card flex flex-wrap items-center justify-between gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
     <div>
       <h3 class="text-sm font-bold text-white">Accesos relacionados</h3>
       <p class="text-xs text-gray-400">La configuración de rutinas e importación de archivos tienen sus propias secciones dedicadas.</p>

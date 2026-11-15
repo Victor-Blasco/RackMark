@@ -25,7 +25,16 @@ body {
     touch-action: manipulation;
   }
   .inp {
-    @apply w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue;
+    @apply w-full rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-base sm:text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
   select.inp,
   select.inp option {

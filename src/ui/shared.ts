@@ -9,13 +9,14 @@ Chart.defaults.color = '#9CA3AF';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.maintainAspectRatio = false;
 
-export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo';
+export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo' | 'Custom';
 export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
   { key: '1M', label: '1M', days: 30 },
   { key: '3M', label: '3M', days: 90 },
   { key: '6M', label: '6M', days: 180 },
   { key: '1A', label: '1A', days: 365 },
   { key: 'Todo', label: 'Todo' },
+  { key: 'Custom', label: 'Fechas' },
 ];
 
 export function rangeCutoff(r: RangeKey): string | null {
@@ -23,9 +24,23 @@ export function rangeCutoff(r: RangeKey): string | null {
   return days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
 }
 
-export function rangePicker(scope: string, active: RangeKey): string {
-  return `<div role="group" aria-label="Filtro temporal" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
-    ${RANGES.map((r) => `<button data-act="setRange" data-arg="${esc(scope)}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
+export function rangePicker(scope: string, active: RangeKey, custom?: { from?: string; to?: string }): string {
+  const sEsc = esc(scope);
+  return `<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2">
+    <div role="group" aria-label="Filtro temporal" class="inline-flex flex-wrap rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
+      ${RANGES.map((r) => `<button type="button" data-act="setRange" data-arg="${sEsc}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
+    </div>
+    ${active === 'Custom' ? `
+      <div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs">
+        <label class="inline-flex items-center gap-1.5 text-gray-400">
+          <span>Desde</span>
+          <input type="date" class="inp !w-auto !py-1 !px-2 text-base sm:!text-sm tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${sEsc}" aria-label="Fecha de inicio">
+        </label>
+        <label class="inline-flex items-center gap-1.5 text-gray-400">
+          <span>Hasta</span>
+          <input type="date" class="inp !w-auto !py-1 !px-2 text-base sm:!text-sm tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${sEsc}" aria-label="Fecha de fin">
+        </label>
+      </div>` : ''}
   </div>`;
 }
 
@@ -47,10 +62,14 @@ export interface State {
   aiTab?: number;
   dayExtra?: Record<string, boolean>;
   ranges?: Record<string, RangeKey>;
+  customRanges?: Record<string, { from?: string; to?: string }>;
   measureDate?: string;
   measurePerimOpen?: boolean;
+  measureDraft?: Record<string, string>;
+  calcDraft?: { w?: string; r?: string; rir?: string; act?: string; goal?: string };
   exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
   routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
+  confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
@@ -68,6 +87,57 @@ export const fmtDate = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}/${
 
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a formato corto `DD/MM`. */
 export const short = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}`);
+
+export interface DateBounds {
+  key: RangeKey;
+  from: string | null;
+  to: string | null;
+  label: string;
+  days?: number;
+}
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const cleanIso = (v?: string) => (v && ISO_DATE_RE.test(v.trim()) ? v.trim() : null);
+
+/** Resuelve los límites de fecha activos (`from`, `to`, `label` y días) para un ámbito dado. */
+export function resolveRange(S: State, scope: string): DateBounds {
+  const key: RangeKey = S.ranges?.[scope] ?? '1M';
+  if (key === 'Custom') {
+    const raw = S.customRanges?.[scope] ?? {};
+    let from = cleanIso(raw.from);
+    let to = cleanIso(raw.to);
+    if (from && to && from > to) [from, to] = [to, from];
+    const days = from && to
+      ? Math.max(1, Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1)
+      : undefined;
+    const label = from && to
+      ? `${short(from)}–${short(to)}`
+      : from
+        ? `desde ${short(from)}`
+        : to
+          ? `hasta ${short(to)}`
+          : 'personalizado';
+    return { key, from, to, label, days };
+  }
+  const from = rangeCutoff(key);
+  const days = RANGES.find((x) => x.key === key)?.days;
+  return { key, from, to: null, label: key, days };
+}
+
+/** Comprueba si una fecha ISO (`YYYY-MM-DD`) cae dentro del rango especificado. */
+export function inRange(date: string, b: DateBounds): boolean {
+  if (b.from && date < b.from) return false;
+  if (b.to && date > b.to) return false;
+  return true;
+}
+
+/** Indica si el informe IA guardado sigue vigente respecto a la última sesión de un ejercicio. */
+export function isAiFreshForEx(S: State, e?: ExStats): boolean {
+  const aiDate = S.settings.ai?.date;
+  if (!aiDate) return false;
+  const lastDate = e?.last?.date;
+  return !lastDate || aiDate >= lastDate;
+}
 
 /** Redondea a 1 decimal usando coma decimal española. */
 export const r1 = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
@@ -196,7 +266,7 @@ export const statusBadge = (e: ExStats) => badge(e.status, e.statusColor === 'gr
 
 /** Renderiza una tarjeta KPI con alineación numérica tabular. */
 export function kpi(label: string, value: string, sub = '', color = 'text-white') {
-  return `<div class="card !p-3"><span class="block text-[11px] text-gray-400">${label}</span><span class="font-mono tabular-nums text-xl font-extrabold ${color}">${value}</span><span class="block text-[11px] text-gray-500">${sub}</span></div>`;
+  return `<div class="card !p-3"><span class="block text-[11px] text-gray-400">${label}</span><span class="tabular-nums text-xl font-extrabold ${color}">${value}</span><span class="block text-[11px] text-gray-500">${sub}</span></div>`;
 }
 
 export function empty(msg: string) {

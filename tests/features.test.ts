@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPrompt } from '../src/lib/ai';
-import { analyze } from '../src/lib/analysis';
+import { analyze, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { norm } from '../src/lib/seed';
-import { allExerciseNames } from '../src/ui/logView';
-import { normalizeChartConfig, type State } from '../src/ui/shared';
+import { allExerciseNames, initLogDraft, manualSessionId } from '../src/ui/logView';
+import { moveItem } from '../src/ui/reorder';
+import { inRange, isAiFreshForEx, normalizeChartConfig, resolveRange, type State } from '../src/ui/shared';
 
 describe('ai tone & chart axis offset', () => {
   it('adapta el prompt de IA según el tono simple o técnico manteniendo la estructura JSON', () => {
@@ -216,5 +217,120 @@ describe('custom routines & dynamic exercise catalog', () => {
     } as unknown as State;
 
     expect(allExerciseNames(fakeState)).toContain('Remo en polea gironda');
+  });
+});
+
+describe('custom date range filter', () => {
+  it('resuelve rangos predefinidos y rangos personalizados de fecha sin hora', () => {
+    const todoState = { ranges: { home: 'Todo' } } as unknown as State;
+    const todo = resolveRange(todoState, 'home');
+    expect(todo).toEqual({ key: 'Todo', from: null, to: null, label: 'Todo', days: undefined });
+    expect(inRange('2025-01-01', todo)).toBe(true);
+
+    const presetState = {} as unknown as State;
+    const def = resolveRange(presetState, 'home');
+    expect(def.key).toBe('1M');
+    expect(def.days).toBe(30);
+    expect(def.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(def.to).toBeNull();
+
+    const customState = {
+      ranges: { home: 'Custom' },
+      customRanges: { home: { from: '2026-10-01', to: '2026-10-15' } },
+    } as unknown as State;
+    const custom = resolveRange(customState, 'home');
+    expect(custom).toEqual({
+      key: 'Custom',
+      from: '2026-10-01',
+      to: '2026-10-15',
+      label: '01/10–15/10',
+      days: 15,
+    });
+    expect(inRange('2026-09-30', custom)).toBe(false);
+    expect(inRange('2026-10-01', custom)).toBe(true);
+    expect(inRange('2026-10-15', custom)).toBe(true);
+    expect(inRange('2026-10-16', custom)).toBe(false);
+
+    const swappedState = {
+      ranges: { Push: 'Custom' },
+      customRanges: { Push: { from: '2026-11-10', to: '2026-11-01' } },
+    } as unknown as State;
+    const swapped = resolveRange(swappedState, 'Push');
+    expect(swapped.from).toBe('2026-11-01');
+    expect(swapped.to).toBe('2026-11-10');
+    expect(swapped.days).toBe(10);
+    expect(inRange('2026-11-05', swapped)).toBe(true);
+  });
+});
+
+describe('reorder helper', () => {
+  it('mueve elementos entre posiciones válidas y rechaza índices fuera de rango o idénticos', () => {
+    const list = ['Press', 'Remo', 'Sentadilla', 'Curl'];
+    expect(moveItem(list, 0, 2)).toBe(true);
+    expect(list).toEqual(['Remo', 'Sentadilla', 'Press', 'Curl']);
+
+    expect(moveItem(list, 3, 1)).toBe(true);
+    expect(list).toEqual(['Remo', 'Curl', 'Sentadilla', 'Press']);
+
+    expect(moveItem(list, 1, 1)).toBe(false);
+    expect(moveItem(list, -1, 2)).toBe(false);
+    expect(moveItem(list, 0, 4)).toBe(false);
+    expect(list).toEqual(['Remo', 'Curl', 'Sentadilla', 'Press']);
+  });
+});
+
+describe('live logger draft, judge & ai freshness (P0)', () => {
+  it('inicia series nuevas con done=false y separa sessionId por rutina en el mismo día', () => {
+    const settings = sanitizeSettings({
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8 }, { name: 'Elevaciones laterales', sets: 3, reps: 12 }],
+        Leg: [{ name: 'Sentadilla Hack', sets: 3, reps: 10 }],
+      },
+    });
+    const savedPush = {
+      id: 'manual-2026-11-15-push-press de banca',
+      sessionId: manualSessionId('2026-11-15', 'Push'),
+      ts: Date.UTC(2026, 10, 15, 10, 0),
+      date: '2026-11-15',
+      ref: 'name:Press de banca',
+      day: 'Push',
+      sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }],
+    };
+    const fakeState = {
+      settings,
+      strength: [savedPush],
+      analysis: analyze([savedPush], settings),
+    } as unknown as State;
+
+    expect(manualSessionId('2026-11-15', 'Push')).toBe('manual-2026-11-15-push');
+    expect(manualSessionId('2026-11-15', 'Leg')).toBe('manual-2026-11-15-leg');
+
+    const pushDraft = initLogDraft(fakeState, 'Push', '2026-11-15');
+    expect(pushDraft.dirty).toBe(false);
+    expect(pushDraft.exercises[0]?.done).toBe(true);
+    expect(pushDraft.exercises[0]?.sets.every((s) => s.done)).toBe(true);
+    expect(pushDraft.exercises[1]?.done).toBe(false);
+    expect(pushDraft.exercises[1]?.sets.every((s) => s.done === false)).toBe(true);
+
+    const legDraft = initLogDraft(fakeState, 'Leg', '2026-11-15');
+    expect(legDraft.sessionId).toBe('manual-2026-11-15-leg');
+    expect(legDraft.exercises[0]?.done).toBe(false);
+    expect(legDraft.exercises[0]?.sets.every((s) => s.done === false)).toBe(true);
+  });
+
+  it('interpola last.top en judge() y detecta informes IA obsoletos', () => {
+    const verdict = judge('Press de banca', [
+      { date: '2026-11-01', sets: [{ w: 80, r: 8 }], top: 80, repsAtTop: 8, volume: 640, e1rm: 101.3 },
+      { date: '2026-11-15', sets: [{ w: 30, r: 10 }], top: 30, repsAtTop: 10, volume: 300, e1rm: 40 },
+    ]);
+    expect(verdict.status).toBe('Cambio de carga');
+    expect(verdict.prescription).toContain('(30 kg)');
+
+    const settings = sanitizeSettings({
+      ai: { date: '2026-11-10', byExercise: {} },
+    });
+    const fakeState = { settings } as unknown as State;
+    expect(isAiFreshForEx(fakeState, { last: { date: '2026-11-10' } } as never)).toBe(true);
+    expect(isAiFreshForEx(fakeState, { last: { date: '2026-11-15' } } as never)).toBe(false);
   });
 });

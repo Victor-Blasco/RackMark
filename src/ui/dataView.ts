@@ -11,7 +11,7 @@ export function viewData(S: State): string {
   const unmappedCount = S.analysis.unmapped.length;
 
   return `
-  <div class="card space-y-3">
+  <div class="space-y-4 pb-5 border-b border-white/10">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h2 class="text-lg font-extrabold text-white">Datos e importación</h2>
@@ -19,16 +19,16 @@ export function viewData(S: State): string {
       </div>
       ${unmappedCount > 0 ? `<button class="btn !border-amberGold/50 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios Samsung sin nombre → Asignar</button>` : ''}
     </div>
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      ${kpi('Fuerza', String(S.strength.length), 'ejercicios registrados')}
-      ${kpi('Cardio', String(S.cardio.length), 'sesiones guardadas')}
-      ${kpi('Bienestar', String(S.wellbeing.length), 'días de sueño y pasos')}
-      ${kpi('Medidas', String(S.measures.length), 'registros corporales')}
+    <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-2">
+      <div><span class="block text-xs text-gray-400">Fuerza</span><span class="tabular-nums text-xl font-extrabold text-white">${S.strength.length}</span><span class="block text-xs text-gray-500">ejercicios registrados</span></div>
+      <div><span class="block text-xs text-gray-400">Cardio</span><span class="tabular-nums text-xl font-extrabold text-white">${S.cardio.length}</span><span class="block text-xs text-gray-500">sesiones guardadas</span></div>
+      <div><span class="block text-xs text-gray-400">Bienestar</span><span class="tabular-nums text-xl font-extrabold text-white">${S.wellbeing.length}</span><span class="block text-xs text-gray-500">días de sueño y pasos</span></div>
+      <div><span class="block text-xs text-gray-400">Medidas</span><span class="tabular-nums text-xl font-extrabold text-white">${S.measures.length}</span><span class="block text-xs text-gray-500">registros corporales</span></div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-    <div class="card space-y-3">
+  <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 pb-5 border-b border-white/10">
+    <div class="space-y-3 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
       <div>
         <h3 class="font-bold text-white">Samsung Health</h3>
         <p class="text-xs text-gray-400 mt-0.5">Sube el ZIP completo o archivos CSV sueltos (exercise, custom_exercise, sleep, pedometer/step_daily_trend, vitality_score). Reimportar es seguro: se deduplica automáticamente.</p>
@@ -37,7 +37,7 @@ export function viewData(S: State): string {
         <input class="inp" type="file" accept=".zip,.csv" multiple data-file="samsung"></label>
     </div>
 
-    <div class="card space-y-3">
+    <div class="space-y-3">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 class="font-bold text-white">Medidas corporales (CSV)</h3>
@@ -50,7 +50,7 @@ export function viewData(S: State): string {
     </div>
   </div>
 
-  <div class="card space-y-3">
+  <div class="space-y-4 pb-5 border-b border-white/10">
     <div>
       <h3 class="font-bold text-white">Copia de seguridad completa (JSON)</h3>
       <p class="text-xs text-gray-400 mt-0.5">Descarga o restaura todos tus entrenamientos, medidas, rutinas y preferencias en un único archivo JSON verificado.</p>
@@ -61,7 +61,7 @@ export function viewData(S: State): string {
     </div>
   </div>
 
-  <div class="card space-y-3 border-coralRed/30 bg-coralRed/5">
+  <div class="rounded-2xl border border-coralRed/30 bg-coralRed/5 p-4 space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h3 class="font-bold text-rose-300">Zona de peligro</h3>

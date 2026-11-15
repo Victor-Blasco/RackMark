@@ -143,4 +143,29 @@ describe('cloud sync helpers', () => {
     });
     expect(res.pushRemote).toBe(true);
   });
+
+  it('conserva ediciones y borrados locales offline sobre ítem A aunque otro ítem suba remoteAt', () => {
+    const editedA: StrengthRow = { ...row('a', '2026-03-01', 'edit móvil'), sets: [{ w: 70, r: 8 }] };
+    const remoteA = row('a', '2026-03-01');
+    const remoteB = row('b', '2026-03-02', 'pc');
+    const res = mergeBucket({
+      kind: 'strength',
+      localItems: { a: editedA, delMe: row('delMe', '2026-03-01') },
+      remoteBucket: {
+        kind: 'strength',
+        items: { a: remoteA, b: remoteB, delMe: row('delMe', '2026-03-01') },
+        deleted: {},
+        updatedAt: 200,
+      },
+      localDirtyKeys: { a: 150 },
+      localDeleted: { delMe: 160 },
+      lastSyncedAt: 100,
+      now: 300,
+    });
+    expect((res.merged.a as StrengthRow).sets[0]?.w).toBe(70);
+    expect((res.merged.b as StrengthRow).note).toBe('pc');
+    expect(res.merged.delMe).toBeUndefined();
+    expect(res.deleted.delMe).toBe(160);
+    expect(res.pushRemote).toBe(true);
+  });
 });
