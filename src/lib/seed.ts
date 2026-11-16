@@ -281,7 +281,7 @@ export const DEFAULT_SETTINGS: Settings = {
   routineMeta: structuredClone(PPL_META),
   customNames: {}, refNames: {}, aliases: {},
   muscles: {}, notes: {},
-  phases: [{ name: 'Definición', start: '2026-04-11' }],
-  profile: { sex: 'hombre', age: 21, height: 167 },
+  phases: [],
+  profile: { sex: 'hombre', age: 25, height: 170 },
   aiTone: 'technical',
 };

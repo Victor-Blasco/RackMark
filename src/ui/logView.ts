@@ -245,7 +245,7 @@ export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: 
   <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
     <span class="text-gray-400">Descanso auto: <b class="text-white tabular-nums">${restSec}s</b></span>
     <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
-      ${presets.map((p) => `<button type="button" class="min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}" data-act="liveSetRestPreset" data-arg="${p}">${p}s</button>`).join('')}
+      ${presets.map((p) => `<button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}" data-act="liveSetRestPreset" data-arg="${p}">${p}s</button>`).join('')}
     </div>
   </div>`;
 }

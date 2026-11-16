@@ -7,7 +7,7 @@ import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_SETTINGS, norm } from '../src/lib/seed';
 import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
 import { allExerciseNames, extractTargetWeight, fmtMMSS, initLogDraft, manualSessionId, renderRestTimerBar, viewLog } from '../src/ui/logView';
-import { plannedWeeklyVolume, renderModals, viewPlan } from '../src/ui/planView';
+import { plannedWeeklyVolume, renderModals, renderPlanCatalogResults, viewPlan } from '../src/ui/planView';
 import { moveItem } from '../src/ui/reorder';
 import {
   inRange,
@@ -21,7 +21,7 @@ import {
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
-import { viewHome } from '../src/ui/views';
+import { viewDay, viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
 import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
 import {
@@ -879,5 +879,97 @@ describe('live workout & manual rest separation', () => {
     );
     expect(parsed.strength[0].sets[0].restSec).toBe(95);
     expect(parsed.strength[0].sets[1].restSec).toBeUndefined();
+  });
+
+  it('incluye anclajes DOM de parcheo en viewWorkout, filtro parcial de catálogo y DEFAULT_SETTINGS sin fases personales', () => {
+    expect(DEFAULT_SETTINGS.phases).toEqual([]);
+
+    const state = makeState();
+    const live = initLiveWorkout(state, 'Push');
+    const html = viewWorkout({ ...state, liveWorkout: live });
+    expect(html).toContain('id="liveCountSummary"');
+    expect(html).toContain('id="liveFinishLabel"');
+    expect(html).toContain('id="liveMenuSummary"');
+    expect(html).toContain('data-live-ex-counter="0"');
+    expect(html).toContain('data-live-set-lbl="0|0"');
+    expect(html).toContain('data-live-menu-info="0"');
+    expect(html).toContain('data-live-menu-count="0"');
+
+    const byName = renderPlanCatalogResults({ ...state, planSearch: 'hack' });
+    expect(byName.countText).toMatch(/^\d+\/\d+$/);
+    expect(byName.listHtml).toContain('Sentadilla Hack');
+    expect(byName.listHtml).not.toContain('Press Banca');
+
+    const byMuscle = renderPlanCatalogResults({ ...state, planSearch: 'bíceps' });
+    expect(byMuscle.listHtml).toContain('Bíceps');
+
+    const noMatch = renderPlanCatalogResults({ ...state, planSearch: 'xyznomatch123' });
+    expect(noMatch.countText.startsWith('0/')).toBe(true);
+    expect(noMatch.listHtml).toContain('Sin resultados');
+  });
+});
+
+describe('Bloque 2 tokens, contraste y accesibilidad', () => {
+  it('usa tokens de superficie, colores semánticos correctos en métricas y role="option" en viewDay', () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({});
+    const strength = [
+      {
+        id: 's-b2',
+        sessionId: 'sess-b2',
+        ts: Date.now(),
+        date: today,
+        ref: 'name:Press horizontal en máquina',
+        sets: [{ w: 60, r: 10 }],
+        day: 'Push',
+      },
+    ];
+    const state: State = {
+      tab: 'home',
+      strength,
+      cardio: [],
+      measures: [{ date: today, weight: 78, bf: 14.5 }],
+      wellbeing: [{ date: today, rhr: 54 }],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    try {
+      const homeHtml = viewHome(state);
+      expect(homeHtml).toContain('% Grasa');
+      expect(homeHtml).toContain('text-amberGold');
+      expect(homeHtml).toContain('Pulso');
+      expect(homeHtml).toContain('text-cyan-300');
+      expect(homeHtml).not.toContain('text-coralRed');
+      expect(homeHtml).not.toContain('#0D1320');
+      expect(homeHtml).not.toContain('text-gray-500');
+
+      const bodyHtml = viewBody(state);
+      expect(bodyHtml).not.toContain('text-gray-500');
+
+      const dayHtml = viewDay(state, 'Push');
+      expect(dayHtml).toContain('role="listbox"');
+      expect(dayHtml).toMatch(/role="option"[^>]*data-act="selEx"|data-act="selEx"[^>]*role="option"/);
+      expect(dayHtml).not.toContain('bg-[#0D1320]');
+
+      const live = initLiveWorkout(state, 'Push');
+      const liveHtml = viewWorkout({ ...state, liveWorkout: { ...live, exMenuOpen: true } });
+      expect(liveHtml).toContain('bg-floatDark');
+      expect(liveHtml).not.toContain('bg-[#0E1525]');
+      expect(liveHtml).not.toContain('text-gray-500');
+      expect(liveHtml).not.toContain('placeholder-gray-500');
+
+      const wizardHtml = renderWizardModal({
+        ...state,
+        wizard: createWizardDraft(state),
+      });
+      expect(wizardHtml).toContain('bg-modalDark');
+      expect(wizardHtml).not.toContain('bg-[#0F1624]');
+    } finally {
+      resetCharts();
+    }
   });
 });

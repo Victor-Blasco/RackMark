@@ -26,9 +26,9 @@ import {
 
 export { resetCharts, runChartJobs, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
-export { initLiveWorkout, viewWorkout } from './workoutView';
+export { initLiveWorkout, liveExQuickInfo, viewWorkout } from './workoutView';
 export { viewData } from './dataView';
-export { renderModals, viewPlan } from './planView';
+export { renderModals, renderPlanCatalogResults, viewPlan } from './planView';
 export { viewSettings } from './settingsView';
 export { runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
 export { resolveName, norm };
@@ -37,15 +37,15 @@ type ExMetric = 'top' | 'e1rm' | 'volume';
 
 function aiToneToggle(tone: AiTone): string {
   return `<div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
-    <button type="button" data-act="setAiTone" data-arg="simple" aria-pressed="${tone === 'simple'}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Sencillo</button>
-    <button type="button" data-act="setAiTone" data-arg="technical" aria-pressed="${tone === 'technical'}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Técnico</button>
+    <button type="button" data-act="setAiTone" data-arg="simple" aria-pressed="${tone === 'simple'}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Sencillo</button>
+    <button type="button" data-act="setAiTone" data-arg="technical" aria-pressed="${tone === 'technical'}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Técnico</button>
   </div>`;
 }
 
 function exMetricToggle(active: ExMetric): string {
   const opts: [ExMetric, string][] = [['top', 'Peso máx'], ['e1rm', 'e1RM'], ['volume', 'Tonelaje']];
   return `<div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
-    ${opts.map(([k, lbl]) => `<button type="button" data-act="setExMetric" data-arg="${k}" aria-pressed="${active === k}" class="rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === k ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${lbl}</button>`).join('')}
+    ${opts.map(([k, lbl]) => `<button type="button" data-act="setExMetric" data-arg="${k}" aria-pressed="${active === k}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === k ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${lbl}</button>`).join('')}
   </div>`;
 }
 
@@ -172,7 +172,7 @@ export function renderAiReport(S: State): string {
   const reportTone: AiTone = ai.tone === 'simple' ? 'simple' : 'technical';
   const toneChanged = reportTone !== activeTone;
 
-  return `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-gray-800 bg-cardDark p-4 sm:p-5 space-y-4">
+  return `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-borderDark bg-cardDark p-4 sm:p-5 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h3>
@@ -180,14 +180,14 @@ export function renderAiReport(S: State): string {
       </div>
       <div class="flex flex-wrap items-center gap-2">
         ${aiToneToggle(activeTone)}
-        <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('refresh', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Actualizar'}</button>
+        <button class="btn-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('refresh', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Actualizar'}</button>
       </div>
     </div>
 
     ${steps.length > 1 ? `
     <div role="tablist" aria-label="Secciones del informe IA" class="flex flex-wrap gap-1.5">
       ${steps.map((st, idx) => `
-        <button role="tab" aria-selected="${idx === activeIdx}" data-act="aiTab" data-arg="${idx}" class="tab whitespace-nowrap !px-3 !py-1.5 !text-xs sm:!text-sm inline-flex items-center gap-2 ${idx === activeIdx ? 'tab-on' : ''}">
+        <button role="tab" aria-selected="${idx === activeIdx}" data-act="aiTab" data-arg="${idx}" class="tab whitespace-nowrap min-h-[44px] sm:min-h-[36px] px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-2 ${idx === activeIdx ? 'tab-on' : ''}">
           <span class="h-1.5 w-1.5 rounded-full ${st.dot}" aria-hidden="true"></span>
           <span>${esc(st.label)}</span>
         </button>`).join('')}
@@ -284,7 +284,7 @@ function renderLoadControlBlock(
   return `<section class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="text-base font-bold text-white">Control de cargas del bloque</h3>
-      <button class="btn-primary !py-1.5 !text-xs sm:!text-sm" data-act="goLog">+ Registrar entreno</button>
+      <button class="btn-primary-sm sm:text-sm" data-act="goLog">+ Registrar entreno</button>
     </div>
     ${mobileHtml}
     ${tableHtml}
@@ -303,8 +303,8 @@ function renderOnboardingHome(S: State): string {
         <p class="text-sm text-gray-300 max-w-2xl">Registra tu primer entreno directamente desde aquí o elige una distribución base. Si ya tienes historial en Samsung Health o CSV, puedes importarlo cuando quieras.</p>
       </div>
       <div class="flex flex-wrap gap-2 shrink-0">
-        <button type="button" class="btn !border-electricBlue/50 !min-h-[44px] text-blue-300" data-act="openWizard">Configurar perfil y objetivo (1 min)</button>
-        <button class="btn-primary shrink-0 !min-h-[44px] !px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
+        <button type="button" class="btn btn-accent min-h-[44px]" data-act="openWizard">Configurar perfil y objetivo (1 min)</button>
+        <button class="btn-primary shrink-0 min-h-[44px] px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
       </div>
     </div>
 
@@ -314,7 +314,7 @@ function renderOnboardingHome(S: State): string {
         ${routines.map((r, idx) => {
           const hex = routineColor(r, S.settings, idx);
           const count = S.settings.routines[r]?.length ?? 0;
-          return `<button type="button" class="btn !min-h-[44px]" data-act="goLog" data-arg="${esc(r)}">
+          return `<button type="button" class="btn min-h-[44px]" data-act="goLog" data-arg="${esc(r)}">
             <span class="h-2.5 w-2.5 rounded-full" style="background:${hex}" aria-hidden="true"></span>
             <span>${esc(r)}</span>
             <span class="text-xs text-gray-400 tabular-nums">(${count})</span>
@@ -330,7 +330,7 @@ function renderOnboardingHome(S: State): string {
         <h3 class="text-base font-bold text-white">Plantillas de rutina</h3>
         <p class="text-xs text-gray-400">Cambia la distribución en un toque o edita los ejercicios a tu gusto.</p>
       </div>
-      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="plan">Personalizar en Plan y rutinas</button>
+      <button class="btn-sm" data-act="tab" data-arg="plan">Personalizar en Plan y rutinas</button>
     </div>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       ${tpls.map(([key, tpl]) => `
@@ -344,8 +344,8 @@ function renderOnboardingHome(S: State): string {
   <section class="flex flex-wrap items-center justify-between gap-3">
     <div class="text-sm text-gray-300">¿Prefieres empezar registrando tu peso inicial o trayendo datos previos?</div>
     <div class="flex flex-wrap gap-2">
-      <button class="btn !min-h-[44px]" data-act="tab" data-arg="body">${icon('body', 'h-4 w-4')} Registrar primeras medidas</button>
-      <button class="btn !min-h-[44px]" data-act="tab" data-arg="data">${icon('upload', 'h-4 w-4')} Importar Samsung Health / CSV</button>
+      <button class="btn min-h-[44px]" data-act="tab" data-arg="body">${icon('body', 'h-4 w-4')} Registrar primeras medidas</button>
+      <button class="btn min-h-[44px]" data-act="tab" data-arg="data">${icon('upload', 'h-4 w-4')} Importar Samsung Health / CSV</button>
     </div>
   </section>
 </div>`;
@@ -404,7 +404,7 @@ export function viewHome(S: State): string {
         datasets: [
           { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
           { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
-          { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F43F5E', backgroundColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
+          { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: 'y1', tension: 0.25, spanGaps: true },
         ],
       },
       options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } },
@@ -433,7 +433,7 @@ export function viewHome(S: State): string {
             lbl: `Pulso (${rangeLabel})`,
             val: rhrMain != null ? `${Math.round(rhrMain)} lpm` : hrForce != null ? `${Math.round(hrForce)} lpm` : '—',
             sub: hrvMain != null ? ` · HRV ${Math.round(hrvMain)}` : hrForce != null && rhrMain != null ? ` · fuerza ${Math.round(hrForce)}` : '',
-            cls: 'text-coralRed',
+            cls: 'text-cyan-300',
           })
     : {
         lbl: `Medidas (${rangeLabel})`,
@@ -444,7 +444,7 @@ export function viewHome(S: State): string {
 
   const aiPanel = ai
     ? renderAiReport(S)
-    : `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-gray-800 bg-cardDark p-4 sm:p-5 space-y-3.5">
+    : `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-borderDark bg-cardDark p-4 sm:p-5 space-y-3.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 class="text-base font-extrabold text-white">Informe IA</h3>
@@ -452,7 +452,7 @@ export function viewHome(S: State): string {
           </div>
           ${aiToneToggle(tone)}
         </div>
-        <button class="btn-primary w-full !py-2 !text-xs sm:!text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>
+        <button class="btn-primary w-full text-xs sm:text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>
       </section>`;
 
   return `<div class="space-y-6">
@@ -474,8 +474,8 @@ export function viewHome(S: State): string {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button class="btn-primary !min-h-[44px] !px-4 !py-2 !text-xs sm:!text-sm" data-act="startWorkout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno</button>
-        <button class="btn !min-h-[44px] !px-3 !py-2 !text-xs sm:!text-sm" data-act="goLog">${icon('edit', 'h-3.5 w-3.5')} Registrar hecho</button>
+        <button class="btn-primary min-h-[44px] px-4 py-2 text-xs sm:text-sm" data-act="startWorkout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno</button>
+        <button class="btn min-h-[44px] px-3 py-2 text-xs sm:text-sm" data-act="goLog">${icon('edit', 'h-3.5 w-3.5')} Registrar hecho</button>
       </div>
     </div>
 
@@ -491,7 +491,7 @@ export function viewHome(S: State): string {
         <div class="min-w-0">
           <span class="text-gray-400 block">% Grasa</span>
           <div class="mt-0.5 flex flex-wrap items-baseline gap-x-1.5">
-            <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-coralRed">${mBf.val != null ? `${r1(mBf.val)}%` : '—'}</span>
+            <span class="whitespace-nowrap tabular-nums text-base sm:text-lg font-extrabold text-amberGold">${mBf.val != null ? `${r1(mBf.val)}%` : '—'}</span>
             ${bfDelta ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${esc(bfDelta)}</span>` : mBf.date ? `<span class="whitespace-nowrap tabular-nums text-gray-400">${short(mBf.date)}</span>` : ''}
           </div>
         </div>
@@ -564,7 +564,7 @@ function renderDayDetail(
   const metric: ExMetric = S.exMetric ?? 'top';
   const prescLabel = a?.prescription && S.settings.ai?.date ? `Próxima sesión · IA (${short(S.settings.ai.date)})` : 'Próxima sesión';
 
-  return `<div class="${embedded ? 'border-t border-white/10 bg-[#0D1320] p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark p-4 sm:p-5 space-y-5'}">
+  return `<div class="${embedded ? 'border-t border-white/10 bg-embedDark p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark p-4 sm:p-5 space-y-5'}">
     <div class="flex flex-wrap items-start justify-between gap-2">
       <div>
         ${embedded ? '' : `<h3 class="text-lg font-extrabold text-white">${esc(e.name)}</h3>`}
@@ -574,8 +574,8 @@ function renderDayDetail(
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button class="btn-primary !py-1.5 !text-xs" data-act="goLog" ${e.day ? `data-arg="${esc(e.day)}"` : ''}>Entrenar hoy</button>
-        <button class="btn !py-1.5 !text-xs" data-act="editNote" data-arg="${esc(e.name)}">${icon('edit', 'h-3.5 w-3.5')} Nota</button>
+        <button class="btn-primary-sm" data-act="goLog" ${e.day ? `data-arg="${esc(e.day)}"` : ''}>Entrenar hoy</button>
+        <button class="btn-sm" data-act="editNote" data-arg="${esc(e.name)}">${icon('edit', 'h-3.5 w-3.5')} Nota</button>
       </div>
     </div>
 
@@ -642,7 +642,7 @@ export function viewDay(S: State, day: DayName): string {
   if (!primary.length && !extraAll.length) {
     return noData(S) || `<div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
       <p>No hay ejercicios con datos para esta rutina.</p>
-      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="plan">Configurar rutina en Plan</button>
+      <button class="btn-sm" data-act="tab" data-arg="plan">Configurar rutina en Plan</button>
     </div>`;
   }
 
@@ -673,8 +673,8 @@ export function viewDay(S: State, day: DayName): string {
   const dEsc = esc(day);
   const scopeToggle = extraAll.length && primary.length
     ? `<div role="tablist" aria-label="Filtro de ejercicios" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-        <button role="tab" aria-selected="${!showingExtra}" data-act="setDayScope" data-arg="${dEsc}|routine" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">En rutina (${primary.length})</button>
-        <button role="tab" aria-selected="${showingExtra}" data-act="setDayScope" data-arg="${dEsc}|extra" class="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Anteriores (${extraAll.length})</button>
+        <button role="tab" aria-selected="${!showingExtra}" data-act="setDayScope" data-arg="${dEsc}|routine" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">En rutina (${primary.length})</button>
+        <button role="tab" aria-selected="${showingExtra}" data-act="setDayScope" data-arg="${dEsc}|extra" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Anteriores (${extraAll.length})</button>
       </div>`
     : '';
 
@@ -690,10 +690,10 @@ export function viewDay(S: State, day: DayName): string {
         <p class="text-xs sm:text-sm text-gray-400 tabular-nums">${lastS ? `Última: ${fmtDate(lastS.date)} · ${lastS.sets} series${lastS.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}${lastS.avgHr ? ` · Pulso ${lastS.avgHr}${lastS.maxHr ? `/${lastS.maxHr}` : ''} lpm` : ''}${lastS.kcal ? ` · ${lastS.kcal} kcal` : ''}` : `Sin sesiones en ${esc(rangeLabel)}`}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-        ${S.analysis.unmapped.length ? `<button class="btn !min-h-[44px] !border-amberGold/40 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${S.analysis.unmapped.length} sin nombre</button>` : ''}
-        <button class="btn !min-h-[44px] !py-1.5 !text-xs sm:!text-sm" data-act="tab" data-arg="plan">${icon('edit', 'h-3.5 w-3.5')} Editar rutina</button>
-        <button class="btn !min-h-[44px] !py-1.5 !text-xs sm:!text-sm" data-act="goLog" data-arg="${dEsc}">Registrar hecho</button>
-        <button class="btn-primary flex-1 sm:flex-initial !min-h-[44px] !py-2 !text-xs sm:!text-sm" data-act="startWorkout" data-arg="${dEsc}">${icon('play', 'h-3.5 w-3.5')} Iniciar ${dEsc}</button>
+        ${S.analysis.unmapped.length ? `<button class="btn-sm border-amberGold/40 text-amberGold" data-act="openUnmapped">${S.analysis.unmapped.length} sin nombre</button>` : ''}
+        <button class="btn-sm sm:text-sm" data-act="tab" data-arg="plan">${icon('edit', 'h-3.5 w-3.5')} Editar rutina</button>
+        <button class="btn-sm sm:text-sm" data-act="goLog" data-arg="${dEsc}">Registrar hecho</button>
+        <button class="btn-primary-sm flex-1 sm:flex-initial sm:text-sm" data-act="startWorkout" data-arg="${dEsc}">${icon('play', 'h-3.5 w-3.5')} Iniciar ${dEsc}</button>
       </div>
     </div>
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
@@ -732,7 +732,7 @@ export function viewDay(S: State, day: DayName): string {
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
         const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${esc(rangeLabel)}`;
         const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
-        return `<button data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
+        return `<button role="option" data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-bold text-white truncate">${esc(x.name)}</span>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc((!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>

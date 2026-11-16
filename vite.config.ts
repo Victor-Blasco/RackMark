@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         name: 'GymApp - Panel PPL', short_name: 'GymApp', lang: 'es',
         description: 'Rendimiento PPL y antropometria',

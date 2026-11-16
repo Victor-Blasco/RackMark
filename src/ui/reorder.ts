@@ -12,7 +12,7 @@ export function moveItem<T>(arr: T[], from: number, to: number): boolean {
 }
 
 const FLIP_TRANSITION = 'transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-const DRAG_ACTIVE_CLASSES = ['relative', 'z-30', 'shadow-2xl', 'ring-2', 'ring-electricBlue/80', '!bg-[#121A2B]', '!opacity-100'];
+const DRAG_ACTIVE_CLASSES = ['relative', 'z-30', 'shadow-2xl', 'ring-2', 'ring-electricBlue/80', '!bg-dragDark', '!opacity-100'];
 
 /**
  * Activa delegación de arrastre con animación FLIP sobre `root` para cualquier
@@ -104,24 +104,27 @@ export function initSortableLists(
     item.style.transform = `translate3d(${active.lastX - active.startX}px, ${active.lastY - active.startY}px, 0) scale(1.015)`;
 
     // 3. Last + Invert + Play para los hermanos desplazados
-    const moved: HTMLElement[] = [];
-    for (const el of items) {
-      if (el === item) continue;
-      const first = prevRects.get(el)!;
-      const last = el.getBoundingClientRect();
-      const dx = first.left - last.left;
-      const dy = first.top - last.top;
-      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
-      el.style.transition = 'none';
-      el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-      moved.push(el);
-    }
-    if (moved.length) {
-      active.lockUntil = performance.now() + 190;
-      void list.offsetHeight;
-      for (const el of moved) {
-        el.style.transition = FLIP_TRANSITION;
-        el.style.transform = '';
+    const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reducedMotion) {
+      const moved: HTMLElement[] = [];
+      for (const el of items) {
+        if (el === item) continue;
+        const first = prevRects.get(el)!;
+        const last = el.getBoundingClientRect();
+        const dx = first.left - last.left;
+        const dy = first.top - last.top;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+        el.style.transition = 'none';
+        el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+        moved.push(el);
+      }
+      if (moved.length) {
+        active.lockUntil = performance.now() + 190;
+        void list.offsetHeight;
+        for (const el of moved) {
+          el.style.transition = FLIP_TRANSITION;
+          el.style.transform = '';
+        }
       }
     }
   };

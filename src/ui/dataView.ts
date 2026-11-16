@@ -17,7 +17,7 @@ export function viewData(S: State): string {
         <h2 class="text-lg font-extrabold text-white">Datos e importación</h2>
         <p class="text-xs text-gray-400">Importa tus exportaciones, genera copias de seguridad JSON y gestiona el almacenamiento local.</p>
       </div>
-      ${unmappedCount > 0 ? `<button class="btn !border-amberGold/50 !py-1.5 !text-xs text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios Samsung sin nombre → Asignar</button>` : ''}
+      ${unmappedCount > 0 ? `<button class="btn-sm border-amberGold/50 text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios Samsung sin nombre → Asignar</button>` : ''}
     </div>
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-2">
       <div><span class="block text-xs text-gray-400">Fuerza</span><span class="tabular-nums text-xl font-extrabold text-white">${S.strength.length}</span><span class="block text-xs text-gray-400">ejercicios registrados</span></div>
@@ -43,7 +43,7 @@ export function viewData(S: State): string {
           <h3 class="font-bold text-white">Medidas corporales (CSV)</h3>
           <p class="text-xs text-gray-400 mt-0.5">Importa tu histórico de peso, % grasa y perímetros, o añade mediciones nuevas manualmente desde la pestaña Cuerpo.</p>
         </div>
-        <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="body">Ir a Cuerpo</button>
+        <button class="btn-sm" data-act="tab" data-arg="body">Ir a Cuerpo</button>
       </div>
       <label class="block"><span class="lbl">Archivo CSV de medidas</span>
         <input class="inp" type="file" accept=".csv" data-file="measures"></label>
@@ -67,7 +67,7 @@ export function viewData(S: State): string {
         <h3 class="font-bold text-rose-300">Zona de peligro</h3>
         <p class="text-xs text-gray-300 mt-0.5">${S.user ? 'Elimina todos tus entrenamientos, medidas y ajustes de este dispositivo y de tu nube conectada.' : 'Elimina todos los entrenamientos, medidas y ajustes guardados en este dispositivo.'}</p>
       </div>
-      <button class="btn !border-coralRed/60 !bg-coralRed/10 text-rose-300 hover:!bg-coralRed/20" data-act="wipe">${icon('trash', 'h-4 w-4')} Borrar todos los datos</button>
+      <button class="btn btn-danger" data-act="wipe">${icon('trash', 'h-4 w-4')} Borrar todos los datos</button>
     </div>
   </div>`;
 }

@@ -94,7 +94,7 @@ export function viewBody(S: State): string {
           { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
           { label: 'Peso diario (kg)', data: comp.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
           { label: 'Masa muscular (kg)', data: comp.map((m) => m.muscle ?? null), borderColor: '#10B981', yAxisID: 'y', tension: 0.25, spanGaps: true },
-          { label: '% Grasa', data: comp.map((m) => m.bf ?? null), borderColor: '#F43F5E', yAxisID: 'y1', tension: 0.25, spanGaps: true },
+          { label: '% Grasa', data: comp.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: 'y1', tension: 0.25, spanGaps: true },
         ],
       },
       options: { scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } },
@@ -143,10 +143,10 @@ export function viewBody(S: State): string {
   ${aiInsightBanner(S, /composici|cuerpo|antropo/i)}
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
     <div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Composición corporal (${comp.length} registros)</h3>
-      ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">${ms.length ? `Sin mediciones en ${esc(bounds.label)}.` : 'Añade tu peso o % de grasa abajo para ver la evolución.'}</p>`}</div>
+      ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">${ms.length ? `Sin mediciones en ${esc(bounds.label)}.` : 'Añade tu peso o % de grasa abajo para ver la evolución.'}</p>`}</div>
     <div class="min-w-0 space-y-2"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Perímetros (cm)</h3>
       <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-      ${hasGroupPerim ? `<div class="chart-box"><canvas id="c-perim"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-500">Sin registros en ${esc(pk.label.toLowerCase())}${hasFilter ? ` (${esc(bounds.label)})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.</p>`}</div>
+      ${hasGroupPerim ? `<div class="chart-box"><canvas id="c-perim"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin registros en ${esc(pk.label.toLowerCase())}${hasFilter ? ` (${esc(bounds.label)})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.</p>`}</div>
   </div>
   <form id="f-measure" class="pb-5 border-b border-white/10 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -154,7 +154,7 @@ export function viewBody(S: State): string {
         <h3 class="font-bold text-white">Añadir / editar medición</h3>
         <p class="text-xs text-gray-400">Rellena solo lo que hayas medido hoy (el resto se muestra como referencia). Si guardas otro dato en la misma fecha, se combina sin borrar los anteriores.</p>
       </div>
-      ${currentEntry ? `<div class="flex items-center gap-2"><span class="rounded-full border border-electricBlue/40 bg-electricBlue/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-200">Editando ${fmtDate(activeDate)}</span>${activeDate !== today ? `<button type="button" class="btn !py-1 !text-xs" data-act="clearMeasureDate">Ir a hoy</button>` : ''}</div>` : ''}
+      ${currentEntry ? `<div class="flex items-center gap-2"><span class="rounded-full border border-electricBlue/40 bg-electricBlue/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-200">Editando ${fmtDate(activeDate)}</span>${activeDate !== today ? `<button type="button" class="btn-sm" data-act="clearMeasureDate">Ir a hoy</button>` : ''}</div>` : ''}
     </div>
 
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -164,7 +164,7 @@ export function viewBody(S: State): string {
     </div>
 
     <div>
-      <button type="button" data-act="toggleMeasurePerim" aria-expanded="${perimOpen}" class="btn !py-1.5 !text-xs">
+      <button type="button" data-act="toggleMeasurePerim" aria-expanded="${perimOpen}" class="btn-sm">
         ${perimOpen ? '− Ocultar perímetros con cinta' : '+ Añadir perímetros con cinta (opcional)'}
       </button>
     </div>
@@ -186,7 +186,7 @@ export function viewBody(S: State): string {
   </form>
   <div class="space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Registro histórico (N = ${msInRange.length}${hasFilter ? ` de ${ms.length}` : ''})</h3>
     ${msInRange.length ? `<table class="w-full text-right text-sm"><thead class="text-xs uppercase text-gray-400"><tr><th class="py-2 pr-3 text-left">Fecha</th>${tableCols.map((f) => `<th class="px-2">${f.label}</th>`).join('')}<th class="pl-2"></th></tr></thead><tbody>
-    ${[...msInRange].reverse().map((m) => `<tr class="border-t border-gray-800 tabular-nums ${m.date === activeDate ? 'bg-electricBlue/10' : ''}"><td class="py-2 pr-3 text-left font-medium text-gray-200 whitespace-nowrap">${fmtDate(m.date)}${m.note ? `<div class="text-xs font-normal text-amberGold">${esc(m.note)}</div>` : ''}</td>${tableCols.map((f) => `<td class="px-2 font-medium text-gray-100">${esc(m[f.key] ?? '')}</td>`).join('')}<td class="pl-2 whitespace-nowrap"><button class="rounded p-1 text-blue-300 hover:bg-electricBlue/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="editMeasure" data-arg="${esc(m.date)}" aria-label="Editar medición del ${fmtDate(m.date)}">${icon('edit', 'h-3.5 w-3.5')}</button><button class="rounded p-1 text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" data-act="delMeasure" data-arg="${esc(m.date)}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
+    ${[...msInRange].reverse().map((m) => `<tr class="border-t border-gray-800 tabular-nums ${m.date === activeDate ? 'bg-electricBlue/10' : ''}"><td class="py-2 pr-3 text-left font-medium text-gray-200 whitespace-nowrap">${fmtDate(m.date)}${m.note ? `<div class="text-xs font-normal text-amberGold">${esc(m.note)}</div>` : ''}</td>${tableCols.map((f) => `<td class="px-2 font-medium text-gray-100">${esc(m[f.key] ?? '')}</td>`).join('')}<td class="pl-2 whitespace-nowrap"><button class="icon-btn text-blue-300 hover:bg-electricBlue/15" data-act="editMeasure" data-arg="${esc(m.date)}" aria-label="Editar medición del ${fmtDate(m.date)}">${icon('edit', 'h-3.5 w-3.5')}</button><button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="delMeasure" data-arg="${esc(m.date)}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
     </tbody></table>` : `<p class="py-6 text-center text-sm text-gray-400">${ms.length ? `No hay mediciones en ${esc(bounds.label)}.` : 'Todavía no hay mediciones guardadas.'}</p>`}</div>`;
 }
 
@@ -202,7 +202,7 @@ export function viewVolume(S: State): string {
   const sel = S.muscleSel || 'Pecho';
   const volTable = (cols: string[], cls: string) => `<table class="${cls}">
     <thead class="text-xs text-gray-400"><tr><th class="py-2 text-left">Músculo</th>${cols.map((w) => `<th class="tabular-nums font-medium">${short(w)}</th>`).join('')}</tr></thead>
-    <tbody>${MUSCLES.map((m) => `<tr class="border-t border-gray-800"><td class="py-2 pr-2 text-left"><button type="button" data-act="selMuscle" data-arg="${esc(m)}" aria-pressed="${m === sel}" class="rounded-lg border px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${m === sel ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/25 hover:text-white'}">${esc(m)}</button></td>${cols.map((w) => { const v = vol.get(m)?.get(w) ?? 0; return `<td class="tabular-nums font-bold ${color(v)}">${v ? `${r1(v)}${mark(v)}` : '·'}</td>`; }).join('')}</tr>`).join('')}</tbody>
+    <tbody>${MUSCLES.map((m) => `<tr class="border-t border-gray-800"><td class="py-2 pr-2 text-left"><button type="button" data-act="selMuscle" data-arg="${esc(m)}" aria-pressed="${m === sel}" class="inline-flex min-h-[44px] sm:min-h-0 items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${m === sel ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-white/[0.03] text-gray-200 hover:border-white/25 hover:text-white'}">${esc(m)}</button></td>${cols.map((w) => { const v = vol.get(m)?.get(w) ?? 0; return `<td class="tabular-nums font-bold ${color(v)}">${v ? `${r1(v)}${mark(v)}` : '·'}</td>`; }).join('')}</tr>`).join('')}</tbody>
   </table>`;
   chart('c-vol', { type: 'bar', data: { labels: weeks.map(short), datasets: [{ label: `Series efectivas · ${sel}`, data: weeks.map((w) => vol.get(sel)?.get(w) ?? 0), backgroundColor: '#3B82F6' }] } });
   return `
@@ -389,6 +389,6 @@ export function runCalc() {
     const target = tdee + parseInt((document.getElementById('nuGoal') as HTMLSelectElement).value, 10);
     const p = Math.round(w * 2.2), f = Math.round(w), pk = p * 4, fk = f * 9, ck = Math.max(0, target - pk - fk);
     document.getElementById('nuOut')!.innerHTML = col('TMB', `${bmr} kcal`) + col('TDEE', `${tdee} kcal`, 'text-electricBlue') + col('Objetivo', `${target} kcal`, 'text-emeraldGreen');
-    document.getElementById('nuMacros')!.innerHTML = col('Proteína 2,2 g/kg', `${p} g`, 'text-coralRed') + col('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + col('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
+    document.getElementById('nuMacros')!.innerHTML = col('Proteína 2,2 g/kg', `${p} g`, 'text-emeraldGreen') + col('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + col('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
   }
 }

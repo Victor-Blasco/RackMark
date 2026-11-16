@@ -72,7 +72,7 @@ function renderDayPicker(S: State): string {
             </div>
             <p class="text-xs text-gray-400 tabular-nums">${list.length} ejercicios · ${totalSets} series${lastDate ? ` · Última ${fmtDate(lastDate)}` : ''}</p>
           </div>
-          ${icon('play', `h-4 w-4 shrink-0 ${isNext ? 'text-blue-300' : 'text-gray-500'}`)}
+          ${icon('play', `h-4 w-4 shrink-0 ${isNext ? 'text-blue-300' : 'text-gray-400'}`)}
         </button>`;
       }).join('')}
 
@@ -93,31 +93,41 @@ function renderDayPicker(S: State): string {
   </div>`;
 }
 
+/** Resume el estado y marca rápida de un ejercicio para el menú hamburguesa de `En vivo`. */
+export function liveExQuickInfo(S: State, day: DayName | 'Libre', item: LogExDraft): { infoLine: string; doneInEx: number; allDoneInEx: boolean } {
+  const { tgt, hist, doneInEx, allDoneInEx } = exerciseContext(S, day, item);
+  const doneToday = item.sets.filter((s) => s.done && s.r > 0);
+  const bestToday = doneToday.length
+    ? doneToday.reduce((a, b) => (b.w > a.w || (b.w === a.w && b.r > a.r) ? b : a))
+    : null;
+  const quickInfo = bestToday
+    ? `Hoy ${bestToday.w} kg × ${bestToday.r}`
+    : hist?.last
+      ? `Últ. ${hist.last.top} kg × ${hist.last.repsAtTop}`
+      : 'Sin historial';
+  return {
+    infoLine: `${tgt ? `Obj ${tgt.sets}×${tgt.reps} · ` : ''}${quickInfo}`,
+    doneInEx,
+    allDoneInEx,
+  };
+}
+
 function renderExMenu(S: State, live: LiveWorkout, curIdx: number): string {
   const open = Boolean(live.exMenuOpen);
   const doneExCount = live.exercises.filter((e) => e.sets.length > 0 && e.sets.every((s) => s.done && s.r > 0)).length;
 
   return `<div id="live-ex-menu-wrap" data-open="${open}" aria-hidden="${!open}" class="grid transition-[grid-template-rows,opacity,transform,margin] duration-200 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100 translate-y-0' : 'grid-rows-[0fr] opacity-0 -translate-y-1 pointer-events-none !mt-0'}">
     <div class="overflow-hidden">
-      <nav id="live-ex-menu" ${open ? '' : 'inert'} aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-[#0E1525] p-2.5 shadow-2xl shadow-black/45 space-y-2">
+      <nav id="live-ex-menu" ${open ? '' : 'inert'} aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-floatDark p-2.5 shadow-2xl shadow-black/45 space-y-2">
         <div class="flex items-center justify-between px-1.5 pb-1">
-          <span class="text-xs font-bold uppercase tracking-wide text-gray-300">Ejercicios (${doneExCount}/${live.exercises.length} listos)</span>
-          <button type="button" class="flex h-8 items-center gap-1 rounded-full bg-white/5 px-3 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white" data-act="liveToggleMenu">${icon('close', 'h-3.5 w-3.5')} Cerrar</button>
+          <span id="liveMenuSummary" class="text-xs font-bold uppercase tracking-wide text-gray-300">Ejercicios (${doneExCount}/${live.exercises.length} listos)</span>
+          <button type="button" class="flex min-h-[44px] sm:min-h-[34px] items-center gap-1 rounded-full bg-white/5 px-3.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white" data-act="liveToggleMenu">${icon('close', 'h-3.5 w-3.5')} Cerrar</button>
         </div>
 
         ${live.exercises.length ? `<div class="space-y-1 max-h-[55vh] overflow-y-auto pr-0.5">
           ${live.exercises.map((item, idx) => {
             const active = idx === curIdx;
-            const { tgt, hist, doneInEx, allDoneInEx } = exerciseContext(S, live.day, item);
-            const doneToday = item.sets.filter((s) => s.done && s.r > 0);
-            const bestToday = doneToday.length
-              ? doneToday.reduce((a, b) => (b.w > a.w || (b.w === a.w && b.r > a.r) ? b : a))
-              : null;
-            const quickInfo = bestToday
-              ? `Hoy ${bestToday.w} kg × ${bestToday.r}`
-              : hist?.last
-                ? `Últ. ${hist.last.top} kg × ${hist.last.repsAtTop}`
-                : 'Sin historial';
+            const { infoLine, doneInEx, allDoneInEx } = liveExQuickInfo(S, live.day, item);
 
             return `<button type="button" data-act="liveGoEx" data-arg="${idx}" class="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${active ? 'bg-electricBlue/20 ring-1 ring-electricBlue/40' : 'hover:bg-white/[0.05]'}">
               <div class="flex min-w-0 flex-1 items-center gap-2.5">
@@ -127,10 +137,10 @@ function renderExMenu(S: State, live: LiveWorkout, curIdx: number): string {
                     <span class="truncate text-sm font-bold ${active ? 'text-white' : allDoneInEx ? 'text-emerald-200' : 'text-gray-100'}">${esc(item.name)}</span>
                     ${active ? `<span class="shrink-0 rounded-full bg-electricBlue/25 px-2 py-0.5 text-[10px] font-bold text-blue-200">Actual</span>` : ''}
                   </div>
-                  <p class="truncate text-xs text-gray-400 tabular-nums">${tgt ? `Obj ${tgt.sets}×${tgt.reps} · ` : ''}${esc(quickInfo)}</p>
+                  <p data-live-menu-info="${idx}" class="truncate text-xs text-gray-400 tabular-nums">${esc(infoLine)}</p>
                 </div>
               </div>
-              <span class="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${doneInEx}/${item.sets.length}</span>
+              <span data-live-menu-count="${idx}" class="shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${doneInEx}/${item.sets.length}</span>
             </button>`;
           }).join('')}
         </div>` : `<p class="px-2.5 py-3 text-xs text-gray-400">Todavía no hay ejercicios en esta sesión.</p>`}
@@ -149,30 +159,30 @@ function renderPickerPanel(S: State, live: LiveWorkout, currentEx?: LogExDraft):
   const { avail, quick } = quickExSuggestions(S, live.day, live.exercises.map((e) => e.name), 8);
   const title = mode === 'swap' && currentEx ? `Cambiar "${currentEx.name}" por otro` : 'Añadir ejercicio a este entreno';
 
-  return `<section aria-label="${esc(title)}" class="rounded-2xl border border-electricBlue/40 bg-[#0E1525] p-3.5 shadow-xl shadow-black/40 space-y-3">
+  return `<section aria-label="${esc(title)}" class="rounded-2xl border border-electricBlue/40 bg-floatDark p-3.5 shadow-xl shadow-black/40 space-y-3">
     <div class="flex items-center justify-between gap-2">
       <h3 class="text-sm font-extrabold text-white">${esc(title)}</h3>
-      ${currentEx ? `<button type="button" class="min-h-[40px] px-2 text-xs font-semibold text-gray-400 hover:text-white" data-act="liveClosePicker">Cancelar</button>` : ''}
+      ${currentEx ? `<button type="button" class="min-h-[44px] sm:min-h-[34px] px-2.5 text-xs font-semibold text-gray-400 hover:text-white" data-act="liveClosePicker">Cancelar</button>` : ''}
     </div>
 
     ${quick.length ? `<div class="space-y-1.5">
       <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Sugeridos</p>
       <div class="flex flex-wrap gap-1.5">
-        ${quick.map((n) => `<button type="button" data-act="livePickEx" data-arg="${esc(n)}" class="btn !min-h-[40px] !rounded-full !px-3 !py-1 text-xs font-medium text-gray-100">${esc(n)}</button>`).join('')}
+        ${quick.map((n) => `<button type="button" data-act="livePickEx" data-arg="${esc(n)}" class="btn-sm rounded-full font-medium text-gray-100">${esc(n)}</button>`).join('')}
       </div>
     </div>` : ''}
 
     <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <div class="flex gap-2">
-        <select id="livePickerSelect" class="inp !min-h-[44px] flex-1" aria-label="Elegir ejercicio de la lista">
+        <select id="livePickerSelect" class="inp min-h-[44px] flex-1" aria-label="Elegir ejercicio de la lista">
           <option value="">Todos los ejercicios (${avail.length})…</option>
           ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
         </select>
-        <button type="button" class="btn-primary !min-h-[44px] shrink-0" data-act="livePickFromSelect">Elegir</button>
+        <button type="button" class="btn-primary min-h-[44px] shrink-0" data-act="livePickFromSelect">Elegir</button>
       </div>
       <div class="flex gap-2">
-        <input id="livePickerCustom" class="inp !min-h-[44px] flex-1" placeholder="O escribe uno nuevo…" aria-label="Nombre de ejercicio personalizado">
-        <button type="button" class="btn !min-h-[44px] shrink-0" data-act="livePickCustom">Usar</button>
+        <input id="livePickerCustom" class="inp min-h-[44px] flex-1" placeholder="O escribe uno nuevo…" aria-label="Nombre de ejercicio personalizado">
+        <button type="button" class="btn min-h-[44px] shrink-0" data-act="livePickCustom">Usar</button>
       </div>
     </div>
   </section>`;
@@ -201,9 +211,9 @@ export function viewWorkout(S: State): string {
   const activeCtx = ex ? exerciseContext(S, live.day, ex) : undefined;
 
   return `<div class="mx-auto max-w-xl space-y-3">
-    <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-white/10">
-      <div class="flex min-w-0 items-center gap-2">
-        <button type="button" data-act="liveToggleMenu" aria-expanded="${Boolean(live.exMenuOpen)}" aria-controls="live-ex-menu" aria-label="Abrir lista de ejercicios" class="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-bold transition-colors ${live.exMenuOpen ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/15 bg-white/5 text-gray-100 hover:bg-white/10'}">
+    <div class="flex items-center justify-between gap-1.5 sm:gap-2 pb-2.5 border-b border-white/10">
+      <div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <button type="button" data-act="liveToggleMenu" aria-expanded="${Boolean(live.exMenuOpen)}" aria-controls="live-ex-menu" aria-label="Abrir lista de ejercicios" class="flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-2 sm:px-2.5 text-xs font-bold transition-colors ${live.exMenuOpen ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/15 bg-white/5 text-gray-100 hover:bg-white/10'}">
           ${icon('menu', 'h-4 w-4')}
           <span class="tabular-nums">${total ? `${curIdx + 1}/${total}` : '0'}</span>
         </button>
@@ -211,14 +221,16 @@ export function viewWorkout(S: State): string {
           <div class="flex items-center gap-1.5">
             <span class="h-2 w-2 shrink-0 rounded-full" style="background-color:${dayColor}" aria-hidden="true"></span>
             <span class="truncate text-sm font-extrabold text-white">${esc(live.day)}</span>
-            <span class="text-xs font-semibold tabular-nums text-gray-400" id="live-elapsed">${fmtElapsed(live.startedAt)}</span>
           </div>
-          <p class="text-[11px] text-gray-400 tabular-nums">${doneSetsCount}/${totalSetsCount} series</p>
+          <p class="flex flex-wrap items-center gap-x-1 text-[11px] leading-tight text-gray-400 tabular-nums">
+            <span id="liveCountSummary" class="whitespace-nowrap">${doneSetsCount}/${totalSetsCount} series</span>
+            <span class="whitespace-nowrap"><span aria-hidden="true">· </span><span id="live-elapsed">${fmtElapsed(live.startedAt)}</span></span>
+          </p>
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-1">
-        <button type="button" class="flex h-11 items-center px-2 text-xs font-semibold text-gray-400 hover:text-coralRed" data-act="liveDiscard">Descartar</button>
-        <button type="button" class="btn-primary !min-h-[44px] !px-3 text-xs sm:text-sm" data-act="liveSave">${icon('save', 'h-4 w-4')} Terminar (${doneSetsCount})</button>
+        <button type="button" class="flex h-11 items-center px-1.5 sm:px-2 text-xs font-semibold text-gray-400 hover:text-coralRed" data-act="liveDiscard">Descartar</button>
+        <button type="button" class="btn-primary min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm" data-act="liveSave">${icon('save', 'h-4 w-4')} <span id="liveFinishLabel">Terminar (${doneSetsCount})</span></button>
       </div>
     </div>
 
@@ -227,8 +239,8 @@ export function viewWorkout(S: State): string {
     ${prevBannerEx ? `<div class="flex flex-wrap items-center justify-between gap-2 border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl text-xs">
       <span class="font-semibold text-emerald-200">${esc(prevBannerEx.name)} completado · siguiente</span>
       <div class="flex items-center gap-1.5">
-        <button type="button" class="min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" data-act="liveAddExtraSetPrev">+ Serie extra en ${esc(prevBannerEx.name)}</button>
-        <button type="button" class="flex h-9 w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" data-act="liveClearBanner" aria-label="Cerrar aviso">${icon('close', 'h-4 w-4')}</button>
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" data-act="liveAddExtraSetPrev">+ Serie extra en ${esc(prevBannerEx.name)}</button>
+        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" data-act="liveClearBanner" aria-label="Cerrar aviso">${icon('close', 'h-4 w-4')}</button>
       </div>
     </div>` : ''}
 
@@ -238,8 +250,8 @@ export function viewWorkout(S: State): string {
         <p class="text-xs text-gray-300 tabular-nums">${doneExCount} ejercicios · ${doneSetsCount} series · ${fmtElapsed(live.startedAt)}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-primary !min-h-[44px] flex-1 sm:flex-initial" data-act="liveSave">${icon('save', 'h-4 w-4')} Guardar entrenamiento</button>
-        <button type="button" class="btn !min-h-[44px]" data-act="liveOpenPicker" data-arg="add">+ Añadir ejercicio</button>
+        <button type="button" class="btn-primary min-h-[44px] flex-1 sm:flex-initial" data-act="liveSave">${icon('save', 'h-4 w-4')} Guardar entrenamiento</button>
+        <button type="button" class="btn min-h-[44px]" data-act="liveOpenPicker" data-arg="add">+ Añadir ejercicio</button>
       </div>
     </div>` : ''}
 
@@ -256,28 +268,28 @@ export function viewWorkout(S: State): string {
               ${activeCtx.tgt ? `<span class="text-gray-400">Objetivo ${activeCtx.tgt.sets}×${activeCtx.tgt.reps}</span> · ` : ''}${esc(activeCtx.lastRef)}
             </p>
           </div>
-          <span class="shrink-0 pt-1 text-xs font-bold tabular-nums ${activeCtx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${activeCtx.doneInEx}/${ex.sets.length} series</span>
+          <span data-live-ex-counter="${curIdx}" class="shrink-0 pt-1 text-xs font-bold tabular-nums ${activeCtx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${activeCtx.doneInEx}/${ex.sets.length} series</span>
         </div>
 
         ${activeCtx.prescription || activeCtx.fixedNote ? `<div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-          ${activeCtx.prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(activeCtx.prescription)}</span>${activeCtx.showApplyBtn ? `<button type="button" class="font-bold text-emerald-300 hover:underline" data-act="liveApplyWeight" data-arg="${curIdx}|${activeCtx.targetW}">Aplicar ${activeCtx.targetW} kg</button>` : ''}</div>` : ''}
+          ${activeCtx.prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(activeCtx.prescription)}</span>${activeCtx.showApplyBtn ? `<button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center px-2 font-bold text-emerald-300 hover:underline" data-act="liveApplyWeight" data-arg="${curIdx}|${activeCtx.targetW}">Aplicar ${activeCtx.targetW} kg</button>` : ''}</div>` : ''}
           ${activeCtx.fixedNote ? `<p class="text-gray-300"><span class="font-semibold text-white">Nota fija:</span> ${esc(activeCtx.fixedNote)}</p>` : ''}
         </div>` : ''}
 
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-xs font-semibold text-gray-300">
-          <button type="button" class="inline-flex min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="swap">${icon('refresh', 'h-3.5 w-3.5 text-blue-300')} Cambiar ejercicio</button>
-          <button type="button" class="inline-flex min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="add">${icon('plus', 'h-3.5 w-3.5 text-blue-300')} Añadir ejercicio</button>
-          <button type="button" class="inline-flex min-h-[36px] items-center gap-1 hover:text-white" data-act="editNote" data-arg="${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5 text-gray-400')} Nota fija</button>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="swap">${icon('refresh', 'h-3.5 w-3.5 text-blue-300')} Cambiar ejercicio</button>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="add">${icon('plus', 'h-3.5 w-3.5 text-blue-300')} Añadir ejercicio</button>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="editNote" data-arg="${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5 text-gray-400')} Nota fija</button>
         </div>
       </div>
 
       <div class="divide-y divide-white/10 border-y border-white/10">
         ${ex.sets.map((s, si) => `<div data-live-set="${curIdx}|${si}" class="py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}">
           <div class="flex items-center justify-between gap-2 text-xs">
-            <span class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
-            <label class="inline-flex items-center gap-1.5 text-gray-400">
+            <span data-live-set-lbl="${curIdx}|${si}" class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
+            <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
               <span>Descanso</span>
-              <input class="w-14 rounded-lg border border-white/15 bg-transparent py-1 text-center text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
+              <input class="w-14 min-h-[38px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
               <span>s</span>
             </label>
           </div>
@@ -326,7 +338,7 @@ export function viewWorkout(S: State): string {
             ${ex.sets.length > 1 ? `<button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-coralRed/90 hover:text-coralRed" data-act="liveDelSet" data-arg="${curIdx}|${ex.sets.length - 1}">− Quitar serie</button>` : ''}
           </div>
         </div>
-        <input class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-500 focus:border-electricBlue focus:outline-none" value="${esc(ex.note)}" data-live-note="${curIdx}" placeholder="Nota rápida del ejercicio…" aria-label="Nota para ${esc(ex.name)}">
+        <input class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus:outline-none" value="${esc(ex.note)}" data-live-note="${curIdx}" placeholder="Nota rápida del ejercicio…" aria-label="Nota para ${esc(ex.name)}">
       </div>
     </section>` : ''}
 

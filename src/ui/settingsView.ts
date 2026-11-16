@@ -30,7 +30,7 @@ export function viewSettings(S: State): string {
         </div>
         <div class="flex flex-wrap gap-2 border-t border-white/5 pt-3">
           <button class="btn" data-act="cloudSync" ${S.syncing ? 'disabled' : ''}>${icon('refresh', 'h-4 w-4')} Sincronizar ahora</button>
-          <button class="btn !border-coralRed/50 text-coralRed" data-act="cloudLogout" ${S.syncing ? 'disabled' : ''}>Cerrar sesión</button>
+          <button class="btn btn-danger" data-act="cloudLogout" ${S.syncing ? 'disabled' : ''}>Cerrar sesión</button>
         </div>
       </div>`
     : `<div class="flex flex-col justify-between gap-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
@@ -65,7 +65,7 @@ export function viewSettings(S: State): string {
           <h3 class="font-bold text-white">Perfil del atleta</h3>
           <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético (Katch-McArdle) y contextualizar el informe de IA.</p>
         </div>
-        <button type="button" class="btn !py-1 !text-xs !border-electricBlue/40 text-blue-300" data-act="openWizard">Asistente inicial</button>
+        <button type="button" class="btn-sm btn-accent" data-act="openWizard">Asistente inicial</button>
       </div>
       <div class="grid grid-cols-3 gap-3">
         <label class="block"><span class="lbl">Sexo</span><select class="inp" data-change="pfSex"><option value="hombre" ${s.profile.sex === 'hombre' ? 'selected' : ''}>Hombre</option><option value="mujer" ${s.profile.sex === 'mujer' ? 'selected' : ''}>Mujer</option>${s.profile.sex && s.profile.sex !== 'hombre' && s.profile.sex !== 'mujer' ? `<option value="${esc(s.profile.sex)}" selected>${esc(s.profile.sex)}</option>` : ''}</select></label>
@@ -123,7 +123,7 @@ export function viewSettings(S: State): string {
         <p>App Check (reCAPTCHA Enterprise): <span class="${isAppCheckConfigured ? 'text-emerald-400' : 'text-amberGold'} font-semibold">${isAppCheckConfigured ? 'configurado' : 'pendiente de VITE_RECAPTCHA_SITE_KEY'}</span></p>
         ${s.ai ? `<p>Último informe guardado: ${fmtDate(s.ai.date)} · modo <span class="font-semibold text-gray-200">${s.ai.tone === 'simple' ? 'Sencillo' : 'Técnico'}</span></p>` : ''}
       </div>
-      <button class="btn !py-1.5 !text-xs" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}</button>
+      <button class="btn-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}</button>
     </div>
   </div>
 
@@ -133,8 +133,8 @@ export function viewSettings(S: State): string {
       <p class="text-xs text-gray-400">La configuración de rutinas e importación de archivos tienen sus propias secciones dedicadas.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="plan">Plan y rutinas</button>
-      <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="data">Importar y backups</button>
+      <button class="btn-sm" data-act="tab" data-arg="plan">Plan y rutinas</button>
+      <button class="btn-sm" data-act="tab" data-arg="data">Importar y backups</button>
     </div>
   </div>`;
 }

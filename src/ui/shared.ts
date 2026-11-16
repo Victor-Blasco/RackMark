@@ -31,7 +31,7 @@ export function rangePicker(scope: string, active: RangeKey, custom?: { from?: s
   const sEsc = esc(scope);
   return `<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2">
     <div role="group" aria-label="Filtro temporal" class="inline-flex flex-wrap rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
-      ${RANGES.map((r) => `<button type="button" data-act="setRange" data-arg="${sEsc}|${r.key}" aria-pressed="${active === r.key}" class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
+      ${RANGES.map((r) => `<button type="button" data-act="setRange" data-arg="${sEsc}|${r.key}" aria-pressed="${active === r.key}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
     </div>
     ${active === 'Custom' ? `
       <div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs">
@@ -324,7 +324,7 @@ export const noData = (S: State) =>
     : `<div class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-300">
         <p>Aún no hay entrenamientos guardados. Registra tu primera sesión o importa tus datos previos.</p>
         <div class="flex shrink-0 flex-wrap gap-2">
-          <button class="btn-primary !py-1.5 !text-xs" data-act="goLog">+ Registrar entreno</button>
-          <button class="btn !py-1.5 !text-xs" data-act="tab" data-arg="data">Importar datos</button>
+          <button class="btn-primary-sm" data-act="goLog">+ Registrar entreno</button>
+          <button class="btn-sm" data-act="tab" data-arg="data">Importar datos</button>
         </div>
       </div>`;

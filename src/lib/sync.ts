@@ -1,6 +1,6 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
 import type { CardioRow, DailyWellbeing, Measure, Settings, StrengthRow } from '../types';
-import { deleteKey, getAll, loadSettings, putMany, saveSettings, wipeAll } from './db';
+import { deleteKey, getAll, loadSettings, putMany, sanitizeSettings, saveSettings, wipeAll } from './db';
 import { fs } from './firebase';
 
 export type DataKind = 'strength' | 'cardio' | 'measures' | 'wellbeing';
@@ -31,7 +31,14 @@ export interface SyncMeta {
 
 const META_KEY = 'gymapp_sync_meta_v1';
 const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+const MAX_BATCH_OPS = 450;
 const KINDS: DataKind[] = ['strength', 'cardio', 'measures', 'wellbeing'];
+
+function clearLocalDrafts(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem('gymapp_log_draft');
+  localStorage.removeItem('gymapp_live_workout');
+}
 
 const emptyMeta = (uid?: string): SyncMeta => ({
   uid,
@@ -222,8 +229,8 @@ export function mergeBucket({
     const delR = remoteDeleted[k] ?? 0;
     const delT = Math.max(delL, delR);
 
-    const localEdited = touchL > 0 && (touchL > remoteAt || touchL > lastSyncedAt);
-    const localDeletedAfterSync = delL > 0 && (delL > remoteAt || delL > lastSyncedAt);
+    const localEdited = touchL > 0 && (touchL > remoteAt || (lastSyncedAt > 0 && touchL > lastSyncedAt));
+    const localDeletedAfterSync = delL > 0 && (delL > remoteAt || (lastSyncedAt > 0 && delL > lastSyncedAt));
 
     // Ignore deletion if locally touched more recently than tombstone
     const tombstoned = delT > 0 && touchL <= delT;
@@ -269,6 +276,7 @@ export interface SyncReport {
   deletedItems: number;
   settingsDirection: 'pushed' | 'pulled' | 'none';
   accountSwitched?: boolean;
+  remoteWiped?: boolean;
 }
 
 function hasCustomSettings(s: Settings): boolean {
@@ -293,7 +301,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   if (meta.uid && meta.uid !== uid) {
     // Impide fugar datos locales de una cuenta anterior hacia la nueva cuenta.
     await wipeAll();
-    if (typeof localStorage !== 'undefined') localStorage.removeItem('gymapp_log_draft');
+    clearLocalDrafts();
     meta = emptyMeta(uid);
     saveSyncMeta(meta);
     accountSwitched = true;
@@ -309,16 +317,19 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
 
   // Handle pending local wipe first if newer than any cloud update
   if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
-    const batch = writeBatch(fs);
-    bucketsSnap.forEach((d) => batch.delete(d.ref));
+    const bucketDocs = bucketsSnap.docs;
+    for (let i = 0; i < bucketDocs.length; i += MAX_BATCH_OPS) {
+      const batch = writeBatch(fs);
+      bucketDocs.slice(i, i + MAX_BATCH_OPS).forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
     const localSettings = await loadSettings();
     const docBody: RemoteSettingsDoc = {
       data: stripUndefined(localSettings),
       updatedAt: now,
       wipedAt: meta.pendingWipeAt,
     };
-    batch.set(settingsRef, docBody);
-    await batch.commit();
+    await setDoc(settingsRef, docBody);
     meta.pendingWipeAt = undefined;
     meta.settingsDirtyAt = undefined;
     meta.dirtyKeys = {};
@@ -336,13 +347,13 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     remoteSettings.wipedAt > (meta.settingsDirtyAt ?? 0)
   ) {
     await wipeAll();
-    if (typeof localStorage !== 'undefined') localStorage.removeItem('gymapp_log_draft');
-    await saveSettings(remoteSettings.data);
+    clearLocalDrafts();
+    await saveSettings(sanitizeSettings(remoteSettings.data));
     meta = emptyMeta(uid);
     meta.remoteUpdated.settings = remoteSettings.updatedAt;
     meta.lastSyncAt = now;
     saveSyncMeta(meta);
-    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled', accountSwitched };
+    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled', accountSwitched, remoteWiped: true };
   }
 
   // Sync settings (if local had rich settings prior to first cloud link and remote is bare default, push local)
@@ -361,7 +372,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     meta.remoteUpdated.settings = updatedAt;
     settingsDirection = 'pushed';
   } else if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
-    await saveSettings(remoteSettings.data);
+    await saveSettings(sanitizeSettings(remoteSettings.data));
     meta.settingsDirtyAt = undefined;
     meta.remoteUpdated.settings = remoteSettings.updatedAt;
     settingsDirection = 'pulled';
@@ -436,9 +447,9 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     meta.deleted[bId] = res.deleted;
   }
 
-  if (toWriteRemote.length) {
+  for (let i = 0; i < toWriteRemote.length; i += MAX_BATCH_OPS) {
     const batch = writeBatch(fs);
-    for (const { id, doc: body } of toWriteRemote) {
+    for (const { id, doc: body } of toWriteRemote.slice(i, i + MAX_BATCH_OPS)) {
       batch.set(doc(fs, 'users', uid, 'buckets', id), body);
     }
     await batch.commit();

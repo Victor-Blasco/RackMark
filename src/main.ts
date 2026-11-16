@@ -1,7 +1,7 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
-import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, parseBackup, putMany, saveSettings, wipeAll } from './lib/db';
+import { deleteKey, exportBackup, getAll, importBackup, loadSettings, mergeWellbeing, parseBackup, putMany, sanitizeSettings, saveSettings, wipeAll } from './lib/db';
 import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from './lib/firebase';
 import { clearSyncMeta, hasUnsyncedChanges, loadSyncMeta, markBucketDeletes, markBucketUpserts, markSettingsDirty, markWipePending, syncWithCloud } from './lib/sync';
 import { importSamsungInWorker } from './lib/samsung';
@@ -10,12 +10,18 @@ import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing
 import { DEFAULT_SETTINGS, ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
 import { icon, type IconName } from './ui/icons';
 import { allExerciseNames, fmtMMSS, manualSessionId, renderRestTimerBar } from './ui/logView';
-import { defaultSetsForEx, initLiveWorkout, initLogDraft, renderAiReport, renderModals, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, viewWorkout, type State } from './ui/views';
+import { defaultSetsForEx, initLiveWorkout, initLogDraft, liveExQuickInfo, renderAiReport, renderModals, renderPlanCatalogResults, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, viewWorkout, type State } from './ui/views';
 import { esc, routineColor, routineNames, todayIso, type RangeKey } from './ui/shared';
 import { createWizardDraft, daysActivityFactor, goalCalorieDelta, goalPhaseName, recommendTemplate } from './ui/wizardView';
 import { initSortableLists, moveItem } from './ui/reorder';
 
-registerSW({ immediate: true });
+let swUpdatePending = false;
+const updateSW = registerSW({
+  onNeedRefresh() {
+    swUpdatePending = true;
+    renderSwUpdateBanner();
+  },
+});
 
 const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'body', label: 'Cuerpo', icon: 'body' },
@@ -129,6 +135,32 @@ function toast(msg: string) {
   }, 5000);
 }
 
+function renderSwUpdateBanner() {
+  let layer = document.getElementById('sw-update-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'sw-update-layer';
+    layer.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-sw-act]');
+      if (!btn) return;
+      const act = btn.dataset.swAct;
+      swUpdatePending = false;
+      renderSwUpdateBanner();
+      if (act === 'reload') void updateSW(true);
+    });
+    document.body.appendChild(layer);
+  }
+  layer.innerHTML = swUpdatePending
+    ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-50 mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-electricBlue/50 bg-floatDark p-3 text-sm text-gray-100 shadow-2xl lg:bottom-6 lg:left-64">
+        <span class="font-medium text-gray-200">Nueva versión disponible.</span>
+        <div class="flex shrink-0 items-center gap-1.5">
+          <button type="button" data-sw-act="dismiss" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white">Después</button>
+          <button type="button" data-sw-act="reload" class="min-h-[44px] sm:min-h-[36px] rounded-lg bg-electricBlue px-3 text-xs font-bold text-white hover:bg-blue-500">Actualizar</button>
+        </div>
+      </div>`
+    : '';
+}
+
 function syncStatusInfo(): { text: string; cls: string } {
   if (!S.user) return { text: navigator.onLine ? 'Solo local' : 'Sin conexión · local', cls: 'text-gray-400' };
   if (S.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
@@ -198,8 +230,8 @@ function renderSidebar(statsText: string, liveCount: number, draftCount: number)
     const sub = S.settings.routineMeta?.[id]?.sub;
     return `<button data-act="tab" data-arg="${esc(id)}" ${active ? 'aria-current="page"' : ''} class="nav-item ${active ? 'nav-item-on' : ''}">
       <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color:${col}"></span>
-      <span class="flex-1 truncate text-left">${esc(id)}${sub ? ` <span class="text-xs font-normal text-gray-500">· ${esc(sub)}</span>` : ''}</span>
-      <span class="font-mono text-[11px] text-gray-500 tabular-nums">${count}</span>
+      <span class="flex-1 truncate text-left">${esc(id)}${sub ? ` <span class="text-xs font-normal text-gray-400">· ${esc(sub)}</span>` : ''}</span>
+      <span class="font-mono text-[11px] text-gray-400 tabular-nums">${count}</span>
     </button>`;
   }).join('');
   const analyticsBtns = ANALYTICS_TABS.map((a) => {
@@ -214,12 +246,12 @@ function renderSidebar(statsText: string, liveCount: number, draftCount: number)
   const restUntil = S.liveWorkout?.restUntil;
   const restRemSec = restUntil != null && restUntil > Date.now() ? Math.ceil((restUntil - Date.now()) / 1000) : 0;
 
-  return `<aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-gray-800/80 bg-[#0B101B]">
-    <div class="flex items-center gap-3 border-b border-gray-800/80 px-4 py-4">
+  return `<aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-borderDark/80 bg-navDark">
+    <div class="flex items-center gap-3 border-b border-borderDark/80 px-4 py-4">
       <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
       <div class="min-w-0">
         <p class="truncate text-sm font-extrabold text-white">Panel PPL</p>
-        <p class="truncate text-[11px] text-gray-500 tabular-nums">${statsText}</p>
+        <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText}</p>
       </div>
     </div>
 
@@ -272,7 +304,7 @@ function renderSidebar(statsText: string, liveCount: number, draftCount: number)
       </div>
     </nav>
 
-    <div class="mt-auto space-y-2 border-t border-gray-800/80 p-3">
+    <div class="mt-auto space-y-2 border-t border-borderDark/80 p-3">
       ${(() => {
         const st = syncStatusInfo();
         return S.user
@@ -300,39 +332,43 @@ function renderSidebar(statsText: string, liveCount: number, draftCount: number)
   </aside>`;
 }
 
+function activeTabTitle(): string {
+  return TAB_TITLES[S.tab] ?? (isRoutineTab(S.tab) ? `Rutina ${S.tab}` : 'GymApp');
+}
+
 function renderMobileHeader(statsText: string): string {
   const inRoutine = isRoutineTab(S.tab) || S.tab === 'plan';
   const inAnalytics = ANALYTICS_IDS.has(S.tab);
   const inSystem = SYSTEM_IDS.has(S.tab);
   const inTrain = S.tab === 'workout' || S.tab === 'log';
   const rNames = routineNames(S.settings);
-  const headerTitle = TAB_TITLES[S.tab] ?? (isRoutineTab(S.tab) ? `Rutina ${S.tab}` : 'GymApp');
+  const headerTitle = activeTabTitle();
   const subNav = inRoutine
-    ? `<div role="tablist" aria-label="Rutinas" class="mt-2 flex gap-1 overflow-x-auto rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${rNames.map((id, idx) => {
+    ? `<div role="tablist" aria-label="Rutinas" class="mt-2 flex gap-1 overflow-x-auto rounded-xl border border-borderDark/80 bg-navDark p-1">${rNames.map((id, idx) => {
         const active = S.tab === id;
-        return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${esc(id)}" class="flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${active ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}">
+        return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${esc(id)}" class="flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}">
           <span class="h-2 w-2 rounded-full" style="background-color:${routineColor(id, S.settings, idx)}"></span>
           <span>${esc(id)}</span>
         </button>`;
-      }).join('')}<button role="tab" aria-selected="${S.tab === 'plan'}" data-act="tab" data-arg="plan" class="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors ${S.tab === 'plan' ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">Plan</button></div>`
+      }).join('')}<button role="tab" aria-selected="${S.tab === 'plan'}" data-act="tab" data-arg="plan" class="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${S.tab === 'plan' ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">Plan</button></div>`
     : inAnalytics
-      ? `<div role="tablist" aria-label="Vistas de análisis" class="mt-2 grid grid-cols-4 gap-1 rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${ANALYTICS_TABS.map((a) => {
+      ? `<div role="tablist" aria-label="Vistas de análisis" class="mt-2 grid grid-cols-4 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${ANALYTICS_TABS.map((a) => {
           const active = S.tab === a.id;
-          return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${a.id}" class="truncate rounded-lg px-1.5 py-1.5 text-center text-[11px] font-bold transition-colors ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">${a.label === 'Calculadoras' ? 'Calc.' : a.label}</button>`;
+          return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${a.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-1.5 py-1.5 text-center text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${a.label === 'Calculadoras' ? 'Calc.' : a.label}</span></button>`;
         }).join('')}</div>`
       : inTrain
-        ? `<div role="tablist" aria-label="Modo de entrenamiento" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${TRAIN_TABS.map((t) => {
+        ? `<div role="tablist" aria-label="Modo de entrenamiento" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${TRAIN_TABS.map((t) => {
             const active = S.tab === t.id;
-            return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="truncate rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">${t.label}</button>`;
+            return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${t.label}</span></button>`;
           }).join('')}</div>`
         : inSystem
-          ? `<div role="tablist" aria-label="Cuenta y datos" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-gray-800/80 bg-[#0B101B] p-1">${SYSTEM_TABS.map((t) => {
+          ? `<div role="tablist" aria-label="Cuenta y datos" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${SYSTEM_TABS.map((t) => {
               const active = S.tab === t.id;
-              return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="truncate rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">${t.label}</button>`;
+              return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${t.label}</span></button>`;
             }).join('')}</div>`
           : '';
 
-  return `<header class="sticky top-0 z-30 border-b border-gray-800 bg-bgDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
+  return `<header class="sticky top-0 z-30 border-b border-borderDark bg-bgDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
     <div class="mx-auto flex max-w-6xl items-center justify-between gap-2.5">
       <div class="flex min-w-0 items-center gap-2.5">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
@@ -342,11 +378,11 @@ function renderMobileHeader(statsText: string): string {
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-2">
-        ${S.authReady && !S.user ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-9 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-2.5 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98]">
+        ${S.authReady && !S.user ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
           ${icon('login', 'h-3.5 w-3.5')}
           <span>Entrar</span>
         </button>` : ''}
-        <button data-act="tab" data-arg="settings" aria-label="Cuenta y ajustes" ${inSystem ? 'aria-current="page"' : ''} class="flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${inSystem ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-gray-800 bg-gray-900/80 text-gray-400 hover:text-white'}">
+        <button data-act="tab" data-arg="settings" aria-label="Cuenta y ajustes" ${inSystem ? 'aria-current="page"' : ''} class="flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${inSystem ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-borderDark bg-gray-900/80 text-gray-400 hover:text-white'}">
           ${icon('gear', 'h-5 w-5')}
         </button>
       </div>
@@ -361,7 +397,7 @@ function renderMobileNav(liveCount: number, draftCount: number): string {
   const inTrain = S.tab === 'workout' || S.tab === 'log';
   const restUntil = S.liveWorkout?.restUntil;
   const restRemSec = restUntil != null && restUntil > Date.now() ? Math.ceil((restUntil - Date.now()) / 1000) : 0;
-  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-800 bg-[#0B101B] px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
+  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-borderDark bg-navDark px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
     <div class="mx-auto grid max-w-md grid-cols-4 items-center gap-1">
       <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="bnav-item ${S.tab === 'home' ? 'bnav-item-on' : ''}">
         ${icon('home', 'h-5 w-5')}
@@ -379,7 +415,7 @@ function renderMobileNav(liveCount: number, draftCount: number): string {
         <span class="relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm bg-electricBlue ${inTrain ? 'ring-2 ring-blue-300/60' : ''}">
           ${icon('play', 'h-4 w-4')}
           <span data-nav-rest class="ml-1 text-[10px] font-bold tabular-nums text-blue-100 ${restRemSec > 0 ? '' : 'hidden'}">${restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
-          ${liveCount > 0 || S.liveWorkout != null || draftCount > 0 ? `<span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-[#0B101B]"></span>` : ''}
+          ${liveCount > 0 || S.liveWorkout != null || draftCount > 0 ? `<span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-navDark"></span>` : ''}
         </span>
         <span class="${inTrain ? 'text-blue-300' : 'text-gray-200'}">Entrenar</span>
       </button>
@@ -404,7 +440,7 @@ function render() {
   ${renderSidebar(statsText, liveCount, draftCount)}
   ${renderMobileHeader(statsText)}
   <div class="lg:pl-64">
-    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">${html}</main>
+    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none"><h1 class="sr-only hidden lg:block">${esc(activeTabTitle())}</h1>${html}</main>
   </div>
   ${renderMobileNav(liveCount, draftCount)}
   ${renderModals(S)}`;
@@ -440,14 +476,40 @@ function maybeOpenInitialWizard(): boolean {
 async function runSync(showToast = false) {
   if (!S.user) return;
   if (syncInFlight) { syncPending = true; return; }
+  const preMeta = loadSyncMeta();
+  if (preMeta.uid && preMeta.uid !== S.user.uid && hasUnsyncedChanges(preMeta)) {
+    syncInFlight = true;
+    const ok = await askConfirm({
+      title: 'Cambiar de cuenta con cambios pendientes',
+      message: 'Hay cambios locales sin subir de una cuenta anterior. Si cambias ahora se limpiarán de este dispositivo.',
+      confirmLabel: 'Continuar y reemplazar',
+      danger: true,
+    });
+    syncInFlight = false;
+    if (!ok) {
+      syncPending = false;
+      await signOutGoogle();
+      S.user = null;
+      render();
+      return;
+    }
+    if (!S.user) return;
+  }
   syncInFlight = true;
   S.syncing = true;
   updateSyncDom();
   try {
     const res = await syncWithCloud(S.user.uid);
     S.lastSync = Date.now();
-    if (res.accountSwitched) { S.logDraft = undefined; saveDraft(undefined); S.liveWorkout = undefined; saveLive(undefined); }
-    const changed = Boolean(res.accountSwitched || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled');
+    if (res.accountSwitched || res.remoteWiped) {
+      S.logDraft = undefined;
+      saveDraft(undefined);
+      S.liveWorkout = undefined;
+      saveLive(undefined);
+      syncRestTicker();
+      updateNavRestBadges(0);
+    }
+    const changed = Boolean(res.accountSwitched || res.remoteWiped || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled');
     if (changed) {
       await reload();
     }
@@ -649,6 +711,8 @@ function finalizePendingRest(live: LiveWorkout): void {
     const refSet = live.exercises[live.restRef.ei]?.sets[live.restRef.si];
     if (refSet && (refSet.restSec == null || refSet.restSec === live.targetRestSec)) {
       refSet.restSec = elapsedSec;
+      const restInp = root.querySelector<HTMLInputElement>(`[data-live-rest="${live.restRef.ei}|${live.restRef.si}"]`);
+      if (restInp) restInp.value = String(elapsedSec);
     }
   }
   delete live.restStartedAt;
@@ -765,6 +829,64 @@ function syncSetDom(ei: number, si: number) {
   updateLogCountersDom(ei);
 }
 
+function updateLiveCountersDom(ei?: number) {
+  const live = S.liveWorkout;
+  if (!live) return;
+  const doneExCount = live.exercises.filter((e) => e.sets.length > 0 && e.sets.every((s) => s.done && s.r > 0)).length;
+  const doneSetsCount = live.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
+  const totalSetsCount = live.exercises.reduce((acc, e) => acc + e.sets.length, 0);
+
+  const countSummary = document.getElementById('liveCountSummary');
+  if (countSummary) countSummary.textContent = `${doneSetsCount}/${totalSetsCount} series`;
+
+  const finishLabel = document.getElementById('liveFinishLabel');
+  if (finishLabel) finishLabel.textContent = `Terminar (${doneSetsCount})`;
+
+  const menuSummary = document.getElementById('liveMenuSummary');
+  if (menuSummary) menuSummary.textContent = `Ejercicios (${doneExCount}/${live.exercises.length} listos)`;
+
+  if (ei != null && live.exercises[ei]) {
+    const item = live.exercises[ei];
+    const { infoLine, doneInEx, allDoneInEx } = liveExQuickInfo(S, live.day, item);
+    const exCounter = root.querySelector<HTMLElement>(`[data-live-ex-counter="${ei}"]`);
+    if (exCounter) {
+      exCounter.textContent = `${doneInEx}/${item.sets.length} series`;
+      exCounter.className = `shrink-0 pt-1 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
+    }
+    const menuCount = root.querySelector<HTMLElement>(`[data-live-menu-count="${ei}"]`);
+    if (menuCount) {
+      menuCount.textContent = `${doneInEx}/${item.sets.length}`;
+      menuCount.className = `shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
+    }
+    const menuInfo = root.querySelector<HTMLElement>(`[data-live-menu-info="${ei}"]`);
+    if (menuInfo) menuInfo.textContent = infoLine;
+  }
+}
+
+function syncLiveSetDom(ei: number, si: number) {
+  const ex = S.liveWorkout?.exercises[ei];
+  const s = ex?.sets[si];
+  if (!ex || !s) return;
+  const row = root.querySelector<HTMLElement>(`[data-live-set="${ei}|${si}"]`);
+  if (row) {
+    row.className = `py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`;
+  }
+  const lbl = root.querySelector<HTMLElement>(`[data-live-set-lbl="${ei}|${si}"]`);
+  if (lbl) {
+    lbl.textContent = `Serie ${si + 1}${s.done ? ' · Hecha' : ''}`;
+    lbl.className = `font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}`;
+  }
+  const btn = root.querySelector<HTMLElement>(`[data-act="liveToggleSet"][data-arg="${ei}|${si}"]`);
+  if (btn) {
+    btn.setAttribute('aria-pressed', String(Boolean(s.done)));
+    btn.setAttribute('aria-label', `${s.done ? 'Desmarcar' : 'Marcar'} serie ${si + 1}`);
+    btn.className = `flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`;
+    const span = btn.querySelector('span');
+    if (span) span.textContent = s.done ? 'Hecha' : 'Listo';
+  }
+  updateLiveCountersDom(ei);
+}
+
 async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, nextSessionId?: string): Promise<boolean> {
   const cur = S.logDraft;
   if (!cur?.dirty) return true;
@@ -780,18 +902,52 @@ async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, 
   });
 }
 
+const MODAL_DIALOG_SELECTOR = '#confirm-modal, #wizard-modal, #ex-modal, #rt-modal, #note-modal';
+const MODAL_FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+let lastModalTrigger: { selector: string | null; index: number } | null = null;
+
+function captureModalTrigger() {
+  const activeEl = document.activeElement;
+  if (!(activeEl instanceof HTMLElement) || activeEl.closest(MODAL_DIALOG_SELECTOR) || activeEl === document.body) {
+    lastModalTrigger = null;
+    return;
+  }
+  const selector = focusSelector(activeEl);
+  const index = selector ? Math.max(0, [...root.querySelectorAll<HTMLElement>(selector)].indexOf(activeEl)) : 0;
+  lastModalTrigger = { selector, index };
+}
+
+function restoreModalFocus() {
+  if (S.confirmModal || S.wizard || S.exModal || S.routineModal || S.noteModal) return;
+  const trigger = lastModalTrigger;
+  lastModalTrigger = null;
+  if (!trigger) return;
+  if (trigger.selector) {
+    const matches = root.querySelectorAll<HTMLElement>(trigger.selector);
+    const target = matches[trigger.index] ?? matches[0];
+    if (target) {
+      target.focus({ preventScroll: true });
+      return;
+    }
+  }
+  document.getElementById('main-content')?.focus({ preventScroll: true });
+}
+
 let confirmResolver: ((ok: boolean) => void) | null = null;
 function resolveConfirm(ok: boolean) {
   const res = confirmResolver;
   confirmResolver = null;
   S.confirmModal = undefined;
   render();
+  restoreModalFocus();
   res?.(ok);
 }
 function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> {
   if (confirmResolver) confirmResolver(false);
+  if (!lastModalTrigger) captureModalTrigger();
   S.confirmModal = opts;
   render();
+  document.querySelector<HTMLElement>('#confirm-modal [data-act="confirmNo"], #confirm-modal button')?.focus({ preventScroll: true });
   return new Promise((resolve) => { confirmResolver = resolve; });
 }
 
@@ -825,6 +981,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
   openWizard: () => {
+    captureModalTrigger();
     S.wizard = createWizardDraft(S);
     render();
     document.getElementById('wizAge')?.focus();
@@ -834,9 +991,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!S.settings.onboardingCompleted) {
       S.settings.onboardingCompleted = true;
       await persist();
+      restoreModalFocus();
       return;
     }
     render();
+    restoreModalFocus();
   },
   wizardBack: () => {
     if (!S.wizard || S.wizard.step <= 1) return;
@@ -1010,15 +1169,22 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     finalizePendingRest(live);
     saveLive(live);
     syncRestTicker();
-    if (S.tab === 'workout') render();
     updateRestBarDom();
   },
-  startWorkout: (el) => {
+  startWorkout: async (el) => {
     const day = arg(el);
     if (day) {
       if (S.liveWorkout && S.liveWorkout.day !== day) {
         const hasDone = S.liveWorkout.exercises.some((e) => e.sets.some((s) => s.done && s.r > 0));
-        if (hasDone && !confirm(`Tienes un entreno en curso (${S.liveWorkout.day}). ¿Empezar uno nuevo de "${day}"?`)) {
+        if (
+          hasDone &&
+          !(await askConfirm({
+            title: 'Entrenamiento en curso',
+            message: `Tienes un entreno en curso (${S.liveWorkout.day}). ¿Empezar uno nuevo de "${day}" y descartar el actual?`,
+            confirmLabel: 'Empezar nuevo',
+            danger: true,
+          }))
+        ) {
           setTab('workout');
           render();
           return;
@@ -1046,7 +1212,10 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!live) return;
     live.targetRestSec = Math.max(15, +arg(el) || 90);
     saveLive(live);
-    render();
+    updateRestBarDom();
+    root.querySelectorAll<HTMLInputElement>('[data-live-rest]').forEach((inp) => {
+      inp.placeholder = String(live.targetRestSec);
+    });
   },
   liveToggleMenu: () => {
     const live = S.liveWorkout;
@@ -1082,11 +1251,19 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     }
     render();
   },
-  liveDiscard: () => {
+  liveDiscard: async () => {
     const live = S.liveWorkout;
     if (!live) return;
     const hasDone = live.exercises.some((e) => e.sets.some((s) => s.done && s.r > 0));
-    if (hasDone && !confirm('¿Descartar el entrenamiento en curso? Se perderán las series marcadas.')) return;
+    if (
+      hasDone &&
+      !(await askConfirm({
+        title: 'Descartar entrenamiento',
+        message: '¿Descartar el entrenamiento en curso? Se perderán las series marcadas.',
+        confirmLabel: 'Descartar',
+        danger: true,
+      }))
+    ) return;
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
@@ -1210,7 +1387,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!S.liveWorkout || !s || !Number.isFinite(delta)) return;
     s.w = Math.max(0, Math.round((s.w + delta) * 10) / 10);
     saveLive(S.liveWorkout);
-    render();
+    const inp = root.querySelector<HTMLInputElement>(`[data-live-w="${ei}|${si}"]`);
+    if (inp) {
+      inp.value = String(s.w);
+      if (s.done) updateLiveCountersDom(ei);
+    } else render();
   },
   liveStepR: (el) => {
     const [ei, si, delta] = arg(el).split('|').map(Number);
@@ -1218,12 +1399,18 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const s = ex?.sets[si];
     if (!S.liveWorkout || !ex || !s || !Number.isFinite(delta)) return;
     s.r = Math.max(0, Math.round(s.r + delta));
+    const wasDone = Boolean(s.done);
     if (s.r === 0 && s.done) {
       s.done = false;
       ex.done = ex.sets.some((x) => Boolean(x.done && x.r > 0));
     }
     saveLive(S.liveWorkout);
-    render();
+    const inp = root.querySelector<HTMLInputElement>(`[data-live-r="${ei}|${si}"]`);
+    if (inp) {
+      inp.value = String(s.r);
+      if (wasDone !== Boolean(s.done)) syncLiveSetDom(ei, si);
+      else updateLiveCountersDom(ei);
+    } else render();
   },
   liveToggleSet: (el) => {
     const [ei, si] = arg(el).split('|').map(Number);
@@ -1236,6 +1423,9 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       root.querySelector<HTMLInputElement>(`[data-live-r="${ei}|${si}"]`)?.focus();
       return;
     }
+    const hadPrevBanner = live.lastCompletedExIdx != null;
+    const wasAllDone = live.exercises.length > 0 && live.exercises.every((e) => e.sets.length > 0 && e.sets.every((x) => Boolean(x.done && x.r > 0)));
+    let advanced = false;
     if (!s.done) {
       finalizePendingRest(live);
       s.done = true;
@@ -1252,7 +1442,6 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
         delete live.restRef;
       }
       const exCompleted = ex.sets.length > 0 && ex.sets.every((x) => Boolean(x.done && x.r > 0));
-      let advanced = false;
       if (exCompleted) {
         const afterIdx = live.exercises.findIndex((e, i) => i > ei && e.sets.some((x) => !(x.done && x.r > 0)));
         const nextIdx = afterIdx >= 0 ? afterIdx : live.exercises.findIndex((e, i) => i !== ei && e.sets.some((x) => !(x.done && x.r > 0)));
@@ -1268,12 +1457,6 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       } else {
         delete live.lastCompletedExIdx;
       }
-      saveLive(live);
-      syncRestTicker();
-      render();
-      updateRestBarDom();
-      if (advanced) window.scrollTo(0, 0);
-      return;
     } else {
       s.done = false;
       ex.done = ex.sets.some((x) => Boolean(x.done && x.r > 0));
@@ -1284,9 +1467,16 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       }
       if (live.lastCompletedExIdx === ei) delete live.lastCompletedExIdx;
     }
+    const nowAllDone = live.exercises.length > 0 && live.exercises.every((e) => e.sets.length > 0 && e.sets.every((x) => Boolean(x.done && x.r > 0)));
+    const nowPrevBanner = live.lastCompletedExIdx != null;
     saveLive(live);
     syncRestTicker();
-    render();
+    if (advanced || wasAllDone !== nowAllDone || hadPrevBanner !== nowPrevBanner) {
+      render();
+      if (advanced) window.scrollTo(0, 0);
+    } else {
+      syncLiveSetDom(ei, si);
+    }
     updateRestBarDom();
   },
   logRemoveEx: (el) => {
@@ -1469,6 +1659,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   editNote: (el) => {
     const n = arg(el);
     if (!n) return;
+    captureModalTrigger();
     S.noteModal = { exName: n, value: S.settings.notes[n] ?? '' };
     render();
     const ta = document.getElementById('noteModalInput') as HTMLTextAreaElement | null;
@@ -1552,11 +1743,13 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     toast('Datos borrados.');
   },
   openExModal: (el) => {
+    captureModalTrigger();
     S.exModal = { routine: arg(el) || undefined };
     render();
     document.getElementById('newExName')?.focus();
   },
   openExModalLog: () => {
+    captureModalTrigger();
     S.exModal = { fromLog: true };
     render();
     document.getElementById('newExName')?.focus();
@@ -1567,8 +1760,10 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.routineModal = undefined;
     S.noteModal = undefined;
     render();
+    restoreModalFocus();
   },
   rtModalNew: () => {
+    captureModalTrigger();
     const used = new Set(routineNames(S.settings).map((r) => routineColor(r, S.settings)));
     const nextColor = ROUTINE_COLORS.find((c) => !used.has(c)) ?? ROUTINE_COLORS[routineNames(S.settings).length % ROUTINE_COLORS.length];
     S.routineModal = { mode: 'create', name: '', sub: '', color: nextColor };
@@ -1578,6 +1773,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   rtModalEdit: (el) => {
     const name = arg(el);
     if (!name || !S.settings.routines[name]) return;
+    captureModalTrigger();
     S.routineModal = {
       mode: 'edit',
       oldName: name,
@@ -1734,6 +1930,7 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   rtName: async (el) => {
     const [d, i] = splitPair(arg(el));
     if (el.value === '__new__') {
+      captureModalTrigger();
       S.exModal = { routine: d, rowIdx: +i };
       render();
       document.getElementById('newExName')?.focus();
@@ -1809,8 +2006,38 @@ root.addEventListener('click', (e) => {
   if (el) void actions[el.dataset.act!]?.(el);
 });
 root.addEventListener('keydown', (e) => {
+  const target = e.target as HTMLElement | null;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End') {
+    const tab = target?.closest<HTMLElement>('[role="tab"]');
+    const tablist = tab?.closest<HTMLElement>('[role="tablist"]');
+    if (tab && tablist) {
+      const tabs = [...tablist.querySelectorAll<HTMLElement>('[role="tab"]')];
+      const idx = tabs.indexOf(tab);
+      if (idx !== -1 && tabs.length > 0) {
+        const nextIdx = e.key === 'ArrowRight'
+          ? (idx + 1) % tabs.length
+          : e.key === 'ArrowLeft'
+            ? (idx - 1 + tabs.length) % tabs.length
+            : e.key === 'Home'
+              ? 0
+              : tabs.length - 1;
+        const nextTab = tabs[nextIdx];
+        const nextAct = nextTab?.dataset.act;
+        if (nextTab && nextAct) {
+          e.preventDefault();
+          nextTab.focus({ preventScroll: true });
+          void actions[nextAct]?.(nextTab);
+          const lbl = tablist.getAttribute('aria-label');
+          const listSel = lbl ? `[role="tablist"][aria-label="${CSS.escape(lbl)}"]` : '[role="tablist"]';
+          const nextArg = nextTab.dataset.arg != null ? `[data-arg="${CSS.escape(nextTab.dataset.arg)}"]` : '';
+          root.querySelector<HTMLElement>(`${listSel} [data-act="${CSS.escape(nextAct)}"]${nextArg}`)?.focus({ preventScroll: true });
+          return;
+        }
+      }
+    }
+  }
   if (e.key !== 'Enter' && e.key !== ' ') return;
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[role="button"][data-act]');
+  const el = target?.closest<HTMLElement>('[role="button"][data-act]');
   if (!el) return;
   e.preventDefault();
   void actions[el.dataset.act!]?.(el);
@@ -1829,6 +2056,7 @@ root.addEventListener('change', async (e) => {
       await putMany('strength', imp.strength); await putMany('cardio', imp.cardio);
       await mergeWellbeing(imp.wellbeing);
       Object.assign(S.settings.customNames, imp.customNames);
+      S.settings = sanitizeSettings(S.settings);
       await saveSettings(S.settings);
       markBucketUpserts('strength', imp.strength);
       markBucketUpserts('cardio', imp.cardio);
@@ -1849,6 +2077,7 @@ root.addEventListener('change', async (e) => {
       const m = parseMeasuresCsv(await files[0].text());
       await putMany('measures', m.measures);
       Object.assign(S.settings.profile, m.profile);
+      S.settings = sanitizeSettings(S.settings);
       await saveSettings(S.settings);
       markBucketUpserts('measures', m.measures);
       markSettingsDirty();
@@ -1884,7 +2113,15 @@ root.addEventListener('input', (e) => {
   }
   if (el.dataset.input === 'planSearch') {
     S.planSearch = el.value;
-    render();
+    const countEl = document.getElementById('planCatalogCount');
+    const listEl = document.getElementById('planCatalogList');
+    if (countEl && listEl) {
+      const res = renderPlanCatalogResults(S);
+      countEl.textContent = res.countText;
+      listEl.innerHTML = res.listHtml;
+    } else {
+      render();
+    }
     return;
   }
   if (el.closest('#f-measure') && el.name && el.name !== 'date') {
@@ -1937,7 +2174,11 @@ root.addEventListener('input', (e) => {
   if (el.dataset.liveW) {
     const [ei, si] = el.dataset.liveW.split('|').map(Number);
     const s = live.exercises[ei]?.sets[si];
-    if (s) { s.w = Math.max(0, parseFloat(el.value.replace(',', '.')) || 0); saveLive(live); }
+    if (s) {
+      s.w = Math.max(0, parseFloat(el.value.replace(',', '.')) || 0);
+      saveLive(live);
+      if (s.done) updateLiveCountersDom(ei);
+    }
   } else if (el.dataset.liveR) {
     const [ei, si] = el.dataset.liveR.split('|').map(Number);
     const ex = live.exercises[ei];
@@ -1950,7 +2191,8 @@ root.addEventListener('input', (e) => {
         ex.done = ex.sets.some((x) => Boolean(x.done && x.r > 0));
       }
       saveLive(live);
-      if (wasDone !== Boolean(s.done)) render();
+      if (wasDone !== Boolean(s.done)) syncLiveSetDom(ei, si);
+      else if (s.done) updateLiveCountersDom(ei);
     }
   } else if (el.dataset.liveRest) {
     const [ei, si] = el.dataset.liveRest.split('|').map(Number);
@@ -2020,6 +2262,7 @@ root.addEventListener('submit', async (e) => {
     S.exModal = undefined;
     await persist();
     if (modal?.fromLog) addExToDraft(finalName, sets, reps);
+    restoreModalFocus();
     toast(existingName ? `Ejercicio "${finalName}" actualizado.` : `Ejercicio "${finalName}" creado.`);
   } else if (f.id === 'f-routine-meta' && S.routineModal) {
     const rm = S.routineModal;
@@ -2044,6 +2287,7 @@ root.addEventListener('submit', async (e) => {
       S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
       S.routineModal = undefined;
       await persist();
+      restoreModalFocus();
       toast(`Rutina "${rawName}" creada.`);
     } else if (rm.oldName && S.settings.routines[rm.oldName]) {
       const oldName = rm.oldName;
@@ -2069,6 +2313,7 @@ root.addEventListener('submit', async (e) => {
       S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
       S.routineModal = undefined;
       await persist();
+      restoreModalFocus();
       toast(`Rutina "${rawName}" actualizada.`);
     }
   } else if (f.id === 'f-phase') {
@@ -2080,6 +2325,7 @@ root.addEventListener('submit', async (e) => {
     else delete S.settings.notes[exName];
     S.noteModal = undefined;
     await persist();
+    restoreModalFocus();
     toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
   } else if (f.id === 'f-wizard' && S.wizard) {
     const w = S.wizard;
@@ -2122,8 +2368,7 @@ root.addEventListener('submit', async (e) => {
     }
 
     const phaseName = goalPhaseName(w.goal);
-    const defaultStart = DEFAULT_SETTINGS.phases[0]?.start;
-    if (!wasOnboarded && !S.strength.length && S.settings.phases.length === 1 && S.settings.phases[0].start === defaultStart) {
+    if (!wasOnboarded && !S.strength.length && S.settings.phases.length === 0) {
       S.settings.phases = [{ name: phaseName, start: today }];
     } else {
       const existingPhase = S.settings.phases.find((p) => p.start === today);
@@ -2155,11 +2400,41 @@ root.addEventListener('submit', async (e) => {
     markSettingsDirty();
     await reload();
     render();
+    restoreModalFocus();
     queueSync();
     toast('Perfil y plan inicial configurados.');
   }
 });
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    const dialog = document.querySelector<HTMLElement>(MODAL_DIALOG_SELECTOR);
+    if (!dialog) return;
+    const focusables = [...dialog.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)].filter(
+      (el) => !el.closest('[hidden], [inert]'),
+    );
+    if (!focusables.length) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const activeEl = document.activeElement as HTMLElement | null;
+    if (!activeEl || !dialog.contains(activeEl)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
+    if (e.shiftKey && activeEl === first) {
+      e.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!e.shiftKey && activeEl === last) {
+      e.preventDefault();
+      first.focus();
+    }
+    return;
+  }
   if (e.key !== 'Escape') return;
   if (S.confirmModal) { resolveConfirm(false); return; }
   if (S.wizard) { void actions.wizardSkip(root); return; }
@@ -2168,6 +2443,7 @@ window.addEventListener('keydown', (e) => {
     S.routineModal = undefined;
     S.noteModal = undefined;
     render();
+    restoreModalFocus();
   }
 });
 window.addEventListener('hashchange', () => {

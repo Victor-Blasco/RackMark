@@ -256,7 +256,7 @@ export function renderWizardModal(S: State): string {
 
   return `<div id="wizard-modal" role="dialog" aria-modal="true" aria-labelledby="wizardTitle" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
     <div class="fixed inset-0 bg-black/80 ${backdropAnim}" data-act="wizardSkip" aria-hidden="true"></div>
-    <form id="f-wizard" class="relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-[#0F1624] p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${modalAnim}">
+    <form id="f-wizard" class="relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-modalDark p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${modalAnim}">
       <div class="overflow-x-hidden space-y-4">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0 ${stepAnim}">
@@ -264,7 +264,7 @@ export function renderWizardModal(S: State): string {
             <h3 id="wizardTitle" class="text-lg font-extrabold text-white mt-0.5">${info.title}</h3>
             <p class="text-xs text-gray-400 mt-0.5">${info.sub}</p>
           </div>
-          <button type="button" data-act="wizardSkip" class="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-gray-400 hover:bg-white/5 hover:text-white">Omitir</button>
+          <button type="button" data-act="wizardSkip" class="inline-flex min-h-[44px] sm:min-h-[34px] shrink-0 items-center rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">Omitir</button>
         </div>
 
         <div class="grid grid-cols-3 gap-1.5" aria-hidden="true">

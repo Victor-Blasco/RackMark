@@ -168,4 +168,27 @@ describe('cloud sync helpers', () => {
     expect(res.deleted.delMe).toBe(160);
     expect(res.pushRemote).toBe(true);
   });
+
+  it('prioriza la versión remota más reciente en la primera sincronización cuando lastSyncedAt es 0', () => {
+    const localOld: StrengthRow = { ...row('a', '2026-03-01', 'offline viejo'), sets: [{ w: 65, r: 8 }] };
+    const remoteNew: StrengthRow = { ...row('a', '2026-03-01', 'pc reciente'), sets: [{ w: 75, r: 8 }] };
+    const res = mergeBucket({
+      kind: 'strength',
+      localItems: { a: localOld },
+      remoteBucket: {
+        kind: 'strength',
+        items: { a: remoteNew },
+        deleted: {},
+        updatedAt: 2000,
+      },
+      localDirtyKeys: { a: 1500 },
+      localDeleted: {},
+      lastSyncedAt: 0,
+      now: 2500,
+    });
+    expect((res.merged.a as StrengthRow).sets[0]?.w).toBe(75);
+    expect((res.merged.a as StrengthRow).note).toBe('pc reciente');
+    expect(res.toPutLocally).toHaveLength(1);
+    expect(res.pushRemote).toBe(false);
+  });
 });
