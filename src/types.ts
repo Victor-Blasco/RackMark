@@ -160,7 +160,6 @@ export interface Settings {
   phases: { name: string; start: string }[];
   profile: AthleteProfile;
   onboardingCompleted?: boolean;
-  geminiKey?: string;
   aiTone?: AiTone;
   ai?: AiResult;
 }

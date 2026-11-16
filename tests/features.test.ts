@@ -6,9 +6,11 @@ import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_SETTINGS, norm } from '../src/lib/seed';
 import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
+import { ICON_PATHS } from '../src/ui/icons';
 import { allExerciseNames, extractTargetWeight, fmtMMSS, initLogDraft, manualSessionId, renderRestTimerBar, viewLog } from '../src/ui/logView';
 import { plannedWeeklyVolume, renderModals, renderPlanCatalogResults, viewPlan } from '../src/ui/planView';
 import { moveItem } from '../src/ui/reorder';
+import { activeTabTitle, renderMobileHeader, renderMobileNav, renderSidebar, syncStatusInfo } from '../src/ui/shellView';
 import {
   inRange,
   isAiFreshForEx,
@@ -21,7 +23,7 @@ import {
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
-import { viewDay, viewHome } from '../src/ui/views';
+import { buildBodyHomeChartConfig, buildCompChartConfig, viewDay, viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
 import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
 import {
@@ -971,5 +973,46 @@ describe('Bloque 2 tokens, contraste y accesibilidad', () => {
     } finally {
       resetCharts();
     }
+  });
+});
+
+describe('Bloque 3 gráficas, shellView e iconos', () => {
+  it('elimina iconos muertos, separa escalas en composición corporal y renderiza shellView', () => {
+    expect('sparkle' in ICON_PATHS).toBe(false);
+    expect('info' in ICON_PATHS).toBe(false);
+
+    const onlyWeight = buildBodyHomeChartConfig([{ date: '2026-11-10', weight: 75 }]);
+    expect(onlyWeight?.data.datasets.map((d) => d.label)).toEqual(['Tendencia 7d (kg)', 'Peso diario (kg)']);
+    expect((onlyWeight?.options?.scales as Record<string, unknown>)?.y1).toBeUndefined();
+
+    const ms = [{ date: '2026-11-10', weight: 75, muscle: 35 }];
+    const weightMode = buildCompChartConfig(ms, 'weight');
+    expect(weightMode?.data.datasets.map((d) => d.label)).toEqual(['Tendencia 7d (kg)', 'Peso diario (kg)']);
+    expect((weightMode?.options?.scales as Record<string, unknown>)?.y1).toBeUndefined();
+
+    const muscleMode = buildCompChartConfig(ms, 'muscle');
+    expect(muscleMode?.data.datasets.map((d) => d.label)).toEqual(['Masa muscular (kg)']);
+    expect((muscleMode?.options?.scales as Record<string, unknown>)?.y1).toBeUndefined();
+
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'body',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    expect(activeTabTitle(state)).toBe('Cuerpo');
+    expect(syncStatusInfo(state, false, true).text).toBe('Solo local');
+    expect(renderSidebar(state, 'sin datos', 0, 0, false)).toContain('bg-navDark');
+    const mobHead = renderMobileHeader(state, 'sin datos', false);
+    expect(mobHead).toContain('<h1');
+    expect(mobHead).toContain('role="tablist"');
+    expect(renderMobileNav(state, 0, 0, 'Push', 'body')).toContain('bg-navDark');
   });
 });

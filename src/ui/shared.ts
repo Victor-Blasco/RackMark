@@ -71,6 +71,7 @@ export interface State {
   measureDate?: string;
   measurePerimOpen?: boolean;
   measureDraft?: Record<string, string>;
+  bodyMetric?: 'weight' | 'muscle';
   calcDraft?: { w?: string; r?: string; rir?: string; act?: string; goal?: string };
   exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
   routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
@@ -310,8 +311,26 @@ export function chart(id: string, cfg: ChartConfiguration) {
   jobs.push(() => {
     const el = document.getElementById(id) as HTMLCanvasElement | null;
     if (!el || el.getBoundingClientRect().width === 0) return;
+    charts.get(id)?.destroy();
     charts.set(id, new Chart(el, normalized) as unknown as Chart);
   });
+}
+
+/** Actualiza una gráfica existente en el DOM sin destruir el `<canvas>`, o devuelve `false` si no está montada. */
+export function updateChart(id: string, cfg: ChartConfiguration): boolean {
+  const el = document.getElementById(id) as HTMLCanvasElement | null;
+  if (!el || el.getBoundingClientRect().width === 0) return false;
+  const normalized = normalizeChartConfig(cfg);
+  const existing = charts.get(id) as (Chart & { canvas?: HTMLCanvasElement; config?: ChartConfiguration }) | undefined;
+  if (existing && existing.canvas === el && existing.config?.type === normalized.type) {
+    existing.data = normalized.data;
+    if (normalized.options) existing.options = normalized.options as never;
+    existing.update('none');
+    return true;
+  }
+  existing?.destroy();
+  charts.set(id, new Chart(el, normalized) as unknown as Chart);
+  return true;
 }
 
 export function empty(msg: string) {

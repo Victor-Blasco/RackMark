@@ -1,3 +1,4 @@
+import type { ChartConfiguration } from 'chart.js';
 import { epley, isoWeekStart, weeklyVolume } from '../lib/analysis';
 import { MUSCLES } from '../lib/seed';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
@@ -74,6 +75,81 @@ function weeksForBounds(bounds: DateBounds, dates: string[], defaultWeeks: numbe
   return weeks;
 }
 
+/** Construye la configuración de Composición Corporal separando Peso y Masa muscular para evitar aplanar escalas. */
+export function buildCompChartConfig(
+  msInRange: Measure[],
+  mode: 'weight' | 'muscle' = 'weight',
+): ChartConfiguration<'line'> | null {
+  const comp = msInRange.filter((m) => m.weight != null || m.bf != null || m.muscle != null);
+  if (!comp.length) return null;
+  const hasWeight = comp.some((m) => m.weight != null);
+  const hasMuscle = comp.some((m) => m.muscle != null);
+  const hasBf = comp.some((m) => m.bf != null);
+  const showMuscle = (mode === 'muscle' && hasMuscle) || (!hasWeight && hasMuscle);
+  const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];
+  if (showMuscle) {
+    datasets.push({
+      label: 'Masa muscular (kg)',
+      data: comp.map((m) => m.muscle ?? null),
+      borderColor: '#10B981',
+      backgroundColor: '#10B981',
+      yAxisID: 'y',
+      tension: 0.25,
+      spanGaps: true,
+    });
+  } else if (hasWeight) {
+    const trend7 = movingAverage7d(comp);
+    datasets.push(
+      { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
+      { label: 'Peso diario (kg)', data: comp.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
+    );
+  }
+  if (hasBf) {
+    datasets.push({
+      label: '% Grasa',
+      data: comp.map((m) => m.bf ?? null),
+      borderColor: '#F59E0B',
+      backgroundColor: '#F59E0B',
+      yAxisID: hasWeight || hasMuscle ? 'y1' : 'y',
+      tension: 0.25,
+      spanGaps: true,
+    });
+  }
+  const hasDualY = (hasWeight || hasMuscle) && hasBf;
+  return {
+    type: 'line',
+    data: { labels: comp.map((m) => short(m.date)), datasets },
+    options: hasDualY
+      ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } }
+      : undefined,
+  };
+}
+
+/** Construye la configuración del gráfico de perímetros según el grupo activo en `S.perimeter`. */
+export function buildPerimChartConfig(S: State, msInRange?: Measure[]): ChartConfiguration<'line'> | null {
+  const list = msInRange ?? (() => {
+    const bounds = resolveRange(S, 'body', 'Todo');
+    const hasFilter = Boolean(bounds.from || bounds.to);
+    return hasFilter ? S.measures.filter((m) => inRange(m.date, bounds)) : S.measures;
+  })();
+  const pk = PERIM[S.perimeter] ?? PERIM.arms;
+  const perimRows = list.filter((m) => pk.keys.some((k) => m[k] != null));
+  if (!perimRows.length) return null;
+  return {
+    type: 'line',
+    data: {
+      labels: perimRows.map((m) => short(m.date)),
+      datasets: pk.keys.map((k, i) => ({
+        label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
+        data: perimRows.map((m) => (m[k] as number | undefined) ?? null),
+        borderColor: PAL[i],
+        tension: 0.25,
+        spanGaps: true,
+      })),
+    },
+  };
+}
+
 /** Renderiza la vista de medidas antropométricas y composición corporal. */
 export function viewBody(S: State): string {
   const ms = S.measures;
@@ -84,40 +160,16 @@ export function viewBody(S: State): string {
   const activeDate = S.measureDate ?? today;
   const currentEntry = ms.find((m) => m.date === activeDate);
   const comp = msInRange.filter((m) => m.weight != null || m.bf != null || m.muscle != null);
-  if (comp.length) {
-    const trend7 = movingAverage7d(comp);
-    chart('c-comp', {
-      type: 'line',
-      data: {
-        labels: comp.map((m) => short(m.date)),
-        datasets: [
-          { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
-          { label: 'Peso diario (kg)', data: comp.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
-          { label: 'Masa muscular (kg)', data: comp.map((m) => m.muscle ?? null), borderColor: '#10B981', yAxisID: 'y', tension: 0.25, spanGaps: true },
-          { label: '% Grasa', data: comp.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: 'y1', tension: 0.25, spanGaps: true },
-        ],
-      },
-      options: { scales: { y1: { position: 'right', grid: { drawOnChartArea: false } } } },
-    });
-  }
+  const hasCompWeight = comp.some((m) => m.weight != null);
+  const hasCompMuscle = comp.some((m) => m.muscle != null);
+  const activeCompMode: 'weight' | 'muscle' = S.bodyMetric === 'muscle' && hasCompMuscle ? 'muscle' : 'weight';
+  const compCfg = buildCompChartConfig(msInRange, activeCompMode);
+  if (compCfg) chart('c-comp', compCfg);
+
   const pk = PERIM[S.perimeter] ?? PERIM.arms;
-  const perimRows = msInRange.filter((m) => pk.keys.some((k) => m[k] != null));
-  const hasGroupPerim = perimRows.length > 0;
-  if (hasGroupPerim) {
-    chart('c-perim', {
-      type: 'line',
-      data: {
-        labels: perimRows.map((m) => short(m.date)),
-        datasets: pk.keys.map((k, i) => ({
-          label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
-          data: perimRows.map((m) => (m[k] as number | undefined) ?? null),
-          borderColor: PAL[i],
-          tension: 0.25,
-          spanGaps: true,
-        })),
-      },
-    });
-  }
+  const perimCfg = buildPerimChartConfig(S, msInRange);
+  const hasGroupPerim = Boolean(perimCfg);
+  if (perimCfg) chart('c-perim', perimCfg);
 
   const basicFields = MEASURE_FIELDS.filter((f) => BASIC_MEASURE_KEYS.includes(f.key));
   const hasPerimsInCurrent = Boolean(currentEntry && PERIM_ALL_KEYS.some((k) => currentEntry[k] != null));
@@ -142,7 +194,7 @@ export function viewBody(S: State): string {
   </div>
   ${aiInsightBanner(S, /composici|cuerpo|antropo/i)}
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
-    <div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Composición corporal (${comp.length} registros)</h3>
+    <div class="min-w-0 space-y-2"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 class="font-bold text-white">Composición corporal (${comp.length} registros)</h3>${hasCompWeight && hasCompMuscle ? `<div role="group" aria-label="Métrica principal de composición" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]"><button type="button" data-act="setBodyMetric" data-arg="weight" aria-pressed="${activeCompMode === 'weight'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'weight' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Peso</button><button type="button" data-act="setBodyMetric" data-arg="muscle" aria-pressed="${activeCompMode === 'muscle'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'muscle' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Masa muscular</button></div>` : ''}</div>
       ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">${ms.length ? `Sin mediciones en ${esc(bounds.label)}.` : 'Añade tu peso o % de grasa abajo para ver la evolución.'}</p>`}</div>
     <div class="min-w-0 space-y-2"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Perímetros (cm)</h3>
       <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>

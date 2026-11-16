@@ -24,13 +24,13 @@ import {
   type State,
 } from './shared';
 
-export { resetCharts, runChartJobs, type State } from './shared';
+export { resetCharts, runChartJobs, updateChart, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
 export { initLiveWorkout, liveExQuickInfo, viewWorkout } from './workoutView';
 export { viewData } from './dataView';
 export { renderModals, renderPlanCatalogResults, viewPlan } from './planView';
 export { viewSettings } from './settingsView';
-export { runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
+export { buildCompChartConfig, buildPerimChartConfig, runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
 export { resolveName, norm };
 
 type ExMetric = 'top' | 'e1rm' | 'volume';
@@ -351,6 +351,43 @@ function renderOnboardingHome(S: State): string {
 </div>`;
 }
 
+/** Construye la configuración de composición corporal para Resumen evitando crear eje `y1` si falta `% Grasa` o peso. */
+export function buildBodyHomeChartConfig(ms: Measure[]): ChartConfiguration<'line'> | null {
+  const mm = ms.filter((m) => m.weight != null || m.bf != null);
+  if (!mm.length) return null;
+  const hasWeight = mm.some((m) => m.weight != null);
+  const hasBf = mm.some((m) => m.bf != null);
+  const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];
+  if (hasWeight) {
+    const trend7 = movingAverage7d(mm);
+    datasets.push(
+      { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
+      { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
+    );
+  }
+  if (hasBf) {
+    datasets.push({ label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: hasWeight ? 'y1' : 'y', tension: 0.25, spanGaps: true });
+  }
+  return {
+    type: 'line',
+    data: { labels: mm.map((m) => short(m.date)), datasets },
+    options: {
+      scales: hasWeight && hasBf
+        ? { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } }
+        : { y: { position: 'left' } },
+    },
+  };
+}
+
+/** Construye la configuración de progresión del ejercicio seleccionado en Resumen. */
+export function buildHomeExChartConfig(S: State): ChartConfiguration<'line'> | null {
+  const bounds = resolveRange(S, 'home');
+  const ex = [...S.analysis.exercises.values()].filter((e) => e.day).sort((a, b) => b.n - a.n);
+  const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
+  const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
+  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, '#3B82F6', S.exMetric ?? 'top') : null;
+}
+
 /** Renderiza la vista principal de resumen con diseño híbrido (hero compacto, secciones abiertas e Informe IA sobrio). */
 export function viewHome(S: State): string {
   if (!S.strength.length && !S.measures.length && !S.cardio.length && !S.wellbeing.length) {
@@ -393,23 +430,11 @@ export function viewHome(S: State): string {
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
   const metric: ExMetric = S.exMetric ?? 'top';
 
-  if (curEx && curEx.sessions.length) chart('c-home-ex', exerciseChartConfig(curEx.sessions, '#3B82F6', metric));
+  const homeExCfg = buildHomeExChartConfig(S);
+  if (homeExCfg) chart('c-home-ex', homeExCfg);
   const mm = ms.filter((m) => m.weight != null || m.bf != null);
-  if (mm.length) {
-    const trend7 = movingAverage7d(mm);
-    chart('c-home-body', {
-      type: 'line',
-      data: {
-        labels: mm.map((m) => short(m.date)),
-        datasets: [
-          { label: 'Tendencia 7d (kg)', data: trend7, borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
-          { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
-          { label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: 'y1', tension: 0.25, spanGaps: true },
-        ],
-      },
-      options: { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } },
-    });
-  }
+  const bodyHomeCfg = buildBodyHomeChartConfig(ms);
+  if (bodyHomeCfg) chart('c-home-body', bodyHomeCfg);
 
   const routines = routineNames(S.settings);
   const rows = routines.flatMap((d, idx) => (S.analysis.byDay[d] ?? []).map((e) => ({ d, c: routineColor(d, S.settings, idx), e: filterExByRange(e, bounds) })));

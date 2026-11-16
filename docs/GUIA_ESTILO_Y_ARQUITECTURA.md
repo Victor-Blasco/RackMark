@@ -116,9 +116,9 @@ El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentr
 
 ### 3.6 Iconografía (`src/ui/icons.ts`)
 
-- Todos los iconos funcionales de interfaz usan SVG de **Phosphor Icons Bold** (`viewBox="0 0 256 256"`) renderizados mediante `icon(name, cls)` (27 iconos definidos).
+- Todos los iconos funcionales de interfaz usan SVG de **Phosphor Icons Bold** (`viewBox="0 0 256 256"`) renderizados mediante `icon(name, cls)` (25 iconos activos definidos).
 - **Prohibido usar emojis como iconos de navegación o acción** en la UI de aplicación.
-- No mantener iconos muertos en `icons.ts` (actualmente `sparkle` e `info` tienen 0 usos: asignarlos donde aporten claridad o eliminarlos en limpieza).
+- No mantener iconos muertos en `icons.ts`.
 
 ### 3.7 Gráficas (`Chart.js` en `src/ui/shared.ts` y `analyticsViews.ts`)
 
@@ -145,8 +145,8 @@ src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
     │       ▲      · Solo importa ../types, ./ sibling y librerías externas
     │       │      · PROHIBIDO importar src/ui/* o tocar el DOM
     │       │
-    └── src/ui/*   (shared, icons, views, workoutView, logView, planView, analyticsViews,
-            ▲       dataView, settingsView, wizardView, reorder)
+    └── src/ui/*   (shared, icons, shellView, domPatches, views, workoutView, logView, planView,
+            ▲       analyticsViews, dataView, settingsView, wizardView, reorder)
             │      · Renderiza HTML sanitizado y configs Chart.js; sin acceso directo a IDB/Firestore
             │
         src/main.ts (orquestador único: State, ciclo de render, delegación, SW, parches DOM)
@@ -214,15 +214,10 @@ npm run build
 
 Todo cambio con impacto visual o interactivo debe verificarse también en navegador en viewport móvil (`~390px`) y escritorio (`~1440px`), prestando especial atención al flujo completo en `Entrenar` (`En vivo` y `Registrar hecho`) y al comportamiento sin errores en consola.
 
-### 5.3 Deuda Técnica Priorizada (Pendiente de Auditoría v2)
+### 5.3 Estado de la Deuda Técnica (Auditoría v2)
 
-| Prioridad | Área | Hallazgo verificado en código | Acción objetivo |
-| :--- | :--- | :--- | :--- |
-| **Alta** | **PWA / Offline** | `vite.config.ts` usa `registerType: 'autoUpdate'` | Migrar a `'prompt'` con aviso discreto para evitar recargas inesperadas en mitad de un entrenamiento |
-| **Alta** | **Arquitectura / DOM** | `src/main.ts` (`2210` líneas) y handlers frecuentes (`liveStepW`, `liveStepR`, `liveToggleSet`, `planSearch`) ejecutan `render()` completo con `resetCharts()` | Extraer handlers por dominio/vista y ampliar parches DOM selectivos sin destruir gráficas ni foco/scroll |
-| **Alta** | **Sync e Integridad** | `syncWithCloud` usa `writeBatch` sin trocear (límite 500 ops), `sync.ts` omite `sanitizeSettings()` en pull y no borra `gymapp_live_workout` en remote wipe; `liveStart`/`liveDiscard` usan `confirm()` nativo | Trocear batches, aplicar `sanitizeSettings()` en toda ingesta/pull, limpiar `LIVE_WORKOUT_KEY` en wipe/reset y usar `#confirm-modal` |
-| **Media** | **Ergonomía Táctil** | `64` líneas interactivas `< 44px` (`planView.ts` `p-1`/`h-8`, `workoutView.ts` `min-h-[36px]`/`min-h-[40px]`, cabecera móvil `h-9` y `.btn !py-1.5`) | Estandarizar variantes `.btn-touch` (`>= 44px`) en móvil y limitar tamaños compactos a controles secundarios de escritorio |
-| **Media** | **Accesibilidad** | Sin `<h1>` en escritorio (`<h1>` solo en header `lg:hidden`), modales sin *focus trap*/retorno de foco, `listbox` sin `option` y `reorder.ts` sin `prefers-reduced-motion` | Añadir `<h1>` por vista en escritorio, gestión de foco modal, roles ARIA completos y respetar `prefers-reduced-motion` en FLIP |
-| **Media** | **CSS / Tokens** | `212` usos de `!` (`!important`) en 10 archivos, token `borderDark` sin uso y 5 hex oscuros ad-hoc (`#0B101B`..`#121A2B`) | Separar variantes limpias en `src/style.css` y unificar colores y bordes en `tailwind.config.js` |
-| **Media** | **Semántica / Contraste** | `6` usos de `text-gray-500` + `placeholder-gray-500` y sobrecarga semántica de `coralRed` (`% Grasa`, `Pulso`, `Proteína`, `Push`) | Subir textos legibles mínimo a `text-gray-400` y desacoplar colores de métricas neutras del rojo de peligro |
-| **Baja** | **Limpieza y Tests** | Iconos sin uso (`sparkle`, `info` en `src/ui/icons.ts`), campo legacy `geminiKey` (`types.ts`, `sync.ts`, `firestore.rules`); Vitest corre solo en Node y `parsers.test.ts` omite CSV reales si faltan rutas locales | Depurar iconos muertos y `geminiKey` legacy; añadir tests DOM/integración (ej. `jsdom`/`happy-dom`) sobre `main.ts`, `liveWorkout` y emulador/reglas |
+Los tres bloques prioritarios detectados en la auditoría v2 han quedado resueltos:
+
+- **Bloque 1 (PWA / Offline, Sync e Integridad, Parches DOM):** migración de `registerType` a `'prompt'` con banner de actualización controlada, saneamiento `sanitizeSettings()` en ingestas y pulls, limpieza de `gymapp_live_workout` en wipe/cambio de cuenta, troceo de batches en Firestore, sustitución de `confirm()` nativo por `#confirm-modal`, y parches DOM selectivos en `En vivo` y `Plan`.
+- **Bloque 2 (Ergonomía táctil, Tokens, Contraste y Accesibilidad):** tokens de superficie en `tailwind.config.js`, sistema de botones `.btn-sm` / `.btn-danger` / `.icon-btn`, texto mínimo `text-gray-400`, desacople semántico de `coralRed`, áreas táctiles `>= 44 px` en móvil, `<h1>` accesible en escritorio, navegación por teclado en `[role="tablist"]`, `role="option"` en `listbox` y *focus trap* modal + `prefers-reduced-motion` en FLIP.
+- **Bloque 3 (Gráficas, Modularización, Limpieza y Tests):** reutilización de instancias `Chart.js` vía `updateChart()` sin recrear el `<canvas>`, separación entre Peso y Masa muscular en composición corporal, extracción de `src/ui/shellView.ts` y `src/ui/domPatches.ts` desde `src/main.ts`, eliminación de iconos muertos (`sparkle`, `info`) y `geminiKey` legacy, y eliminación de tests omitidos mediante fixtures sintéticos en `tests/parsers.test.ts`.

@@ -8,12 +8,38 @@ import { importSamsungInWorker } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type ExperienceLevel, type LiveWorkout, type LogDraft, type LogExDraft, type Measure, type RoutineEx, type StrengthRow, type TrainingGoal } from './types';
 import { DEFAULT_SETTINGS, ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
-import { icon, type IconName } from './ui/icons';
-import { allExerciseNames, fmtMMSS, manualSessionId, renderRestTimerBar } from './ui/logView';
-import { defaultSetsForEx, initLiveWorkout, initLogDraft, liveExQuickInfo, renderAiReport, renderModals, renderPlanCatalogResults, resetCharts, runChartJobs, runCalc, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, viewWorkout, type State } from './ui/views';
+import { manualSessionId, allExerciseNames } from './ui/logView';
+import { buildPerimChartConfig, defaultSetsForEx, initLiveWorkout, initLogDraft, renderAiReport, renderModals, renderPlanCatalogResults, resetCharts, runChartJobs, runCalc, updateChart, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, viewWorkout, type State } from './ui/views';
 import { esc, routineColor, routineNames, todayIso, type RangeKey } from './ui/shared';
 import { createWizardDraft, daysActivityFactor, goalCalorieDelta, goalPhaseName, recommendTemplate } from './ui/wizardView';
 import { initSortableLists, moveItem } from './ui/reorder';
+import {
+  ANALYTICS_IDS,
+  FIXED_TAB_IDS,
+  RESERVED_ROUTINE_NORMS,
+  activeTabTitle,
+  isRoutineTab,
+  isValidTab,
+  renderMobileHeader,
+  renderMobileNav,
+  renderSidebar,
+  syncStatusInfo,
+} from './ui/shellView';
+import {
+  MODAL_DIALOG_SELECTOR,
+  MODAL_FOCUSABLE_SELECTOR,
+  captureModalTrigger,
+  focusSelector,
+  hasModalTrigger,
+  playRestBeep,
+  restoreModalFocus,
+  syncLiveSetDom,
+  syncSetDom,
+  updateLiveCountersDom,
+  updateLogCountersDom,
+  updateNavRestBadges,
+  updateRestBarDom,
+} from './ui/domPatches';
 
 let swUpdatePending = false;
 const updateSW = registerSW({
@@ -23,36 +49,6 @@ const updateSW = registerSW({
   },
 });
 
-const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
-  { id: 'body', label: 'Cuerpo', icon: 'body' },
-  { id: 'volume', label: 'Volumen', icon: 'chart' },
-  { id: 'adherence', label: 'Adherencia', icon: 'calendar' },
-  { id: 'calc', label: 'Calculadoras', icon: 'calc' },
-];
-const SYSTEM_TABS = [
-  { id: 'settings', label: 'Cuenta y IA' },
-  { id: 'data', label: 'Datos e importar' },
-];
-const TRAIN_TABS = [
-  { id: 'workout', label: 'En vivo' },
-  { id: 'log', label: 'Registrar hecho' },
-];
-const TAB_TITLES: Record<string, string> = {
-  home: 'Resumen',
-  workout: 'Iniciar entrenamiento',
-  log: 'Registrar entreno',
-  plan: 'Plan y rutinas',
-  body: 'Cuerpo',
-  volume: 'Volumen',
-  adherence: 'Adherencia',
-  calc: 'Calculadoras',
-  data: 'Datos e importación',
-  settings: 'Cuenta y ajustes',
-};
-const ANALYTICS_IDS = new Set<string>(ANALYTICS_TABS.map((t) => t.id));
-const SYSTEM_IDS = new Set<string>(SYSTEM_TABS.map((t) => t.id));
-const FIXED_TAB_IDS = new Set<string>(Object.keys(TAB_TITLES));
-const RESERVED_ROUTINE_NORMS = new Set([...FIXED_TAB_IDS, 'libre'].map((x) => norm(x)));
 const splitPair = (raw: string): [string, string] => {
   const sep = raw.lastIndexOf('|');
   return sep < 0 ? [raw, ''] : [raw.slice(0, sep), raw.slice(sep + 1)];
@@ -83,15 +79,13 @@ const S = {
   logDraft: loadJson<LogDraft>(DRAFT_KEY),
   liveWorkout: loadJson<LiveWorkout>(LIVE_WORKOUT_KEY),
 } as State;
-const isRoutineTab = (tab: string) => Boolean(S.settings?.routines?.[tab]);
-const isValidTab = (tab: string) => FIXED_TAB_IDS.has(tab) || isRoutineTab(tab);
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
 
 function setTab(tab: string) {
-  S.tab = isValidTab(tab) ? tab : 'home';
-  if (isRoutineTab(S.tab)) lastRoutine = S.tab;
+  S.tab = isValidTab(S, tab) ? tab : 'home';
+  if (isRoutineTab(S, S.tab)) lastRoutine = S.tab;
   if (ANALYTICS_IDS.has(S.tab)) lastAnalytics = S.tab;
   const encoded = encodeURIComponent(S.tab);
   if (location.hash.slice(1) !== encoded && location.hash.slice(1) !== S.tab) history.replaceState(null, '', `#${encoded}`);
@@ -105,8 +99,8 @@ async function reload() {
   S.wellbeing = (await getAll<DailyWellbeing>('wellbeing')).sort((a, b) => a.date.localeCompare(b.date));
   S.analysis = analyze(S.strength, S.settings);
   const rNames = routineNames(S.settings);
-  if (!isRoutineTab(lastRoutine)) lastRoutine = rNames[0] ?? 'Push';
-  if (isRoutineTab(S.tab)) lastRoutine = S.tab;
+  if (!isRoutineTab(S, lastRoutine)) lastRoutine = rNames[0] ?? 'Push';
+  if (isRoutineTab(S, S.tab)) lastRoutine = S.tab;
   else if (!FIXED_TAB_IDS.has(S.tab)) S.tab = 'home';
 }
 
@@ -161,20 +155,8 @@ function renderSwUpdateBanner() {
     : '';
 }
 
-function syncStatusInfo(): { text: string; cls: string } {
-  if (!S.user) return { text: navigator.onLine ? 'Solo local' : 'Sin conexión · local', cls: 'text-gray-400' };
-  if (S.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
-  if (!navigator.onLine) {
-    return hasUnsyncedChanges()
-      ? { text: 'Offline · pendiente de subir', cls: 'text-amberGold' }
-      : { text: 'Sin conexión · caché offline', cls: 'text-gray-400' };
-  }
-  if (hasUnsyncedChanges()) return { text: 'Pendiente de sincronizar', cls: 'text-amberGold' };
-  return { text: 'Sincronizado', cls: 'text-emerald-400' };
-}
-
 function updateSyncDom() {
-  const st = syncStatusInfo();
+  const st = syncStatusInfo(S, hasUnsyncedChanges());
   root.querySelectorAll<HTMLElement>('[data-sync-badge]').forEach((el) => {
     el.textContent = st.text;
     el.className = `${el.dataset.syncBase ?? 'truncate text-[10px]'} ${st.cls}`;
@@ -182,7 +164,7 @@ function updateSyncDom() {
 }
 
 function view(): string {
-  if (isRoutineTab(S.tab)) return viewDay(S, S.tab);
+  if (isRoutineTab(S, S.tab)) return viewDay(S, S.tab);
   switch (S.tab) {
     case 'home': return viewHome(S);
     case 'workout': return viewWorkout(S);
@@ -197,232 +179,6 @@ function view(): string {
   }
 }
 
-function focusSelector(el: Element | null): string | null {
-  if (!(el instanceof HTMLElement)) return null;
-  if (el.id) return `#${CSS.escape(el.id)}`;
-  if (el.dataset.logW) return `[data-log-w="${CSS.escape(el.dataset.logW)}"]`;
-  if (el.dataset.logR) return `[data-log-r="${CSS.escape(el.dataset.logR)}"]`;
-  if (el.dataset.logRest) return `[data-log-rest="${CSS.escape(el.dataset.logRest)}"]`;
-  if (el.dataset.logNote != null) return `[data-log-note="${CSS.escape(el.dataset.logNote)}"]`;
-  if (el.dataset.liveW) return `[data-live-w="${CSS.escape(el.dataset.liveW)}"]`;
-  if (el.dataset.liveR) return `[data-live-r="${CSS.escape(el.dataset.liveR)}"]`;
-  if (el.dataset.liveRest) return `[data-live-rest="${CSS.escape(el.dataset.liveRest)}"]`;
-  if (el.dataset.liveNote != null) return `[data-live-note="${CSS.escape(el.dataset.liveNote)}"]`;
-  if (el.closest('#f-measure') && (el as HTMLInputElement).name) {
-    return `#f-measure [name="${CSS.escape((el as HTMLInputElement).name)}"]`;
-  }
-  if (el.dataset.act) {
-    const argVal = el.dataset.arg != null ? `[data-arg="${CSS.escape(el.dataset.arg)}"]` : '';
-    return `[data-act="${CSS.escape(el.dataset.act)}"]${argVal}`;
-  }
-  if (el.dataset.change) {
-    const argVal = el.dataset.arg != null ? `[data-arg="${CSS.escape(el.dataset.arg)}"]` : '';
-    return `[data-change="${CSS.escape(el.dataset.change)}"]${argVal}`;
-  }
-  return null;
-}
-
-function renderSidebar(statsText: string, liveCount: number, draftCount: number): string {
-  const routineBtns = routineNames(S.settings).map((id, idx) => {
-    const active = S.tab === id;
-    const count = (S.settings.routines[id] ?? []).length;
-    const col = routineColor(id, S.settings, idx);
-    const sub = S.settings.routineMeta?.[id]?.sub;
-    return `<button data-act="tab" data-arg="${esc(id)}" ${active ? 'aria-current="page"' : ''} class="nav-item ${active ? 'nav-item-on' : ''}">
-      <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color:${col}"></span>
-      <span class="flex-1 truncate text-left">${esc(id)}${sub ? ` <span class="text-xs font-normal text-gray-400">· ${esc(sub)}</span>` : ''}</span>
-      <span class="font-mono text-[11px] text-gray-400 tabular-nums">${count}</span>
-    </button>`;
-  }).join('');
-  const analyticsBtns = ANALYTICS_TABS.map((a) => {
-    const active = S.tab === a.id;
-    return `<button data-act="tab" data-arg="${a.id}" ${active ? 'aria-current="page"' : ''} class="nav-item ${active ? 'nav-item-on' : ''}">
-      ${icon(a.icon, 'h-4 w-4')}
-      <span>${a.label}</span>
-    </button>`;
-  }).join('');
-  const unmappedCount = S.analysis.unmapped.length;
-  const userInitial = (S.user?.displayName ?? S.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
-  const restUntil = S.liveWorkout?.restUntil;
-  const restRemSec = restUntil != null && restUntil > Date.now() ? Math.ceil((restUntil - Date.now()) / 1000) : 0;
-
-  return `<aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-borderDark/80 bg-navDark">
-    <div class="flex items-center gap-3 border-b border-borderDark/80 px-4 py-4">
-      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
-      <div class="min-w-0">
-        <p class="truncate text-sm font-extrabold text-white">Panel PPL</p>
-        <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText}</p>
-      </div>
-    </div>
-
-    <div class="p-3 space-y-2">
-      <button data-act="tab" data-arg="workout" ${S.tab === 'workout' ? 'aria-current="page"' : ''} class="flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${S.tab === 'workout' ? 'bg-electricBlue ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}">
-        ${icon('play', 'h-4 w-4')}
-        <span>Iniciar entreno</span>
-        <span data-nav-rest class="ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white ${restRemSec > 0 ? '' : 'hidden'}">${restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
-        ${liveCount > 0 ? `<span class="${restRemSec > 0 ? '' : 'ml-auto '}inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200"><span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen"></span>${liveCount}</span>` : ''}
-      </button>
-      <button data-act="tab" data-arg="log" ${S.tab === 'log' ? 'aria-current="page"' : ''} class="flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${S.tab === 'log' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}">
-        ${icon('edit', 'h-3.5 w-3.5')}
-        <span>Registrar ya hecho</span>
-        ${draftCount > 0 ? `<span class="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-gray-200 tabular-nums">${draftCount}</span>` : ''}
-      </button>
-    </div>
-
-    <nav class="flex-1 space-y-3.5 overflow-y-auto px-3 py-1">
-      <div>
-        <p class="nav-sec-lbl">General</p>
-        <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'home' ? 'nav-item-on' : ''}">
-          ${icon('home', 'h-4 w-4')}
-          <span>Resumen</span>
-        </button>
-      </div>
-
-      <div>
-        <p class="nav-sec-lbl">Rutinas</p>
-        <div class="space-y-1">
-          ${routineBtns}
-          <button data-act="tab" data-arg="plan" ${S.tab === 'plan' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'plan' ? 'nav-item-on' : ''}">
-            ${icon('edit', 'h-4 w-4')}
-            <span class="flex-1 text-left">Plan y rutinas</span>
-            ${unmappedCount > 0 ? `<span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amberGold">${unmappedCount}</span>` : ''}
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <p class="nav-sec-lbl">Análisis y métricas</p>
-        <div class="space-y-1">${analyticsBtns}</div>
-      </div>
-
-      <div>
-        <p class="nav-sec-lbl">Datos</p>
-        <button data-act="tab" data-arg="data" ${S.tab === 'data' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'data' ? 'nav-item-on' : ''}">
-          ${icon('upload', 'h-4 w-4')}
-          <span>Importar y backups</span>
-        </button>
-      </div>
-    </nav>
-
-    <div class="mt-auto space-y-2 border-t border-borderDark/80 p-3">
-      ${(() => {
-        const st = syncStatusInfo();
-        return S.user
-          ? `<button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${S.tab === 'settings' ? 'border-electricBlue/40 bg-electricBlue/15' : 'border-white/5 bg-gray-900/60 hover:border-white/15'}">
-              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-electricBlue text-xs font-extrabold text-white">${esc(userInitial)}</span>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-xs font-bold text-white">${esc(S.user.displayName ?? 'Usuario')}</p>
-                <p data-sync-badge data-sync-base="truncate text-[10px]" class="truncate text-[10px] ${st.cls}">${st.text}</p>
-              </div>
-              ${icon('gear', 'h-4 w-4 text-gray-400')}
-            </button>`
-          : `${S.authReady ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} class="flex w-full items-center gap-2.5 rounded-xl border border-electricBlue/35 bg-electricBlue/10 px-3 py-2 text-xs font-semibold text-blue-300 transition-colors hover:bg-electricBlue/20 active:scale-[0.98]">
-              ${icon('login', 'h-4 w-4')}
-              <span class="flex-1 text-left">Iniciar sesión · Google</span>
-            </button>` : ''}
-            <button data-act="tab" data-arg="settings" ${S.tab === 'settings' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'settings' ? 'nav-item-on' : ''}">
-              ${icon('gear', 'h-4 w-4')}
-              <span class="min-w-0 flex-1 text-left">
-                <span class="block">Cuenta y ajustes</span>
-                <span data-sync-badge data-sync-base="block truncate text-[10px] font-normal" class="block truncate text-[10px] font-normal ${st.cls}">${st.text}</span>
-              </span>
-            </button>`;
-      })()}
-    </div>
-  </aside>`;
-}
-
-function activeTabTitle(): string {
-  return TAB_TITLES[S.tab] ?? (isRoutineTab(S.tab) ? `Rutina ${S.tab}` : 'GymApp');
-}
-
-function renderMobileHeader(statsText: string): string {
-  const inRoutine = isRoutineTab(S.tab) || S.tab === 'plan';
-  const inAnalytics = ANALYTICS_IDS.has(S.tab);
-  const inSystem = SYSTEM_IDS.has(S.tab);
-  const inTrain = S.tab === 'workout' || S.tab === 'log';
-  const rNames = routineNames(S.settings);
-  const headerTitle = activeTabTitle();
-  const subNav = inRoutine
-    ? `<div role="tablist" aria-label="Rutinas" class="mt-2 flex gap-1 overflow-x-auto rounded-xl border border-borderDark/80 bg-navDark p-1">${rNames.map((id, idx) => {
-        const active = S.tab === id;
-        return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${esc(id)}" class="flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}">
-          <span class="h-2 w-2 rounded-full" style="background-color:${routineColor(id, S.settings, idx)}"></span>
-          <span>${esc(id)}</span>
-        </button>`;
-      }).join('')}<button role="tab" aria-selected="${S.tab === 'plan'}" data-act="tab" data-arg="plan" class="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${S.tab === 'plan' ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}">Plan</button></div>`
-    : inAnalytics
-      ? `<div role="tablist" aria-label="Vistas de análisis" class="mt-2 grid grid-cols-4 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${ANALYTICS_TABS.map((a) => {
-          const active = S.tab === a.id;
-          return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${a.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-1.5 py-1.5 text-center text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${a.label === 'Calculadoras' ? 'Calc.' : a.label}</span></button>`;
-        }).join('')}</div>`
-      : inTrain
-        ? `<div role="tablist" aria-label="Modo de entrenamiento" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${TRAIN_TABS.map((t) => {
-            const active = S.tab === t.id;
-            return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${t.label}</span></button>`;
-          }).join('')}</div>`
-        : inSystem
-          ? `<div role="tablist" aria-label="Cuenta y datos" class="mt-2 grid grid-cols-2 gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1">${SYSTEM_TABS.map((t) => {
-              const active = S.tab === t.id;
-              return `<button role="tab" aria-selected="${active}" data-act="tab" data-arg="${t.id}" class="flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}"><span class="truncate">${t.label}</span></button>`;
-            }).join('')}</div>`
-          : '';
-
-  return `<header class="sticky top-0 z-30 border-b border-borderDark bg-bgDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
-    <div class="mx-auto flex max-w-6xl items-center justify-between gap-2.5">
-      <div class="flex min-w-0 items-center gap-2.5">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
-        <div class="min-w-0">
-          <h1 class="truncate text-sm font-extrabold leading-tight text-white">${esc(headerTitle)}</h1>
-          <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText} · <span data-sync-badge data-sync-base="font-medium" class="font-medium ${syncStatusInfo().cls}">${syncStatusInfo().text}</span></p>
-        </div>
-      </div>
-      <div class="flex shrink-0 items-center gap-2">
-        ${S.authReady && !S.user ? `<button data-act="cloudLogin" ${S.syncing ? 'disabled' : ''} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue">
-          ${icon('login', 'h-3.5 w-3.5')}
-          <span>Entrar</span>
-        </button>` : ''}
-        <button data-act="tab" data-arg="settings" aria-label="Cuenta y ajustes" ${inSystem ? 'aria-current="page"' : ''} class="flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${inSystem ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-borderDark bg-gray-900/80 text-gray-400 hover:text-white'}">
-          ${icon('gear', 'h-5 w-5')}
-        </button>
-      </div>
-    </div>
-    ${subNav}
-  </header>`;
-}
-
-function renderMobileNav(liveCount: number, draftCount: number): string {
-  const inRoutine = isRoutineTab(S.tab) || S.tab === 'plan';
-  const inAnalytics = ANALYTICS_IDS.has(S.tab);
-  const inTrain = S.tab === 'workout' || S.tab === 'log';
-  const restUntil = S.liveWorkout?.restUntil;
-  const restRemSec = restUntil != null && restUntil > Date.now() ? Math.ceil((restUntil - Date.now()) / 1000) : 0;
-  return `<nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-borderDark bg-navDark px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
-    <div class="mx-auto grid max-w-md grid-cols-4 items-center gap-1">
-      <button data-act="tab" data-arg="home" ${S.tab === 'home' ? 'aria-current="page"' : ''} class="bnav-item ${S.tab === 'home' ? 'bnav-item-on' : ''}">
-        ${icon('home', 'h-5 w-5')}
-        <span>Resumen</span>
-      </button>
-      <button data-act="tab" data-arg="${esc(lastRoutine)}" ${inRoutine ? 'aria-current="page"' : ''} class="bnav-item ${inRoutine ? 'bnav-item-on' : ''}">
-        ${icon('barbell', 'h-5 w-5')}
-        <span class="truncate max-w-full">${S.tab === 'plan' ? 'Rutinas · Plan' : isRoutineTab(S.tab) ? esc(S.tab) : 'Rutinas'}</span>
-      </button>
-      <button data-act="tab" data-arg="${lastAnalytics}" ${inAnalytics ? 'aria-current="page"' : ''} class="bnav-item ${inAnalytics ? 'bnav-item-on' : ''}">
-        ${icon('chart', 'h-5 w-5')}
-        <span>Análisis</span>
-      </button>
-      <button data-act="tab" data-arg="workout" ${inTrain ? 'aria-current="page"' : ''} class="bnav-item">
-        <span class="relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm bg-electricBlue ${inTrain ? 'ring-2 ring-blue-300/60' : ''}">
-          ${icon('play', 'h-4 w-4')}
-          <span data-nav-rest class="ml-1 text-[10px] font-bold tabular-nums text-blue-100 ${restRemSec > 0 ? '' : 'hidden'}">${restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
-          ${liveCount > 0 || S.liveWorkout != null || draftCount > 0 ? `<span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-navDark"></span>` : ''}
-        </span>
-        <span class="${inTrain ? 'text-blue-300' : 'text-gray-200'}">Entrenar</span>
-      </button>
-    </div>
-  </nav>`;
-}
-
 /** Re-renderiza el panel preservando posición de scroll, foco y selección de texto del control activo. */
 function render() {
   const y = window.scrollY;
@@ -435,14 +191,15 @@ function render() {
   const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'sin datos importados';
   const liveCount = S.liveWorkout?.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0) ?? 0;
   const draftCount = S.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
+  const unsynced = hasUnsyncedChanges();
 
   root.innerHTML = `
-  ${renderSidebar(statsText, liveCount, draftCount)}
-  ${renderMobileHeader(statsText)}
+  ${renderSidebar(S, statsText, liveCount, draftCount, unsynced)}
+  ${renderMobileHeader(S, statsText, unsynced)}
   <div class="lg:pl-64">
-    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none"><h1 class="sr-only hidden lg:block">${esc(activeTabTitle())}</h1>${html}</main>
+    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none"><h1 class="sr-only hidden lg:block">${esc(activeTabTitle(S))}</h1>${html}</main>
   </div>
-  ${renderMobileNav(liveCount, draftCount)}
+  ${renderMobileNav(S, liveCount, draftCount, lastRoutine, lastAnalytics)}
   ${renderModals(S)}`;
   if (S.wizard?.anim) S.wizard.anim = undefined;
   runChartJobs(); runCalc();
@@ -507,7 +264,7 @@ async function runSync(showToast = false) {
       S.liveWorkout = undefined;
       saveLive(undefined);
       syncRestTicker();
-      updateNavRestBadges(0);
+      updateNavRestBadges(root, 0);
     }
     const changed = Boolean(res.accountSwitched || res.remoteWiped || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled');
     if (changed) {
@@ -572,56 +329,6 @@ function addExToDraft(name: string, fallbackSets?: number, fallbackReps?: number
 }
 
 let restTimerInterval: number | undefined;
-function playRestBeep() {
-  try {
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const now = ctx.currentTime;
-    [880, 1046].forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.08, now + i * 0.16);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.16 + 0.14);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now + i * 0.16);
-      osc.stop(now + i * 0.16 + 0.15);
-    });
-    setTimeout(() => { void ctx.close().catch(() => {}); }, 600);
-  } catch { /* AudioContext opcional según navegador */ }
-}
-function updateNavRestBadges(remSec: number) {
-  const text = remSec > 0 ? fmtMMSS(remSec) : '';
-  root.querySelectorAll<HTMLElement>('[data-nav-rest]').forEach((el) => {
-    el.textContent = text;
-    el.classList.toggle('hidden', remSec <= 0);
-  });
-}
-function updateRestBarDom() {
-  const live = S.liveWorkout;
-  const until = live?.restUntil;
-  const remSec = until != null ? Math.max(0, Math.ceil((until - Date.now()) / 1000)) : 0;
-  updateNavRestBadges(remSec);
-  const elapsedEl = document.getElementById('live-elapsed');
-  if (elapsedEl && live) {
-    const min = Math.max(0, Math.floor((Date.now() - live.startedAt) / 60000));
-    elapsedEl.textContent = min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`;
-  }
-  const bar = document.getElementById('rest-timer-bar');
-  if (!bar || !live) return;
-  const nextState = until != null && remSec > 0 ? 'running' : until != null ? 'done' : 'idle';
-  if (bar.dataset.restState === 'running' && nextState === 'running') {
-    const valEl = document.getElementById('rest-timer-val');
-    if (valEl) {
-      valEl.textContent = fmtMMSS(remSec);
-      return;
-    }
-  }
-  bar.outerHTML = renderRestTimerBar(live);
-}
 function syncRestTicker() {
   const until = S.liveWorkout?.restUntil;
   const active = until != null && until > Date.now();
@@ -631,10 +338,10 @@ function syncRestTicker() {
       if (targetUntil == null) {
         clearInterval(restTimerInterval);
         restTimerInterval = undefined;
-        updateNavRestBadges(0);
+        updateNavRestBadges(root, 0);
         return;
       }
-      updateRestBarDom();
+      updateRestBarDom(root, S);
       if (targetUntil <= Date.now()) {
         clearInterval(restTimerInterval);
         restTimerInterval = undefined;
@@ -766,127 +473,6 @@ function selectLiveEx(idx: number): void {
   window.scrollTo(0, 0);
 }
 
-function updateLogCountersDom(ei?: number) {
-  const draft = S.logDraft;
-  if (!draft) return;
-  const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
-  const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
-  const totalSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.length, 0);
-
-  const summary = document.getElementById('logCountSummary');
-  if (summary) summary.textContent = `${doneExCount}/${draft.exercises.length} ejercicios · ${doneSetsCount}/${totalSetsCount} series marcadas ✓`;
-
-  const saveBtns = root.querySelectorAll<HTMLButtonElement>('button[data-act="logSave"]');
-  saveBtns.forEach((btn, idx) => {
-    const label = idx === 0 ? ` Guardar (${doneSetsCount})` : ` Guardar sesión (${doneSetsCount} series)`;
-    const svg = btn.querySelector('svg');
-    btn.textContent = '';
-    if (svg) btn.appendChild(svg);
-    btn.appendChild(document.createTextNode(label));
-  });
-
-  if (ei != null && draft.exercises[ei]) {
-    const ex = draft.exercises[ei];
-    const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
-    const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
-    const counter = root.querySelector<HTMLElement>(`[data-ex-counter="${ei}"]`);
-    if (counter) {
-      counter.textContent = `${doneInEx}/${ex.sets.length}`;
-      counter.className = `ml-1 tabular-nums text-xs font-semibold ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
-    }
-    const card = root.querySelector<HTMLElement>(`[data-ex-idx="${ei}"]`);
-    if (card) {
-      card.classList.remove('border-emeraldGreen/50', 'border-electricBlue/50', 'border-white/10');
-      card.classList.add(allDoneInEx ? 'border-emeraldGreen/50' : doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10');
-    }
-    const toggleBtn = root.querySelector<HTMLElement>(`[data-act="logToggleEx"][data-arg="${ei}"]`);
-    if (toggleBtn) {
-      toggleBtn.setAttribute('aria-pressed', String(allDoneInEx));
-      const box = toggleBtn.querySelector<HTMLElement>('span');
-      if (box) {
-        box.className = `mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${allDoneInEx ? 'border-emeraldGreen bg-emeraldGreen/20 text-emeraldGreen' : doneInEx > 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-300' : 'border-gray-600 text-transparent'}`;
-      }
-    }
-  }
-}
-
-function syncSetDom(ei: number, si: number) {
-  const ex = S.logDraft?.exercises[ei];
-  const s = ex?.sets[si];
-  if (!ex || !s) return;
-  const row = root.querySelector<HTMLElement>(`[data-set-row="${ei}|${si}"]`);
-  if (row) {
-    row.className = `flex flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}`;
-    const label = row.querySelector<HTMLElement>('span');
-    if (label) label.className = `w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-400'}`;
-  }
-  const btn = root.querySelector<HTMLElement>(`[data-act="logToggleSet"][data-arg="${ei}|${si}"]`);
-  if (btn) {
-    btn.setAttribute('aria-pressed', String(Boolean(s.done)));
-    btn.setAttribute('aria-label', `${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${ex.name}`);
-    btn.className = `ml-auto sm:ml-0 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}`;
-  }
-  updateLogCountersDom(ei);
-}
-
-function updateLiveCountersDom(ei?: number) {
-  const live = S.liveWorkout;
-  if (!live) return;
-  const doneExCount = live.exercises.filter((e) => e.sets.length > 0 && e.sets.every((s) => s.done && s.r > 0)).length;
-  const doneSetsCount = live.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
-  const totalSetsCount = live.exercises.reduce((acc, e) => acc + e.sets.length, 0);
-
-  const countSummary = document.getElementById('liveCountSummary');
-  if (countSummary) countSummary.textContent = `${doneSetsCount}/${totalSetsCount} series`;
-
-  const finishLabel = document.getElementById('liveFinishLabel');
-  if (finishLabel) finishLabel.textContent = `Terminar (${doneSetsCount})`;
-
-  const menuSummary = document.getElementById('liveMenuSummary');
-  if (menuSummary) menuSummary.textContent = `Ejercicios (${doneExCount}/${live.exercises.length} listos)`;
-
-  if (ei != null && live.exercises[ei]) {
-    const item = live.exercises[ei];
-    const { infoLine, doneInEx, allDoneInEx } = liveExQuickInfo(S, live.day, item);
-    const exCounter = root.querySelector<HTMLElement>(`[data-live-ex-counter="${ei}"]`);
-    if (exCounter) {
-      exCounter.textContent = `${doneInEx}/${item.sets.length} series`;
-      exCounter.className = `shrink-0 pt-1 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
-    }
-    const menuCount = root.querySelector<HTMLElement>(`[data-live-menu-count="${ei}"]`);
-    if (menuCount) {
-      menuCount.textContent = `${doneInEx}/${item.sets.length}`;
-      menuCount.className = `shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`;
-    }
-    const menuInfo = root.querySelector<HTMLElement>(`[data-live-menu-info="${ei}"]`);
-    if (menuInfo) menuInfo.textContent = infoLine;
-  }
-}
-
-function syncLiveSetDom(ei: number, si: number) {
-  const ex = S.liveWorkout?.exercises[ei];
-  const s = ex?.sets[si];
-  if (!ex || !s) return;
-  const row = root.querySelector<HTMLElement>(`[data-live-set="${ei}|${si}"]`);
-  if (row) {
-    row.className = `py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`;
-  }
-  const lbl = root.querySelector<HTMLElement>(`[data-live-set-lbl="${ei}|${si}"]`);
-  if (lbl) {
-    lbl.textContent = `Serie ${si + 1}${s.done ? ' · Hecha' : ''}`;
-    lbl.className = `font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}`;
-  }
-  const btn = root.querySelector<HTMLElement>(`[data-act="liveToggleSet"][data-arg="${ei}|${si}"]`);
-  if (btn) {
-    btn.setAttribute('aria-pressed', String(Boolean(s.done)));
-    btn.setAttribute('aria-label', `${s.done ? 'Desmarcar' : 'Marcar'} serie ${si + 1}`);
-    btn.className = `flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`;
-    const span = btn.querySelector('span');
-    if (span) span.textContent = s.done ? 'Hecha' : 'Listo';
-  }
-  updateLiveCountersDom(ei);
-}
-
 async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, nextSessionId?: string): Promise<boolean> {
   const cur = S.logDraft;
   if (!cur?.dirty) return true;
@@ -902,49 +488,18 @@ async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, 
   });
 }
 
-const MODAL_DIALOG_SELECTOR = '#confirm-modal, #wizard-modal, #ex-modal, #rt-modal, #note-modal';
-const MODAL_FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-let lastModalTrigger: { selector: string | null; index: number } | null = null;
-
-function captureModalTrigger() {
-  const activeEl = document.activeElement;
-  if (!(activeEl instanceof HTMLElement) || activeEl.closest(MODAL_DIALOG_SELECTOR) || activeEl === document.body) {
-    lastModalTrigger = null;
-    return;
-  }
-  const selector = focusSelector(activeEl);
-  const index = selector ? Math.max(0, [...root.querySelectorAll<HTMLElement>(selector)].indexOf(activeEl)) : 0;
-  lastModalTrigger = { selector, index };
-}
-
-function restoreModalFocus() {
-  if (S.confirmModal || S.wizard || S.exModal || S.routineModal || S.noteModal) return;
-  const trigger = lastModalTrigger;
-  lastModalTrigger = null;
-  if (!trigger) return;
-  if (trigger.selector) {
-    const matches = root.querySelectorAll<HTMLElement>(trigger.selector);
-    const target = matches[trigger.index] ?? matches[0];
-    if (target) {
-      target.focus({ preventScroll: true });
-      return;
-    }
-  }
-  document.getElementById('main-content')?.focus({ preventScroll: true });
-}
-
 let confirmResolver: ((ok: boolean) => void) | null = null;
 function resolveConfirm(ok: boolean) {
   const res = confirmResolver;
   confirmResolver = null;
   S.confirmModal = undefined;
   render();
-  restoreModalFocus();
+  restoreModalFocus(root, S);
   res?.(ok);
 }
 function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> {
   if (confirmResolver) confirmResolver(false);
-  if (!lastModalTrigger) captureModalTrigger();
+  if (!hasModalTrigger()) captureModalTrigger(root);
   S.confirmModal = opts;
   render();
   document.querySelector<HTMLElement>('#confirm-modal [data-act="confirmNo"], #confirm-modal button')?.focus({ preventScroll: true });
@@ -968,7 +523,7 @@ function applyTemplateToState(tplKey: string): string | undefined {
   S.settings.routines = structuredClone(tpl.routines);
   S.settings.routineMeta = structuredClone(tpl.meta);
   const remaining = routineNames(S.settings);
-  if (!isRoutineTab(lastRoutine)) lastRoutine = remaining[0] ?? 'Push';
+  if (!isRoutineTab(S, lastRoutine)) lastRoutine = remaining[0] ?? 'Push';
   if (S.sel.home && !S.settings.routines[S.sel.home]) delete S.sel.home;
   if (S.logDraft && S.logDraft.day !== 'Libre' && !S.settings.routines[S.logDraft.day]) {
     S.logDraft.day = remaining[0] ?? 'Libre';
@@ -981,7 +536,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
   openWizard: () => {
-    captureModalTrigger();
+    captureModalTrigger(root);
     S.wizard = createWizardDraft(S);
     render();
     document.getElementById('wizAge')?.focus();
@@ -991,11 +546,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!S.settings.onboardingCompleted) {
       S.settings.onboardingCompleted = true;
       await persist();
-      restoreModalFocus();
+      restoreModalFocus(root, S);
       return;
     }
     render();
-    restoreModalFocus();
+    restoreModalFocus(root, S);
   },
   wizardBack: () => {
     if (!S.wizard || S.wizard.step <= 1) return;
@@ -1124,7 +679,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       try { navigator.vibrate?.(15); } catch { /* navigator.vibrate opcional */ }
     }
     saveDraft(draft);
-    syncSetDom(ei, si);
+    syncSetDom(root, S, ei, si);
   },
   logApplyWeight: (el) => {
     const [eiStr, wStr] = arg(el).split('|');
@@ -1150,7 +705,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     saveLive(live);
     syncRestTicker();
     if (S.tab === 'workout') render();
-    updateRestBarDom();
+    updateRestBarDom(root, S);
   },
   restAdjust: (el) => {
     const live = S.liveWorkout;
@@ -1160,7 +715,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     live.restStartedAt ??= Date.now();
     live.restUntil = Math.max(Date.now() + 1000, base + deltaSec * 1000);
     saveLive(live);
-    updateRestBarDom();
+    updateRestBarDom(root, S);
     syncRestTicker();
   },
   restStop: () => {
@@ -1169,7 +724,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     finalizePendingRest(live);
     saveLive(live);
     syncRestTicker();
-    updateRestBarDom();
+    updateRestBarDom(root, S);
   },
   startWorkout: async (el) => {
     const day = arg(el);
@@ -1212,7 +767,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     if (!live) return;
     live.targetRestSec = Math.max(15, +arg(el) || 90);
     saveLive(live);
-    updateRestBarDom();
+    updateRestBarDom(root, S);
     root.querySelectorAll<HTMLInputElement>('[data-live-rest]').forEach((inp) => {
       inp.placeholder = String(live.targetRestSec);
     });
@@ -1267,7 +822,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
-    updateNavRestBadges(0);
+    updateNavRestBadges(root, 0);
     render();
     toast('Entreno descartado.');
   },
@@ -1293,7 +848,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
-    updateNavRestBadges(0);
+    updateNavRestBadges(root, 0);
     await reload();
     if (savedDay !== 'Libre') setTab(savedDay);
     render();
@@ -1390,7 +945,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const inp = root.querySelector<HTMLInputElement>(`[data-live-w="${ei}|${si}"]`);
     if (inp) {
       inp.value = String(s.w);
-      if (s.done) updateLiveCountersDom(ei);
+      if (s.done) updateLiveCountersDom(root, S, ei);
     } else render();
   },
   liveStepR: (el) => {
@@ -1408,8 +963,8 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const inp = root.querySelector<HTMLInputElement>(`[data-live-r="${ei}|${si}"]`);
     if (inp) {
       inp.value = String(s.r);
-      if (wasDone !== Boolean(s.done)) syncLiveSetDom(ei, si);
-      else updateLiveCountersDom(ei);
+      if (wasDone !== Boolean(s.done)) syncLiveSetDom(root, S, ei, si);
+      else updateLiveCountersDom(root, S, ei);
     } else render();
   },
   liveToggleSet: (el) => {
@@ -1475,9 +1030,9 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       render();
       if (advanced) window.scrollTo(0, 0);
     } else {
-      syncLiveSetDom(ei, si);
+      syncLiveSetDom(root, S, ei, si);
     }
-    updateRestBarDom();
+    updateRestBarDom(root, S);
   },
   logRemoveEx: (el) => {
     if (!S.logDraft) return;
@@ -1549,8 +1104,8 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const inp = root.querySelector<HTMLInputElement>(`[data-log-r="${ei}|${si}"]`);
     if (inp) inp.value = String(s.r);
     else render();
-    if (wasDone !== Boolean(s.done)) syncSetDom(ei, si);
-    else updateLogCountersDom(ei);
+    if (wasDone !== Boolean(s.done)) syncSetDom(root, S, ei, si);
+    else updateLogCountersDom(root, S, ei);
   },
   logSave: async () => {
     const draft = S.logDraft;
@@ -1659,7 +1214,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   editNote: (el) => {
     const n = arg(el);
     if (!n) return;
-    captureModalTrigger();
+    captureModalTrigger(root);
     S.noteModal = { exName: n, value: S.settings.notes[n] ?? '' };
     render();
     const ta = document.getElementById('noteModalInput') as HTMLTextAreaElement | null;
@@ -1712,7 +1267,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
-    updateNavRestBadges(0);
+    updateNavRestBadges(root, 0);
     S.user = null;
     S.lastSync = undefined;
     await reload();
@@ -1736,20 +1291,20 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
-    updateNavRestBadges(0);
+    updateNavRestBadges(root, 0);
     await reload();
     render();
     queueSync();
     toast('Datos borrados.');
   },
   openExModal: (el) => {
-    captureModalTrigger();
+    captureModalTrigger(root);
     S.exModal = { routine: arg(el) || undefined };
     render();
     document.getElementById('newExName')?.focus();
   },
   openExModalLog: () => {
-    captureModalTrigger();
+    captureModalTrigger(root);
     S.exModal = { fromLog: true };
     render();
     document.getElementById('newExName')?.focus();
@@ -1760,10 +1315,10 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.routineModal = undefined;
     S.noteModal = undefined;
     render();
-    restoreModalFocus();
+    restoreModalFocus(root, S);
   },
   rtModalNew: () => {
-    captureModalTrigger();
+    captureModalTrigger(root);
     const used = new Set(routineNames(S.settings).map((r) => routineColor(r, S.settings)));
     const nextColor = ROUTINE_COLORS.find((c) => !used.has(c)) ?? ROUTINE_COLORS[routineNames(S.settings).length % ROUTINE_COLORS.length];
     S.routineModal = { mode: 'create', name: '', sub: '', color: nextColor };
@@ -1773,7 +1328,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   rtModalEdit: (el) => {
     const name = arg(el);
     if (!name || !S.settings.routines[name]) return;
-    captureModalTrigger();
+    captureModalTrigger(root);
     S.routineModal = {
       mode: 'edit',
       oldName: name,
@@ -1856,6 +1411,10 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.measurePerimOpen = !(S.measurePerimOpen ?? hasPerim);
     render();
   },
+  setBodyMetric: (el) => {
+    S.bodyMetric = arg(el) === 'muscle' ? 'muscle' : 'weight';
+    render();
+  },
   editMeasure: (el) => {
     const d = arg(el);
     if (!d) return;
@@ -1907,7 +1466,11 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
     ((S.customRanges ??= {})[scope] ??= {}).to = el.value || undefined;
     render();
   },
-  selPerim: (el) => { S.perimeter = el.value; render(); },
+  selPerim: (el) => {
+    S.perimeter = el.value;
+    const cfg = buildPerimChartConfig(S);
+    if (!cfg || !updateChart('c-perim', cfg)) render();
+  },
   calcPreset: (el) => {
     const [w, r] = el.value.split('|');
     (document.getElementById('calcW') as HTMLInputElement).value = w;
@@ -1930,7 +1493,7 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   rtName: async (el) => {
     const [d, i] = splitPair(arg(el));
     if (el.value === '__new__') {
-      captureModalTrigger();
+      captureModalTrigger(root);
       S.exModal = { routine: d, rowIdx: +i };
       render();
       document.getElementById('newExName')?.focus();
@@ -2148,8 +1711,8 @@ root.addEventListener('input', (e) => {
         }
         S.logDraft.dirty = true;
         saveDraft(S.logDraft);
-        if (wasDone !== Boolean(s.done)) syncSetDom(ei, si);
-        else updateLogCountersDom(ei);
+        if (wasDone !== Boolean(s.done)) syncSetDom(root, S, ei, si);
+        else updateLogCountersDom(root, S, ei);
       }
       return;
     } else if (el.dataset.logRest) {
@@ -2177,7 +1740,7 @@ root.addEventListener('input', (e) => {
     if (s) {
       s.w = Math.max(0, parseFloat(el.value.replace(',', '.')) || 0);
       saveLive(live);
-      if (s.done) updateLiveCountersDom(ei);
+      if (s.done) updateLiveCountersDom(root, S, ei);
     }
   } else if (el.dataset.liveR) {
     const [ei, si] = el.dataset.liveR.split('|').map(Number);
@@ -2191,8 +1754,8 @@ root.addEventListener('input', (e) => {
         ex.done = ex.sets.some((x) => Boolean(x.done && x.r > 0));
       }
       saveLive(live);
-      if (wasDone !== Boolean(s.done)) syncLiveSetDom(ei, si);
-      else if (s.done) updateLiveCountersDom(ei);
+      if (wasDone !== Boolean(s.done)) syncLiveSetDom(root, S, ei, si);
+      else if (s.done) updateLiveCountersDom(root, S, ei);
     }
   } else if (el.dataset.liveRest) {
     const [ei, si] = el.dataset.liveRest.split('|').map(Number);
@@ -2262,7 +1825,7 @@ root.addEventListener('submit', async (e) => {
     S.exModal = undefined;
     await persist();
     if (modal?.fromLog) addExToDraft(finalName, sets, reps);
-    restoreModalFocus();
+    restoreModalFocus(root, S);
     toast(existingName ? `Ejercicio "${finalName}" actualizado.` : `Ejercicio "${finalName}" creado.`);
   } else if (f.id === 'f-routine-meta' && S.routineModal) {
     const rm = S.routineModal;
@@ -2287,7 +1850,7 @@ root.addEventListener('submit', async (e) => {
       S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
       S.routineModal = undefined;
       await persist();
-      restoreModalFocus();
+      restoreModalFocus(root, S);
       toast(`Rutina "${rawName}" creada.`);
     } else if (rm.oldName && S.settings.routines[rm.oldName]) {
       const oldName = rm.oldName;
@@ -2313,7 +1876,7 @@ root.addEventListener('submit', async (e) => {
       S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
       S.routineModal = undefined;
       await persist();
-      restoreModalFocus();
+      restoreModalFocus(root, S);
       toast(`Rutina "${rawName}" actualizada.`);
     }
   } else if (f.id === 'f-phase') {
@@ -2325,7 +1888,7 @@ root.addEventListener('submit', async (e) => {
     else delete S.settings.notes[exName];
     S.noteModal = undefined;
     await persist();
-    restoreModalFocus();
+    restoreModalFocus(root, S);
     toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
   } else if (f.id === 'f-wizard' && S.wizard) {
     const w = S.wizard;
@@ -2400,7 +1963,7 @@ root.addEventListener('submit', async (e) => {
     markSettingsDirty();
     await reload();
     render();
-    restoreModalFocus();
+    restoreModalFocus(root, S);
     queueSync();
     toast('Perfil y plan inicial configurados.');
   }
@@ -2443,12 +2006,12 @@ window.addEventListener('keydown', (e) => {
     S.routineModal = undefined;
     S.noteModal = undefined;
     render();
-    restoreModalFocus();
+    restoreModalFocus(root, S);
   }
 });
 window.addEventListener('hashchange', () => {
   const raw = initialTab();
-  const next = isValidTab(raw) ? raw : 'home';
+  const next = isValidTab(S, raw) ? raw : 'home';
   if (next !== S.tab) { setTab(next); render(); }
 });
 
