@@ -116,6 +116,7 @@ export interface State {
   wizard?: WizardDraft;
   planSearch?: string;
   exerciseMapSearch?: string;
+  exerciseMapMuscle?: string;
   showAllExerciseMap?: boolean;
   planTargetRoutine?: string;
   authReady?: boolean;

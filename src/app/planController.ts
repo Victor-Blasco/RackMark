@@ -139,6 +139,17 @@ export function createPlanController(ctx: AppContext): PlanController {
       ctx.state.showAllExerciseMap = !ctx.state.showAllExerciseMap;
       ctx.render();
     },
+    clearExerciseMapSearch: () => {
+      ctx.state.exerciseMapSearch = '';
+      ctx.render();
+      ctx.root.querySelector<HTMLInputElement>('#exerciseMapSearch')?.focus({ preventScroll: true });
+    },
+    exerciseMapMuscle: (el) => {
+      const selected = arg(el);
+      ctx.state.exerciseMapMuscle = selected || undefined;
+      ctx.render();
+      ctx.root.querySelector<HTMLInputElement>('#exerciseMapSearch')?.focus({ preventScroll: true });
+    },
     openUnmapped: () => {
       ctx.state.planTab = 'exercises';
       ctx.setTab('plan');

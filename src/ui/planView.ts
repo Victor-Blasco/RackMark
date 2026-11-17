@@ -249,14 +249,20 @@ export function renderPlanExerciseMapResults(S: State): { countText: string; lis
   const s = S.settings;
   const names = allExerciseNames(S);
   const q = normalizeSelectionText(S.exerciseMapSearch ?? '');
-  const candidates = S.showAllExerciseMap
-    ? names
-    : names.filter((name) => S.analysis.exercises.has(name) || !musclesOf(name, s));
+  const muscle = S.exerciseMapMuscle ?? '';
+  const candidates = exerciseMapCandidates(S);
   const matches = candidates.filter((name) => {
-    if (!q) return true;
     const m = musclesOf(name, s);
+    if (muscle && m?.p !== muscle && !m?.s.includes(muscle)) return false;
+    if (!q) return true;
     const haystack = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
-    return haystack.includes(q);
+    return q.split(/\s+/).every((token) => haystack.includes(token));
+  }).sort((a, b) => {
+    const aMuscle = musclesOf(a, s);
+    const bMuscle = musclesOf(b, s);
+    const aMapped = aMuscle?.p ? 1 : 0;
+    const bMapped = bMuscle?.p ? 1 : 0;
+    return bMapped - aMapped || a.localeCompare(b, 'es');
   });
   const listHtml = matches.length
     ? matches.slice(0, 60).map((n) => {
@@ -267,6 +273,34 @@ export function renderPlanExerciseMapResults(S: State): { countText: string; lis
       }).join('')
     : `<p class="py-4 text-center text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>`;
   return { countText: `${Math.min(matches.length, 60)}/${matches.length} visibles · ${names.length} totales`, listHtml };
+}
+
+function exerciseMapFacets(S: State): Array<{ name: string; count: number }> {
+  const s = S.settings;
+  const candidates = exerciseMapCandidates(S);
+  const q = normalizeSelectionText(S.exerciseMapSearch ?? '');
+  const counts = new Map<string, number>();
+  for (const name of candidates) {
+    const m = musclesOf(name, s);
+    const haystack = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
+    if (q && !q.split(/\s+/).every((token) => haystack.includes(token))) continue;
+    for (const group of new Set([m?.p ?? '', ...(m?.s ?? [])].filter(Boolean))) {
+      counts.set(group, (counts.get(group) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).map(([name, count]) => ({ name, count }));
+}
+
+function exerciseMapCandidates(S: State): string[] {
+  const names = allExerciseNames(S);
+  if (S.showAllExerciseMap) return names;
+  const routineNames = new Set(
+    Object.values(S.settings.routines)
+      .flat()
+      .map((item) => item.name)
+      .filter(Boolean),
+  );
+  return names.filter((name) => routineNames.has(name) || S.analysis.exercises.has(name) || !musclesOf(name, S.settings));
 }
 
 /**
@@ -300,6 +334,7 @@ export function viewPlan(S: State): string {
 
   if (tab === 'exercises') {
     const exerciseMapRes = renderPlanExerciseMapResults(S);
+    const facets = exerciseMapFacets(S);
     return `${header}
     ${unmappedCount ? `<div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2"><h3 class="font-bold text-white">Ejercicios importados sin nombre (${unmappedCount})</h3>
       <p class="text-xs text-gray-300">Algunos ejercicios importados solo tienen código numérico. Asígnales nombre (si coincide con uno existente, se unifican).</p>
@@ -331,8 +366,18 @@ export function viewPlan(S: State): string {
           <button class="btn-sm btn-accent" data-act="openExModal" data-arg="">+ Nuevo ejercicio</button>
         </div>
       </div>
-      <div class="mb-2 flex flex-wrap items-center gap-2">
-        <input id="exerciseMapSearch" class="inp min-w-[220px] flex-1" type="search" value="${esc(S.exerciseMapSearch ?? '')}" placeholder="Buscar ejercicio o músculo…" aria-label="Buscar ejercicio o músculo" data-input="exerciseMapSearch">
+      <div class="sticky top-0 z-10 -mx-1 space-y-2 bg-bgDark px-1 pb-2">
+        <div class="flex items-center gap-2">
+          <label class="relative min-w-0 flex-1">
+            <span class="sr-only">Buscar ejercicio o músculo</span>
+            <input id="exerciseMapSearch" class="inp min-w-0 w-full pr-10" type="search" value="${esc(S.exerciseMapSearch ?? '')}" placeholder="Buscar por nombre o músculo…" aria-label="Buscar ejercicio o músculo" data-input="exerciseMapSearch">
+            ${S.exerciseMapSearch ? `<button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" data-act="clearExerciseMapSearch" aria-label="Limpiar búsqueda">${icon('close', 'h-4 w-4')}</button>` : ''}
+          </label>
+        </div>
+        ${facets.length ? `<div class="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filtrar por músculo">
+          <button type="button" class="min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${!S.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}" data-act="exerciseMapMuscle" data-arg="">Todos</button>
+          ${facets.map((f) => `<button type="button" class="min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${S.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}" data-act="exerciseMapMuscle" data-arg="${esc(f.name)}">${esc(f.name)} <span class="tabular-nums text-[11px]">${f.count}</span></button>`).join('')}
+        </div>` : ''}
       </div>
       <div id="exercise-map-results" class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
         ${exerciseMapRes.listHtml}
