@@ -115,6 +115,8 @@ export interface State {
   noteModal?: { exName: string; value: string };
   wizard?: WizardDraft;
   planSearch?: string;
+  exerciseMapSearch?: string;
+  showAllExerciseMap?: boolean;
   planTargetRoutine?: string;
   authReady?: boolean;
   user?: CloudUser | null;

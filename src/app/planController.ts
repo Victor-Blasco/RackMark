@@ -4,7 +4,7 @@ import { ROUTINE_COLORS, ROUTINE_TEMPLATES, isValidIsoDate, norm } from '../lib/
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import { MODAL_FOCUSABLE_SELECTOR, captureModalTrigger, restoreModalFocus } from '../ui/domPatches';
 import { allExerciseNames } from '../ui/logView';
-import { renderPlanCatalogResults } from '../ui/planView';
+import { renderPlanCatalogResults, renderPlanExerciseMapResults } from '../ui/planView';
 import { moveItem } from '../ui/reorder';
 import { fmtDate, routineColor, routineNames, todayIso } from '../ui/shared';
 import { RESERVED_ROUTINE_NORMS, isRoutineTab } from '../ui/shellView';
@@ -133,6 +133,10 @@ export function createPlanController(ctx: AppContext): PlanController {
     },
     planTab: (el) => {
       ctx.state.planTab = arg(el) === 'exercises' ? 'exercises' : 'routines';
+      ctx.render();
+    },
+    toggleExerciseMapAll: () => {
+      ctx.state.showAllExerciseMap = !ctx.state.showAllExerciseMap;
       ctx.render();
     },
     openUnmapped: () => {
@@ -398,6 +402,20 @@ export function createPlanController(ctx: AppContext): PlanController {
   };
 
   function handleInput(el: HTMLInputElement): boolean {
+    if (el.dataset.input === 'exerciseMapSearch') {
+      const S = ctx.state;
+      S.exerciseMapSearch = el.value;
+      const countEl = ctx.root.querySelector<HTMLElement>('#exercise-map-count');
+      const listEl = ctx.root.querySelector<HTMLElement>('#exercise-map-results');
+      if (countEl && listEl) {
+        const res = renderPlanExerciseMapResults(S);
+        countEl.textContent = res.countText;
+        listEl.innerHTML = res.listHtml;
+      } else {
+        ctx.render();
+      }
+      return true;
+    }
     if (el.dataset.input !== 'planSearch') return false;
     const S = ctx.state;
     S.planSearch = el.value;

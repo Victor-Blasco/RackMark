@@ -2,6 +2,7 @@ import { musclesOf } from '../lib/analysis';
 import { MUSCLES, ROUTINE_COLORS, ROUTINE_TEMPLATES } from '../lib/seed';
 import type { Settings } from '../types';
 import { icon } from './icons';
+import { normalizeSelectionText } from './selection';
 import { allExerciseNames } from './logView';
 import { esc, fmtDate, routineColor, routineNames, type State } from './shared';
 import { renderWizardModal } from './wizardView';
@@ -244,6 +245,30 @@ export function renderPlanCatalogResults(S: State): { countText: string; listHtm
   return { countText: `${catalogMatches.length}/${names.length}`, listHtml };
 }
 
+export function renderPlanExerciseMapResults(S: State): { countText: string; listHtml: string } {
+  const s = S.settings;
+  const names = allExerciseNames(S);
+  const q = normalizeSelectionText(S.exerciseMapSearch ?? '');
+  const candidates = S.showAllExerciseMap
+    ? names
+    : names.filter((name) => S.analysis.exercises.has(name) || !musclesOf(name, s));
+  const matches = candidates.filter((name) => {
+    if (!q) return true;
+    const m = musclesOf(name, s);
+    const haystack = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
+    return haystack.includes(q);
+  });
+  const listHtml = matches.length
+    ? matches.slice(0, 60).map((n) => {
+        const m = musclesOf(n, s);
+        return `<div class="flex items-center gap-2 text-sm"><span class="w-44 shrink-0 truncate" title="${esc(n)}">${esc(n)}</span>
+          <select class="inp w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
+          <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombros…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`;
+      }).join('')
+    : `<p class="py-4 text-center text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>`;
+  return { countText: `${Math.min(matches.length, 60)}/${matches.length} visibles · ${names.length} totales`, listHtml };
+}
+
 /**
  * Renderiza la vista de planificación de rutinas, fases y biblioteca muscular de ejercicios.
  *
@@ -274,6 +299,7 @@ export function viewPlan(S: State): string {
   </div>`;
 
   if (tab === 'exercises') {
+    const exerciseMapRes = renderPlanExerciseMapResults(S);
     return `${header}
     ${unmappedCount ? `<div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2"><h3 class="font-bold text-white">Ejercicios importados sin nombre (${unmappedCount})</h3>
       <p class="text-xs text-gray-300">Algunos ejercicios importados solo tienen código numérico. Asígnales nombre (si coincide con uno existente, se unifican).</p>
@@ -299,12 +325,17 @@ export function viewPlan(S: State): string {
           <h3 class="font-bold text-white">Músculos por ejercicio (${names.length})</h3>
           <p class="text-xs text-gray-400">Músculo principal = 1 serie efectiva; secundarios (separados por coma) = 0,5 series.</p>
         </div>
-        <button class="btn-sm btn-accent" data-act="openExModal" data-arg="">+ Nuevo ejercicio</button>
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="exercise-map-count" class="text-xs text-gray-400 tabular-nums">${exerciseMapRes.countText}</span>
+          <button class="btn-sm" data-act="toggleExerciseMapAll">${S.showAllExerciseMap ? 'Mostrar solo relevantes' : 'Mostrar catálogo completo'}</button>
+          <button class="btn-sm btn-accent" data-act="openExModal" data-arg="">+ Nuevo ejercicio</button>
+        </div>
       </div>
-      <div class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
-        ${names.map((n) => { const m = musclesOf(n, s); return `<div class="flex items-center gap-2 text-sm"><span class="w-44 shrink-0 truncate" title="${esc(n)}">${esc(n)}</span>
-          <select class="inp w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
-          <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombros…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`; }).join('')}
+      <div class="mb-2 flex flex-wrap items-center gap-2">
+        <input id="exerciseMapSearch" class="inp min-w-[220px] flex-1" type="search" value="${esc(S.exerciseMapSearch ?? '')}" placeholder="Buscar ejercicio o músculo…" aria-label="Buscar ejercicio o músculo" data-input="exerciseMapSearch">
+      </div>
+      <div id="exercise-map-results" class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
+        ${exerciseMapRes.listHtml}
       </div>
     </div>`;
   }
