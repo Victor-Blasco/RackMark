@@ -1,10 +1,10 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
-import type { CardioRow, DailyWellbeing, Measure, Settings, StrengthRow } from '../types';
-import { deleteKey, getAll, loadSettings, putMany, sanitizeSettings, saveSettings, wipeAll } from './db';
+import type { CardioRow, DailyWellbeing, DataKind, DataRecord, Measure, Settings, StrengthRow } from '../types';
+import { deleteKey, getAll, loadSettings, putMany, sanitizeDataRecord, sanitizeSettings, saveSettings, wipeAll } from './db';
 import { fs } from './firebase';
+import { DEFAULT_SETTINGS } from './seed';
 
-export type DataKind = 'strength' | 'cardio' | 'measures' | 'wellbeing';
-export type DataRecord = StrengthRow | CardioRow | Measure | DailyWellbeing;
+export type { DataKind, DataRecord };
 
 export interface RemoteBucket {
   kind: DataKind;
@@ -222,8 +222,10 @@ export function mergeBucket({
   const toDeleteLocally: string[] = [];
 
   for (const k of allKeys) {
+    if (UNSAFE_KEYS.has(k)) continue;
     const loc = localItems[k];
-    const rem = remoteItems[k];
+    const remRaw = remoteItems[k];
+    const rem = remRaw !== undefined ? sanitizeDataRecord(kind, remRaw) ?? undefined : undefined;
     const touchL = localDirtyKeys[k] ?? 0;
     const delL = localDeleted[k] ?? 0;
     const delR = remoteDeleted[k] ?? 0;
@@ -277,20 +279,27 @@ export interface SyncReport {
   settingsDirection: 'pushed' | 'pulled' | 'none';
   accountSwitched?: boolean;
   remoteWiped?: boolean;
+  settingsConflict?: boolean;
 }
 
-function hasCustomSettings(s: Settings): boolean {
+export function hasCustomSettings(s: Settings): boolean {
   return Boolean(
     s.onboardingCompleted ||
       s.profile.goal ||
       s.profile.experience ||
       s.profile.daysPerWeek ||
+      s.profile.sex !== DEFAULT_SETTINGS.profile.sex ||
+      s.profile.age !== DEFAULT_SETTINGS.profile.age ||
+      s.profile.height !== DEFAULT_SETTINGS.profile.height ||
       s.ai ||
       s.phases.length > 0 ||
       Object.keys(s.customNames).length > 0 ||
       Object.keys(s.refNames).length > 0 ||
       Object.keys(s.aliases).length > 0 ||
-      Object.keys(s.notes).length > 0,
+      Object.keys(s.notes).length > 0 ||
+      Object.keys(s.muscles).length > 0 ||
+      JSON.stringify(s.routines) !== JSON.stringify(DEFAULT_SETTINGS.routines) ||
+      JSON.stringify(s.routineMeta ?? {}) !== JSON.stringify(DEFAULT_SETTINGS.routineMeta ?? {}),
   );
 }
 
@@ -364,6 +373,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     hasCustomSettings(localSettings) &&
     !hasCustomSettings(remoteSettings.data);
   let settingsDirection: SyncReport['settingsDirection'] = 'none';
+  let settingsConflict = false;
   if (!remoteSettings || localWinsInitial || (meta.settingsDirtyAt ?? 0) > remoteSettings.updatedAt) {
     const updatedAt = Math.max(now, meta.settingsDirtyAt ?? now);
     await setDoc(settingsRef, { data: stripUndefined(localSettings), updatedAt } satisfies RemoteSettingsDoc);
@@ -371,9 +381,31 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     meta.remoteUpdated.settings = updatedAt;
     settingsDirection = 'pushed';
   } else if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
-    await saveSettings(sanitizeSettings(remoteSettings.data));
+    const cleanRemote = sanitizeSettings(remoteSettings.data);
+    const hadLocalDirty = (meta.settingsDirtyAt ?? 0) > 0;
+    const nextSettings = hadLocalDirty
+      ? sanitizeSettings({
+          ...cleanRemote,
+          customNames: { ...localSettings.customNames, ...cleanRemote.customNames },
+          refNames: { ...localSettings.refNames, ...cleanRemote.refNames },
+          aliases: { ...localSettings.aliases, ...cleanRemote.aliases },
+          notes: { ...localSettings.notes, ...cleanRemote.notes },
+          muscles: { ...localSettings.muscles, ...cleanRemote.muscles },
+        })
+      : cleanRemote;
+    await saveSettings(nextSettings);
+    if (hadLocalDirty) {
+      settingsConflict = true;
+      if (JSON.stringify(stripUndefined(nextSettings)) !== JSON.stringify(stripUndefined(cleanRemote))) {
+        await setDoc(settingsRef, { data: stripUndefined(nextSettings), updatedAt: now } satisfies RemoteSettingsDoc);
+        meta.remoteUpdated.settings = now;
+      } else {
+        meta.remoteUpdated.settings = remoteSettings.updatedAt;
+      }
+    } else {
+      meta.remoteUpdated.settings = remoteSettings.updatedAt;
+    }
     meta.settingsDirtyAt = undefined;
-    meta.remoteUpdated.settings = remoteSettings.updatedAt;
     settingsDirection = 'pulled';
   }
 
@@ -456,5 +488,12 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
 
   meta.lastSyncAt = now;
   saveSyncMeta(meta);
-  return { pushedBuckets, pulledItems, deletedItems, settingsDirection, accountSwitched };
+  return {
+    pushedBuckets,
+    pulledItems,
+    deletedItems,
+    settingsDirection,
+    accountSwitched,
+    ...(settingsConflict ? { settingsConflict: true } : {}),
+  };
 }

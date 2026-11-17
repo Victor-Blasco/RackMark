@@ -21,7 +21,7 @@ export function viewSettings(S: State): string {
         <div class="flex items-start gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-electricBlue text-sm font-extrabold text-white shadow-sm">${esc(initial)}</div>
           <div class="min-w-0 flex-1">
-            <h3 class="font-bold text-white">Cuenta y sincronización</h3>
+            <h2 class="font-bold text-white">Cuenta y sincronización</h2>
             <p class="text-sm text-gray-200 truncate mt-0.5">${esc(S.user.displayName ?? 'Usuario')}</p>
             <p class="text-xs text-gray-400 truncate">${esc(S.user.email ?? '')}</p>
             <p class="text-xs text-emerald-400 mt-1">${S.syncing ? 'Sincronizando…' : syncWhen ? `Última sincronización: ${esc(syncWhen)}` : 'Conectado'}</p>
@@ -34,7 +34,7 @@ export function viewSettings(S: State): string {
       </div>`
     : `<div class="flex flex-col justify-between gap-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
         <div class="space-y-1.5">
-          <h3 class="font-bold text-white">Cuenta y sincronización</h3>
+          <h2 class="font-bold text-white">Cuenta y sincronización</h2>
           <p class="text-xs text-gray-400 leading-relaxed">Inicia sesión con Google para sincronizar tus entrenamientos, medidas, sueño/FC y preferencias entre dispositivos, además de activar los informes de IA.</p>
         </div>
         <div>
@@ -61,7 +61,7 @@ export function viewSettings(S: State): string {
     <div class="space-y-3">
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h3 class="font-bold text-white">Perfil del atleta</h3>
+          <h2 class="font-bold text-white">Perfil del atleta</h2>
           <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.</p>
         </div>
         <button type="button" class="btn-sm btn-accent" data-act="openWizard">Asistente inicial</button>
@@ -96,7 +96,7 @@ export function viewSettings(S: State): string {
   <div class="pb-5 border-b border-white/10 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h3 class="font-bold text-white">Preferencias del Coach IA</h3>
+        <h2 class="font-bold text-white">Preferencias del Coach IA</h2>
         <p class="text-xs text-gray-400 mt-0.5">Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.</p>
       </div>
       <span class="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${S.user ? 'border-emeraldGreen/40 bg-emeraldGreen/10 text-emerald-300' : 'border-amberGold/40 bg-amberGold/10 text-amber-300'}">${S.user ? 'Coach IA activo' : 'Requiere iniciar sesión'}</span>
@@ -127,7 +127,7 @@ export function viewSettings(S: State): string {
 
   <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
     <div>
-      <h3 class="text-sm font-bold text-white">Accesos relacionados</h3>
+      <h2 class="text-sm font-bold text-white">Accesos relacionados</h2>
       <p class="text-xs text-gray-400">La configuración de rutinas e importación de archivos tienen sus propias secciones dedicadas.</p>
     </div>
     <div class="flex flex-wrap gap-2">

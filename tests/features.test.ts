@@ -4,7 +4,7 @@ import { buildPrompt } from '../src/lib/ai';
 import { analyze, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { importSamsungInWorker } from '../src/lib/samsung';
-import { DEFAULT_SETTINGS, norm } from '../src/lib/seed';
+import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, norm } from '../src/lib/seed';
 import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
 import { ICON_PATHS } from '../src/ui/icons';
 import { allExerciseNames, extractTargetWeight, fmtMMSS, initLogDraft, manualSessionId, renderRestTimerBar, viewLog } from '../src/ui/logView';
@@ -16,6 +16,7 @@ import {
   isAiFreshForEx,
   movingAverage7d,
   normalizeChartConfig,
+  rangePicker,
   resetCharts,
   resolveRange,
   routineShort,
@@ -23,7 +24,7 @@ import {
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
-import { buildBodyHomeChartConfig, buildCompChartConfig, viewDay, viewHome } from '../src/ui/views';
+import { buildBodyHomeChartConfig, buildCompChartConfig, buildHomeExChartConfig, renderAiReport, viewDay, viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
 import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
 import {
@@ -744,7 +745,8 @@ describe('onboarding wizard & athlete profile', () => {
     expect(logHtml).toContain('Reps');
     expect(logHtml).toContain('flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5');
     expect(logHtml).toContain('min-w-[132px]');
-    expect(logHtml).toContain('!min-h-[44px]');
+    expect(logHtml).toContain('min-h-[44px]');
+    expect(logHtml).not.toContain('!min-h-[44px]');
     expect(logHtml).toContain('min-w-[44px]');
   });
 });
@@ -1088,6 +1090,235 @@ describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', ()
       const calcHtml = viewCalc({ ...emptyState, tab: 'calc' });
       expect(calcHtml).toContain('value="1.55" selected');
       expect(calcHtml).toContain('value="-350" selected');
+      expect(calcHtml).toContain('Estima el peso máximo que podrías mover a 1 repetición');
+
+      const liveFirstTime = initLiveWorkout(emptyState, 'Push');
+      const liveHtml = viewWorkout({ ...emptyState, tab: 'workout', liveWorkout: liveFirstTime });
+      expect(liveHtml).toContain('Primera vez: empieza con un peso cómodo');
+      expect(liveHtml).toContain('Desc. real');
+
+      const summaryModalHtml = renderModals({
+        ...emptyState,
+        workoutSummary: {
+          day: 'Push',
+          durationMin: 42,
+          exercises: 5,
+          sets: 14,
+          tonnageKg: 3250,
+          prNames: ['Press horizontal en máquina'],
+        },
+      });
+      expect(summaryModalHtml).toContain('id="workout-summary-modal"');
+      expect(summaryModalHtml).toContain('¡Entreno completado!');
+      expect(summaryModalHtml).toContain('Nuevas marcas personales (1)');
+
+      expect(DEFAULT_MUSCLES.aductores?.p).toBe('Aductores');
+      expect(DEFAULT_MUSCLES.adductores?.p).toBe('Aductores');
+
+      const freeStrength = [
+        {
+          id: 'free-1',
+          sessionId: 'manual-2026-11-10-libre',
+          ts: Date.parse('2026-11-10T10:00:00Z'),
+          date: '2026-11-10',
+          ref: 'name:Ejercicio Libre Nuevo',
+          sets: [{ w: 40, r: 10 }],
+        },
+      ];
+      const freeState: State = {
+        ...emptyState,
+        strength: freeStrength,
+        analysis: analyze(freeStrength, settings),
+      };
+      expect(buildHomeExChartConfig(freeState)).not.toBeNull();
+    } finally {
+      resetCharts();
+    }
+  });
+});
+
+describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', () => {
+  it('asigna id="wizardNext" estable sin data-act en el botón submit del wizard', () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    const wizardHtml = renderWizardModal({ ...state, wizard: createWizardDraft(state) });
+    expect(wizardHtml).toMatch(/<button\s+id="wizardNext"\s+type="submit"\s+class="btn-primary min-h-\[44px\] px-5">/);
+    expect(wizardHtml).not.toMatch(/id="wizardNext"[^>]*data-act=/);
+  });
+
+  it('mantiene jerarquía de encabezados h2/h3 continua en viewCalc, viewSettings y viewHome', () => {
+    const settings = sanitizeSettings({
+      ai: {
+        date: '2026-11-15',
+        tone: 'technical',
+        summary: 'Resumen de progreso.',
+        overview: {
+          overallStatus: 'Progresando',
+          highlights: ['Buena constancia'],
+          sections: [{ title: 'Rendimiento de fuerza', verdict: 'good', text: 'Progresión estable.' }],
+        },
+        byExercise: {},
+      },
+    });
+    const strength = [
+      {
+        id: 'm1-s1',
+        sessionId: 'manual-2026-11-15-push',
+        ts: Date.parse('2026-11-15T10:00:00Z'),
+        date: '2026-11-15',
+        ref: 'name:Press horizontal en máquina',
+        day: 'Push',
+        sets: [{ w: 70, r: 8 }],
+      },
+    ];
+    const state: State = {
+      tab: 'home',
+      strength,
+      cardio: [],
+      measures: [{ date: '2026-11-15', weight: 76, bf: 15 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    try {
+      const calcHtml = viewCalc(state);
+      expect(calcHtml).toContain('<h2 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h2>');
+      expect(calcHtml).toContain('<h2 class="font-bold text-white">Planificador nutricional');
+      expect(calcHtml).not.toContain('<h3');
+
+      const settingsOut = viewSettings(state);
+      expect(settingsOut).toContain('<h2 class="font-bold text-white">Cuenta y sincronización</h2>');
+      expect(settingsOut).toContain('<h2 class="font-bold text-white">Perfil del atleta</h2>');
+      expect(settingsOut).toContain('<h2 class="font-bold text-white">Preferencias del Coach IA</h2>');
+      expect(settingsOut).toContain('<h2 class="text-sm font-bold text-white">Accesos relacionados</h2>');
+      expect(settingsOut).not.toContain('<h3');
+
+      const homeWithAi = viewHome(state);
+      expect(homeWithAi).toContain('<h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>');
+      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Evolución de cargas</h2>');
+      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Peso y % de grasa</h2>');
+      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>');
+      expect(homeWithAi).not.toContain('<h4');
+
+      const homeNoAi = viewHome({
+        ...state,
+        settings: sanitizeSettings({}),
+      });
+      expect(homeNoAi).toContain('<h2 class="text-base font-extrabold text-white">Informe IA</h2>');
+      expect(homeNoAi).not.toContain('<h3');
+    } finally {
+      resetCharts();
+    }
+  });
+
+  it('vincula ai-tabpanel con aria-labelledby solo cuando hay múltiples pestañas y configura listbox en viewDay', () => {
+    const settingsMulti = sanitizeSettings({
+      ai: {
+        date: '2026-11-15',
+        tone: 'simple',
+        summary: 'Bien.',
+        overview: {
+          overallStatus: 'En ruta',
+          highlights: [],
+          sections: [{ title: 'Fuerza', verdict: 'good', text: 'Sube 2,5 kg.' }],
+        },
+        byExercise: {},
+      },
+    });
+    const base: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: settingsMulti,
+      analysis: analyze([], settingsMulti),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      aiTab: 1,
+    };
+
+    const multiHtml = renderAiReport(base);
+    expect(multiHtml).toContain('id="ai-tab-1"');
+    expect(multiHtml).toContain('aria-controls="ai-tabpanel"');
+    expect(multiHtml).toContain('id="ai-tabpanel" role="tabpanel" aria-labelledby="ai-tab-1"');
+    expect(multiHtml).toContain('<h3 class="text-base sm:text-lg font-bold text-emerald-300">Fuerza</h3>');
+
+    const singleSettings = sanitizeSettings({
+      ai: {
+        date: '2026-11-15',
+        tone: 'simple',
+        summary: 'Solo resumen.',
+        byExercise: {},
+      },
+    });
+    const singleHtml = renderAiReport({ ...base, settings: singleSettings });
+    expect(singleHtml).not.toContain('role="tabpanel"');
+    expect(singleHtml).not.toContain('aria-labelledby="ai-tab-');
+
+    try {
+      const dayHtml = viewDay(base, 'Push');
+      expect(dayHtml).toContain('role="listbox" aria-orientation="vertical"');
+      expect(dayHtml).toContain('id="day-opt-0" role="option" tabindex="0" data-act="selEx"');
+      expect(dayHtml).toContain('id="day-opt-1" role="option" tabindex="-1" data-act="selEx"');
+    } finally {
+      resetCharts();
+    }
+  });
+
+  it('mejora contraste de quitar serie en vivo y elimina modificadores ! de .btn/.inp/.tab', () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'workout',
+      strength: [],
+      cardio: [],
+      measures: [{ date: '2026-11-15', weight: 75 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: { home: 'Custom' },
+    };
+
+    try {
+      const live = initLiveWorkout(state, 'Push');
+      const liveHtml = viewWorkout({ ...state, liveWorkout: live });
+      expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
+      expect(liveHtml).not.toContain('text-coralRed/90');
+      expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base');
+      expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+      expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
+
+      const logHtml = viewLog({ ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') });
+      expect(logHtml).toContain('inp-stepper min-w-[44px]');
+      expect(logHtml).toContain('btn btn-accent');
+      expect(logHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+
+      const planHtml = viewPlan({ ...state, tab: 'plan', planTab: 'routines' });
+      const planExHtml = viewPlan({ ...state, tab: 'plan', planTab: 'exercises' });
+      const bodyHtml = viewBody({ ...state, tab: 'body' });
+      const pickerHtml = rangePicker('home', 'Custom', {});
+      for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
+        expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+      }
     } finally {
       resetCharts();
     }

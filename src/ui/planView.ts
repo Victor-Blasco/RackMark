@@ -48,6 +48,40 @@ export function renderModals(S: State): string {
     </div>`;
   }
   if (S.wizard) return renderWizardModal(S);
+  if (S.workoutSummary) {
+    const ws = S.workoutSummary;
+    const tonnageLabel = ws.tonnageKg >= 1000 ? `${(ws.tonnageKg / 1000).toFixed(1).replace('.', ',')} t` : `${Math.round(ws.tonnageKg)} kg`;
+    return `<div id="workout-summary-modal" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="fixed inset-0 bg-black/80" data-act="closeWorkoutSummary" aria-hidden="true"></div>
+      <div class="relative z-10 w-full max-w-md rounded-2xl border border-emeraldGreen/35 bg-modalDark p-5 shadow-2xl space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emeraldGreen/15 text-emeraldGreen">${icon('check', 'h-6 w-6')}</div>
+            <div>
+              <h3 id="workoutSummaryTitle" class="text-lg font-extrabold text-white">¡Entreno completado!</h3>
+              <p class="text-xs text-gray-400">${esc(ws.day === 'Libre' ? 'Entreno libre' : ws.day)} · ${ws.durationMin} min</p>
+            </div>
+          </div>
+          <button type="button" data-act="closeWorkoutSummary" aria-label="Cerrar resumen" class="icon-btn">${icon('close', 'h-4 w-4')}</button>
+        </div>
+
+        <div class="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-center">
+          <div class="px-2"><span class="block text-[11px] text-gray-400">Ejercicios</span><span class="tabular-nums text-lg font-extrabold text-white">${ws.exercises}</span></div>
+          <div class="px-2"><span class="block text-[11px] text-gray-400">Series</span><span class="tabular-nums text-lg font-extrabold text-emeraldGreen">${ws.sets}</span></div>
+          <div class="px-2"><span class="block text-[11px] text-gray-400">Volumen</span><span class="tabular-nums text-lg font-extrabold text-electricBlue">${esc(tonnageLabel)}</span></div>
+        </div>
+
+        ${ws.prNames.length ? `<div class="rounded-xl border border-emeraldGreen/30 bg-emeraldGreen/10 p-3 space-y-1">
+          <p class="text-xs font-bold text-emerald-300">Nuevas marcas personales (${ws.prNames.length})</p>
+          <p class="text-xs text-gray-200">${esc(ws.prNames.slice(0, 4).join(' · '))}${ws.prNames.length > 4 ? ` y ${ws.prNames.length - 4} más` : ''}</p>
+        </div>` : `<p class="text-xs text-gray-400">Buen trabajo: sesión guardada en tu historial y lista para analizar tu progreso.</p>`}
+
+        <div class="flex justify-end pt-1">
+          <button type="button" class="btn-primary w-full sm:w-auto" data-act="closeWorkoutSummary">Continuar</button>
+        </div>
+      </div>
+    </div>`;
+  }
   if (S.exModal) {
     const routines = routineNames(S.settings);
     const target = S.exModal.routine ?? '';
@@ -251,9 +285,9 @@ export function viewPlan(S: State): string {
     <div class="pb-5 border-b border-white/10 space-y-3"><h3 class="font-bold text-white">Unificar ejercicios duplicados</h3>
       <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
       <div class="flex flex-wrap items-center gap-2">
-        <select id="mergeFrom" class="inp !w-auto" aria-label="Ejercicio origen a fusionar">${sel('', known)}</select>
+        <select id="mergeFrom" class="inp w-auto" aria-label="Ejercicio origen a fusionar">${sel('', known)}</select>
         <span aria-hidden="true">→</span>
-        <select id="mergeTo" class="inp !w-auto" aria-label="Ejercicio destino">${sel('', known)}</select>
+        <select id="mergeTo" class="inp w-auto" aria-label="Ejercicio destino">${sel('', known)}</select>
         <button class="btn" data-act="merge">Fusionar</button>
       </div>
       ${Object.entries(s.aliases).map(([a, b]) => `<div class="flex items-center gap-2 text-xs text-gray-400"><span>${esc(a)} → ${esc(b)}</span><button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="unmerge" data-arg="${esc(a)}" aria-label="Deshacer fusión ${esc(a)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}
@@ -269,7 +303,7 @@ export function viewPlan(S: State): string {
       </div>
       <div class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
         ${names.map((n) => { const m = musclesOf(n, s); return `<div class="flex items-center gap-2 text-sm"><span class="w-44 shrink-0 truncate" title="${esc(n)}">${esc(n)}</span>
-          <select class="inp !w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
+          <select class="inp w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
           <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombros…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`; }).join('')}
       </div>
     </div>`;
@@ -338,8 +372,8 @@ export function viewPlan(S: State): string {
                     <select class="inp min-w-0 flex-1" data-change="rtName" data-arg="${esc(d)}|${i}" aria-label="Ejercicio ${i + 1} de ${esc(d)}">${sel(r.name, [...new Set([...names, r.name].filter(Boolean))])}<option value="__new__">+ Crear nuevo ejercicio…</option></select>
                   </div>
                   <div class="flex shrink-0 items-center justify-end gap-1 pl-6 sm:pl-0">
-                    <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-400" aria-hidden="true">×</span>
-                    <input class="inp !w-12 !px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
+                    <input class="inp w-12 px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.sets)}" data-change="rtSets" data-arg="${esc(d)}|${i}" aria-label="Series objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}"><span class="text-gray-400" aria-hidden="true">×</span>
+                    <input class="inp w-12 px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value="${esc(r.reps)}" data-change="rtReps" data-arg="${esc(d)}|${i}" aria-label="Repeticiones objetivo de ${esc(r.name || `ejercicio ${i + 1}`)}">
                     <div class="flex shrink-0 items-center">
                       <button type="button" class="icon-btn" data-act="rtMove" data-arg="${esc(d)}|${i}|-1" ${i === 0 ? 'disabled' : ''} aria-label="Subir ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Subir">${icon('caretUp', 'h-3.5 w-3.5')}</button>
                       <button type="button" class="icon-btn" data-act="rtMove" data-arg="${esc(d)}|${i}|1" ${i === list.length - 1 ? 'disabled' : ''} aria-label="Bajar ${esc(r.name || `ejercicio ${i + 1}`)} en ${esc(d)}" title="Bajar">${icon('caretDown', 'h-3.5 w-3.5')}</button>
@@ -363,7 +397,7 @@ export function viewPlan(S: State): string {
           <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>
         </div>
         ${s.phases.length ? `<div class="space-y-1.5">${[...s.phases].sort((a, b) => a.start.localeCompare(b.start)).map((p, i) => `<div class="flex items-center gap-2 text-sm"><b>${esc(p.name)}</b> <span class="tabular-nums text-gray-400">desde ${fmtDate(p.start)}</span> <button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="phaseDel" data-arg="${i}" aria-label="Borrar fase ${esc(p.name)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}</div>` : ''}
-        <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp !w-44" name="name" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required><input class="inp !w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
+        <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp w-44" name="name" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required><input class="inp w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
       </div>
     </div>
 

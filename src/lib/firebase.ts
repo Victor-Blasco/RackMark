@@ -64,7 +64,16 @@ export async function signInGoogle(): Promise<User | null> {
   }
 }
 
-export const consumeRedirectAuth = () => getRedirectResult(auth).catch(() => null);
+export async function consumeRedirectAuth(): Promise<{ user: User | null; error?: string }> {
+  try {
+    const cred = await getRedirectResult(auth);
+    return { user: cred?.user ?? null };
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return { user: null };
+    return { user: null, error: (err as Error)?.message || 'No se pudo completar el inicio de sesión.' };
+  }
+}
 export const signOutGoogle = () => signOut(auth);
 export const subscribeAuth = (cb: (user: CloudUser | null) => void) =>
   onAuthStateChanged(auth, (u) => cb(toCloudUser(u)));

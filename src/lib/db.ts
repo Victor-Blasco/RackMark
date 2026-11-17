@@ -1,6 +1,6 @@
 import { MEASURE_FIELDS } from '../types';
 import type {
-  AiEntry, AiResult, AiSection, CardioRow, DailyWellbeing, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
+  AiEntry, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
 } from '../types';
 import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
 
@@ -237,6 +237,74 @@ export function sanitizeSettings(raw: unknown): Settings {
   return base;
 }
 
+const MEASURE_KEYS = MEASURE_FIELDS.map((f) => f.key);
+
+function sanitizeStrengthRow(r: unknown): StrengthRow | null {
+  if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date) || typeof r.ref !== 'string' || !r.ref || !Array.isArray(r.sets)) return null;
+  const sets = r.sets.flatMap((s) => {
+    if (!isObj(s)) return [];
+    const w = fin(s.w);
+    const reps = fin(s.r);
+    const restSec = fin(s.restSec);
+    return w !== undefined && w >= 0 && reps !== undefined && reps > 0
+      ? [{ w, r: reps, ...(restSec !== undefined && restSec >= 0 ? { restSec: Math.round(restSec) } : {}) }]
+      : [];
+  });
+  if (!sets.length) return null;
+  const row: StrengthRow = {
+    id: r.id,
+    sessionId: typeof r.sessionId === 'string' && r.sessionId ? r.sessionId : r.date,
+    ts: fin(r.ts) ?? 0,
+    date: r.date,
+    ref: r.ref,
+    sets,
+  };
+  pickFiniteNums(r, STRENGTH_NUM_KEYS, row);
+  if (typeof r.note === 'string') row.note = r.note;
+  if (typeof r.day === 'string' && r.day.trim().length > 0 && r.day.trim().length <= 40 && !UNSAFE_KEYS.has(r.day.trim())) {
+    row.day = r.day.trim();
+  }
+  return row;
+}
+
+function sanitizeCardioRow(r: unknown): CardioRow | null {
+  if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date)) return null;
+  const type = fin(r.type); const durMin = fin(r.durMin); const distKm = fin(r.distKm);
+  const avgHr = fin(r.avgHr); const kcal = fin(r.kcal);
+  if (type === undefined || durMin === undefined || distKm === undefined || avgHr === undefined || kcal === undefined) return null;
+  const row: CardioRow = { id: r.id, ts: fin(r.ts) ?? 0, date: r.date, type, durMin, distKm, avgHr, kcal };
+  const vo2 = fin(r.vo2);
+  if (vo2 !== undefined) row.vo2 = vo2;
+  return row;
+}
+
+function sanitizeMeasureRow(r: unknown): Measure | null {
+  if (!isObj(r) || !isValidIsoDate(r.date)) return null;
+  const m: Measure = { date: r.date };
+  pickFiniteNums(r, MEASURE_KEYS, m);
+  if (typeof r.note === 'string') m.note = r.note;
+  return m;
+}
+
+function sanitizeWellbeingRow(r: unknown): DailyWellbeing | null {
+  if (!isObj(r) || !isValidIsoDate(r.date)) return null;
+  const w: DailyWellbeing = { date: r.date };
+  pickFiniteNums(r, WELLBEING_KEYS, w);
+  return w;
+}
+
+const RECORD_SANITIZERS: Record<DataKind, (r: unknown) => DataRecord | null> = {
+  strength: sanitizeStrengthRow,
+  cardio: sanitizeCardioRow,
+  measures: sanitizeMeasureRow,
+  wellbeing: sanitizeWellbeingRow,
+};
+
+/** Valida y sanea un registro individual de cualquier colección externa (backup o bucket remoto). */
+export function sanitizeDataRecord(kind: DataKind, raw: unknown): DataRecord | null {
+  return RECORD_SANITIZERS[kind](raw);
+}
+
 /** Valida y sanea un JSON de copia de seguridad antes de escribirlo en IndexedDB. */
 export function parseBackup(jsonText: string): Backup {
   if (jsonText.length > MAX_BACKUP_BYTES) throw new Error('Archivo de backup demasiado grande.');
@@ -244,76 +312,21 @@ export function parseBackup(jsonText: string): Backup {
   try { raw = JSON.parse(jsonText); } catch { throw new Error('El archivo seleccionado no es una copia de seguridad válida.'); }
   if (!isObj(raw) || raw.version !== 1) throw new Error('Formato o versión de backup no compatible.');
 
-  const strength: StrengthRow[] = Array.isArray(raw.strength)
-    ? raw.strength.flatMap((r): StrengthRow[] => {
-        if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date) || typeof r.ref !== 'string' || !r.ref || !Array.isArray(r.sets)) return [];
-        const sets = r.sets.flatMap((s) => {
-          if (!isObj(s)) return [];
-          const w = fin(s.w);
-          const reps = fin(s.r);
-          const restSec = fin(s.restSec);
-          return w !== undefined && w >= 0 && reps !== undefined && reps > 0
-            ? [{ w, r: reps, ...(restSec !== undefined && restSec >= 0 ? { restSec: Math.round(restSec) } : {}) }]
-            : [];
-        });
-        if (!sets.length) return [];
-        const row: StrengthRow = {
-          id: r.id,
-          sessionId: typeof r.sessionId === 'string' && r.sessionId ? r.sessionId : r.date,
-          ts: fin(r.ts) ?? 0,
-          date: r.date,
-          ref: r.ref,
-          sets,
-        };
-        pickFiniteNums(r, STRENGTH_NUM_KEYS, row);
-        if (typeof r.note === 'string') row.note = r.note;
-        if (typeof r.day === 'string' && r.day.trim().length > 0 && r.day.trim().length <= 40 && !UNSAFE_KEYS.has(r.day.trim())) {
-          row.day = r.day.trim();
-        }
-        return [row];
-      })
-    : [];
-
-  const cardio: CardioRow[] = Array.isArray(raw.cardio)
-    ? raw.cardio.flatMap((r): CardioRow[] => {
-        if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date)) return [];
-        const type = fin(r.type); const durMin = fin(r.durMin); const distKm = fin(r.distKm);
-        const avgHr = fin(r.avgHr); const kcal = fin(r.kcal);
-        if (type === undefined || durMin === undefined || distKm === undefined || avgHr === undefined || kcal === undefined) return [];
-        const row: CardioRow = { id: r.id, ts: fin(r.ts) ?? 0, date: r.date, type, durMin, distKm, avgHr, kcal };
-        const vo2 = fin(r.vo2);
-        if (vo2 !== undefined) row.vo2 = vo2;
-        return [row];
-      })
-    : [];
-
-  const measureKeys = MEASURE_FIELDS.map((f) => f.key);
-  const measures: Measure[] = Array.isArray(raw.measures)
-    ? raw.measures.flatMap((r): Measure[] => {
-        if (!isObj(r) || !isValidIsoDate(r.date)) return [];
-        const m: Measure = { date: r.date };
-        pickFiniteNums(r, measureKeys, m);
-        if (typeof r.note === 'string') m.note = r.note;
-        return [m];
-      })
-    : [];
-
-  const wellbeing: DailyWellbeing[] = Array.isArray(raw.wellbeing)
-    ? raw.wellbeing.flatMap((r): DailyWellbeing[] => {
-        if (!isObj(r) || !isValidIsoDate(r.date)) return [];
-        const w: DailyWellbeing = { date: r.date };
-        pickFiniteNums(r, WELLBEING_KEYS, w);
-        return [w];
-      })
-    : [];
+  const collect = <T extends DataRecord>(kind: DataKind, arr: unknown): T[] =>
+    Array.isArray(arr)
+      ? arr.flatMap((item) => {
+          const clean = sanitizeDataRecord(kind, item);
+          return clean ? [clean as T] : [];
+        })
+      : [];
 
   return {
     version: 1,
     exportedAt: typeof raw.exportedAt === 'string' ? raw.exportedAt : new Date().toISOString(),
-    strength,
-    cardio,
-    measures,
-    wellbeing,
+    strength: collect<StrengthRow>('strength', raw.strength),
+    cardio: collect<CardioRow>('cardio', raw.cardio),
+    measures: collect<Measure>('measures', raw.measures),
+    wellbeing: collect<DailyWellbeing>('wellbeing', raw.wellbeing),
     settings: sanitizeSettings(raw.settings),
   };
 }

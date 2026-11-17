@@ -1,13 +1,37 @@
-import { Chart, registerables, type ChartConfiguration } from 'chart.js';
+import {
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  Filler,
+  Legend,
+  LinearScale,
+  LineController,
+  LineElement,
+  PointElement,
+  Tooltip,
+  type ChartConfiguration,
+} from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiSection, CardioRow, DailyWellbeing, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import type { AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
 import type { WizardDraft } from './wizardView';
 
 export { todayIso };
 
-Chart.register(...registerables);
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  BarController,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+  Filler,
+);
 Chart.defaults.color = '#9CA3AF';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.maintainAspectRatio = false;
@@ -37,14 +61,23 @@ export function rangePicker(scope: string, active: RangeKey, custom?: { from?: s
       <div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs">
         <label class="inline-flex items-center gap-1.5 text-gray-400">
           <span>Desde</span>
-          <input type="date" class="inp !w-auto !py-1 !px-2 text-base sm:!text-sm tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${sEsc}" aria-label="Fecha de inicio">
+          <input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${sEsc}" aria-label="Fecha de inicio">
         </label>
         <label class="inline-flex items-center gap-1.5 text-gray-400">
           <span>Hasta</span>
-          <input type="date" class="inp !w-auto !py-1 !px-2 text-base sm:!text-sm tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${sEsc}" aria-label="Fecha de fin">
+          <input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${sEsc}" aria-label="Fecha de fin">
         </label>
       </div>` : ''}
   </div>`;
+}
+
+export interface WorkoutSummary {
+  day: DayName | 'Libre';
+  durationMin: number;
+  exercises: number;
+  sets: number;
+  tonnageKg: number;
+  prNames: string[];
 }
 
 /** Estado global de la aplicación en memoria. */
@@ -61,6 +94,7 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   liveWorkout?: LiveWorkout;
+  workoutSummary?: WorkoutSummary;
   logFilter?: string;
   planTab?: 'routines' | 'exercises';
   aiTab?: number;

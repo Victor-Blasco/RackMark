@@ -159,7 +159,7 @@ export function renderAiReport(S: State): string {
         label: aiStepLabel(s.title),
         dot,
         body: `
-          <h4 class="text-base sm:text-lg font-bold ${titleC}">${esc(s.title)}</h4>
+          <h3 class="text-base sm:text-lg font-bold ${titleC}">${esc(s.title)}</h3>
           <p class="text-[15px] sm:text-base text-gray-200 leading-7">${esc(s.text)}</p>
         `,
       };
@@ -175,7 +175,7 @@ export function renderAiReport(S: State): string {
   return `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-borderDark bg-cardDark p-4 sm:p-5 space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
-        <h3 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h3>
+        <h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>
         <p class="text-xs text-gray-400">Actualizado el ${fmtDate(ai.date)} · modo ${reportTone === 'simple' ? 'Sencillo' : 'Técnico'}${toneChanged ? ` <span class="text-amberGold">(cambiado a ${activeTone === 'simple' ? 'Sencillo' : 'Técnico'} · pulsa Actualizar)</span>` : ''}</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
@@ -187,13 +187,13 @@ export function renderAiReport(S: State): string {
     ${steps.length > 1 ? `
     <div role="tablist" aria-label="Secciones del informe IA" class="flex flex-wrap gap-1.5">
       ${steps.map((st, idx) => `
-        <button role="tab" aria-selected="${idx === activeIdx}" data-act="aiTab" data-arg="${idx}" class="tab whitespace-nowrap min-h-[44px] sm:min-h-[36px] px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-2 ${idx === activeIdx ? 'tab-on' : ''}">
+        <button id="ai-tab-${idx}" role="tab" aria-selected="${idx === activeIdx}" aria-controls="ai-tabpanel" tabindex="${idx === activeIdx ? '0' : '-1'}" data-act="aiTab" data-arg="${idx}" class="tab whitespace-nowrap min-h-[44px] sm:min-h-[36px] px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-2 ${idx === activeIdx ? 'tab-on' : ''}">
           <span class="h-1.5 w-1.5 rounded-full ${st.dot}" aria-hidden="true"></span>
           <span>${esc(st.label)}</span>
         </button>`).join('')}
     </div>` : ''}
 
-    <div role="tabpanel" class="space-y-3 pt-1">
+    <div ${steps.length > 1 ? `id="ai-tabpanel" role="tabpanel" aria-labelledby="ai-tab-${activeIdx}"` : ''} class="space-y-3 pt-1">
       ${current.body}
     </div>
   </section>`;
@@ -283,7 +283,7 @@ function renderLoadControlBlock(
 
   return `<section class="space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <h3 class="text-base font-bold text-white">Control de cargas del bloque</h3>
+      <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
       <button class="btn-primary-sm sm:text-sm" data-act="goLog">+ Registrar entreno</button>
     </div>
     ${mobileHtml}
@@ -380,10 +380,16 @@ export function buildBodyHomeChartConfig(ms: Measure[]): ChartConfiguration<'lin
   };
 }
 
+function homeExercises(S: State): ExStats[] {
+  return [...S.analysis.exercises.values()]
+    .filter((e) => e.day || e.sessions.length > 0)
+    .sort((a, b) => Number(Boolean(b.day)) - Number(Boolean(a.day)) || b.n - a.n);
+}
+
 /** Construye la configuración de progresión del ejercicio seleccionado en Resumen. */
 export function buildHomeExChartConfig(S: State): ChartConfiguration<'line'> | null {
   const bounds = resolveRange(S, 'home');
-  const ex = [...S.analysis.exercises.values()].filter((e) => e.day).sort((a, b) => b.n - a.n);
+  const ex = homeExercises(S);
   const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
   return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, '#3B82F6', S.exMetric ?? 'top') : null;
@@ -426,7 +432,7 @@ export function viewHome(S: State): string {
   const hrForce = mean((hasFilter ? sess : sessAll.filter((x) => x.date >= since28)).map((x) => x.avgHr));
   const showWellbeing = S.wellbeing.length > 0 || wBaseline.length > 0 || hrForce != null;
 
-  const ex = [...S.analysis.exercises.values()].filter((e) => e.day).sort((a, b) => b.n - a.n);
+  const ex = homeExercises(S);
   const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
   const metric: ExMetric = S.exMetric ?? 'top';
@@ -473,7 +479,7 @@ export function viewHome(S: State): string {
     : `<section id="ai-report" aria-label="Informe de IA" class="rounded-2xl border border-borderDark bg-cardDark p-4 sm:p-5 space-y-3.5">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 class="text-base font-extrabold text-white">Informe IA</h3>
+            <h2 class="text-base font-extrabold text-white">Informe IA</h2>
             <p class="text-xs text-gray-400">Resumen personalizado de tus cargas y recuperación.</p>
           </div>
           ${aiToneToggle(tone)}
@@ -549,12 +555,12 @@ export function viewHome(S: State): string {
     <div class="min-w-0 space-y-2 pb-4 border-b border-white/10 lg:pb-0 lg:border-b-0">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 class="text-base font-bold text-white">Evolución de cargas</h3>
+          <h2 class="text-base font-bold text-white">Evolución de cargas</h2>
           <p class="text-xs text-gray-400">Toca un punto para ver repes, e1RM y tonelaje</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 max-w-full">
           ${exMetricToggle(metric)}
-          <select class="inp !w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+          <select class="inp w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
         </div>
       </div>
       ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin sesiones para este ejercicio en ${esc(rangeLabel)}.</p>`}
@@ -562,7 +568,7 @@ export function viewHome(S: State): string {
 
     <div class="min-w-0 space-y-2">
       <div>
-        <h3 class="text-base font-bold text-white">Peso y % de grasa</h3>
+        <h2 class="text-base font-bold text-white">Peso y % de grasa</h2>
         <p class="text-xs text-gray-400">Tendencia media 7 días + registros (${esc(rangeLabel)})</p>
       </div>
       ${mm.length ? `<div class="chart-box"><canvas id="c-home-body"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin mediciones de peso en ${esc(rangeLabel)}.</p>`}
@@ -776,8 +782,8 @@ export function viewDay(S: State, day: DayName): string {
 
   <!-- Escritorio: maestro izquierda + detalle fijo derecha -->
   <div class="hidden lg:grid lg:grid-cols-12 lg:gap-5 xl:gap-6 lg:items-start">
-    <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-label="Ejercicios de ${dEsc}">
-      ${visibleList.map((x) => {
+    <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-orientation="vertical" aria-label="Ejercicios de ${dEsc}">
+      ${visibleList.map((x, idx) => {
         const sel = x.name === desktopCur;
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
         const lastTxt = x.last
@@ -786,7 +792,7 @@ export function viewDay(S: State, day: DayName): string {
           ? `Objetivo ${x.target.sets}×${x.target.reps} · Sin estrenar`
           : `Sin registros en ${esc(rangeLabel)}`;
         const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
-        return `<button role="option" data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
+        return `<button id="day-opt-${idx}" role="option" tabindex="${sel ? '0' : '-1'}" data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">
             <span class="text-sm font-bold text-white truncate">${esc(x.name)}</span>
             <span class="h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}" title="${esc((!hasFilter && isAiFreshForEx(S, S.analysis.exercises.get(x.name) ?? x) ? ai[x.name]?.status : undefined) ?? x.status)}"></span>

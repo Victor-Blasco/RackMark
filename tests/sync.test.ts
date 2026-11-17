@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   bucketIdFor,
   groupRecordsByBucket,
+  hasCustomSettings,
   mergeBucket,
   stripUndefined,
   type RemoteBucket,
 } from '../src/lib/sync';
+import { DEFAULT_SETTINGS } from '../src/lib/seed';
 import type { DailyWellbeing, StrengthRow } from '../src/types';
 
 const row = (id: string, date: string, note?: string): StrengthRow => ({
@@ -190,5 +192,40 @@ describe('cloud sync helpers', () => {
     expect((res.merged.a as StrengthRow).note).toBe('pc reciente');
     expect(res.toPutLocally).toHaveLength(1);
     expect(res.pushRemote).toBe(false);
+  });
+
+  it('descarta registros remotos malformados o con claves peligrosas en mergeBucket', () => {
+    const corrupt = {
+      kind: 'strength',
+      items: {
+        badDate: { id: 'badDate', sessionId: 's', ts: 1, date: 'invalid-date', ref: 'name:X', sets: [{ w: 10, r: 5 }] },
+        badSets: { id: 'badSets', sessionId: 's', ts: 1, date: '2026-03-01', ref: 'name:X', sets: [{ w: -5, r: 0 }] },
+        valid: row('valid', '2026-03-01'),
+      },
+      deleted: {},
+      updatedAt: 2000,
+    } as unknown as RemoteBucket;
+    const res = mergeBucket({
+      kind: 'strength',
+      localItems: {},
+      remoteBucket: corrupt,
+      localDirtyKeys: {},
+      localDeleted: {},
+      now: 3000,
+    });
+    expect(Object.keys(res.merged)).toEqual(['valid']);
+    expect(res.toPutLocally).toHaveLength(1);
+  });
+
+  it('detecta personalización en rutinas y perfil básico en hasCustomSettings', () => {
+    expect(hasCustomSettings(DEFAULT_SETTINGS)).toBe(false);
+    expect(hasCustomSettings({
+      ...DEFAULT_SETTINGS,
+      profile: { ...DEFAULT_SETTINGS.profile, age: 31 },
+    })).toBe(true);
+    expect(hasCustomSettings({
+      ...DEFAULT_SETTINGS,
+      routines: { ...DEFAULT_SETTINGS.routines, Extra: [{ name: 'Dominadas', sets: 3, reps: 8 }] },
+    })).toBe(true);
   });
 });

@@ -93,6 +93,9 @@ export interface Measure {
   bf?: number; weight?: number; muscle?: number; note?: string;
 }
 
+export type DataKind = 'strength' | 'cardio' | 'measures' | 'wellbeing';
+export type DataRecord = StrengthRow | CardioRow | Measure | DailyWellbeing;
+
 export const BASIC_MEASURE_KEYS: (keyof Measure)[] = ['weight', 'bf', 'muscle', 'waist'];
 
 export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }[] = [

@@ -53,7 +53,7 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Press inclinado en multipower', M('Pecho', 'Hombros', 'Tríceps')],
   ['Press de banca inclinado con mancuernas', M('Pecho', 'Hombros', 'Tríceps')],
   ['Press De Banca Plano Con Mancuernas', M('Pecho', 'Tríceps', 'Hombros')],
-  ['Press En Màquina De Discos', M('Pecho', 'Tríceps', 'Hombros')],
+  ['Press En Máquina De Discos', M('Pecho', 'Tríceps', 'Hombros')],
   ['Press Kaz', M('Pecho', 'Tríceps', 'Hombros')],
   ['Aperturas En Máquina', M('Pecho')],
   ['Aperturas En Polea', M('Pecho')],
@@ -95,11 +95,11 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Peso muerto Rumano', M('Isquios', 'Glúteo')],
   ['Peso muerto', M('Isquios', 'Espalda', 'Glúteo')],
   ['Hip Thrust', M('Glúteo', 'Isquios')],
-  ['Adductores', M('Aductores')],
+  ['Aductores', M('Aductores')],
   ['Abductores', M('Glúteo')],
   ['Sóleo Sentado', M('Gemelos')],
   ['Elevaciones de gemelos', M('Gemelos')],
-  ['Abdominales En Maquina', M('Abdomen')],
+  ['Abdominales En Máquina', M('Abdomen')],
   ['Abdominales (sit-ups)', M('Abdomen')],
   ['Abdominales (crunches)', M('Abdomen')],
   ['Elevaciones de piernas', M('Abdomen')],
@@ -109,9 +109,11 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
 export const CATALOG_EXERCISES: string[] = CATALOG_ENTRIES.map(([name]) => name);
 
 /** Músculo principal (1 serie) y secundarios (0,5 series). Clave = nombre normalizado. */
-export const DEFAULT_MUSCLES: Record<string, MuscleMap> = Object.fromEntries(
-  CATALOG_ENTRIES.map(([name, m]) => [norm(name), m])
-);
+export const DEFAULT_MUSCLES: Record<string, MuscleMap> = {
+  ...Object.fromEntries(CATALOG_ENTRIES.map(([name, m]) => [norm(name), m])),
+  // Compatibilidad con registros históricos guardados antes de corregir la grafía
+  adductores: M('Aductores'),
+};
 
 export const MUSCLES = ['Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Cuádriceps', 'Isquios', 'Glúteo', 'Aductores', 'Gemelos', 'Abdomen'];
 export const MUSCLE_DAY: Record<string, 'Push' | 'Pull' | 'Leg' | null> = {
@@ -129,7 +131,7 @@ const PPL_ROUTINES: Settings['routines'] = {
     { name: 'Press De Hombros En Máquina', sets: 2, reps: 8 },
     { name: 'Elevaciones laterales', sets: 3, reps: 12 },
     { name: 'Extensiones de tríceps con barra', sets: 3, reps: 10 },
-    { name: 'Abdominales En Maquina', sets: 3, reps: 10 },
+    { name: 'Abdominales En Máquina', sets: 3, reps: 10 },
   ],
   Pull: [
     { name: 'Jalones al pecho', sets: 2, reps: 10 },
@@ -137,15 +139,15 @@ const PPL_ROUTINES: Settings['routines'] = {
     { name: 'Remo En T', sets: 2, reps: 8 },
     { name: 'Curl de bíceps predicador', sets: 3, reps: 10 },
     { name: 'Curl de bíceps Martillo', sets: 3, reps: 10 },
-    { name: 'Abdominales En Maquina', sets: 3, reps: 10 },
+    { name: 'Abdominales En Máquina', sets: 3, reps: 10 },
   ],
   Leg: [
     { name: 'Curl de piernas sentado', sets: 3, reps: 10 },
     { name: 'Sentadilla Hack', sets: 2, reps: 8 },
     { name: 'Extensiones de piernas', sets: 2, reps: 10 },
-    { name: 'Adductores', sets: 3, reps: 10 },
+    { name: 'Aductores', sets: 3, reps: 10 },
     { name: 'Sóleo Sentado', sets: 3, reps: 10 },
-    { name: 'Abdominales En Maquina', sets: 2, reps: 10 },
+    { name: 'Abdominales En Máquina', sets: 2, reps: 10 },
   ],
 };
 
@@ -185,7 +187,7 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
         { name: 'Sentadilla Hack', sets: 3, reps: 8 },
         { name: 'Curl de piernas sentado', sets: 3, reps: 10 },
         { name: 'Extensiones de piernas', sets: 2, reps: 12 },
-        { name: 'Adductores', sets: 2, reps: 12 },
+        { name: 'Aductores', sets: 2, reps: 12 },
         { name: 'Sóleo Sentado', sets: 3, reps: 12 },
       ],
       'Torso B': [
@@ -202,7 +204,7 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
         { name: 'Curl Femoral De Pie', sets: 2, reps: 12 },
         { name: 'Hip Thrust', sets: 2, reps: 10 },
         { name: 'Elevaciones de gemelos', sets: 3, reps: 12 },
-        { name: 'Abdominales En Maquina', sets: 3, reps: 12 },
+        { name: 'Abdominales En Máquina', sets: 3, reps: 12 },
       ],
     },
     meta: {
@@ -235,7 +237,7 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
         { name: 'Press De Hombros En Máquina', sets: 3, reps: 10 },
         { name: 'Remo En T', sets: 3, reps: 10 },
         { name: 'Curl de piernas sentado', sets: 2, reps: 12 },
-        { name: 'Abdominales En Maquina', sets: 3, reps: 12 },
+        { name: 'Abdominales En Máquina', sets: 3, reps: 12 },
       ],
     },
     meta: {
@@ -266,14 +268,14 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
         { name: 'Curl de piernas sentado', sets: 3, reps: 10 },
         { name: 'Sentadilla Hack', sets: 3, reps: 8 },
         { name: 'Extensiones de piernas', sets: 3, reps: 12 },
-        { name: 'Adductores', sets: 3, reps: 12 },
+        { name: 'Aductores', sets: 3, reps: 12 },
         { name: 'Sóleo Sentado', sets: 3, reps: 12 },
       ],
       Hombro: [
         { name: 'Press De Hombros En Máquina', sets: 3, reps: 8 },
         { name: 'Elevaciones laterales', sets: 4, reps: 12 },
         { name: 'Peck-deck Inverso', sets: 3, reps: 12 },
-        { name: 'Abdominales En Maquina', sets: 3, reps: 12 },
+        { name: 'Abdominales En Máquina', sets: 3, reps: 12 },
       ],
     },
     meta: {

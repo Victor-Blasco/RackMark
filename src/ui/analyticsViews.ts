@@ -198,7 +198,7 @@ export function viewBody(S: State): string {
     <div class="min-w-0 space-y-2"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 class="font-bold text-white">Composición corporal (${comp.length} registros)</h3>${hasCompWeight && hasCompMuscle ? `<div role="group" aria-label="Métrica principal de composición" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]"><button type="button" data-act="setBodyMetric" data-arg="weight" aria-pressed="${activeCompMode === 'weight'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'weight' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Peso</button><button type="button" data-act="setBodyMetric" data-arg="muscle" aria-pressed="${activeCompMode === 'muscle'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'muscle' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Masa muscular</button></div>` : ''}</div>
       ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">${ms.length ? `Sin mediciones en ${esc(bounds.label)}.` : 'Añade tu peso o % de grasa abajo para ver la evolución.'}</p>`}</div>
     <div class="min-w-0 space-y-2"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Medidas con cinta (cm)</h3>
-      <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
+      <select class="inp w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
       ${hasGroupPerim ? `<div class="chart-box"><canvas id="c-perim"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin registros en ${esc(pk.label.toLowerCase())}${hasFilter ? ` (${esc(bounds.label)})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.</p>`}</div>
   </div>
   <form id="f-measure" class="pb-5 border-b border-white/10 space-y-4">
@@ -364,8 +364,8 @@ export function viewAdherence(S: State): string {
     <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">${routines.map((d, idx) => `<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 min-w-[16px] px-0.5 items-center justify-center rounded text-[9px] font-extrabold text-white" style="background:${routineColor(d, S.settings, idx)}">${esc(routineShort(d))}</span>${esc(d)}</span>`).join('')}<span class="inline-flex items-center gap-1"><span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>Otro</span></div></div>
   ${hasSleep || hasSteps ? `
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
-    ${hasSleep ? `<div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Sueño y HRV nocturna (${esc(bounds.label)})</h3><div class="chart-box"><canvas id="c-well-sleep"></canvas></div></div>` : ''}
-    ${hasSteps ? `<div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Pasos diarios · NEAT (${esc(bounds.label)})</h3><div class="chart-box"><canvas id="c-well-steps"></canvas></div></div>` : ''}
+    ${hasSleep ? `<div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Sueño y recuperación · HRV (${esc(bounds.label)})</h3><div class="chart-box"><canvas id="c-well-sleep"></canvas></div></div>` : ''}
+    ${hasSteps ? `<div class="min-w-0 space-y-2"><h3 class="mb-2 font-bold text-white">Pasos diarios (${esc(bounds.label)})</h3><div class="chart-box"><canvas id="c-well-steps"></canvas></div></div>` : ''}
   </div>` : ''}
   ${cardio.length ? `
   <div class="space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Sesiones de cardio (${cardio.length})</h3>
@@ -397,7 +397,8 @@ export function viewCalc(S: State): string {
   return `<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
   <div class="pb-5 border-b border-white/10 lg:border-b-0 lg:pb-0 lg:border-r lg:border-white/10 lg:pr-6 space-y-3">
     <div>
-      <h3 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h3>
+      <h2 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h2>
+      <p class="text-xs text-gray-400 mt-0.5">Estima el peso máximo que podrías mover a 1 repetición y tus zonas de carga según tus series.</p>
       ${usingSampleStrength ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (registra una sesión para cargar tus marcas)</p>` : ''}
     </div>
     ${usingSampleStrength ? '' : `<label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${esc(p.w)}|${esc(p.r)}">${esc(p.n)} (${esc(p.w)} kg × ${esc(p.r)})</option>`).join('')}</select></label>`}
@@ -409,7 +410,7 @@ export function viewCalc(S: State): string {
     <div class="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/10 pb-3 text-sm tabular-nums sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-white/10 sm:text-center" id="calcZones"></div></div>
   <div class="space-y-3">
     <div>
-      <h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% grasa)</h3>
+      <h2 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% grasa)</h2>
       ${usingSampleMeasures
         ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (añade una medida para personalizar)</p>`
         : `<p class="text-xs text-gray-400">Calculado según tu peso y masa libre de grasa (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>`}
@@ -443,7 +444,7 @@ export function runCalc() {
     const tdee = Math.round(bmr * parseFloat((document.getElementById('nuAct') as HTMLSelectElement).value));
     const target = tdee + parseInt((document.getElementById('nuGoal') as HTMLSelectElement).value, 10);
     const p = Math.round(w * 2.2), f = Math.round(w), pk = p * 4, fk = f * 9, ck = Math.max(0, target - pk - fk);
-    document.getElementById('nuOut')!.innerHTML = col('TMB', `${bmr} kcal`) + col('TDEE', `${tdee} kcal`, 'text-electricBlue') + col('Objetivo', `${target} kcal`, 'text-emeraldGreen');
+    document.getElementById('nuOut')!.innerHTML = col('En reposo (TMB)', `${bmr} kcal`) + col('Gasto diario (TDEE)', `${tdee} kcal`, 'text-electricBlue') + col('Calorías objetivo', `${target} kcal`, 'text-emeraldGreen');
     document.getElementById('nuMacros')!.innerHTML = col('Proteína 2,2 g/kg', `${p} g`, 'text-emeraldGreen') + col('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + col('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
   }
 }

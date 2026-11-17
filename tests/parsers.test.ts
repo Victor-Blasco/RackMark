@@ -1,28 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
 import { parseExerciseCsv, parseCustomExerciseCsv, parseSleepCsv, parseStepsCsv, parseVitalityCsv } from '../src/lib/samsung';
 import { parseMeasuresCsv } from '../src/lib/measures';
 import { analyze } from '../src/lib/analysis';
 import { buildPayload } from '../src/lib/ai';
-import { DEFAULT_SETTINGS } from '../src/lib/seed';
+import { DEFAULT_SETTINGS, todayIso } from '../src/lib/seed';
 import type { CardioRow, DailyWellbeing, StrengthRow } from '../src/types';
-
-const EX = 'C:/Users/Victor/Downloads/com.samsung.shealth.exercise.20261111152201.csv';
-const CE = 'C:/Users/Victor/Desktop/samsunghealth_victorblascogar_20261111152201/com.samsung.shealth.exercise.custom_exercise.20261111152201.csv';
-const ME = 'C:/Users/Victor/Downloads/Medidas 11-11-2026.csv';
-const have = existsSync(EX) && existsSync(CE) && existsSync(ME);
 
 describe('parseo de CSV de medidas y cruce de ejercicios Samsung', () => {
   it('parsea medidas', () => {
-    const meCsv = have
-      ? readFileSync(ME, 'utf8')
-      : [
-          'Fecha,Peso (kg),% Grasa (%),Cintura (cm),Columna 1,Sexo,Hombre',
-          '10/11/2026,71.0,15.2,82.0,inicio,Edad,25',
-          '11/11/2026,70.4,14.8,81.5,defi,Altura,167',
-        ].join('\n');
+    const meCsv = [
+      'Fecha,Peso (kg),% Grasa (%),Cintura (cm),Columna 1,Sexo,Hombre',
+      '10/11/2026,71.0,15.2,82.0,inicio,Edad,25',
+      '11/11/2026,70.4,14.8,81.5,defi,Altura,167',
+    ].join('\n');
     const r = parseMeasuresCsv(meCsv);
-    expect(r.measures.length).toBe(have ? 14 : 2);
+    expect(r.measures.length).toBe(2);
     const last = r.measures[r.measures.length - 1];
     expect(last.date).toBe('2026-11-11');
     expect(last.weight).toBe(70.4);
@@ -32,28 +24,24 @@ describe('parseo de CSV de medidas y cruce de ejercicios Samsung', () => {
     expect(r.measures.some((m) => /defi/.test(m.note ?? ''))).toBe(true);
   });
   it('parsea ejercicios y cruza nombres', () => {
-    const ceCsv = have
-      ? readFileSync(CE, 'utf8')
-      : [
-          'com.samsung.shealth.exercise.custom_exercise,1,3',
-          'custom_type,custom_id,custom_name',
-          '0,m7i86bn9_2u6,Curl de bíceps Martillo',
-        ].join('\n');
-    const exCsv = have
-      ? readFileSync(EX, 'utf8')
-      : [
-          'com.samsung.shealth.exercise,7013005,12',
-          'com.samsung.health.exercise.datauuid,com.samsung.health.exercise.start_time,com.samsung.health.exercise.time_offset,com.samsung.health.exercise.exercise_type,com.samsung.health.exercise.duration,com.samsung.health.exercise.distance,com.samsung.health.exercise.mean_heart_rate,com.samsung.health.exercise.calorie,routine_datauuid,custom_id,subset_data',
-          'ex-jal-1,2026-11-09 17:00:00.000,UTC+0100,10018,600000,0,120,80,r1,,"[{""reps"":8,""weight"":90},{""reps"":8,""weight"":90}]"',
-          'ex-mart-1,2026-11-09 17:20:00.000,UTC+0100,0,480000,0,115,60,r1,m7i86bn9_2u6,"[{""reps"":11,""weight"":16},{""reps"":10,""weight"":16},{""reps"":9,""weight"":16}]"',
-          'ex-card-1,2026-11-09 18:00:00.000,UTC+0100,1001,1200000,3200,145,210,,,""',
-        ].join('\n');
+    const ceCsv = [
+      'com.samsung.shealth.exercise.custom_exercise,1,3',
+      'custom_type,custom_id,custom_name',
+      '0,m7i86bn9_2u6,Curl de bíceps Martillo',
+    ].join('\n');
+    const exCsv = [
+      'com.samsung.shealth.exercise,7013005,12',
+      'com.samsung.health.exercise.datauuid,com.samsung.health.exercise.start_time,com.samsung.health.exercise.time_offset,com.samsung.health.exercise.exercise_type,com.samsung.health.exercise.duration,com.samsung.health.exercise.distance,com.samsung.health.exercise.mean_heart_rate,com.samsung.health.exercise.calorie,routine_datauuid,custom_id,subset_data',
+      'ex-jal-1,2026-11-09 17:00:00.000,UTC+0100,10018,600000,0,120,80,r1,,"[{""reps"":8,""weight"":90},{""reps"":8,""weight"":90}]"',
+      'ex-mart-1,2026-11-09 17:20:00.000,UTC+0100,0,480000,0,115,60,r1,m7i86bn9_2u6,"[{""reps"":11,""weight"":16},{""reps"":10,""weight"":16},{""reps"":9,""weight"":16}]"',
+      'ex-card-1,2026-11-09 18:00:00.000,UTC+0100,1001,1200000,3200,145,210,,,""',
+    ].join('\n');
 
     const names = parseCustomExerciseCsv(ceCsv);
     expect(names['m7i86bn9_2u6']).toBe('Curl de bíceps Martillo');
     const { strength, cardio } = parseExerciseCsv(exCsv);
-    expect(strength.length).toBeGreaterThan(have ? 1500 : 1);
-    expect(cardio.length).toBeGreaterThan(have ? 50 : 0);
+    expect(strength.length).toBeGreaterThan(1);
+    expect(cardio.length).toBeGreaterThan(0);
     const s = { ...structuredClone(DEFAULT_SETTINGS), customNames: names };
     const a = analyze(strength, s);
     const jal = a.exercises.get('Jalones al pecho')!;
@@ -157,7 +145,7 @@ describe('frecuencia cardiaca, sueño, pasos, vitalidad e IA', () => {
     expect(vitMap.get('2026-11-10')).toMatchObject({ date: '2026-11-10', energyScore: 87, rhr: 55, hrv: 100 });
 
     const s = structuredClone(DEFAULT_SETTINGS);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
     const rows: StrengthRow[] = [{
       id: 'ex-1', sessionId: 'rout-1', ts: Date.now(), date: today,
       ref: 'name:Jalones al pecho', sets: [{ w: 80, r: 10 }], avgHr: 128, maxHr: 149, durMin: 10, kcal: 96, day: 'Pull',

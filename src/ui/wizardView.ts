@@ -282,7 +282,7 @@ export function renderWizardModal(S: State): string {
         <div>
           ${w.step > 1 ? `<button type="button" class="btn min-h-[44px]" data-act="wizardBack">← Anterior</button>` : `<button type="button" class="btn min-h-[44px]" data-act="wizardSkip">Omitir por ahora</button>`}
         </div>
-        <button type="submit" class="btn-primary min-h-[44px] px-5">
+        <button id="wizardNext" type="submit" class="btn-primary min-h-[44px] px-5">
           ${w.step < 3 ? 'Siguiente →' : `${icon('save', 'h-4 w-4')} Guardar y empezar`}
         </button>
       </div>

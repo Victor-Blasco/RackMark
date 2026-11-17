@@ -238,7 +238,8 @@ export function viewWorkout(S: State): string {
 
     ${prevBannerEx ? `<div class="flex flex-wrap items-center justify-between gap-2 border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl text-xs">
       <span class="font-semibold text-emerald-200">${esc(prevBannerEx.name)} completado · siguiente</span>
-      <div class="flex items-center gap-1.5">
+      <div class="flex flex-wrap items-center gap-1.5">
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10" data-act="liveGoEx" data-arg="${live.lastCompletedExIdx}">Volver</button>
         <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" data-act="liveAddExtraSetPrev">+ Serie extra en ${esc(prevBannerEx.name)}</button>
         <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" data-act="liveClearBanner" aria-label="Cerrar aviso">${icon('close', 'h-4 w-4')}</button>
       </div>
@@ -276,8 +277,8 @@ export function viewWorkout(S: State): string {
           <span data-live-ex-counter="${curIdx}" class="shrink-0 pt-1 text-xs font-bold tabular-nums ${activeCtx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}">${activeCtx.doneInEx}/${ex.sets.length} series</span>
         </div>
 
-        ${activeCtx.prescription || activeCtx.fixedNote ? `<div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-          ${activeCtx.prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(activeCtx.prescription)}</span>${activeCtx.showApplyBtn ? `<button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center px-2 font-bold text-emerald-300 hover:underline" data-act="liveApplyWeight" data-arg="${curIdx}|${activeCtx.targetW}">Aplicar ${activeCtx.targetW} kg</button>` : ''}</div>` : ''}
+        ${activeCtx.prescription || activeCtx.fixedNote || (!activeCtx.hist && ex.sets.every((s) => s.w === 0)) ? `<div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
+          ${activeCtx.prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(activeCtx.prescription)}</span>${activeCtx.showApplyBtn ? `<button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center px-2 font-bold text-emerald-300 hover:underline" data-act="liveApplyWeight" data-arg="${curIdx}|${activeCtx.targetW}">Aplicar ${activeCtx.targetW} kg</button>` : ''}</div>` : `<p class="text-gray-300">Primera vez: empieza con un peso cómodo donde controles bien todas las repeticiones.</p>`}
           ${activeCtx.fixedNote ? `<p class="text-gray-300"><span class="font-semibold text-white">Nota fija:</span> ${esc(activeCtx.fixedNote)}</p>` : ''}
         </div>` : ''}
 
@@ -293,7 +294,7 @@ export function viewWorkout(S: State): string {
           <div class="flex items-center justify-between gap-2 text-xs">
             <span data-live-set-lbl="${curIdx}|${si}" class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
             <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
-              <span title="Descanso real en esta serie">Desc. serie</span>
+              <span title="Descanso real en esta serie (se rellena solo al usar el reloj)">Desc. real</span>
               <input class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
               <span>s</span>
             </label>
@@ -313,7 +314,7 @@ export function viewWorkout(S: State): string {
               decAria: `Restar 2,5 kg serie ${si + 1}`,
               incAria: `Sumar 2,5 kg serie ${si + 1}`,
               btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
-              inpCls: 'inp !h-11 min-w-0 flex-1 !rounded-none !border-x-0 !border-white/15 !bg-transparent !px-1 !py-0 text-center text-base font-bold tabular-nums',
+              inpCls: 'inp-stepper border-white/15 bg-transparent text-base',
             })}
             ${renderStepper({
               label: 'Reps',
@@ -329,7 +330,7 @@ export function viewWorkout(S: State): string {
               decAria: `Restar 1 repetición serie ${si + 1}`,
               incAria: `Sumar 1 repetición serie ${si + 1}`,
               btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
-              inpCls: 'inp !h-11 min-w-0 flex-1 !rounded-none !border-x-0 !border-white/15 !bg-transparent !px-1 !py-0 text-center text-base font-bold tabular-nums',
+              inpCls: 'inp-stepper border-white/15 bg-transparent text-base',
             })}
             <button type="button" data-act="liveToggleSet" data-arg="${curIdx}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Marcar'} serie ${si + 1}" class="flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}" style="touch-action:manipulation">${icon('check', 'h-4 w-4')}<span class="hidden sm:inline">${s.done ? 'Hecha' : 'Listo'}</span></button>
           </div>
@@ -340,7 +341,7 @@ export function viewWorkout(S: State): string {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-3">
             <button type="button" class="inline-flex min-h-[44px] items-center gap-1 text-xs sm:text-sm font-bold text-blue-300 hover:text-white" data-act="liveAddSet" data-arg="${curIdx}">+ Añadir serie</button>
-            ${ex.sets.length > 1 ? `<button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-coralRed/90 hover:text-coralRed" data-act="liveDelSet" data-arg="${curIdx}|${ex.sets.length - 1}">− Quitar serie</button>` : ''}
+            ${ex.sets.length > 1 ? `<button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-rose-300 hover:text-rose-200" data-act="liveDelSet" data-arg="${curIdx}|${ex.sets.length - 1}">− Quitar serie</button>` : ''}
           </div>
         </div>
         <input class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus:outline-none" value="${esc(ex.note)}" data-live-note="${curIdx}" placeholder="Nota de hoy (sensaciones, ajustes)…" aria-label="Nota para ${esc(ex.name)}">

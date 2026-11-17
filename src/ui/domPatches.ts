@@ -2,7 +2,7 @@ import { fmtMMSS, renderRestTimerBar } from './logView';
 import { liveExQuickInfo } from './workoutView';
 import type { State } from './shared';
 
-export const MODAL_DIALOG_SELECTOR = '#confirm-modal, #wizard-modal, #ex-modal, #rt-modal, #note-modal';
+export const MODAL_DIALOG_SELECTOR = '#confirm-modal, #wizard-modal, #ex-modal, #rt-modal, #note-modal, #workout-summary-modal';
 export const MODAL_FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 let lastModalTrigger: { selector: string | null; index: number } | null = null;
@@ -96,16 +96,16 @@ export function updateRestBarDom(root: HTMLElement, S: State): void {
   const until = live?.restUntil;
   const remSec = until != null ? Math.max(0, Math.ceil((until - Date.now()) / 1000)) : 0;
   updateNavRestBadges(root, remSec);
-  const elapsedEl = document.getElementById('live-elapsed');
+  const elapsedEl = root.querySelector<HTMLElement>('#live-elapsed');
   if (elapsedEl && live) {
     const min = Math.max(0, Math.floor((Date.now() - live.startedAt) / 60000));
     elapsedEl.textContent = min < 60 ? `${min} min` : `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}m`;
   }
-  const bar = document.getElementById('rest-timer-bar');
+  const bar = root.querySelector<HTMLElement>('#rest-timer-bar');
   if (!bar || !live) return;
   const nextState = until != null && remSec > 0 ? 'running' : until != null ? 'done' : 'idle';
   if (bar.dataset.restState === 'running' && nextState === 'running') {
-    const valEl = document.getElementById('rest-timer-val');
+    const valEl = root.querySelector<HTMLElement>('#rest-timer-val');
     if (valEl) {
       valEl.textContent = fmtMMSS(remSec);
       return;

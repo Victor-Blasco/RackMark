@@ -217,9 +217,9 @@ export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: 
           <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <button type="button" class="btn !min-h-[44px] !px-3 tabular-nums" data-act="restAdjust" data-arg="-15" aria-label="Restar 15 segundos">−15s</button>
-          <button type="button" class="btn !min-h-[44px] !px-3 tabular-nums" data-act="restAdjust" data-arg="30" aria-label="Sumar 30 segundos">+30s</button>
-          <button type="button" class="btn !min-h-[44px] !border-emeraldGreen/50 !px-3 text-emerald-300" data-act="restStop">Listo</button>
+          <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="-15" aria-label="Restar 15 segundos">−15s</button>
+          <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="30" aria-label="Sumar 30 segundos">+30s</button>
+          <button type="button" class="btn min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" data-act="restStop">Listo</button>
         </div>
       </div>
     </div>`;
@@ -234,8 +234,8 @@ export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: 
           <span class="text-sm font-bold text-emerald-300">¡Descanso listo!</span>
         </div>
         <div class="flex items-center gap-1.5">
-          ${presets.map((p) => `<button type="button" class="btn !min-h-[44px] !px-2.5 text-xs tabular-nums" data-act="restStart" data-arg="${p}">${p}s</button>`).join('')}
-          <button type="button" class="btn !min-h-[44px] !px-3 text-xs" data-act="restStop">Cerrar</button>
+          ${presets.map((p) => `<button type="button" class="btn min-h-[44px] px-2.5 text-xs tabular-nums" data-act="restStart" data-arg="${p}">${p}s</button>`).join('')}
+          <button type="button" class="btn min-h-[44px] px-3 text-xs" data-act="restStop">Cerrar</button>
         </div>
       </div>
     </div>`;
@@ -243,7 +243,7 @@ export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: 
 
   return `
   <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
-    <span class="text-gray-400">Descanso auto: <b class="text-white tabular-nums">${restSec}s</b></span>
+    <span class="text-gray-400">Descanso auto entre series: <b class="text-white tabular-nums">${restSec}s</b></span>
     <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
       ${presets.map((p) => `<button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}" data-act="liveSetRestPreset" data-arg="${p}">${p}s</button>`).join('')}
     </div>
@@ -271,7 +271,7 @@ export interface StepperOpts {
 /** Renderiza un control numérico táctil `− | valor | +` con etiqueta explícita. */
 export function renderStepper(o: StepperOpts): string {
   const btn = o.btnCls ?? 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
-  const inp = o.inpCls ?? 'inp !h-11 min-w-[44px] flex-1 !rounded-none !border-x-0 !px-1 !py-0 text-center font-bold tabular-nums';
+  const inp = o.inpCls ?? 'inp-stepper min-w-[44px]';
   return `<div class="${o.wrapCls ?? 'flex-1 min-w-[132px]'}">
     <span class="${o.labelCls ?? 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400'}">${esc(o.label)}</span>
     <div class="flex items-center">
@@ -308,22 +308,22 @@ export function viewLog(S: State): string {
         <p id="logCountSummary" class="mt-0.5 text-xs sm:text-sm text-gray-300 tabular-nums">${doneExCount}/${draft.exercises.length} ejercicios · ${doneSetsCount}/${totalSetsCount} series marcadas ✓</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn !min-h-[44px] !border-electricBlue/50 text-xs sm:text-sm text-blue-300" data-act="tab" data-arg="workout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno en vivo</button>
-        <a href="#log-add-section" class="btn !min-h-[44px] !py-1.5 text-xs sm:text-sm">+ Añadir ejercicio</a>
-        <button class="btn !min-h-[44px] !py-1.5 text-xs sm:text-sm" data-act="logReset">${icon('reset', 'h-3.5 w-3.5')} Reiniciar</button>
-        <button class="btn-primary !min-h-[44px] !py-1.5" data-act="logSave">${icon('save', 'h-4 w-4')} Guardar (${doneSetsCount})</button>
+        <button type="button" class="btn btn-accent min-h-[44px] text-xs sm:text-sm" data-act="tab" data-arg="workout">${icon('play', 'h-3.5 w-3.5')} Iniciar entreno en vivo</button>
+        <a href="#log-add-section" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm">+ Añadir ejercicio</a>
+        <button class="btn min-h-[44px] py-1.5 text-xs sm:text-sm" data-act="logReset">${icon('reset', 'h-3.5 w-3.5')} Reiniciar</button>
+        <button class="btn-primary min-h-[44px] py-1.5" data-act="logSave">${icon('save', 'h-4 w-4')} Guardar (${doneSetsCount})</button>
       </div>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <label class="flex items-center gap-2 text-xs text-gray-400">
         <span>Fecha</span>
-        <input class="inp !w-auto !min-h-[44px] tabular-nums" type="date" value="${esc(draft.date)}" data-change="logDate" aria-label="Fecha de la sesión">
+        <input class="inp w-auto min-h-[44px] tabular-nums" type="date" value="${esc(draft.date)}" data-change="logDate" aria-label="Fecha de la sesión">
       </label>
       <div class="flex flex-wrap gap-1.5" role="group" aria-label="Rutina de la sesión">
         ${[...routines, 'Libre'].map((d, idx) => {
           const on = draft.day === d;
           const col = d === 'Libre' ? '#9CA3AF' : routineColor(d, S.settings, idx);
-          return `<button data-act="logDay" data-arg="${esc(d)}" aria-pressed="${on}" class="tab !min-h-[44px] ${on ? 'tab-on' : ''}" style="${on && d !== 'Libre' ? `border-color:${col};color:${col}` : ''}">${esc(d)}</button>`;
+          return `<button data-act="logDay" data-arg="${esc(d)}" aria-pressed="${on}" class="tab min-h-[44px] ${on ? 'tab-on' : ''}" style="${on && d !== 'Libre' ? `border-color:${col};color:${col}` : ''}">${esc(d)}</button>`;
         }).join('')}
       </div>
     </div>
@@ -355,7 +355,7 @@ export function viewLog(S: State): string {
 
         ${prescription || fixedNote ? `
         <div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-          ${prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(prescription)}</span>${showApplyBtn ? `<button type="button" class="btn !min-h-[44px] !px-3 !py-1.5 text-xs text-emerald-300 !border-emeraldGreen/40" data-act="logApplyWeight" data-arg="${ei}|${targetW}">Aplicar ${targetW} kg</button>` : ''}</div>` : ''}
+          ${prescription ? `<div class="flex flex-wrap items-center justify-between gap-2 text-gray-200"><span>${esc(prescription)}</span>${showApplyBtn ? `<button type="button" class="btn min-h-[44px] px-3 py-1.5 text-xs text-emerald-300 border-emeraldGreen/40 hover:border-emeraldGreen" data-act="logApplyWeight" data-arg="${ei}|${targetW}">Aplicar ${targetW} kg</button>` : ''}</div>` : ''}
           ${fixedNote ? `<p class="text-gray-300"><span class="font-semibold text-white">Fija:</span> ${esc(fixedNote)}</p>` : ''}
         </div>` : ''}
 
@@ -402,49 +402,49 @@ export function viewLog(S: State): string {
             })}
             <div class="shrink-0">
               <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">Desc (s)</span>
-              <input class="inp !h-11 w-20 !px-2 !py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
+              <input class="inp h-11 w-20 px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
             </div>
             <button type="button" data-act="logToggleSet" data-arg="${ei}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${esc(ex.name)}" class="ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}" style="touch-action:manipulation">${icon('check', 'h-5 w-5')}</button>
           </div>`).join('')}
         </div>
 
         <div class="flex flex-wrap items-center gap-2 pt-1">
-          <button type="button" class="btn !min-h-[44px] !px-3 text-xs sm:text-sm" data-act="logAddSet" data-arg="${ei}">+ Serie</button>
-          ${ex.sets.length > 1 ? `<button type="button" class="btn !min-h-[44px] !px-3 text-xs sm:text-sm text-coralRed" data-act="logDelSet" data-arg="${ei}|${ex.sets.length - 1}" aria-label="Quitar última serie de ${esc(ex.name)}">− Serie</button>` : ''}
-          <input class="inp !min-h-[44px] min-w-[160px] flex-1 !py-1.5" value="${esc(ex.note)}" data-log-note="${ei}" placeholder="Nota (RIR, sensaciones…)" aria-label="Nota de sesión para ${esc(ex.name)}">
-          <button type="button" class="btn !min-h-[44px] !px-2.5 text-xs" data-act="editNote" data-arg="${esc(ex.name)}" aria-label="Editar nota biomecánica fija de ${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5')} Fija</button>
+          <button type="button" class="btn min-h-[44px] px-3 text-xs sm:text-sm" data-act="logAddSet" data-arg="${ei}">+ Serie</button>
+          ${ex.sets.length > 1 ? `<button type="button" class="btn min-h-[44px] px-3 text-xs sm:text-sm text-coralRed" data-act="logDelSet" data-arg="${ei}|${ex.sets.length - 1}" aria-label="Quitar última serie de ${esc(ex.name)}">− Serie</button>` : ''}
+          <input class="inp min-h-[44px] min-w-[160px] flex-1 py-1.5" value="${esc(ex.note)}" data-log-note="${ei}" placeholder="Nota (RIR, sensaciones…)" aria-label="Nota de sesión para ${esc(ex.name)}">
+          <button type="button" class="btn min-h-[44px] px-2.5 text-xs" data-act="editNote" data-arg="${esc(ex.name)}" aria-label="Editar nota biomecánica fija de ${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5')} Fija</button>
         </div>
       </div>`;
     }).join('')}
   </div>` : empty('No hay ejercicios en el borrador. Elige una rutina arriba o añade ejercicios abajo.')}
 
   <div class="flex flex-wrap items-center justify-between gap-2">
-    <button class="btn !min-h-[44px]" data-act="logReset">${icon('reset', 'h-4 w-4')} Reiniciar borrador</button>
-    <button class="btn-primary !min-h-[44px] !px-5 !py-2.5" data-act="logSave">${icon('save', 'h-4 w-4')} Guardar sesión (${doneSetsCount} series)</button>
+    <button class="btn min-h-[44px]" data-act="logReset">${icon('reset', 'h-4 w-4')} Reiniciar borrador</button>
+    <button class="btn-primary min-h-[44px] px-5 py-2.5" data-act="logSave">${icon('save', 'h-4 w-4')} Guardar sesión (${doneSetsCount} series)</button>
   </div>
 
   <section id="log-add-section" class="space-y-2.5 pt-4 border-t border-white/10">
     <div class="flex flex-wrap items-center justify-between gap-2">
       <h3 class="text-sm font-bold text-white">Añadir ejercicio a la sesión</h3>
-      <button class="btn !min-h-[44px] !border-electricBlue/40 !py-1.5 text-xs sm:text-sm text-blue-300" data-act="openExModalLog">+ Crear ejercicio nuevo</button>
+      <button class="btn btn-accent min-h-[44px] py-1.5 text-xs sm:text-sm" data-act="openExModalLog">+ Crear ejercicio nuevo</button>
     </div>
     <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
       <div class="flex flex-wrap gap-2">
-        <select id="logAddSelect" class="inp !min-h-[44px] min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
+        <select id="logAddSelect" class="inp min-h-[44px] min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
           <option value="">Selecciona cualquier ejercicio (${avail.length})…</option>
           ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
         </select>
-        <button class="btn !min-h-[44px]" data-act="logAddEx">+ Añadir de la lista</button>
+        <button class="btn min-h-[44px]" data-act="logAddEx">+ Añadir de la lista</button>
       </div>
       <div class="flex flex-wrap gap-2">
-        <input id="logNewExName" class="inp !min-h-[44px] min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo">
-        <button class="btn !min-h-[44px]" data-act="logAddCustomEx">+ Añadir rápido</button>
+        <input id="logNewExName" class="inp min-h-[44px] min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo">
+        <button class="btn min-h-[44px]" data-act="logAddCustomEx">+ Añadir rápido</button>
       </div>
     </div>
     ${quick.length ? `
     <div class="flex flex-wrap items-center gap-1.5 pt-1">
       <span class="text-xs text-gray-400">Sugeridos:</span>
-      ${quick.map((n) => `<button data-act="logAddQuick" data-arg="${esc(n)}" class="btn !min-h-[44px] !rounded-full !px-3.5 !py-1.5 text-xs font-normal text-gray-200">+ ${esc(n)}</button>`).join('')}
+      ${quick.map((n) => `<button data-act="logAddQuick" data-arg="${esc(n)}" class="btn min-h-[44px] rounded-full px-3.5 py-1.5 text-xs font-normal text-gray-200">+ ${esc(n)}</button>`).join('')}
     </div>` : ''}
   </section>
 
@@ -463,8 +463,8 @@ export function viewLog(S: State): string {
             <div class="text-xs text-gray-400 truncate" title="${esc(s.exercises.join(', '))}">${esc(s.exercises.join(', '))}</div>
           </div>
           <div class="flex shrink-0 items-center gap-1.5">
-            <button class="btn !min-h-[44px] !px-3 !py-2 text-xs" data-act="logEditSession" data-arg="${esc(s.id)}|${esc(s.date)}|${esc(s.day ?? 'Libre')}">${icon('edit', 'h-3.5 w-3.5')} <span class="hidden sm:inline">Cargar / Editar</span><span class="sm:hidden">Editar</span></button>
-            <button class="btn !min-h-[44px] min-w-[44px] !border-coralRed/50 !px-2.5 !py-2 text-xs text-coralRed" data-act="logDelSession" data-arg="${esc(s.id)}|${esc(s.date)}" aria-label="Borrar sesión del ${fmtDate(s.date)}" title="Borrar sesión">${icon('trash', 'h-3.5 w-3.5')}</button>
+            <button class="btn min-h-[44px] px-3 py-2 text-xs" data-act="logEditSession" data-arg="${esc(s.id)}|${esc(s.date)}|${esc(s.day ?? 'Libre')}">${icon('edit', 'h-3.5 w-3.5')} <span class="hidden sm:inline">Cargar / Editar</span><span class="sm:hidden">Editar</span></button>
+            <button class="btn btn-danger min-h-[44px] min-w-[44px] px-2.5 py-2 text-xs" data-act="logDelSession" data-arg="${esc(s.id)}|${esc(s.date)}" aria-label="Borrar sesión del ${fmtDate(s.date)}" title="Borrar sesión">${icon('trash', 'h-3.5 w-3.5')}</button>
           </div>
         </div>`).join('')}
     </div>
