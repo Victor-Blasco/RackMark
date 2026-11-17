@@ -36,7 +36,7 @@ export function initLiveWorkout(S: State, day: DayName | 'Libre'): LiveWorkout {
     curIdx: 0,
     exercises,
     targetRestSec: S.liveWorkout?.targetRestSec ?? 90,
-    ...(day === 'Libre' ? { pickerMode: 'add' as const } : {}),
+    ...(exercises.length === 0 ? { pickerMode: 'add' as const } : {}),
   };
 }
 
@@ -259,6 +259,11 @@ export function viewWorkout(S: State): string {
 
     ${renderPickerPanel(S, live, ex)}
 
+    ${!ex && !live.pickerMode ? `<div class="rounded-2xl border border-white/10 bg-cardDark p-5 text-center space-y-3">
+      <p class="text-sm text-gray-300">Esta rutina todavía no tiene ejercicios añadidos.</p>
+      <button type="button" class="btn-primary min-h-[44px]" data-act="liveOpenPicker" data-arg="add">+ Añadir primer ejercicio al entreno</button>
+    </div>` : ''}
+
     ${ex && activeCtx ? `<section aria-label="Ejercicio actual: ${esc(ex.name)}" class="space-y-3 pt-1">
       <div class="space-y-1.5">
         <div class="flex items-start justify-between gap-2">
@@ -279,7 +284,7 @@ export function viewWorkout(S: State): string {
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-xs font-semibold text-gray-300">
           <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="swap">${icon('refresh', 'h-3.5 w-3.5 text-blue-300')} Cambiar ejercicio</button>
           <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="add">${icon('plus', 'h-3.5 w-3.5 text-blue-300')} Añadir ejercicio</button>
-          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="editNote" data-arg="${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5 text-gray-400')} Nota fija</button>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="editNote" data-arg="${esc(ex.name)}">${icon('edit', 'h-3.5 w-3.5 text-gray-400')} Nota permanente</button>
         </div>
       </div>
 
@@ -288,7 +293,7 @@ export function viewWorkout(S: State): string {
           <div class="flex items-center justify-between gap-2 text-xs">
             <span data-live-set-lbl="${curIdx}|${si}" class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
             <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
-              <span>Descanso</span>
+              <span title="Descanso real en esta serie">Desc. serie</span>
               <input class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
               <span>s</span>
             </label>
@@ -338,7 +343,7 @@ export function viewWorkout(S: State): string {
             ${ex.sets.length > 1 ? `<button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-coralRed/90 hover:text-coralRed" data-act="liveDelSet" data-arg="${curIdx}|${ex.sets.length - 1}">− Quitar serie</button>` : ''}
           </div>
         </div>
-        <input class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus:outline-none" value="${esc(ex.note)}" data-live-note="${curIdx}" placeholder="Nota rápida del ejercicio…" aria-label="Nota para ${esc(ex.name)}">
+        <input class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus:outline-none" value="${esc(ex.note)}" data-live-note="${curIdx}" placeholder="Nota de hoy (sensaciones, ajustes)…" aria-label="Nota para ${esc(ex.name)}">
       </div>
     </section>` : ''}
 

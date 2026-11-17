@@ -15,9 +15,9 @@ export function viewData(S: State): string {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h2 class="text-lg font-extrabold text-white">Datos e importación</h2>
-        <p class="text-xs text-gray-400">Importa tus exportaciones, genera copias de seguridad JSON y gestiona el almacenamiento local.</p>
+        <p class="text-xs text-gray-400">Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados.</p>
       </div>
-      ${unmappedCount > 0 ? `<button class="btn-sm border-amberGold/50 text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios Samsung sin nombre → Asignar</button>` : ''}
+      ${unmappedCount > 0 ? `<button class="btn-sm border-amberGold/50 text-amberGold" data-act="openUnmapped">${unmappedCount} ejercicios importados sin nombre → Asignar</button>` : ''}
     </div>
     <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-2">
       <div><span class="block text-xs text-gray-400">Fuerza</span><span class="tabular-nums text-xl font-extrabold text-white">${S.strength.length}</span><span class="block text-xs text-gray-400">ejercicios registrados</span></div>
@@ -31,7 +31,7 @@ export function viewData(S: State): string {
     <div class="space-y-3 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
       <div>
         <h3 class="font-bold text-white">Samsung Health</h3>
-        <p class="text-xs text-gray-400 mt-0.5">Sube el ZIP completo o archivos CSV sueltos (exercise, custom_exercise, sleep, pedometer/step_daily_trend, vitality_score). Reimportar es seguro: se deduplica automáticamente.</p>
+        <p class="text-xs text-gray-400 mt-0.5">Sube el archivo ZIP o los CSV exportados desde Samsung Health. Puedes volver a importar cuando quieras sin duplicar sesiones.</p>
       </div>
       <label class="block"><span class="lbl">Archivo ZIP o CSV (máx. 50 MB por archivo)</span>
         <input class="inp" type="file" accept=".zip,.csv" multiple data-file="samsung"></label>
@@ -52,12 +52,12 @@ export function viewData(S: State): string {
 
   <div class="space-y-4 pb-5 border-b border-white/10">
     <div>
-      <h3 class="font-bold text-white">Copia de seguridad completa (JSON)</h3>
-      <p class="text-xs text-gray-400 mt-0.5">Descarga o restaura todos tus entrenamientos, medidas, rutinas y preferencias en un único archivo JSON verificado.</p>
+      <h3 class="font-bold text-white">Copia de seguridad completa</h3>
+      <p class="text-xs text-gray-400 mt-0.5">Descarga o restaura todos tus entrenamientos, medidas, rutinas y ajustes en un archivo de respaldo.</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <button class="btn" data-act="export">${icon('download', 'h-4 w-4')} Exportar copia JSON</button>
-      <label class="btn cursor-pointer">${icon('upload', 'h-4 w-4')} Restaurar copia JSON<input class="sr-only" type="file" accept=".json" data-file="backup"></label>
+      <button class="btn" data-act="export">${icon('download', 'h-4 w-4')} Descargar copia de seguridad</button>
+      <label class="btn cursor-pointer">${icon('upload', 'h-4 w-4')} Restaurar copia de seguridad<input class="sr-only" type="file" accept=".json" data-file="backup"></label>
     </div>
   </div>
 

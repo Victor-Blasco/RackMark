@@ -1042,3 +1042,54 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
     expect(logHtml).toContain('text-base sm:text-xs font-semibold tabular-nums');
   });
 });
+
+describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', () => {
+  it('dirige el Día 1 a En vivo, muestra ejercicios planificados en Rutinas y abre selector si la rutina está vacía', () => {
+    const settings = sanitizeSettings({
+      routines: {
+        ...DEFAULT_SETTINGS.routines,
+        Vacía: [],
+      },
+      profile: { sex: 'hombre', age: 28, height: 178, goal: 'cut', daysPerWeek: 3 },
+    });
+    const emptyState: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    try {
+      const homeHtml = viewHome(emptyState);
+      expect(homeHtml).toContain('data-act="startWorkout">+ Empezar primer entreno hoy');
+      expect(homeHtml).toContain('data-act="startWorkout" data-arg="Push"');
+
+      const dayHtml = viewDay(emptyState, 'Push');
+      expect(dayHtml).toContain('Press horizontal en máquina');
+      expect(dayHtml).toContain('Pendiente de estrenar');
+      expect(dayHtml).toContain('Sin estrenar');
+      expect(dayHtml).not.toContain('No hay ejercicios con datos para esta rutina');
+
+      const liveEmpty = initLiveWorkout(emptyState, 'Vacía');
+      expect(liveEmpty.pickerMode).toBe('add');
+
+      const settingsHtml = viewSettings(emptyState);
+      expect(settingsHtml).not.toContain('VITE_RECAPTCHA_SITE_KEY');
+      expect(settingsHtml).not.toContain('App Check');
+      expect(settingsHtml).not.toContain('Firebase AI Logic');
+      expect(settingsHtml).toContain('2 días');
+
+      const calcHtml = viewCalc({ ...emptyState, tab: 'calc' });
+      expect(calcHtml).toContain('value="1.55" selected');
+      expect(calcHtml).toContain('value="-350" selected');
+    } finally {
+      resetCharts();
+    }
+  });
+});

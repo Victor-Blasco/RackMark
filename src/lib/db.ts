@@ -241,7 +241,7 @@ export function sanitizeSettings(raw: unknown): Settings {
 export function parseBackup(jsonText: string): Backup {
   if (jsonText.length > MAX_BACKUP_BYTES) throw new Error('Archivo de backup demasiado grande.');
   let raw: unknown;
-  try { raw = JSON.parse(jsonText); } catch { throw new Error('El archivo no contiene un JSON válido.'); }
+  try { raw = JSON.parse(jsonText); } catch { throw new Error('El archivo seleccionado no es una copia de seguridad válida.'); }
   if (!isObj(raw) || raw.version !== 1) throw new Error('Formato o versión de backup no compatible.');
 
   const strength: StrengthRow[] = Array.isArray(raw.strength)

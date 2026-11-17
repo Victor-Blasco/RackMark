@@ -3,6 +3,7 @@ import { epley, isoWeekStart, weeklyVolume } from '../lib/analysis';
 import { MUSCLES } from '../lib/seed';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
 import { icon } from './icons';
+import { daysActivityFactor, goalCalorieDelta } from './wizardView';
 import {
   chart,
   esc,
@@ -196,7 +197,7 @@ export function viewBody(S: State): string {
   <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
     <div class="min-w-0 space-y-2"><div class="mb-2 flex flex-wrap items-center justify-between gap-2"><h3 class="font-bold text-white">Composición corporal (${comp.length} registros)</h3>${hasCompWeight && hasCompMuscle ? `<div role="group" aria-label="Métrica principal de composición" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]"><button type="button" data-act="setBodyMetric" data-arg="weight" aria-pressed="${activeCompMode === 'weight'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'weight' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Peso</button><button type="button" data-act="setBodyMetric" data-arg="muscle" aria-pressed="${activeCompMode === 'muscle'}" class="inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${activeCompMode === 'muscle' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">Masa muscular</button></div>` : ''}</div>
       ${comp.length ? `<div class="chart-box"><canvas id="c-comp"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">${ms.length ? `Sin mediciones en ${esc(bounds.label)}.` : 'Añade tu peso o % de grasa abajo para ver la evolución.'}</p>`}</div>
-    <div class="min-w-0 space-y-2"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Perímetros (cm)</h3>
+    <div class="min-w-0 space-y-2"><div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-bold text-white">Medidas con cinta (cm)</h3>
       <select class="inp !w-auto" data-change="selPerim" aria-label="Grupo de perímetros">${Object.entries(PERIM).map(([k, v]) => `<option value="${k}" ${k === S.perimeter ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
       ${hasGroupPerim ? `<div class="chart-box"><canvas id="c-perim"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin registros en ${esc(pk.label.toLowerCase())}${hasFilter ? ` (${esc(bounds.label)})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.</p>`}</div>
   </div>
@@ -236,7 +237,7 @@ export function viewBody(S: State): string {
       <button class="btn-primary" type="submit">${icon('save', 'h-4 w-4')} ${currentEntry ? 'Actualizar medición' : 'Guardar medición'}</button>
     </div>
   </form>
-  <div class="space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Registro histórico (N = ${msInRange.length}${hasFilter ? ` de ${ms.length}` : ''})</h3>
+  <div class="space-y-2 overflow-x-auto"><h3 class="mb-2 font-bold text-white">Historial de mediciones (${msInRange.length}${hasFilter ? ` de ${ms.length}` : ''})</h3>
     ${msInRange.length ? `<table class="w-full text-right text-sm"><thead class="text-xs uppercase text-gray-400"><tr><th class="py-2 pr-3 text-left">Fecha</th>${tableCols.map((f) => `<th class="px-2">${f.label}</th>`).join('')}<th class="pl-2"></th></tr></thead><tbody>
     ${[...msInRange].reverse().map((m) => `<tr class="border-t border-gray-800 tabular-nums ${m.date === activeDate ? 'bg-electricBlue/10' : ''}"><td class="py-2 pr-3 text-left font-medium text-gray-200 whitespace-nowrap">${fmtDate(m.date)}${m.note ? `<div class="text-xs font-normal text-amberGold">${esc(m.note)}</div>` : ''}</td>${tableCols.map((f) => `<td class="px-2 font-medium text-gray-100">${esc(m[f.key] ?? '')}</td>`).join('')}<td class="pl-2 whitespace-nowrap"><button class="icon-btn text-blue-300 hover:bg-electricBlue/15" data-act="editMeasure" data-arg="${esc(m.date)}" aria-label="Editar medición del ${fmtDate(m.date)}">${icon('edit', 'h-3.5 w-3.5')}</button><button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="delMeasure" data-arg="${esc(m.date)}" aria-label="Borrar medición del ${fmtDate(m.date)}">${icon('close', 'h-3.5 w-3.5')}</button></td></tr>`).join('')}
     </tbody></table>` : `<p class="py-6 text-center text-sm text-gray-400">${ms.length ? `No hay mediciones en ${esc(bounds.label)}.` : 'Todavía no hay mediciones guardadas.'}</p>`}</div>`;
@@ -391,31 +392,31 @@ export function viewCalc(S: State): string {
   const cW = S.calcDraft?.w ?? String(first.w);
   const cR = S.calcDraft?.r ?? String(first.r);
   const cRir = S.calcDraft?.rir ?? '1';
-  const cAct = S.calcDraft?.act ?? '1.65';
-  const cGoal = S.calcDraft?.goal ?? '225';
+  const cAct = S.calcDraft?.act ?? (S.settings.profile.daysPerWeek ? daysActivityFactor(S.settings.profile.daysPerWeek) : '1.65');
+  const cGoal = S.calcDraft?.goal ?? (S.settings.profile.goal ? goalCalorieDelta(S.settings.profile.goal) : '225');
   return `<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
   <div class="pb-5 border-b border-white/10 lg:border-b-0 lg:pb-0 lg:border-r lg:border-white/10 lg:pr-6 space-y-3">
     <div>
-      <h3 class="font-bold text-white">Calculadora de 1RM</h3>
+      <h3 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h3>
       ${usingSampleStrength ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (registra una sesión para cargar tus marcas)</p>` : ''}
     </div>
     ${usingSampleStrength ? '' : `<label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${esc(p.w)}|${esc(p.r)}">${esc(p.n)} (${esc(p.w)} kg × ${esc(p.r)})</option>`).join('')}</select></label>`}
     <div class="grid grid-cols-3 gap-3">
       <label class="block"><span class="lbl">Peso (kg)</span><input id="calcW" class="inp tabular-nums font-medium" type="number" step="0.5" value="${esc(cW)}" data-input="calc"></label>
       <label class="block"><span class="lbl">Reps</span><input id="calcR" class="inp tabular-nums font-medium" type="number" min="1" max="30" value="${esc(cR)}" data-input="calc"></label>
-      <label class="block"><span class="lbl">RIR (0-5)</span><input id="calcRir" class="inp tabular-nums font-medium" type="number" min="0" max="5" value="${esc(cRir)}" data-input="calc"></label></div>
+      <label class="block"><span class="lbl">Reps en reserva (RIR 0-5)</span><input id="calcRir" class="inp tabular-nums font-medium" type="number" min="0" max="5" value="${esc(cRir)}" data-input="calc"></label></div>
     <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="calcOut"></div>
     <div class="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/10 pb-3 text-sm tabular-nums sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-white/10 sm:text-center" id="calcZones"></div></div>
   <div class="space-y-3">
     <div>
-      <h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% BF)</h3>
+      <h3 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% grasa)</h3>
       ${usingSampleMeasures
         ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (añade una medida para personalizar)</p>`
-        : `<p class="text-xs text-gray-400">Katch-McArdle con tu masa libre de grasa real (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>`}
+        : `<p class="text-xs text-gray-400">Calculado según tu peso y masa libre de grasa (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>`}
     </div>
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55" ${cAct === '1.55' ? 'selected' : ''}>Fuerza 3-4 días (×1,55)</option><option value="1.65" ${cAct === '1.65' ? 'selected' : ''}>Fuerza 5-6 días + pasos (×1,65)</option><option value="1.75" ${cAct === '1.75' ? 'selected' : ''}>Intenso (×1,75)</option></select></label>
-      <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0" ${cGoal === '0' ? 'selected' : ''}>Mantenimiento (+0)</option><option value="225" ${cGoal === '225' ? 'selected' : ''}>Lean bulk (+225)</option><option value="350" ${cGoal === '350' ? 'selected' : ''}>Superávit estándar (+350)</option><option value="-350" ${cGoal === '-350' ? 'selected' : ''}>Mini-cut (−350)</option></select></label></div>
+      <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0" ${cGoal === '0' ? 'selected' : ''}>Mantenimiento (0 kcal)</option><option value="225" ${cGoal === '225' ? 'selected' : ''}>Ganancia limpia (+225 kcal)</option><option value="350" ${cGoal === '350' ? 'selected' : ''}>Superávit estándar (+350 kcal)</option><option value="-350" ${cGoal === '-350' ? 'selected' : ''}>Definición suave (−350 kcal)</option></select></label></div>
     <input type="hidden" id="nuW" value="${w}"><input type="hidden" id="nuBf" value="${bf}">
     <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="nuOut"></div>
     <div class="grid grid-cols-3 divide-x divide-white/10 py-1 text-center" id="nuMacros"></div></div></div>`;

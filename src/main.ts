@@ -188,7 +188,7 @@ function render() {
   const selEnd = activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement ? activeEl.selectionEnd : null;
   resetCharts();
   const html = view();
-  const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'sin datos importados';
+  const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'Sin sesiones aún';
   const liveCount = S.liveWorkout?.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0) ?? 0;
   const draftCount = S.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
   const unsynced = hasUnsyncedChanges();
@@ -270,12 +270,18 @@ async function runSync(showToast = false) {
     if (changed) {
       await reload();
     }
-    if (maybeOpenInitialWizard() || changed) {
+    const wizardDismissed = Boolean(
+      S.wizard && (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
+    );
+    if (wizardDismissed) {
+      S.wizard = undefined;
+    }
+    if (maybeOpenInitialWizard() || changed || wizardDismissed) {
       render();
     }
     if (showToast) {
       const msg = res.pulledItems || res.pushedBuckets || res.deletedItems || res.settingsDirection !== 'none'
-        ? `Sincronizado (${res.pushedBuckets} subidos, ${res.pulledItems} descargados).`
+        ? 'Datos sincronizados con tu cuenta.'
         : 'Todo al día con la nube.';
       toast(msg);
     }
@@ -584,7 +590,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   wizardPickDays: (el) => {
     if (!S.wizard) return;
     const d = Number(arg(el));
-    if (d === 3 || d === 4 || d === 5 || d === 6) {
+    if (d === 2 || d === 3 || d === 4 || d === 5 || d === 6) {
       S.wizard.daysPerWeek = d;
       S.wizard.templateKey = recommendTemplate(d, S.wizard.experience);
       render();
@@ -1259,7 +1265,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       hasUnsyncedChanges() &&
       !(await askConfirm({
         title: 'Cerrar sesión con cambios locales',
-        message: 'Hay cambios locales sin subir a la nube. Si cierras sesión se limpiará la caché local de este dispositivo.',
+        message: 'Hay cambios locales sin subir a la nube. Si cierras sesión se limpiarán los datos guardados en este dispositivo.',
         confirmLabel: 'Cerrar sesión',
         danger: true,
       }))
@@ -1277,7 +1283,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.lastSync = undefined;
     await reload();
     render();
-    toast('Sesión cerrada y caché local limpiada.');
+    toast('Sesión cerrada en este dispositivo.');
   },
   export: async () => download(`gymapp-backup-${todayIso()}.json`, JSON.stringify(await exportBackup()), 'application/json'),
   wipe: async () => {
@@ -1659,7 +1665,7 @@ root.addEventListener('change', async (e) => {
         `${imp.wellbeing.length} días de bienestar`,
         `${Object.keys(imp.customNames).length} nombres`,
       ];
-      toast(`Importado: ${parts.join(', ')}.${!Object.keys(S.settings.customNames).length && imp.strength.length ? ' Falta custom_exercise.csv para los nombres.' : ''}`);
+      toast(`Importado: ${parts.join(', ')}.${!Object.keys(S.settings.customNames).length && imp.strength.length ? ' Faltaba el archivo de nombres personalizados en la exportación.' : ''}`);
     } else if (kind === 'measures') {
       if (files[0].size > MAX_SINGLE_FILE_BYTES) throw new Error('Archivo demasiado grande (máx. 50 MB).');
       const m = parseMeasuresCsv(await files[0].text());

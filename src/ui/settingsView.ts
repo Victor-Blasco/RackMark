@@ -1,4 +1,3 @@
-import { isAppCheckConfigured } from '../lib/firebase';
 import type { AiTone } from '../types';
 import { icon } from './icons';
 import { esc, fmtDate, type State } from './shared';
@@ -22,7 +21,7 @@ export function viewSettings(S: State): string {
         <div class="flex items-start gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-electricBlue text-sm font-extrabold text-white shadow-sm">${esc(initial)}</div>
           <div class="min-w-0 flex-1">
-            <h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
+            <h3 class="font-bold text-white">Cuenta y sincronización</h3>
             <p class="text-sm text-gray-200 truncate mt-0.5">${esc(S.user.displayName ?? 'Usuario')}</p>
             <p class="text-xs text-gray-400 truncate">${esc(S.user.email ?? '')}</p>
             <p class="text-xs text-emerald-400 mt-1">${S.syncing ? 'Sincronizando…' : syncWhen ? `Última sincronización: ${esc(syncWhen)}` : 'Conectado'}</p>
@@ -35,7 +34,7 @@ export function viewSettings(S: State): string {
       </div>`
     : `<div class="flex flex-col justify-between gap-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
         <div class="space-y-1.5">
-          <h3 class="font-bold text-white">Cuenta y nube (Firebase)</h3>
+          <h3 class="font-bold text-white">Cuenta y sincronización</h3>
           <p class="text-xs text-gray-400 leading-relaxed">Inicia sesión con Google para sincronizar tus entrenamientos, medidas, sueño/FC y preferencias entre dispositivos, además de activar los informes de IA.</p>
         </div>
         <div>
@@ -63,7 +62,7 @@ export function viewSettings(S: State): string {
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 class="font-bold text-white">Perfil del atleta</h3>
-          <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético (Katch-McArdle) y contextualizar el informe de IA.</p>
+          <p class="text-xs text-gray-400 mt-0.5">Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.</p>
         </div>
         <button type="button" class="btn-sm btn-accent" data-act="openWizard">Asistente inicial</button>
       </div>
@@ -77,7 +76,7 @@ export function viewSettings(S: State): string {
           <option value="" ${!s.profile.goal ? 'selected' : ''}>Sin definir</option>
           <option value="bulk" ${s.profile.goal === 'bulk' ? 'selected' : ''}>Ganar músculo</option>
           <option value="cut" ${s.profile.goal === 'cut' ? 'selected' : ''}>Definición</option>
-          <option value="recomp" ${s.profile.goal === 'recomp' ? 'selected' : ''}>Recomposición</option>
+          <option value="recomp" ${s.profile.goal === 'recomp' ? 'selected' : ''}>Perder grasa y ganar músculo</option>
           <option value="strength" ${s.profile.goal === 'strength' ? 'selected' : ''}>Fuerza máxima</option>
         </select></label>
         <label class="block"><span class="lbl">Experiencia</span><select class="inp" data-change="pfExp">
@@ -88,7 +87,7 @@ export function viewSettings(S: State): string {
         </select></label>
         <label class="block"><span class="lbl">Días / semana</span><select class="inp tabular-nums" data-change="pfDays">
           <option value="" ${!s.profile.daysPerWeek ? 'selected' : ''}>Sin definir</option>
-          ${[3, 4, 5, 6].map((d) => `<option value="${d}" ${s.profile.daysPerWeek === d ? 'selected' : ''}>${d} días</option>`).join('')}
+          ${[2, 3, 4, 5, 6].map((d) => `<option value="${d}" ${s.profile.daysPerWeek === d ? 'selected' : ''}>${d} días</option>`).join('')}
         </select></label>
       </div>
     </div>
@@ -98,9 +97,9 @@ export function viewSettings(S: State): string {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 class="font-bold text-white">Preferencias del Coach IA</h3>
-        <p class="text-xs text-gray-400 mt-0.5">Elige con qué profundidad y vocabulario redacta Gemini tus resúmenes y recomendaciones.</p>
+        <p class="text-xs text-gray-400 mt-0.5">Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.</p>
       </div>
-      <span class="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${S.user ? 'border-emeraldGreen/40 bg-emeraldGreen/10 text-emerald-300' : 'border-amberGold/40 bg-amberGold/10 text-amber-300'}">${S.user ? 'Conectado · Firebase AI Logic' : 'Requiere iniciar sesión'}</span>
+      <span class="rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${S.user ? 'border-emeraldGreen/40 bg-emeraldGreen/10 text-emerald-300' : 'border-amberGold/40 bg-amberGold/10 text-amber-300'}">${S.user ? 'Coach IA activo' : 'Requiere iniciar sesión'}</span>
     </div>
 
     <div class="grid grid-cols-1 gap-3 md:grid-cols-2" role="group" aria-label="Nivel técnico de la IA">
@@ -113,15 +112,14 @@ export function viewSettings(S: State): string {
       ${toneCard(
         'technical',
         'Técnico y detallado',
-        'Análisis fisiológico completo con e1RM, HRV, pulso intra-entreno, fatiga del SNC, NEAT, biomecánica y estrategia por mesociclo.',
+        'Análisis completo con fuerza máxima estimada (e1RM), recuperación (HRV), pulso, actividad diaria y consejos técnicos.',
         tone === 'technical' ? 'Activo' : 'Seleccionar',
       )}
     </div>
 
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3 text-xs text-gray-400">
       <div class="space-y-0.5">
-        <p>App Check (reCAPTCHA Enterprise): <span class="${isAppCheckConfigured ? 'text-emerald-400' : 'text-amberGold'} font-semibold">${isAppCheckConfigured ? 'configurado' : 'pendiente de VITE_RECAPTCHA_SITE_KEY'}</span></p>
-        ${s.ai ? `<p>Último informe guardado: ${fmtDate(s.ai.date)} · modo <span class="font-semibold text-gray-200">${s.ai.tone === 'simple' ? 'Sencillo' : 'Técnico'}</span></p>` : ''}
+        ${s.ai ? `<p>Último informe guardado: ${fmtDate(s.ai.date)} · modo <span class="font-semibold text-gray-200">${s.ai.tone === 'simple' ? 'Sencillo' : 'Técnico'}</span></p>` : '<p>Genera resúmenes personalizados cuando registres tus entrenos.</p>'}
       </div>
       <button class="btn-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}</button>
     </div>
@@ -134,7 +132,7 @@ export function viewSettings(S: State): string {
     </div>
     <div class="flex flex-wrap gap-2">
       <button class="btn-sm" data-act="tab" data-arg="plan">Plan y rutinas</button>
-      <button class="btn-sm" data-act="tab" data-arg="data">Importar y backups</button>
+      <button class="btn-sm" data-act="tab" data-arg="data">Datos y copias</button>
     </div>
   </div>`;
 }

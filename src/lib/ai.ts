@@ -249,7 +249,7 @@ export async function generateAnalysis(
     } catch (err) {
       if (err instanceof AIError) {
         if (err.code === 'api-not-enabled') {
-          throw new Error('Firebase AI Logic no está activado aún en Firebase Console para este proyecto.');
+          throw new Error('El servicio de Coach IA no está disponible en este momento. Inténtalo más tarde.');
         }
         errors.push(`${modelName} (${err.code}): ${err.message.slice(0, 150)}`);
       } else {
@@ -258,5 +258,5 @@ export async function generateAnalysis(
     }
   }
 
-  throw new Error(`Fallaron los modelos probados: ${errors.join(' | ')}`);
+  throw new Error('No se pudo generar el análisis en este momento. Comprueba tu conexión e inténtalo de nuevo.');
 }

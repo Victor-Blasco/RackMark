@@ -12,7 +12,7 @@ export const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
 ];
 
 export const SYSTEM_TABS = [
-  { id: 'settings', label: 'Cuenta y IA' },
+  { id: 'settings', label: 'Cuenta y ajustes' },
   { id: 'data', label: 'Datos e importar' },
 ];
 
@@ -96,7 +96,7 @@ export function renderSidebar(
     <div class="flex items-center gap-3 border-b border-borderDark/80 px-4 py-4">
       <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">${icon('barbell', 'h-5 w-5')}</div>
       <div class="min-w-0">
-        <p class="truncate text-sm font-extrabold text-white">Panel PPL</p>
+        <p class="truncate text-sm font-extrabold text-white">GymApp</p>
         <p class="truncate text-[11px] text-gray-400 tabular-nums">${statsText}</p>
       </div>
     </div>
@@ -145,7 +145,7 @@ export function renderSidebar(
         <p class="nav-sec-lbl">Datos</p>
         <button data-act="tab" data-arg="data" ${S.tab === 'data' ? 'aria-current="page"' : ''} class="nav-item ${S.tab === 'data' ? 'nav-item-on' : ''}">
           ${icon('upload', 'h-4 w-4')}
-          <span>Importar y backups</span>
+          <span>Datos y copias</span>
         </button>
       </div>
     </nav>

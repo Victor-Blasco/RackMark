@@ -162,13 +162,13 @@ export function renderModals(S: State): string {
       <form id="f-note-modal" class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4">
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
-            <h3 id="noteModalTitle" class="text-base font-extrabold text-white">Nota biomecánica</h3>
+            <h3 id="noteModalTitle" class="text-base font-extrabold text-white">Nota fija del ejercicio</h3>
             <p class="text-xs text-gray-400 truncate" title="${esc(nm.exName)}">${esc(nm.exName)}</p>
           </div>
           <button type="button" data-act="closeModal" aria-label="Cerrar modal" class="icon-btn">${icon('close', 'h-4 w-4')}</button>
         </div>
         <label class="block">
-          <span class="lbl">Ajustes de máquina, agarre o cues técnicos</span>
+          <span class="lbl">Ajustes de máquina, asiento, agarre o consejos de técnica</span>
           <textarea id="noteModalInput" class="inp min-h-[96px] resize-y" name="note" maxlength="400" placeholder="Ej. Asiento en 4, agarre neutro, pausa 1s abajo…">${esc(nm.value)}</textarea>
         </label>
         <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
@@ -241,14 +241,14 @@ export function viewPlan(S: State): string {
 
   if (tab === 'exercises') {
     return `${header}
-    ${unmappedCount ? `<div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2"><h3 class="font-bold text-white">Ejercicios de Samsung sin nombre (${unmappedCount})</h3>
-      <p class="text-xs text-gray-300">Samsung Health no exporta el nombre de algunos ejercicios integrados. Asígnales nombre (si coincide con uno existente, se fusionan).</p>
+    ${unmappedCount ? `<div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2"><h3 class="font-bold text-white">Ejercicios importados sin nombre (${unmappedCount})</h3>
+      <p class="text-xs text-gray-300">Algunos ejercicios importados solo tienen código numérico. Asígnales nombre (si coincide con uno existente, se unifican).</p>
       <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-6">
         ${S.analysis.unmapped.sort((a, b) => b.last.localeCompare(a.last)).map((u) => `<div class="flex items-center gap-2 text-sm"><span class="w-40 shrink-0 tabular-nums text-gray-400">${esc(u.ref)} · ${u.n}× · ${fmtDate(u.last)}</span><input class="inp" list="exnames" placeholder="Nombre del ejercicio…" data-change="refName" data-arg="${esc(u.ref)}" aria-label="Nombre para ${esc(u.ref)}"></div>`).join('')}
       </div>
       <datalist id="exnames">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist></div>` : ''}
 
-    <div class="pb-5 border-b border-white/10 space-y-3"><h3 class="font-bold text-white">Fusionar ejercicios (alias)</h3>
+    <div class="pb-5 border-b border-white/10 space-y-3"><h3 class="font-bold text-white">Unificar ejercicios duplicados</h3>
       <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
       <div class="flex flex-wrap items-center gap-2">
         <select id="mergeFrom" class="inp !w-auto" aria-label="Ejercicio origen a fusionar">${sel('', known)}</select>
@@ -270,7 +270,7 @@ export function viewPlan(S: State): string {
       <div class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
         ${names.map((n) => { const m = musclesOf(n, s); return `<div class="flex items-center gap-2 text-sm"><span class="w-44 shrink-0 truncate" title="${esc(n)}">${esc(n)}</span>
           <select class="inp !w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
-          <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombro…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`; }).join('')}
+          <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombros…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`; }).join('')}
       </div>
     </div>`;
   }
@@ -363,7 +363,7 @@ export function viewPlan(S: State): string {
           <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>
         </div>
         ${s.phases.length ? `<div class="space-y-1.5">${[...s.phases].sort((a, b) => a.start.localeCompare(b.start)).map((p, i) => `<div class="flex items-center gap-2 text-sm"><b>${esc(p.name)}</b> <span class="tabular-nums text-gray-400">desde ${fmtDate(p.start)}</span> <button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="phaseDel" data-arg="${i}" aria-label="Borrar fase ${esc(p.name)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}</div>` : ''}
-        <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp !w-44" name="name" placeholder="Nombre (p. ej. Lean bulk)…" aria-label="Nombre de la fase" required><input class="inp !w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
+        <form id="f-phase" class="flex flex-wrap gap-2"><input class="inp !w-44" name="name" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required><input class="inp !w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required><button class="btn" type="submit">Añadir fase</button></form>
       </div>
     </div>
 

@@ -303,23 +303,24 @@ function renderOnboardingHome(S: State): string {
         <p class="text-sm text-gray-300 max-w-2xl">Registra tu primer entreno directamente desde aquí o elige una distribución base. Si ya tienes historial en Samsung Health o CSV, puedes importarlo cuando quieras.</p>
       </div>
       <div class="flex flex-wrap gap-2 shrink-0">
-        <button type="button" class="btn btn-accent min-h-[44px]" data-act="openWizard">Configurar perfil y objetivo (1 min)</button>
-        <button class="btn-primary shrink-0 min-h-[44px] px-5" data-act="goLog">+ Empezar primer entreno hoy</button>
+        <button type="button" class="btn btn-accent min-h-[44px]" data-act="openWizard">${S.settings.onboardingCompleted ? 'Editar perfil y objetivo' : 'Configurar perfil y objetivo (1 min)'}</button>
+        <button class="btn-primary shrink-0 min-h-[44px] px-5" data-act="startWorkout">+ Empezar primer entreno hoy</button>
       </div>
     </div>
 
     <div class="space-y-2 border-t border-white/10 pt-4">
       <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Iniciar directamente una rutina activa</p>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         ${routines.map((r, idx) => {
           const hex = routineColor(r, S.settings, idx);
           const count = S.settings.routines[r]?.length ?? 0;
-          return `<button type="button" class="btn min-h-[44px]" data-act="goLog" data-arg="${esc(r)}">
+          return `<button type="button" class="btn min-h-[44px]" data-act="startWorkout" data-arg="${esc(r)}">
             <span class="h-2.5 w-2.5 rounded-full" style="background:${hex}" aria-hidden="true"></span>
             <span>${esc(r)}</span>
             <span class="text-xs text-gray-400 tabular-nums">(${count})</span>
           </button>`;
         }).join('')}
+        <button type="button" class="btn-sm" data-act="goLog">¿Ya terminaste? Registrar sesión pasada</button>
       </div>
     </div>
   </section>
@@ -599,7 +600,7 @@ function renderDayDetail(
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button class="btn-primary-sm" data-act="goLog" ${e.day ? `data-arg="${esc(e.day)}"` : ''}>Entrenar hoy</button>
+        <button class="btn-primary-sm" data-act="startWorkout" ${e.day ? `data-arg="${esc(e.day)}"` : ''}>Entrenar hoy</button>
         <button class="btn-sm" data-act="editNote" data-arg="${esc(e.name)}">${icon('edit', 'h-3.5 w-3.5')} Nota</button>
       </div>
     </div>
@@ -656,7 +657,24 @@ export function viewDay(S: State, day: DayName): string {
   const routines = routineNames(S.settings);
   const dayColor = routineColor(day, S.settings, Math.max(0, routines.indexOf(day)));
 
-  const primary = (S.analysis.byDay[day] ?? []).map((e) => filterExByRange(e, bounds));
+  const analyzedByDay = (S.analysis.byDay[day] ?? []).map((e) => filterExByRange(e, bounds));
+  const analyzedNorms = new Set(analyzedByDay.map((e) => norm(e.name)));
+  const plannedOnly: ExStats[] = (S.settings.routines[day] ?? [])
+    .filter((r) => r.name.trim() && !analyzedNorms.has(norm(r.name)))
+    .map((r) => ({
+      name: r.name,
+      day,
+      target: r,
+      sessions: [],
+      last: undefined,
+      n: 0,
+      maxWeight: 0,
+      maxE1rm: 0,
+      status: 'Pendiente de estrenar',
+      statusColor: 'electricBlue' as const,
+      prescription: `Estrena este ejercicio hoy: objetivo ${r.sets} series de ${r.reps} repeticiones con un peso que controles dejando 1–2 repeticiones en reserva.`,
+    }));
+  const primary = [...analyzedByDay, ...plannedOnly];
   const primaryNorms = new Set(primary.map((e) => norm(e.name)));
   const extraAll = [...S.analysis.exercises.values()]
     .filter((e) => !primaryNorms.has(norm(e.name)) && !e.name.startsWith('Samsung #') && (e.day === day || e.day == null))
@@ -665,9 +683,12 @@ export function viewDay(S: State, day: DayName): string {
     .sort((a, b) => (a.day === day ? 0 : 1) - (b.day === day ? 0 : 1) || b.n - a.n);
 
   if (!primary.length && !extraAll.length) {
-    return noData(S) || `<div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
-      <p>No hay ejercicios con datos para esta rutina.</p>
-      <button class="btn-sm" data-act="tab" data-arg="plan">Configurar rutina en Plan</button>
+    return `<div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
+      <p>Esta rutina aún no tiene ejercicios asignados.</p>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn-sm" data-act="tab" data-arg="plan">Configurar rutina en Plan</button>
+        <button class="btn-primary-sm" data-act="startWorkout" data-arg="${esc(day)}">${icon('play', 'h-3.5 w-3.5')} Iniciar ${esc(day)}</button>
+      </div>
     </div>`;
   }
 
@@ -732,7 +753,11 @@ export function viewDay(S: State, day: DayName): string {
     ${visibleList.map((x) => {
       const open = x.name === mobileCur;
       const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
-      const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${esc(rangeLabel)}`;
+      const lastTxt = x.last
+        ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}`
+        : x.n === 0 && x.target
+          ? `Objetivo ${x.target.sets}×${x.target.reps} · Sin estrenar`
+          : `Sin registros en ${esc(rangeLabel)}`;
       return `<div class="rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark overflow-hidden">
         <button data-act="selEx" data-arg="${dEsc}|${open ? '__closed__' : esc(x.name)}" aria-expanded="${open}" class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]">
           <div class="min-w-0 space-y-1">
@@ -755,7 +780,11 @@ export function viewDay(S: State, day: DayName): string {
       ${visibleList.map((x) => {
         const sel = x.name === desktopCur;
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
-        const lastTxt = x.last ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : `Sin registros en ${esc(rangeLabel)}`;
+        const lastTxt = x.last
+        ? `${short(x.last.date)} · ${x.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}`
+        : x.n === 0 && x.target
+          ? `Objetivo ${x.target.sets}×${x.target.reps} · Sin estrenar`
+          : `Sin registros en ${esc(rangeLabel)}`;
         const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
         return `<button role="option" data-act="selEx" data-arg="${dEsc}|${esc(x.name)}" aria-selected="${sel}" class="w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}">
           <div class="flex items-center justify-between gap-2">

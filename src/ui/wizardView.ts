@@ -13,7 +13,7 @@ export interface WizardDraft {
   waist: string;
   goal: TrainingGoal;
   experience: ExperienceLevel;
-  daysPerWeek: 3 | 4 | 5 | 6;
+  daysPerWeek: 2 | 3 | 4 | 5 | 6;
   templateKey: string;
   aiTone: AiTone;
   anim?: 'open' | 'next' | 'prev';
@@ -22,8 +22,8 @@ export interface WizardDraft {
 const GOALS: { id: TrainingGoal; label: string; desc: string }[] = [
   { id: 'bulk', label: 'Ganar músculo', desc: 'Superávit ligero (+225 kcal) y progresión de volumen.' },
   { id: 'cut', label: 'Definición', desc: 'Déficit controlado (−350 kcal) conservando fuerza.' },
-  { id: 'recomp', label: 'Recomposición', desc: 'Mantenimiento calórico y mejora de marcas.' },
-  { id: 'strength', label: 'Fuerza máxima', desc: 'Prioridad en cargas pesadas y 1RM.' },
+  { id: 'recomp', label: 'Recomposición', desc: 'Perder grasa y ganar músculo a la vez.' },
+  { id: 'strength', label: 'Fuerza máxima', desc: 'Prioridad en ganar fuerza levantando más peso.' },
 ];
 
 const EXPERIENCES: { id: ExperienceLevel; label: string; sub: string }[] = [
@@ -32,11 +32,11 @@ const EXPERIENCES: { id: ExperienceLevel; label: string; sub: string }[] = [
   { id: 'advanced', label: 'Avanzado', sub: '+3 años' },
 ];
 
-const DAYS_OPTIONS: (3 | 4 | 5 | 6)[] = [3, 4, 5, 6];
+const DAYS_OPTIONS: (2 | 3 | 4 | 5 | 6)[] = [2, 3, 4, 5, 6];
 
 const TONES: { id: AiTone; label: string; desc: string }[] = [
   { id: 'simple', label: 'Sencillo y directo', desc: 'Sin tecnicismos: pasos claros para entrenar y ajustar pesos.' },
-  { id: 'technical', label: 'Técnico y detallado', desc: 'Incluye e1RM, HRV, RIR, NEAT y fatiga por mesociclo.' },
+  { id: 'technical', label: 'Técnico y detallado', desc: 'Incluye fuerza máxima estimada (e1RM), recuperación (HRV), esfuerzo (RIR) y volumen semanal.' },
 ];
 
 /** Devuelve la plantilla inicial recomendada según los días semanales y el nivel del atleta. */
@@ -88,7 +88,8 @@ export function createWizardDraft(S: State): WizardDraft {
   const p = S.settings.profile;
   const experience: ExperienceLevel = p.experience ?? 'intermediate';
   const rawDays = p.daysPerWeek;
-  const daysPerWeek: 3 | 4 | 5 | 6 = rawDays === 3 || rawDays === 4 || rawDays === 5 || rawDays === 6 ? rawDays : 4;
+  const daysPerWeek: 2 | 3 | 4 | 5 | 6 =
+    rawDays === 2 || rawDays === 3 || rawDays === 4 || rawDays === 5 || rawDays === 6 ? rawDays : 4;
   return {
     step: 1,
     sex: p.sex === 'mujer' ? 'mujer' : 'hombre',
@@ -132,7 +133,7 @@ function renderStep1(w: WizardDraft): string {
     <div class="border-t border-white/10 pt-3 space-y-3">
       <div>
         <h4 class="text-xs font-bold uppercase tracking-wider text-gray-300">Medición inicial (hoy)</h4>
-        <p class="text-[11px] text-gray-400">Si rellenas tu peso actual guardaremos automáticamente tu primer registro en Medidas.</p>
+        <p class="text-[11px] text-gray-400">Si rellenas tu peso actual guardaremos automáticamente tu primer registro en Cuerpo.</p>
       </div>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label class="block">
@@ -182,17 +183,17 @@ function renderStep2(w: WizardDraft): string {
 
     <div>
       <span class="lbl">Días de entrenamiento por semana</span>
-      <div class="grid grid-cols-4 gap-2" role="group" aria-label="Días por semana">
+      <div class="grid grid-cols-5 gap-1.5 sm:gap-2" role="group" aria-label="Días por semana">
         ${DAYS_OPTIONS.map((d) => {
           const active = w.daysPerWeek === d;
-          return `<button type="button" data-act="wizardPickDays" data-arg="${d}" aria-pressed="${active}" class="min-h-[44px] rounded-xl border px-3 py-2 text-center tabular-nums text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/25'}">${d} días</button>`;
+          return `<button type="button" data-act="wizardPickDays" data-arg="${d}" aria-pressed="${active}" class="min-h-[44px] rounded-xl border px-2 py-2 text-center tabular-nums text-xs sm:text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/25'}">${d} días</button>`;
         }).join('')}
       </div>
     </div>
   </div>`;
 }
 
-function renderStep3(w: WizardDraft): string {
+function renderStep3(w: WizardDraft, showKeep = true): string {
   const recommended = recommendTemplate(w.daysPerWeek, w.experience);
   const selectedTpl = w.templateKey !== 'keep' ? ROUTINE_TEMPLATES[w.templateKey] : undefined;
   return `<div class="space-y-4">
@@ -211,9 +212,9 @@ function renderStep3(w: WizardDraft): string {
           </button>`;
         }).join('')}
       </div>
-      <button type="button" data-act="wizardPickTpl" data-arg="keep" aria-pressed="${w.templateKey === 'keep'}" class="w-full min-h-[44px] rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${w.templateKey === 'keep' ? 'border-electricBlue bg-electricBlue/15 text-white' : 'border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/25 hover:text-gray-200'}">
+      ${showKeep ? `<button type="button" data-act="wizardPickTpl" data-arg="keep" aria-pressed="${w.templateKey === 'keep'}" class="w-full min-h-[44px] rounded-xl border px-3 py-2 text-left text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${w.templateKey === 'keep' ? 'border-electricBlue bg-electricBlue/15 text-white' : 'border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/25 hover:text-gray-200'}">
         Mantener mis rutinas actuales sin sobrescribir
-      </button>
+      </button>` : ''}
     </div>
 
     ${selectedTpl ? `
@@ -244,12 +245,12 @@ export function renderWizardModal(S: State): string {
   const w = S.wizard;
   if (!w) return '';
   const titles: Record<1 | 2 | 3, { title: string; sub: string }> = {
-    1: { title: 'Tu perfil físico', sub: 'Personaliza calorías, Katch-McArdle y métricas de composición corporal.' },
-    2: { title: 'Objetivo y disponibilidad', sub: 'Configura la fase inicial activa y la frecuencia semanal de entrenamiento.' },
+    1: { title: 'Tu perfil físico', sub: 'Personaliza tus calorías recomendadas y el seguimiento de tu progreso físico.' },
+    2: { title: 'Objetivo y disponibilidad', sub: 'Elige tu objetivo actual y cuántos días a la semana quieres entrenar.' },
     3: { title: 'Tu rutina y Coach IA', sub: 'Elige la distribución base sugerida y cómo quieres recibir los informes.' },
   };
   const info = titles[w.step];
-  const body = w.step === 1 ? renderStep1(w) : w.step === 2 ? renderStep2(w) : renderStep3(w);
+  const body = w.step === 1 ? renderStep1(w) : w.step === 2 ? renderStep2(w) : renderStep3(w, Boolean(S.settings.onboardingCompleted));
   const modalAnim = w.anim === 'open' ? 'wizard-modal-in' : '';
   const backdropAnim = w.anim === 'open' ? 'wizard-backdrop-in' : '';
   const stepAnim = w.anim === 'next' ? 'wizard-step-next' : w.anim === 'prev' ? 'wizard-step-prev' : '';
