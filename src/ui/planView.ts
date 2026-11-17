@@ -267,8 +267,8 @@ export function renderPlanExerciseMapResults(S: State): { countText: string; lis
   const listHtml = matches.length
     ? matches.slice(0, 60).map((n) => {
         const m = musclesOf(n, s);
-        return `<div class="flex items-center gap-2 text-sm"><span class="w-44 shrink-0 truncate" title="${esc(n)}">${esc(n)}</span>
-          <select class="inp w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
+        return `<div class="flex min-w-0 items-center gap-2 text-sm"><span class="w-36 shrink-0 truncate xl:w-40 2xl:w-44" title="${esc(n)}">${esc(n)}</span>
+          <select class="inp w-28 shrink-0 sm:w-32" data-change="musP" data-arg="${esc(n)}" aria-label="Músculo principal de ${esc(n)}">${sel(m?.p ?? '', MUSCLES)}</select>
           <input class="inp min-w-0 flex-1" placeholder="Ej. Tríceps, Hombros…" value="${esc(m?.s.join(', ') ?? '')}" data-change="musS" data-arg="${esc(n)}" aria-label="Músculos secundarios de ${esc(n)}"></div>`;
       }).join('')
     : `<p class="py-4 text-center text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>`;
@@ -354,7 +354,7 @@ export function viewPlan(S: State): string {
       ${Object.entries(s.aliases).map(([a, b]) => `<div class="flex items-center gap-2 text-xs text-gray-400"><span>${esc(a)} → ${esc(b)}</span><button class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="unmerge" data-arg="${esc(a)}" aria-label="Deshacer fusión ${esc(a)}">${icon('close', 'h-3.5 w-3.5')}</button></div>`).join('')}
     </div>
 
-    <div class="space-y-3 overflow-x-auto">
+    <div class="min-w-0 space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 class="font-bold text-white">Músculos por ejercicio (${names.length})</h3>

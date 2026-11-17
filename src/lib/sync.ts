@@ -303,6 +303,18 @@ export function hasCustomSettings(s: Settings): boolean {
   );
 }
 
+/** Une ajustes remotos y locales conservando las opciones locales recientes en conflictos. */
+export function mergeSyncSettings(local: Settings, remote: Settings): Settings {
+  return sanitizeSettings({
+    ...remote,
+    customNames: { ...remote.customNames, ...local.customNames },
+    refNames: { ...remote.refNames, ...local.refNames },
+    aliases: { ...remote.aliases, ...local.aliases },
+    notes: { ...remote.notes, ...local.notes },
+    muscles: { ...remote.muscles, ...local.muscles },
+  });
+}
+
 export async function syncWithCloud(uid: string): Promise<SyncReport> {
   let meta = loadSyncMeta();
   let accountSwitched = false;
@@ -384,14 +396,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     const cleanRemote = sanitizeSettings(remoteSettings.data);
     const hadLocalDirty = (meta.settingsDirtyAt ?? 0) > 0;
     const nextSettings = hadLocalDirty
-      ? sanitizeSettings({
-          ...cleanRemote,
-          customNames: { ...localSettings.customNames, ...cleanRemote.customNames },
-          refNames: { ...localSettings.refNames, ...cleanRemote.refNames },
-          aliases: { ...localSettings.aliases, ...cleanRemote.aliases },
-          notes: { ...localSettings.notes, ...cleanRemote.notes },
-          muscles: { ...localSettings.muscles, ...cleanRemote.muscles },
-        })
+      ? mergeSyncSettings(localSettings, cleanRemote)
       : cleanRemote;
     await saveSettings(nextSettings);
     if (hadLocalDirty) {

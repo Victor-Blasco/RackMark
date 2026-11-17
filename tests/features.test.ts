@@ -584,6 +584,10 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(planHtml).toContain('data-act="rtQuickAdd"');
     expect(planHtml).toContain('Sentadilla Hack');
 
+    const exerciseMapHtml = viewPlan({ ...state, tab: 'plan', planTab: 'exercises' });
+    expect(exerciseMapHtml).toContain('min-w-0 space-y-3');
+    expect(exerciseMapHtml).not.toContain('space-y-3 overflow-x-auto');
+
     const emptySearchHtml = viewPlan({ ...state, planSearch: 'zzzznoexiste' });
     expect(emptySearchHtml).toContain('Sin resultados');
 

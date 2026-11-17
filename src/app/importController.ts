@@ -125,6 +125,10 @@ export function createImportController(ctx: AppContext): ImportController {
         await ctx.reload();
         ctx.render();
         ctx.queueSync();
+        const unresolvedCustomIds = imp.strength
+          .map((row) => row.ref)
+          .filter((ref) => !ref.startsWith('name:') && !ref.startsWith('type:') && !S.settings.customNames[ref])
+          .filter((ref, index, refs) => refs.indexOf(ref) === index);
         const parts = [
           `${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos)`,
           `${imp.cardio.length} cardio`,
@@ -133,8 +137,8 @@ export function createImportController(ctx: AppContext): ImportController {
         ];
         ctx.toast(
           `Importado: ${parts.join(', ')}.${
-            !Object.keys(S.settings.customNames).length && imp.strength.length
-              ? ' Faltaba el archivo de nombres personalizados en la exportación.'
+            unresolvedCustomIds.length
+              ? ` Faltan nombres personalizados para ${unresolvedCustomIds.length} ejercicios. Incluye el CSV exercise.custom_exercise en la exportación.`
               : ''
           }`,
         );

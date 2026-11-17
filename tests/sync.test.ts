@@ -3,6 +3,7 @@ import {
   bucketIdFor,
   groupRecordsByBucket,
   hasCustomSettings,
+  mergeSyncSettings,
   mergeBucket,
   stripUndefined,
   type RemoteBucket,
@@ -21,6 +22,27 @@ const row = (id: string, date: string, note?: string): StrengthRow => ({
 });
 
 describe('cloud sync helpers', () => {
+  it('conserva nombres personalizados locales al resolver un conflicto de ajustes', () => {
+    const local = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      customNames: {
+        custom_a: 'Curl de bíceps Martillo',
+        custom_b: 'Remo Unilateral',
+      },
+    };
+    const remote = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      customNames: { custom_a: 'Nombre antiguo', custom_c: 'Dominadas' },
+    };
+
+    const merged = mergeSyncSettings(local, remote);
+    expect(merged.customNames).toEqual({
+      custom_a: 'Curl de bíceps Martillo',
+      custom_b: 'Remo Unilateral',
+      custom_c: 'Dominadas',
+    });
+  });
+
   it('genera IDs de bucket compatibles con reglas Firestore', () => {
     expect(bucketIdFor('strength', '2026-11-11')).toBe('strength_2026');
     expect(bucketIdFor('wellbeing', '2025-05-01')).toBe('wellbeing_2025');
