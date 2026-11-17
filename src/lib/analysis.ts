@@ -220,21 +220,34 @@ export function isoWeekStart(date: string): string {
 }
 
 /** Series efectivas por músculo y semana: principal = 1, secundario = 0,5. */
-export function weeklyVolume(rows: StrengthRow[], s: Settings): Map<string, Map<string, number>> {
+export function weeklyVolume(
+  rows: StrengthRow[],
+  s: Settings,
+  from: string | null = null,
+  to: string | null = null,
+): Map<string, Map<string, number>> {
   const out = new Map<string, Map<string, number>>();
   for (const row of rows) {
-    if (!isValidIsoDate(row.date) || !row.sets.length) continue;
+    if (!row || !isValidIsoDate(row.date) || !Array.isArray(row.sets)) continue;
+    if (from && row.date < from) continue;
+    if (to && row.date > to) continue;
+    const validSets = row.sets.filter((x) =>
+      x && Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0,
+    );
+    if (!validSets.length) continue;
     const m = musclesOf(resolveName(row.ref, s), s);
     if (!m) continue;
     const wk = isoWeekStart(row.date);
-    const sets = row.sets.length;
+    const sets = validSets.length;
     const add = (muscle: string, v: number) => {
+      muscle = muscle.trim();
+      if (!muscle) return;
       const w = out.get(muscle) ?? new Map<string, number>();
       w.set(wk, (w.get(wk) ?? 0) + v);
       out.set(muscle, w);
     };
     add(m.p, sets);
-    m.s.forEach((x) => add(x, sets * 0.5));
+    new Set(m.s.map((x) => x.trim()).filter((x) => x && x !== m.p.trim())).forEach((x) => add(x, sets * 0.5));
   }
   return out;
 }

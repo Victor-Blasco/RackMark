@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPrompt } from '../src/lib/ai';
-import { analyze, judge } from '../src/lib/analysis';
+import { analyze, judge, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, norm } from '../src/lib/seed';
@@ -496,6 +496,52 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(vol.get('Tríceps')).toBe(2);
     expect(vol.get('Hombro')).toBe(2);
     expect(vol.get('Bíceps')).toBe(2);
+  });
+
+  it('suma solo las series válidas registradas por músculo principal y secundario', () => {
+    const settings = sanitizeSettings({
+      muscles: {
+        [norm('Press Banca X')]: { p: 'Pecho', s: ['Tríceps', 'Hombros', 'Tríceps'] },
+      },
+    });
+    const rows = [
+      {
+        id: 's1',
+        sessionId: 'ses1',
+        ts: 1,
+        date: '2026-11-16',
+        ref: 'name:Press Banca X',
+        sets: [
+          { w: 80, r: 8 },
+          { w: 82.5, r: 6 },
+          { w: -5, r: 8 },
+          { w: 70, r: 0 },
+        ],
+      },
+    ] as Parameters<typeof weeklyVolume>[0];
+
+    const vol = weeklyVolume(rows, settings);
+    const week = '2026-11-16';
+    expect(vol.get('Pecho')?.get(week)).toBe(2);
+    expect(vol.get('Tríceps')?.get(week)).toBe(1);
+    expect(vol.get('Hombros')?.get(week)).toBe(1);
+  });
+
+  it('no suma sesiones fuera del rango activo de la ventana Volumen', () => {
+    const settings = sanitizeSettings({
+      muscles: {
+        [norm('Press Banca X')]: { p: 'Pecho', s: ['Tríceps'] },
+      },
+    });
+    const rows = [
+      { id: 'before', sessionId: 'before', ts: 1, date: '2026-11-12', ref: 'name:Press Banca X', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] },
+      { id: 'inside', sessionId: 'inside', ts: 2, date: '2026-11-16', ref: 'name:Press Banca X', sets: [{ w: 80, r: 8 }] },
+      { id: 'after', sessionId: 'after', ts: 3, date: '2026-11-20', ref: 'name:Press Banca X', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] },
+    ] as Parameters<typeof weeklyVolume>[0];
+
+    const vol = weeklyVolume(rows, settings, '2026-11-16', '2026-11-18');
+    expect(vol.get('Pecho')?.get('2026-11-16')).toBe(1);
+    expect(vol.get('Pecho')?.get('2026-11-09')).toBeUndefined();
   });
 
   it('renderiza Modo Laboratorio en viewPlan, modal de notas y cross-links sin card-itis', async () => {

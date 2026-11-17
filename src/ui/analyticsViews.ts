@@ -250,7 +250,7 @@ export function viewBody(S: State): string {
 export function viewVolume(S: State): string {
   if (!S.strength.length) return noData(S);
   const bounds = resolveRange(S, 'volume', '3M');
-  const vol = weeklyVolume(S.strength, S.settings);
+  const vol = weeklyVolume(S.strength, S.settings, bounds.from, bounds.to);
   const weeks = weeksForBounds(bounds, S.strength.map((s) => s.date), 12, 4, 26);
   const mobWeeks = weeks.slice(-6);
   const color = (v: number) => (v === 0 ? 'text-gray-400' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold');
