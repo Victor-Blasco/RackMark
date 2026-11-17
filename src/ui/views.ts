@@ -126,6 +126,23 @@ function aiStepLabel(title: string): string {
   return title.split(/\s+/).slice(0, 2).join(' ');
 }
 
+export function renderAiJobStatus(S: State): string {
+  const job = S.aiJob;
+  if (!job || job.status === 'completed') return '';
+  if (job.status === 'error') {
+    return `<div role="alert" class="space-y-2 rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2.5 text-sm">
+      <p class="font-semibold text-rose-200">No se pudo generar el informe.</p>
+      <p class="text-gray-300">${esc(job.error ?? 'Se produjo un error inesperado.')}</p>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="btn-sm min-h-[44px] sm:min-h-[36px]" data-act="aiRetry">${icon('refresh', 'h-3.5 w-3.5')} Reintentar</button>
+        <button type="button" class="btn-sm min-h-[44px] sm:min-h-[36px]" data-act="aiDismiss">Descartar aviso</button>
+      </div>
+    </div>`;
+  }
+  const resumed = job.attempts > 1 ? 'Reintentando generación tras recuperar la sesión…' : 'Generando informe…';
+  return `<div role="status" aria-live="polite" class="rounded-xl border border-electricBlue/30 bg-electricBlue/10 px-3 py-2.5 text-sm text-blue-100">${resumed}</div>`;
+}
+
 export function renderAiReport(S: State): string {
   const ai = S.settings.ai;
   if (!ai) return '';
@@ -183,6 +200,8 @@ export function renderAiReport(S: State): string {
         <button class="btn-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('refresh', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Actualizar'}</button>
       </div>
     </div>
+
+    ${renderAiJobStatus(S)}
 
     ${steps.length > 1 ? `
     <div role="tablist" aria-label="Secciones del informe IA" class="flex flex-wrap gap-1.5">
@@ -484,6 +503,7 @@ export function viewHome(S: State): string {
           </div>
           ${aiToneToggle(tone)}
         </div>
+        ${renderAiJobStatus(S)}
         <button class="btn-primary w-full text-xs sm:text-sm" data-act="ai" ${S.busy === 'ai' ? 'disabled' : ''}>${icon('chart', 'h-3.5 w-3.5')} ${S.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}</button>
       </section>`;
 

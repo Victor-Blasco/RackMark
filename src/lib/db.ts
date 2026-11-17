@@ -1,6 +1,6 @@
 import { MEASURE_FIELDS } from '../types';
 import type {
-  AiEntry, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
+  AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
 } from '../types';
 import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
 
@@ -84,6 +84,39 @@ export async function loadSettings(): Promise<Settings> {
 }
 export async function saveSettings(s: Settings): Promise<void> {
   await wrap((await tx('kv', 'readwrite')).put(s, 'settings'));
+}
+
+const AI_JOB_KEY = 'ai_job';
+
+export async function loadAiJob(): Promise<AiJob | undefined> {
+  const raw = await wrap((await tx('kv', 'readonly')).get(AI_JOB_KEY)) as unknown;
+  if (!isObj(raw) || typeof raw.id !== 'string' || !isObj(raw.payload)) return undefined;
+  if (raw.status !== 'pending' && raw.status !== 'running' && raw.status !== 'completed' && raw.status !== 'error') return undefined;
+  if (raw.tone !== 'simple' && raw.tone !== 'technical') return undefined;
+  const createdAt = fin(raw.createdAt);
+  const updatedAt = fin(raw.updatedAt);
+  const attempts = fin(raw.attempts);
+  if (createdAt == null || updatedAt == null || attempts == null) return undefined;
+  return {
+    id: raw.id.slice(0, 100),
+    status: raw.status,
+    tone: raw.tone,
+    payload: raw.payload,
+    createdAt,
+    updatedAt,
+    attempts: Math.max(0, Math.round(attempts)),
+    ...(fin(raw.startedAt) != null ? { startedAt: fin(raw.startedAt) } : {}),
+    ...(fin(raw.finishedAt) != null ? { finishedAt: fin(raw.finishedAt) } : {}),
+    ...(typeof raw.error === 'string' ? { error: raw.error.slice(0, 500) } : {}),
+  };
+}
+
+export async function saveAiJob(job: AiJob): Promise<void> {
+  await wrap((await tx('kv', 'readwrite')).put(job, AI_JOB_KEY));
+}
+
+export async function clearAiJob(): Promise<void> {
+  await wrap((await tx('kv', 'readwrite')).delete(AI_JOB_KEY));
 }
 
 export async function mergeWellbeing(items: DailyWellbeing[]): Promise<void> {

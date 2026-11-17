@@ -10,6 +10,7 @@ import { focusSelector, updateNavRestBadges, updateRestBarDom } from '../src/ui/
 import { moveItem } from '../src/ui/reorder';
 import type { State } from '../src/ui/shared';
 import { initLiveWorkout } from '../src/ui/workoutView';
+import { renderAiJobStatus } from '../src/ui/views';
 
 function makeTestState(): State {
   const settings = sanitizeSettings({
@@ -122,6 +123,29 @@ describe('Integración Fase 4: db.ts, ai.ts, domPatches.ts, reorder.ts y control
     const techPrompt = buildPrompt(payload, 'technical');
     expect(simplePrompt).toContain('entrenador personal cercano y claro');
     expect(techPrompt).toContain('fisiólogo y entrenador de fuerza e hipertrofia');
+  });
+
+  it('muestra estado persistente de generación y conserva el informe anterior', () => {
+    const state = makeTestState();
+    state.settings.ai = {
+      date: '2026-11-15',
+      summary: 'Informe anterior',
+      byExercise: {},
+    };
+    state.aiJob = {
+      id: 'ai-test',
+      status: 'error',
+      tone: 'technical',
+      payload: {},
+      createdAt: 1,
+      updatedAt: 2,
+      attempts: 1,
+      error: 'Tiempo agotado al generar el informe.',
+    };
+    const html = renderAiJobStatus(state);
+    expect(html).toContain('No se pudo generar el informe');
+    expect(html).toContain('Reintentar');
+    expect(state.settings.ai.summary).toBe('Informe anterior');
   });
 
   it('resuelve selectores de foco y parches DOM sin reconstruir la vista (domPatches.ts & reorder.ts)', () => {

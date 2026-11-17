@@ -10,7 +10,42 @@ function getAiBackend(): AI {
   return (aiInstance ??= getAI(app, { backend: new GoogleAIBackend() }));
 }
 
-const MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-2.5-flash'];
+const MODELS = [
+  "gemini-4-hydrogen",
+  "gemini-3.8-flash",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+];
+export const AI_MODEL_TIMEOUT_MS = 90_000;
+
+function logAiEvent(event: string, details: Record<string, unknown>): void {
+  if (import.meta.env.DEV) console.warn(`[ai] ${event}`, details);
+}
+
+function withTimeout<T>(
+  factory: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+  modelName: string,
+): Promise<T> {
+  const controller = new AbortController();
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Tiempo agotado al generar el informe con ${modelName}.`));
+    }, timeoutMs);
+    factory(controller.signal).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 const avgOf = (vals: (number | undefined)[], dec = 1) => {
   const nums = vals.filter((v): v is number => v != null && Number.isFinite(v));
@@ -225,20 +260,30 @@ export async function generateAnalysis(
 ): Promise<AiResult> {
   const tone: AiTone = s.aiTone === 'simple' ? 'simple' : 'technical';
   const payload = buildPayload(a, ms, s, cardio, wellbeing);
+  return generateAnalysisFromPayload(payload, tone);
+}
+
+export async function generateAnalysisFromPayload(payload: Record<string, unknown>, tone: AiTone): Promise<AiResult> {
   const prompt = buildPrompt(payload, tone);
 
   const ai = getAiBackend();
   const errors: string[] = [];
   for (const modelName of MODELS) {
+    const startedAt = Date.now();
     try {
       const model = getGenerativeModel(ai, {
         model: modelName,
         generationConfig: { responseMimeType: 'application/json' },
       });
-      const res = await model.generateContent(prompt);
+      const res = await withTimeout(
+        (signal) => model.generateContent(prompt, { signal, timeout: AI_MODEL_TIMEOUT_MS }),
+        AI_MODEL_TIMEOUT_MS,
+        modelName,
+      );
       const raw = res.response.text();
       const clean = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
       const parsed = JSON.parse(clean);
+      logAiEvent('completed', { model: modelName, durationMs: Date.now() - startedAt });
       return {
         date: todayIso(),
         tone,
@@ -247,6 +292,7 @@ export async function generateAnalysis(
         byExercise: parsed.byExercise ?? {},
       };
     } catch (err) {
+      logAiEvent('attempt-failed', { model: modelName, durationMs: Date.now() - startedAt, error: err instanceof Error ? err.name : 'unknown' });
       if (err instanceof AIError) {
         if (err.code === 'api-not-enabled') {
           throw new Error('El servicio de Coach IA no está disponible en este momento. Inténtalo más tarde.');

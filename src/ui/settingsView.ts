@@ -1,6 +1,7 @@
 import type { AiTone } from '../types';
 import { icon } from './icons';
 import { esc, fmtDate, type State } from './shared';
+import { renderAiJobStatus } from './views';
 
 /**
  * Renderiza la vista de cuenta de usuario, perfil biométrico y preferencias del Coach IA.
@@ -117,6 +118,7 @@ export function viewSettings(S: State): string {
       )}
     </div>
 
+    ${renderAiJobStatus(S)}
     <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3 text-xs text-gray-400">
       <div class="space-y-0.5">
         ${s.ai ? `<p>Último informe guardado: ${fmtDate(s.ai.date)} · modo <span class="font-semibold text-gray-200">${s.ai.tone === 'simple' ? 'Sencillo' : 'Técnico'}</span></p>` : '<p>Genera resúmenes personalizados cuando registres tus entrenos.</p>'}

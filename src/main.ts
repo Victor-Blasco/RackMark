@@ -1,7 +1,7 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
-import { getAll, loadSettings, saveSettings } from './lib/db';
+import { getAll, loadAiJob, loadSettings, saveSettings } from './lib/db';
 import { isValidIsoDate } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
@@ -91,6 +91,7 @@ function setTab(tab: string) {
 
 async function reload() {
   S.settings = await loadSettings();
+  S.aiJob = await loadAiJob();
   S.strength = (await getAll<StrengthRow>('strength')).sort((a, b) => a.ts - b.ts);
   S.cardio = (await getAll<CardioRow>('cardio')).sort((a, b) => a.ts - b.ts);
   S.measures = (await getAll<Measure>('measures')).sort((a, b) => a.date.localeCompare(b.date));

@@ -138,6 +138,21 @@ export interface AiResult {
   byExercise: Record<string, AiEntry>;
 }
 
+export type AiJobStatus = 'pending' | 'running' | 'completed' | 'error';
+
+export interface AiJob {
+  id: string;
+  status: AiJobStatus;
+  tone: AiTone;
+  payload: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+  attempts: number;
+  startedAt?: number;
+  finishedAt?: number;
+  error?: string;
+}
+
 export interface RoutineMeta { color?: string; sub?: string }
 
 export type TrainingGoal = 'bulk' | 'cut' | 'recomp' | 'strength';

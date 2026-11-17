@@ -15,7 +15,7 @@ import {
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
 import type { WizardDraft } from './wizardView';
 
 export { todayIso };
@@ -119,6 +119,7 @@ export interface State {
   syncing?: boolean;
   lastSync?: number;
   busy?: string;
+  aiJob?: AiJob;
   toast?: string;
 }
 
