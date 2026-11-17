@@ -451,6 +451,7 @@ export function viewCalc(S: State): string {
     </div>
     <input type="hidden" id="nuAct" value="${esc(cAct)}">
     <input type="hidden" id="nuGoal" value="${esc(cGoal)}">
+    <input type="hidden" id="nuMeals" value="${esc(cMeals)}">
     <input type="hidden" id="nuW" value="${w}">
     <input type="hidden" id="nuBf" value="${bf}">
     <div id="nuOut"></div>
@@ -473,6 +474,24 @@ export function runCalc() {
   const g = (id: string) => document.getElementById(id) as HTMLInputElement | null;
   const col = (l: string, v: string, c = 'text-white') =>
     `<div class="px-2"><span class="block text-[11px] text-gray-400">${l}</span><span class="tabular-nums text-lg sm:text-xl font-extrabold ${c}">${v}</span></div>`;
+  document.querySelectorAll<HTMLElement>('[data-act="nutriMeals"]').forEach((button) => {
+    if (button.dataset.nutriBound === 'true') return;
+    button.dataset.nutriBound = 'true';
+    button.addEventListener('click', () => {
+      const meals = button.dataset.arg ?? '4';
+      const input = g('nuMeals');
+      if (input) input.value = meals;
+      document.querySelectorAll<HTMLElement>('[data-act="nutriMeals"]').forEach((option) => {
+        const active = option.dataset.arg === meals;
+        option.setAttribute('aria-checked', String(active));
+        option.classList.toggle('bg-electricBlue', active);
+        option.classList.toggle('text-white', active);
+        option.classList.toggle('text-gray-400', !active);
+        option.classList.toggle('hover:text-white', !active);
+      });
+      runCalc();
+    });
+  });
   if (g('calcW')) {
     const w = parseFloat(g('calcW')!.value) || 0, r = parseInt(g('calcR')!.value, 10) || 1, rir = parseInt(g('calcRir')!.value, 10) || 0;
     const e = epley(w, r), e2 = w * (1 + (r + rir) / 30);
@@ -489,7 +508,7 @@ export function runCalc() {
     const delta = parseInt((document.getElementById('nuGoal') as HTMLInputElement).value, 10) || 0;
     const proteinPerKg = parseFloat((document.getElementById('nuProtein') as HTMLSelectElement | null)?.value ?? '2.2') || 2.2;
     const fatPerKg = parseFloat((document.getElementById('nuFat') as HTMLSelectElement | null)?.value ?? '1') || 1;
-    const meals = parseInt(document.querySelector<HTMLElement>('[data-act="nutriMeals"][aria-checked="true"]')?.dataset.arg ?? '4', 10) || 4;
+    const meals = parseInt((document.getElementById('nuMeals') as HTMLInputElement | null)?.value ?? '4', 10) || 4;
     const result = calculateNutrition(w, bf, act, delta, proteinPerKg, fatPerKg, meals);
     const deltaSign = delta > 0 ? '+' : '';
     const projection = result.weeklyProjectionKg;

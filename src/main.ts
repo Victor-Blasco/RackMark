@@ -434,10 +434,15 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   },
   nutriMeals: (el) => {
     (S.calcDraft ??= {}).meals = arg(el);
+    const input = document.getElementById('nuMeals') as HTMLInputElement | null;
+    if (input) input.value = arg(el);
     for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriMeals"]')) {
-      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
-      button.classList.toggle('bg-electricBlue', button.dataset.arg === arg(el));
-      button.classList.toggle('text-white', button.dataset.arg === arg(el));
+      const active = button.dataset.arg === arg(el);
+      button.setAttribute('aria-checked', String(active));
+      button.classList.toggle('bg-electricBlue', active);
+      button.classList.toggle('text-white', active);
+      button.classList.toggle('text-gray-400', !active);
+      button.classList.toggle('hover:text-white', !active);
     }
     runCalc();
   },

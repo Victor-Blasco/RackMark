@@ -511,6 +511,7 @@ describe('calculadora nutricional', () => {
     expect(html).toContain('aria-label="Factor de actividad"');
     expect(html).toContain('aria-label="Fase energética"');
     expect(html).toContain('aria-label="Número de comidas"');
+    expect(html).toContain('id="nuMeals"');
     expect(html).toContain('data-act="nutriAct"');
     expect(html).toContain('whitespace-nowrap');
     expect(html).toContain('items-end gap-3');
