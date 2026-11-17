@@ -352,7 +352,7 @@ export function viewPlan(S: State): string {
             const sub = s.routineMeta?.[d]?.sub;
             const list = s.routines[d] ?? [];
             return `
-            <div class="rounded-2xl border border-white/10 bg-cardDark p-4">
+            <div class="border-b border-white/10 pb-4">
               <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <h4 class="flex items-center gap-2 text-sm font-bold min-w-0" style="color:${col}">
                   <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background:${col}" aria-hidden="true"></span>

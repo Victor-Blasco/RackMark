@@ -2,6 +2,7 @@ import { musclesOf, resolveName } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
 import type { DayName, LogDraft, LogExDraft, LogExMeta, SetRec } from '../types';
 import { icon } from './icons';
+import { filterSelectionOptions } from './selection';
 import { empty, esc, fmtDate, isAiFreshForEx, routineColor, routineNames, short, todayIso, type State } from './shared';
 
 /**
@@ -293,6 +294,9 @@ export function viewLog(S: State): string {
   const routines = routineNames(S.settings);
   const draft = S.logDraft ?? (S.logDraft = initLogDraft(S, routines[0] ?? 'Libre', today));
   const { avail, quick } = quickExSuggestions(S, draft.day, draft.exercises.map((e) => e.name));
+  const filteredAvail = avail.length > 12
+    ? filterSelectionOptions(avail.map((n) => ({ id: n, label: n })), S.logAddQuery ?? '')
+    : avail.map((n) => ({ id: n, label: n }));
 
   const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
   const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
@@ -404,6 +408,10 @@ export function viewLog(S: State): string {
               <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">Desc (s)</span>
               <input class="inp h-11 w-20 px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
             </div>
+            <div class="shrink-0">
+              <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">RIR</span>
+              <input class="inp h-11 w-14 px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="1" min="0" max="10" inputmode="numeric" value="${s.rir ?? ''}" placeholder="RIR" data-log-rir="${ei}|${si}" aria-label="RIR de serie ${si + 1} de ${esc(ex.name)}">
+            </div>
             <button type="button" data-act="logToggleSet" data-arg="${ei}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${esc(ex.name)}" class="ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}" style="touch-action:manipulation">${icon('check', 'h-5 w-5')}</button>
           </div>`).join('')}
         </div>
@@ -430,12 +438,14 @@ export function viewLog(S: State): string {
     </div>
     <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
       <div class="flex flex-wrap gap-2">
+        ${avail.length > 12 ? `<input class="inp min-h-[44px] min-w-[180px] flex-1" type="search" value="${esc(S.logAddQuery ?? '')}" placeholder="Buscar ejercicio…" aria-label="Buscar ejercicio para añadir" data-input="logAddSearch">` : ''}
         <select id="logAddSelect" class="inp min-h-[44px] min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
           <option value="">Selecciona cualquier ejercicio (${avail.length})…</option>
-          ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+          ${filteredAvail.map((option) => `<option value="${esc(option.id)}">${esc(option.label)}</option>`).join('')}
         </select>
         <button class="btn min-h-[44px]" data-act="logAddEx">+ Añadir de la lista</button>
       </div>
+      ${avail.length > 12 && !filteredAvail.length ? '<p class="text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>' : ''}
       <div class="flex flex-wrap gap-2">
         <input id="logNewExName" class="inp min-h-[44px] min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo">
         <button class="btn min-h-[44px]" data-act="logAddCustomEx">+ Añadir rápido</button>

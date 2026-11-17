@@ -27,6 +27,7 @@ import {
 import { buildBodyHomeChartConfig, buildCompChartConfig, buildHomeExChartConfig, renderAiReport, viewDay, viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
 import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
+import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -35,6 +36,19 @@ import {
   recommendTemplate,
   renderWizardModal,
 } from '../src/ui/wizardView';
+
+describe('selection patterns', () => {
+  it('normaliza tildes, busca aliases, agrupa y ordena recientes', () => {
+    const options = [
+      { id: 'bench', label: 'Press banca', aliases: ['bench press'], group: 'Pecho', lastUsedAt: 2 },
+      { id: 'row', label: 'Remo sentado', aliases: ['seated row'], group: 'Espalda', lastUsedAt: 3 },
+    ];
+    expect(normalizeSelectionText('  Press BÁNCA  ')).toBe('press banca');
+    expect(filterSelectionOptions(options, 'bench')).toEqual([options[0]]);
+    expect([...groupSelectionOptions(options).keys()]).toEqual(['Pecho', 'Espalda']);
+    expect(sortRecentSelectionOptions(options).map((option) => option.id)).toEqual(['row', 'bench']);
+  });
+});
 
 describe('ai tone & chart axis offset', () => {
   it('adapta el prompt de IA según el tono simple o técnico manteniendo la estructura JSON', () => {
@@ -799,7 +813,7 @@ describe('live workout & manual rest separation', () => {
         day: 'Push',
         sets: [
           { w: 80, r: 8, restSec: 110 },
-          { w: 80, r: 8, restSec: 95 },
+          { w: 80, r: 8, restSec: 95, rir: 2 },
         ],
       },
     ]);
@@ -871,7 +885,7 @@ describe('live workout & manual rest separation', () => {
             date: '2026-11-10',
             ref: 'name:Press Banca',
             sets: [
-              { w: 80, r: 8, restSec: 95 },
+              { w: 80, r: 8, restSec: 95, rir: 2 },
               { w: 80, r: 8, restSec: -5 },
             ],
           },
@@ -882,6 +896,7 @@ describe('live workout & manual rest separation', () => {
       }),
     );
     expect(parsed.strength[0].sets[0].restSec).toBe(95);
+    expect(parsed.strength[0].sets[0].rir).toBe(2);
     expect(parsed.strength[0].sets[1].restSec).toBeUndefined();
   });
 

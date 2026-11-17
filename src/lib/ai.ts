@@ -92,7 +92,9 @@ export function buildPayload(
         ...(e.maxHr ? { fc_max_historica: e.maxHr } : {}),
         ...(s.notes[e.name] ? { nota_fija: s.notes[e.name] } : {}),
         sesiones: e.sessions.filter((x) => x.date >= since56).map((x) => ({
-          fecha: x.date, series: x.sets.map((y) => `${y.w}kg x${y.r}`), e1rm: x.e1rm,
+          fecha: x.date,
+          series: x.sets.map((y) => `${y.w}kg x${y.r}${y.rir != null ? ` · RIR ${y.rir}` : ''}`),
+          e1rm: x.e1rm,
           ...(x.avgHr ? { fc_media: x.avgHr } : {}),
           ...(x.maxHr ? { fc_max: x.maxHr } : {}),
           ...(x.durMin ? { dur_min: x.durMin } : {}),

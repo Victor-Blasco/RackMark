@@ -3,6 +3,7 @@ import { currentPhase, resolveName, type ExSession, type ExStats } from '../lib/
 import { norm, ROUTINE_TEMPLATES } from '../lib/seed';
 import type { AiTone, DayName, Measure } from '../types';
 import { icon } from './icons';
+import { filterSelectionOptions } from './selection';
 import {
   chart,
   esc,
@@ -149,6 +150,12 @@ export function renderAiReport(S: State): string {
   if (!ai) return '';
 
   const hasHighlights = Boolean(ai.overview?.highlights?.length);
+  const coverage = [
+    `${S.strength.length} registros de fuerza`,
+    `${S.measures.length} medidas`,
+    `${S.wellbeing.length} registros de recuperación`,
+  ];
+  const limitedData = S.strength.length < 5 && S.measures.length < 2 && S.wellbeing.length < 3;
   const steps: { label: string; dot: string; body: string }[] = [
     {
       label: 'Resumen',
@@ -195,6 +202,8 @@ export function renderAiReport(S: State): string {
       <div>
         <h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>
         <p class="text-xs text-gray-400">Actualizado el ${fmtDate(ai.date)} · modo ${reportTone === 'simple' ? 'Sencillo' : 'Técnico'}${toneChanged ? ` <span class="text-amberGold">(cambiado a ${activeTone === 'simple' ? 'Sencillo' : 'Técnico'} · pulsa Actualizar)</span>` : ''}</p>
+        <p class="mt-1 text-xs text-gray-400">Datos analizados: ${coverage.map(esc).join(' · ')}</p>
+        ${limitedData ? '<p class="mt-1 text-xs text-amber-200">Confianza limitada: añade más registros para obtener tendencias más fiables.</p>' : ''}
       </div>
       <div class="flex flex-wrap items-center gap-2">
         ${aiToneToggle(activeTone)}
@@ -455,6 +464,10 @@ export function viewHome(S: State): string {
   const ex = homeExercises(S);
   const cur = S.sel.home && S.analysis.exercises.has(S.sel.home) ? S.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(S.analysis.exercises.get(cur)!, bounds) : undefined;
+  const homeOptions = ex.map((e) => ({ id: e.name, label: e.name }));
+  const filteredHomeOptions = ex.length > 12
+    ? filterSelectionOptions(homeOptions, S.homeExQuery ?? '')
+    : homeOptions;
   const metric: ExMetric = S.exMetric ?? 'top';
 
   const homeExCfg = buildHomeExChartConfig(S);
@@ -581,7 +594,9 @@ export function viewHome(S: State): string {
         </div>
         <div class="flex flex-wrap items-center gap-2 max-w-full">
           ${exMetricToggle(metric)}
-          <select class="inp w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${ex.map((e) => `<option ${e.name === cur ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>
+          ${ex.length > 12 ? `<input class="inp min-w-[180px] max-w-full sm:max-w-[220px]" type="search" value="${esc(S.homeExQuery ?? '')}" placeholder="Buscar ejercicio" aria-label="Buscar ejercicio para gráfica" data-input="homeExSearch">` : ''}
+          <select class="inp w-auto max-w-full sm:max-w-[220px]" data-change="selHome" aria-label="Seleccionar ejercicio para gráfica">${filteredHomeOptions.map((e) => `<option value="${esc(e.id)}" ${e.id === cur ? 'selected' : ''}>${esc(e.label)}</option>`).join('')}</select>
+          ${ex.length > 12 && !filteredHomeOptions.length ? '<p class="w-full text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>' : ''}
         </div>
       </div>
       ${curEx?.sessions.length ? `<div class="chart-box"><canvas id="c-home-ex"></canvas></div>` : `<p class="py-12 text-center text-sm text-gray-400">Sin sesiones para este ejercicio en ${esc(rangeLabel)}.</p>`}

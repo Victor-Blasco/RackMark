@@ -1,7 +1,7 @@
 export type DayName = string;
 export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
 
-export interface SetRec { w: number; r: number; done?: boolean; restSec?: number }
+export interface SetRec { w: number; r: number; done?: boolean; restSec?: number; rir?: number }
 
 /** Una fila de fuerza de Samsung Health = un ejercicio dentro de una sesión. */
 export interface StrengthRow {
@@ -59,6 +59,7 @@ export interface LiveWorkout {
   restRef?: { ei: number; si: number };
   lastCompletedExIdx?: number;
   pickerMode?: 'swap' | 'add';
+  pickerQuery?: string;
   exMenuOpen?: boolean;
 }
 
@@ -151,6 +152,16 @@ export interface AiJob {
   startedAt?: number;
   finishedAt?: number;
   error?: string;
+}
+
+export interface SyncJob {
+  id: 'cloud-sync';
+  status: 'pending' | 'running' | 'error';
+  createdAt: number;
+  updatedAt: number;
+  attempts: number;
+  error?: string;
+  nextAttemptAt?: number;
 }
 
 export interface RoutineMeta { color?: string; sub?: string }

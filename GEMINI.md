@@ -16,7 +16,17 @@ Antes de diseñar vistas nuevas, tocar estilos o modificar persistencia/sincroni
 - **Iconos y animaciones:** Usa exclusivamente Phosphor Icons Bold vía `icon()` (`src/ui/icons.ts`), nunca emojis funcionales. Anima acordeones/menús mediante `grid-rows-[0fr]` / `grid-rows-[1fr]` sin destruir el nodo DOM y respeta `prefers-reduced-motion`.
 - **Gráficas (`Chart.js`):** Crea toda gráfica vía `normalizeChartConfig()` / `chart()` / `runChartJobs()` (`src/ui/shared.ts`) con un único eje `y` salvo unidades distintas (`y` kg vs `y1` % o HRV).
 
-## 3. Arquitectura, Persistencia y Seguridad
+## 3. Patrones de selección por coste de interacción
+- **2–3 opciones:** usa segmented control o radio group inline; todas las opciones deben estar visibles y seleccionables en un toque.
+- **4–7 opciones:** usa radio group vertical, `<select>` nativo o popover corto; no añadas scroll interno para listas pequeñas.
+- **8–15 opciones:** usa listbox/select enriquecido, agrupación semántica y búsqueda solo cuando los nombres no sean predecibles.
+- **16–50 opciones:** usa modal de escritorio o bottom sheet móvil con búsqueda obligatoria, cabecera fija y recientes/frecuentes arriba.
+- **50+ opciones:** usa command palette o sheet móvil a pantalla completa con búsqueda instantánea y filtros; virtualiza solo si el DOM complejo lo justifica.
+- **Datos y búsqueda:** las opciones pueden incluir `id`, `label`, `subtitle`, `group`, `aliases`, `lastUsedAt` y `disabled`. Normaliza texto con NFD antes de comparar y muestra un estado vacío accionable.
+- **Accesibilidad:** los listboxes deben implementar `role="option"`, `aria-selected`, flechas, Enter, Escape y devolución del foco al disparador. Prefiere controles nativos si ofrecen mejor accesibilidad.
+- **Anti-AI-Slop:** no uses bento grids forzados, AI glow, glassmorphism innecesario, cards anidadas, gráficas decorativas ni chatbots genéricos. Prioriza jerarquía, aire, divisores, datos accionables y movimiento sobrio.
+
+## 4. Arquitectura, Persistencia y Seguridad
 - **Fronteras estrictas:** `src/types.ts` (puro) -> `src/lib/*` (lógica, IDB, sync, parseo, sin importar `src/ui/*` ni tocar el DOM) -> `src/ui/*` (HTML sanitizado, sin llamadas directas a IDB/Firestore) -> `src/main.ts` (orquestador único).
 - **Carga pesada aislada:** Mantén `src/lib/ai.ts` con import dinámico y el parseo Samsung ZIP/CSV dentro del Web Worker (`src/lib/samsungWorker.ts`).
 - **Fechas locales:** Usa `todayIso()` (`src/lib/seed.ts`) para el día actual; nunca `new Date().toISOString().slice(0, 10)` directamente para registros locales del usuario.
@@ -24,7 +34,7 @@ Antes de diseñar vistas nuevas, tocar estilos o modificar persistencia/sincroni
 - **Contrato Cloud Firestore:** Si cambias `Settings`, rutinas, fases o `buckets`, revisa obligatoriamente `firestore.rules` (delegando al subagente `firestore-rules-author`) y actualiza `tests/sync.test.ts` y `tests/security.test.ts`.
 - **Seguridad e integridad:** Envuelve toda interpolación dinámica en HTML con `esc()` (`src/ui/shared.ts`), sanea `Settings` con `sanitizeSettings()` en ingestas/pulls, valida importaciones externas (`parseBackup`, `stripUndefined`) y respeta la CSP de `firebase.json`.
 
-## 4. Verificación Obligatoria
+## 5. Verificación Obligatoria
 - Antes de dar por terminado cualquier cambio, ejecuta desde la raíz del workspace/worktree activo:
   - `npm test` (`vitest run`)
   - `npm run build` (`tsc --noEmit && vite build`)

@@ -18,7 +18,7 @@ export function musclesOf(name: string, s: Settings): MuscleMap | null {
 }
 
 export interface ExSession {
-  date: string; sets: { w: number; r: number }[];
+  date: string; sets: { w: number; r: number; rir?: number }[];
   top: number; repsAtTop: number; volume: number; e1rm: number;
   avgHr?: number; maxHr?: number; durMin?: number; kcal?: number;
   note?: string;
@@ -122,7 +122,7 @@ function summarizePhysio(acc: PhysioAcc) {
 }
 
 export function analyze(rows: StrengthRow[], s: Settings): Analysis {
-  const perEx = new Map<string, Map<string, { sets: { w: number; r: number }[]; notes: string[]; phys: PhysioAcc }>>();
+  const perEx = new Map<string, Map<string, { sets: { w: number; r: number; rir?: number }[]; notes: string[]; phys: PhysioAcc }>>();
   const unm = new Map<string, { n: number; last: string }>();
   const sessMap = new Map<string, { date: string; day?: DayName; names: Set<string>; sets: number; phys: PhysioAcc }>();
   const manualDays = new Map<string, DayName>();
@@ -137,7 +137,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       unm.set(row.ref, u);
     }
     if (row.day) manualDays.set(name, row.day);
-    const byDate = perEx.get(name) ?? new Map<string, { sets: { w: number; r: number }[]; notes: string[]; phys: PhysioAcc }>();
+    const byDate = perEx.get(name) ?? new Map<string, { sets: { w: number; r: number; rir?: number }[]; notes: string[]; phys: PhysioAcc }>();
     const entry = byDate.get(row.date) ?? { sets: [], notes: [], phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
     entry.sets.push(...validSets);
     if (row.note?.trim()) entry.notes.push(row.note.trim());

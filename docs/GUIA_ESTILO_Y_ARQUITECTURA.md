@@ -132,6 +132,65 @@ El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentr
 - Los paneles desplegables y menús contextuales deben animar altura mediante **`grid-template-rows` (`grid-rows-[0fr]` -> `grid-rows-[1fr]`)** + transición de opacidad sobre contenedor interno `overflow-hidden`, **sin desmontar el nodo** ni provocar saltos bruscos de layout (patrón aplicado en `#live-ex-menu-wrap` de `src/ui/workoutView.ts`).
 - Toda animación o transición nueva —incluidas las transiciones FLIP en `src/ui/reorder.ts`— debe respetar **`prefers-reduced-motion: reduce`** (actualmente cubierto en CSS solo para `.wizard-*` y utilidades `motion-reduce:` puntuales).
 
+### 3.9 Patrones de selección por coste de interacción
+
+El patrón de selección debe decidirse por el número de opciones, la previsibilidad de sus nombres,
+la frecuencia de uso, el viewport y la carga cognitiva (Ley de Hick), no por preferencia estética.
+
+| Opciones | Patrón | Contenedor | Búsqueda |
+| --- | --- | --- | --- |
+| 2–3 | Segmented control o radio group | Inline | No |
+| 4–7 | Radio group, `<select>` nativo o popover corto | Inline / popover | No |
+| 8–15 | Listbox o select enriquecido | Popover con scroll / bottom sheet medio | Opcional |
+| 16–50 | Selector filtrable | Modal / bottom sheet alto | Obligatoria |
+| 50+ | Command palette o buscador dedicado | Modal amplio / sheet completo | Instantánea + filtros |
+
+#### Reglas por tramo
+
+- Con 2–3 opciones, no ocultes alternativas detrás de un modal o desplegable.
+- Con 4–7 opciones, evita scroll interno y ordena por frecuencia o probabilidad.
+- Con 8–15 opciones, agrupa con cabeceras no seleccionables cuando exista una taxonomía útil.
+- Con 16–50 opciones, fija la cabecera con título, cierre y búsqueda; muestra 3–5 recientes arriba
+  y deja el scroll únicamente en la lista.
+- Con más de 50 opciones, añade filtros facetados y considera virtualización solo si el contenido
+  complejo provoca un problema medible de rendimiento.
+
+#### Modelo, búsqueda y accesibilidad
+
+Los selectores complejos pueden usar una estructura equivalente a:
+
+```ts
+interface SelectOption {
+  id: string;
+  label: string;
+  subtitle?: string;
+  group?: string;
+  aliases?: string[];
+  lastUsedAt?: number;
+  disabled?: boolean;
+}
+```
+
+Normaliza `label`, `subtitle`, `aliases` y la consulta con `.normalize('NFD')`, eliminación de
+diacríticos y minúsculas. Cuando no haya coincidencias, comunica la consulta exacta y ofrece crear
+la opción si el dominio lo permite. `lastUsedAt` debe permanecer local salvo que exista una razón
+de producto para sincronizarlo.
+
+Un `listbox` custom debe implementar `role="listbox"`, `role="option"`, `aria-selected`,
+navegación con flechas, `Enter`, `Escape` y devolución del foco al disparador. Usa `<select>` nativo
+cuando proporcione una experiencia más accesible y suficiente para el caso.
+
+#### Aplicación visual en GymApp
+
+- Usa controles de selección inline para métricas, tono IA y otras decisiones de 2–3 opciones.
+- Mantén `<select>` nativo para grupos pequeños y estables, como perímetros.
+- Usa un selector filtrable con recientes y aliases para catálogos grandes de ejercicios en `En vivo`,
+  `Registrar hecho` y planificación.
+- En móvil, prioriza bottom sheets de 44 px mínimo; en escritorio, popovers o paneles maestro-detalle.
+- Mantén el lienzo plano, evita radio-cards anidadas y no introduzcas AI glow, glassmorphism,
+  bento grids forzados ni gráficas decorativas.
+- La búsqueda debe actualizar solo la lista, preservar el foco y no reconstruir `#app`.
+
 ---
 
 ## 4. Arquitectura, Persistencia y Reglas de Estado

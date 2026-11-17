@@ -14,8 +14,9 @@ import {
   updateNavRestBadges,
   updateRestBarDom,
 } from '../ui/domPatches';
-import { manualSessionId } from '../ui/logView';
+import { manualSessionId, quickExSuggestions } from '../ui/logView';
 import { moveItem } from '../ui/reorder';
+import { filterSelectionOptions } from '../ui/selection';
 import { routineNames, todayIso } from '../ui/shared';
 import { defaultSetsForEx, initLiveWorkout, initLogDraft } from '../ui/views';
 import { arg, saveDraft, saveLive, type AppContext } from './context';
@@ -175,6 +176,7 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
           w: Math.max(0, Number(s.w) || 0),
           r: Math.max(1, Math.round(Number(s.r) || 0)),
           ...(s.restSec != null && Number.isFinite(s.restSec) && s.restSec >= 0 ? { restSec: Math.round(s.restSec) } : {}),
+          ...(s.rir != null && Number.isFinite(s.rir) && s.rir >= 0 && s.rir <= 10 ? { rir: Math.round(s.rir) } : {}),
         }));
       if (!sets.length) continue;
       const durMin = ex.meta?.durMin ?? opts.defaultDurPerEx;
@@ -267,6 +269,7 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
       ctx.toast(`${name} añadido al entreno.`);
     }
     delete live.pickerMode;
+    delete live.pickerQuery;
     delete live.exMenuOpen;
     saveLive(live);
     ctx.render();
@@ -647,6 +650,7 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
       const live = ctx.state.liveWorkout;
       if (!live) return;
       live.pickerMode = arg(el) === 'swap' ? 'swap' : 'add';
+      delete live.pickerQuery;
       delete live.exMenuOpen;
       saveLive(live);
       ctx.render();
@@ -655,6 +659,7 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
       const live = ctx.state.liveWorkout;
       if (!live) return;
       delete live.pickerMode;
+      delete live.pickerQuery;
       saveLive(live);
       ctx.render();
     },
@@ -809,6 +814,11 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
         live.exercises.every((e) => e.sets.length > 0 && e.sets.every((x) => Boolean(x.done && x.r > 0)));
       const nowPrevBanner = live.lastCompletedExIdx != null;
       saveLive(live);
+      if (!wasAllDone && nowAllDone) {
+        const completedSets = live.exercises.reduce((total, exercise) => total + exercise.sets.filter((set) => set.done && set.r > 0).length, 0);
+        const durationMin = Math.max(1, Math.round((Date.now() - live.startedAt) / 60000));
+        ctx.toast(`Entreno completo · ${completedSets} series · ${durationMin} min.`);
+      }
       syncRestTicker();
       if (advanced || wasAllDone !== nowAllDone || hadPrevBanner !== nowPrevBanner) {
         ctx.render();
@@ -837,6 +847,7 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
     },
     logAddEx: () => {
       const sel = ctx.root.querySelector<HTMLSelectElement>('#logAddSelect');
+      delete ctx.state.logAddQuery;
       if (sel?.value) addExToDraft(sel.value);
     },
     logAddCustomEx: () => {
@@ -976,6 +987,23 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
 
   function handleInput(el: HTMLInputElement): boolean {
     const S = ctx.state;
+    if (el.dataset.livePickerSearch && S.liveWorkout) {
+      S.liveWorkout.pickerQuery = el.value;
+      saveLive(S.liveWorkout);
+      const { avail } = quickExSuggestions(S, S.liveWorkout.day, S.liveWorkout.exercises.map((e) => e.name), 8);
+      const options = filterSelectionOptions(avail.map((name) => ({ id: name, label: name })), el.value);
+      const select = ctx.root.querySelector<HTMLSelectElement>('#livePickerSelect');
+      if (select) {
+        select.replaceChildren(new Option(`Resultados (${options.length})…`, ''));
+        options.forEach((option) => select.add(new Option(option.label, option.id)));
+      }
+      return true;
+    }
+    if (el.dataset.input === 'logAddSearch' && S.logDraft) {
+      S.logAddQuery = el.value;
+      ctx.render();
+      return true;
+    }
     if (!S.logDraft && !S.liveWorkout) return false;
     if (S.logDraft) {
       const draft = S.logDraft;
@@ -1013,6 +1041,18 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
           const raw = el.value.trim();
           if (!raw) delete s.restSec;
           else s.restSec = Math.min(1800, Math.max(0, Math.round(Number(raw) || 0)));
+          draft.dirty = true;
+          saveDraft(draft);
+        }
+        return true;
+      }
+      if (el.dataset.logRir) {
+        const [ei, si] = el.dataset.logRir.split('|').map(Number);
+        const s = draft.exercises[ei]?.sets[si];
+        if (s) {
+          const raw = el.value.trim();
+          if (!raw) delete s.rir;
+          else s.rir = Math.min(10, Math.max(0, Math.round(Number(raw) || 0)));
           draft.dirty = true;
           saveDraft(draft);
         }
@@ -1061,6 +1101,17 @@ export function createWorkoutController(ctx: AppContext): WorkoutController {
         const raw = el.value.trim();
         if (!raw) delete s.restSec;
         else s.restSec = Math.min(1800, Math.max(0, Math.round(Number(raw) || 0)));
+        saveLive(live);
+      }
+      return true;
+    }
+    if (el.dataset.liveRir) {
+      const [ei, si] = el.dataset.liveRir.split('|').map(Number);
+      const s = live.exercises[ei]?.sets[si];
+      if (s) {
+        const raw = el.value.trim();
+        if (!raw) delete s.rir;
+        else s.rir = Math.min(10, Math.max(0, Math.round(Number(raw) || 0)));
         saveLive(live);
       }
       return true;

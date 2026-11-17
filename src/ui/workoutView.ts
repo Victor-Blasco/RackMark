@@ -1,4 +1,5 @@
 import { defaultSetsForEx, exerciseContext, quickExSuggestions, renderRestTimerBar, renderStepper } from './logView';
+import { filterSelectionOptions } from './selection';
 import { icon } from './icons';
 import { esc, fmtDate, routineColor, routineNames, todayIso, type State } from './shared';
 import type { DayName, LiveWorkout, LogExDraft } from '../types';
@@ -157,6 +158,8 @@ function renderPickerPanel(S: State, live: LiveWorkout, currentEx?: LogExDraft):
   const mode = live.pickerMode;
   if (!mode) return '';
   const { avail, quick } = quickExSuggestions(S, live.day, live.exercises.map((e) => e.name), 8);
+  const query = live.pickerQuery ?? '';
+  const options = filterSelectionOptions(avail.map((name) => ({ id: name, label: name })), query);
   const title = mode === 'swap' && currentEx ? `Cambiar "${currentEx.name}" por otro` : 'Añadir ejercicio a este entreno';
 
   return `<section aria-label="${esc(title)}" class="rounded-2xl border border-electricBlue/40 bg-floatDark p-3.5 shadow-xl shadow-black/40 space-y-3">
@@ -174,9 +177,10 @@ function renderPickerPanel(S: State, live: LiveWorkout, currentEx?: LogExDraft):
 
     <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
       <div class="flex gap-2">
+        ${avail.length > 12 ? `<input id="livePickerSearch" class="inp min-h-[44px] flex-1" value="${esc(query)}" placeholder="Buscar ejercicio…" data-live-picker-search aria-label="Buscar ejercicio">` : ''}
         <select id="livePickerSelect" class="inp min-h-[44px] flex-1" aria-label="Elegir ejercicio de la lista">
           <option value="">Todos los ejercicios (${avail.length})…</option>
-          ${avail.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+          ${options.map((option) => `<option value="${esc(option.id)}">${esc(option.label)}</option>`).join('')}
         </select>
         <button type="button" class="btn-primary min-h-[44px] shrink-0" data-act="livePickFromSelect">Elegir</button>
       </div>
@@ -293,6 +297,10 @@ export function viewWorkout(S: State): string {
         ${ex.sets.map((s, si) => `<div data-live-set="${curIdx}|${si}" class="py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}">
           <div class="flex items-center justify-between gap-2 text-xs">
             <span data-live-set-lbl="${curIdx}|${si}" class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
+            <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
+              <span title="Repeticiones en reserva">RIR</span>
+              <input class="w-12 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="1" min="0" max="10" inputmode="numeric" value="${s.rir ?? ''}" placeholder="—" data-live-rir="${curIdx}|${si}" aria-label="RIR de serie ${si + 1}">
+            </label>
             <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
               <span title="Descanso real en esta serie (se rellena solo al usar el reloj)">Desc. real</span>
               <input class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
