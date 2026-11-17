@@ -1,4 +1,4 @@
-import { clearAiJob, loadAiJob, sanitizeSettings, saveAiJob, saveSettings, wipeAll } from '../lib/db';
+import { clearAiJob, clearSyncJob, loadAiJob, loadSyncJob, sanitizeSettings, saveAiJob, saveSettings, saveSyncJob, wipeAll } from '../lib/db';
 import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from '../lib/firebase';
 import {
   clearSyncMeta,
@@ -9,10 +9,13 @@ import {
   syncWithCloud,
 } from '../lib/sync';
 import { arg, maybeOpenInitialWizard, type AppContext } from './context';
-import type { AiJob } from '../types';
+import type { AiJob, SyncJob } from '../types';
 
 const AI_COOLDOWN_MS = 15_000;
 const AI_JOB_MAX_AGE_MS = 30 * 60 * 1000;
+const SYNC_JOB_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SYNC_RETRY_BASE_MS = 2_000;
+const SYNC_RETRY_MAX_MS = 5 * 60 * 1000;
 
 const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navigator.onLine !== false);
 
@@ -27,9 +30,21 @@ export interface SyncController {
 export function createSyncController(ctx: AppContext): SyncController {
   let lastAiAt = 0;
   let syncTimer: ReturnType<typeof setTimeout> | undefined;
+  let syncRetryTimer: ReturnType<typeof setTimeout> | undefined;
   let syncInFlight = false;
   let syncPending = false;
+
+  function scheduleSyncRetry(at: number): void {
+    if (syncRetryTimer) clearTimeout(syncRetryTimer);
+    const delay = Math.max(0, at - Date.now());
+    syncRetryTimer = setTimeout(() => {
+      syncRetryTimer = undefined;
+      if (isOnline() && ctx.state.user) void runSync(false);
+    }, delay);
+  }
   let aiResumeAttempted = false;
+  let syncResumeAttempted = false;
+  let syncJobWrite: Promise<void> | undefined;
 
   const createAiJobId = (): string =>
     globalThis.crypto?.randomUUID?.() ?? `ai-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -138,6 +153,10 @@ export function createSyncController(ctx: AppContext): SyncController {
       syncPending = true;
       return;
     }
+    const storedJob = await loadSyncJob();
+    if (!showToast && storedJob?.status === 'error' && storedJob.nextAttemptAt && storedJob.nextAttemptAt > Date.now()) {
+      return;
+    }
     const preMeta = loadSyncMeta();
     if (preMeta.uid && preMeta.uid !== S.user.uid && hasUnsyncedChanges(preMeta)) {
       syncInFlight = true;
@@ -160,8 +179,38 @@ export function createSyncController(ctx: AppContext): SyncController {
     syncInFlight = true;
     S.syncing = true;
     ctx.updateSyncDom();
+    let previousJob: SyncJob | undefined;
+    try {
+      previousJob = await loadSyncJob();
+    } catch (e) {
+      S.syncing = false;
+      syncInFlight = false;
+      ctx.updateSyncDom();
+      if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${(e as Error).message}`);
+      return;
+    }
+    const runningJob: SyncJob = {
+      id: 'cloud-sync',
+      status: 'running',
+      createdAt: previousJob?.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+      attempts: (previousJob?.attempts ?? 0) + 1,
+      error: undefined,
+    };
+    S.syncJob = runningJob;
+    try {
+      await saveSyncJob(runningJob);
+    } catch (e) {
+      S.syncing = false;
+      syncInFlight = false;
+      ctx.updateSyncDom();
+      if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${(e as Error).message}`);
+      return;
+    }
     try {
       const res = await syncWithCloud(S.user.uid);
+      await clearSyncJob();
+      S.syncJob = undefined;
       S.lastSync = Date.now();
       if (res.accountSwitched || res.remoteWiped) {
         ctx.clearActiveWorkouts();
@@ -190,6 +239,21 @@ export function createSyncController(ctx: AppContext): SyncController {
         ctx.toast(msg);
       }
     } catch (e) {
+      const error = e instanceof Error ? e.message : 'Error de sincronización.';
+      const nextAttemptAt = Date.now() + Math.min(
+        SYNC_RETRY_MAX_MS,
+        SYNC_RETRY_BASE_MS * (2 ** Math.max(0, runningJob.attempts - 1)),
+      );
+      const failedJob: SyncJob = {
+        ...runningJob,
+        status: 'error',
+        updatedAt: Date.now(),
+        error,
+        nextAttemptAt,
+      };
+      await saveSyncJob(failedJob);
+      S.syncJob = failedJob;
+      scheduleSyncRetry(nextAttemptAt);
       if (showToast) ctx.toast(`Error de sincronización: ${(e as Error).message}`);
     } finally {
       S.syncing = false;
@@ -204,11 +268,47 @@ export function createSyncController(ctx: AppContext): SyncController {
 
   function queueSync(): void {
     ctx.updateSyncDom();
+    const now = Date.now();
+    syncJobWrite = (syncJobWrite ?? Promise.resolve())
+      .then(async () => {
+        const existing = await loadSyncJob();
+        if (existing?.status === 'running') return;
+        const pendingJob: SyncJob = {
+          id: 'cloud-sync',
+          status: 'pending',
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+          attempts: existing?.attempts ?? 0,
+          error: undefined,
+          nextAttemptAt: undefined,
+        };
+        await saveSyncJob(pendingJob);
+        ctx.state.syncJob = pendingJob;
+      })
+      .catch((e) => {
+        if (import.meta.env.DEV) console.warn('[sync] could not persist pending job', { error: e instanceof Error ? e.name : 'unknown' });
+      });
     if (!ctx.state.user || !isOnline()) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       void runSync(false);
     }, 600);
+  }
+
+  async function resumeSyncJob(): Promise<void> {
+    if (syncResumeAttempted || !ctx.state.user) return;
+    syncResumeAttempted = true;
+    const job = await loadSyncJob();
+    if (!job) return;
+    if (Date.now() - job.updatedAt > SYNC_JOB_MAX_AGE_MS) {
+      await clearSyncJob();
+      return;
+    }
+    if (job.status === 'pending' || job.status === 'running' || (job.status === 'error' && (!job.nextAttemptAt || job.nextAttemptAt <= Date.now()))) {
+      await runSync(false);
+    } else {
+      ctx.toast(`La sincronización anterior falló: ${job.error ?? 'puedes reintentarlo.'}`);
+    }
   }
 
   async function initAuth(): Promise<() => void> {
@@ -222,6 +322,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.user = user;
       if (changed || !wasReady) ctx.render();
       if (user && changed && isOnline()) void runSync(false);
+      if (user) void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${(e as Error).message}`));
       if (user) void resumeAiJob().catch((e) => ctx.toast(`No se pudo recuperar el informe IA: ${(e as Error).message}`));
     });
   }

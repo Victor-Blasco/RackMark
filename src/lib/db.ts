@@ -1,6 +1,6 @@
 import { MEASURE_FIELDS } from '../types';
 import type {
-  AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
+  AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow, SyncJob,
 } from '../types';
 import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
 
@@ -117,6 +117,35 @@ export async function saveAiJob(job: AiJob): Promise<void> {
 
 export async function clearAiJob(): Promise<void> {
   await wrap((await tx('kv', 'readwrite')).delete(AI_JOB_KEY));
+}
+
+const SYNC_JOB_KEY = 'sync_job';
+
+export async function loadSyncJob(): Promise<SyncJob | undefined> {
+  const raw = await wrap((await tx('kv', 'readonly')).get(SYNC_JOB_KEY)) as unknown;
+  if (!isObj(raw) || raw.id !== 'cloud-sync' || !['pending', 'running', 'error'].includes(String(raw.status))) return undefined;
+  const createdAt = fin(raw.createdAt);
+  const updatedAt = fin(raw.updatedAt);
+  const attempts = fin(raw.attempts);
+  const nextAttemptAt = fin(raw.nextAttemptAt);
+  if (createdAt == null || updatedAt == null || attempts == null) return undefined;
+  return {
+    id: 'cloud-sync',
+    status: raw.status as SyncJob['status'],
+    createdAt,
+    updatedAt,
+    attempts: Math.max(0, Math.round(attempts)),
+    ...(typeof raw.error === 'string' ? { error: raw.error.slice(0, 500) } : {}),
+    ...(nextAttemptAt != null ? { nextAttemptAt } : {}),
+  };
+}
+
+export async function saveSyncJob(job: SyncJob): Promise<void> {
+  await wrap((await tx('kv', 'readwrite')).put(job, SYNC_JOB_KEY));
+}
+
+export async function clearSyncJob(): Promise<void> {
+  await wrap((await tx('kv', 'readwrite')).delete(SYNC_JOB_KEY));
 }
 
 export async function mergeWellbeing(items: DailyWellbeing[]): Promise<void> {
@@ -279,8 +308,14 @@ function sanitizeStrengthRow(r: unknown): StrengthRow | null {
     const w = fin(s.w);
     const reps = fin(s.r);
     const restSec = fin(s.restSec);
+    const rir = fin(s.rir);
     return w !== undefined && w >= 0 && reps !== undefined && reps > 0
-      ? [{ w, r: reps, ...(restSec !== undefined && restSec >= 0 ? { restSec: Math.round(restSec) } : {}) }]
+      ? [{
+          w,
+          r: reps,
+          ...(restSec !== undefined && restSec >= 0 && restSec <= 1800 ? { restSec: Math.round(restSec) } : {}),
+          ...(rir !== undefined && rir >= 0 && rir <= 10 ? { rir: Math.round(rir) } : {}),
+        }]
       : [];
   });
   if (!sets.length) return null;

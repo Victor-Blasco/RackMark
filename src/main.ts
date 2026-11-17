@@ -1,7 +1,7 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
-import { getAll, loadAiJob, loadSettings, saveSettings } from './lib/db';
+import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './lib/db';
 import { isValidIsoDate } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
@@ -14,7 +14,7 @@ import {
   restoreModalFocus,
 } from './ui/domPatches';
 import { initSortableLists } from './ui/reorder';
-import { esc, routineNames, todayIso, type RangeKey } from './ui/shared';
+import { esc, inRange, resolveRange, routineNames, todayIso, type RangeKey } from './ui/shared';
 import {
   ANALYTICS_IDS,
   FIXED_TAB_IDS,
@@ -39,6 +39,8 @@ import {
   viewCalc,
   viewData,
   viewDay,
+  buildHomeExChartConfig,
+  buildCompChartConfig,
   viewHome,
   viewLog,
   viewPlan,
@@ -92,6 +94,7 @@ function setTab(tab: string) {
 async function reload() {
   S.settings = await loadSettings();
   S.aiJob = await loadAiJob();
+  S.syncJob = await loadSyncJob();
   S.strength = (await getAll<StrengthRow>('strength')).sort((a, b) => a.ts - b.ts);
   S.cardio = (await getAll<CardioRow>('cardio')).sort((a, b) => a.ts - b.ts);
   S.measures = (await getAll<Measure>('measures')).sort((a, b) => a.date.localeCompare(b.date));
@@ -322,7 +325,8 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   setExMetric: (el) => {
     const m = arg(el);
     S.exMetric = m === 'e1rm' || m === 'volume' ? m : 'top';
-    render();
+    const cfg = buildHomeExChartConfig(S);
+    if (!cfg || !updateChart('c-home-ex', cfg)) render();
   },
   aiTab: (el) => {
     S.aiTab = Math.max(0, +arg(el) || 0);
@@ -337,7 +341,12 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   },
   setBodyMetric: (el) => {
     S.bodyMetric = arg(el) === 'muscle' ? 'muscle' : 'weight';
-    render();
+    const bounds = resolveRange(S, 'body');
+    const cfg = buildCompChartConfig(
+      S.measures.filter((m) => inRange(m.date, bounds)),
+      S.bodyMetric,
+    );
+    if (!cfg || !updateChart('c-comp', cfg)) render();
   },
   editNote: (el) => {
     const n = arg(el);
@@ -366,7 +375,9 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
 const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void | Promise<void>> = {
   selHome: (el) => {
     S.sel.home = el.value;
-    render();
+    delete S.homeExQuery;
+    const cfg = buildHomeExChartConfig(S);
+    if (!cfg || !updateChart('c-home-ex', cfg)) render();
   },
   rangeFrom: (el) => {
     const scope = arg(el);
@@ -506,6 +517,11 @@ root.addEventListener('focusout', (e) => {
 
 root.addEventListener('input', (e) => {
   const el = e.target as HTMLInputElement;
+  if (el.dataset.input === 'homeExSearch') {
+    S.homeExQuery = el.value;
+    render();
+    return;
+  }
   if (el.dataset.input === 'calc') {
     if (el.id === 'calcW') (S.calcDraft ??= {}).w = el.value;
     else if (el.id === 'calcR') (S.calcDraft ??= {}).r = el.value;

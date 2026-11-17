@@ -15,7 +15,7 @@ import {
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow } from '../types';
+import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
 import type { WizardDraft } from './wizardView';
 
 export { todayIso };
@@ -90,6 +90,8 @@ export interface State {
   settings: Settings;
   analysis: Analysis;
   sel: Record<string, string>;
+  homeExQuery?: string;
+  logAddQuery?: string;
   perimeter: string;
   muscleSel: string;
   logDraft?: LogDraft;
@@ -117,6 +119,7 @@ export interface State {
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
+  syncJob?: SyncJob;
   lastSync?: number;
   busy?: string;
   aiJob?: AiJob;

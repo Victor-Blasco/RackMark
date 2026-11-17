@@ -15,6 +15,15 @@ export function viewSettings(S: State): string {
   const syncWhen = S.lastSync
     ? new Date(S.lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : null;
+  const syncStatus = S.syncing
+    ? 'Sincronizando…'
+    : S.syncJob?.status === 'error'
+      ? `Pendiente: ${S.syncJob.error ?? 'error recuperable'}${S.syncJob.nextAttemptAt ? ` · reintento ${new Date(S.syncJob.nextAttemptAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+      : S.syncJob?.status === 'pending'
+        ? 'Guardado localmente · pendiente de sincronizar'
+        : syncWhen
+          ? `Última sincronización: ${syncWhen}`
+          : 'Conectado';
   const initial = (S.user?.displayName ?? S.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
 
   const cloudCard = S.user
@@ -25,7 +34,7 @@ export function viewSettings(S: State): string {
             <h2 class="font-bold text-white">Cuenta y sincronización</h2>
             <p class="text-sm text-gray-200 truncate mt-0.5">${esc(S.user.displayName ?? 'Usuario')}</p>
             <p class="text-xs text-gray-400 truncate">${esc(S.user.email ?? '')}</p>
-            <p class="text-xs text-emerald-400 mt-1">${S.syncing ? 'Sincronizando…' : syncWhen ? `Última sincronización: ${esc(syncWhen)}` : 'Conectado'}</p>
+            <p class="text-xs ${S.syncJob?.status === 'error' ? 'text-rose-300' : 'text-emerald-400'} mt-1">${esc(syncStatus)}</p>
           </div>
         </div>
         <div class="flex flex-wrap gap-2 border-t border-white/5 pt-3">

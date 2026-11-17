@@ -53,6 +53,8 @@ export function syncStatusInfo(
 ): { text: string; cls: string } {
   if (!S.user) return { text: online ? 'Solo local' : 'Sin conexión · local', cls: 'text-gray-400' };
   if (S.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
+  if (S.syncJob?.status === 'error') return { text: 'Error de sincronización · reintentando', cls: 'text-rose-300' };
+  if (S.syncJob?.status === 'pending') return { text: 'Guardado local · pendiente de subir', cls: 'text-amberGold' };
   if (!online) {
     return unsynced
       ? { text: 'Offline · pendiente de subir', cls: 'text-amberGold' }
