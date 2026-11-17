@@ -61,13 +61,13 @@ export function viewData(S: State): string {
     </div>
   </div>
 
-  <div class="rounded-2xl border border-coralRed/30 bg-coralRed/5 p-4 space-y-3">
+  <div class="rounded-2xl border border-coralRed/30 p-4 space-y-3">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h3 class="font-bold text-rose-300">Zona de peligro</h3>
+        <h3 class="font-bold text-coralRed">Zona de peligro</h3>
         <p class="text-xs text-gray-300 mt-0.5">${S.user ? 'Elimina todos tus entrenamientos, medidas y ajustes de este dispositivo y de tu nube conectada.' : 'Elimina todos los entrenamientos, medidas y ajustes guardados en este dispositivo.'}</p>
       </div>
-      <button class="btn btn-danger" data-act="wipe">${icon('trash', 'h-4 w-4')} Borrar todos los datos</button>
+      <button class="btn border-coralRed/50 text-coralRed hover:border-coralRed" data-act="wipe">${icon('trash', 'h-4 w-4')} Borrar todos los datos</button>
     </div>
   </div>`;
 }

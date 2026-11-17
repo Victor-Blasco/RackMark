@@ -26,6 +26,8 @@ import {
 } from '../src/ui/shared';
 import { buildBodyHomeChartConfig, buildCompChartConfig, buildHomeExChartConfig, renderAiReport, viewDay, viewHome } from '../src/ui/views';
 import { viewSettings } from '../src/ui/settingsView';
+import { viewData } from '../src/ui/dataView';
+import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
@@ -464,6 +466,58 @@ describe('P1 analytics, trends & empty states', () => {
   });
 });
 
+describe('calculadora nutricional', () => {
+  it('calcula TMB, TDEE, objetivos, macros y reparto por comidas', () => {
+    const result = calculateNutrition(70, 15, 1.65, 225, 2.2, 1, 4);
+    expect(result.bmr).toBeGreaterThan(1000);
+    expect(result.target).toBe(result.tdee + 225);
+    expect(result.proteinG).toBe(154);
+    expect(result.fatG).toBe(70);
+    expect(result.perMeal.proteinG).toBe(39);
+    expect(result.perMeal.fatG).toBe(18);
+    expect(result.proteinPct + result.fatPct + result.carbsPct).toBe(100);
+  });
+
+  it('incluye recomposición y guarda rangos seguros de actividad', () => {
+    expect(NUTRITION_PHASES.find((phase) => phase.id === 'recomp')?.delta).toBe(-150);
+    expect(ACTIVITY_OPTIONS.map((option) => option.factor)).toEqual([1.55, 1.65, 1.75]);
+    expect(calculateNutrition(70, 15, 99, -500, 2.4, 1.2, 5).target).toBeGreaterThan(0);
+  });
+
+  it('recomienda actividad según fuerza reciente y pasos', () => {
+    expect(recommendActivityFactor(2, 7000)).toBe(1.55);
+    expect(recommendActivityFactor(4, 7000)).toBe(1.65);
+    expect(recommendActivityFactor(6, 7000)).toBe(1.75);
+    expect(recommendActivityFactor(2, 12000)).toBe(1.65);
+  });
+
+  it('renderiza radiogroups nutricionales y el hero de calorías', () => {
+    const settings = sanitizeSettings({
+      profile: { sex: 'hombre', age: 25, height: 170, goal: 'bulk', daysPerWeek: 5 },
+    });
+    const state = {
+      tab: 'calc',
+      strength: [],
+      cardio: [],
+      measures: [{ date: '2026-11-15', weight: 70, bf: 15 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    } as State;
+    const html = viewCalc(state);
+    expect(html).toContain('aria-label="Factor de actividad"');
+    expect(html).toContain('aria-label="Fase energética"');
+    expect(html).toContain('aria-label="Número de comidas"');
+    expect(html).toContain('data-act="nutriAct"');
+    expect(html).toContain('whitespace-nowrap');
+    expect(html).toContain('items-end gap-3');
+    expect(html).toContain('lbl min-h-8 leading-4');
+  });
+});
+
 describe('P2 desktop lab, routineShort & planned volume', () => {
   it('genera abreviaturas cortas sin colisiones y conserva Pu/Pl/Lg', () => {
     expect(routineShort('Push')).toBe('Pu');
@@ -542,6 +596,20 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     const vol = weeklyVolume(rows, settings, '2026-11-16', '2026-11-18');
     expect(vol.get('Pecho')?.get('2026-11-16')).toBe(1);
     expect(vol.get('Pecho')?.get('2026-11-09')).toBeUndefined();
+  });
+
+  it('mantiene la zona de peligro plana y roja solo en borde y textos', () => {
+    const html = viewData({
+      analysis: { unmapped: [] },
+      strength: [],
+      cardio: [],
+      wellbeing: [],
+      measures: [],
+      user: null,
+    } as unknown as State);
+    expect(html).toContain('border-coralRed/30');
+    expect(html).toContain('text-coralRed');
+    expect(html).not.toContain('bg-coralRed/5');
   });
 
   it('renderiza Modo Laboratorio en viewPlan, modal de notas y cross-links sin card-itis', async () => {
@@ -1153,8 +1221,8 @@ describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', ()
       expect(settingsHtml).toContain('2 días');
 
       const calcHtml = viewCalc({ ...emptyState, tab: 'calc' });
-      expect(calcHtml).toContain('value="1.55" selected');
-      expect(calcHtml).toContain('value="-350" selected');
+      expect(calcHtml).toContain('data-act="nutriAct"');
+      expect(calcHtml).toContain('data-act="nutriGoal"');
       expect(calcHtml).toContain('Estima el peso máximo que podrías mover a 1 repetición');
 
       const liveFirstTime = initLiveWorkout(emptyState, 'Push');

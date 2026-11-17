@@ -410,11 +410,46 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
     S.calcDraft.r = r;
     runCalc();
   },
+  nutriAct: (el) => {
+    (S.calcDraft ??= {}).act = arg(el);
+    const input = document.getElementById('nuAct') as HTMLInputElement | null;
+    if (input) input.value = arg(el);
+    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriAct"]')) {
+      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
+      button.classList.toggle('border-electricBlue', button.dataset.arg === arg(el));
+      button.classList.toggle('bg-electricBlue/15', button.dataset.arg === arg(el));
+    }
+    runCalc();
+  },
+  nutriGoal: (el) => {
+    (S.calcDraft ??= {}).goal = arg(el);
+    const input = document.getElementById('nuGoal') as HTMLInputElement | null;
+    if (input) input.value = arg(el);
+    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriGoal"]')) {
+      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
+      button.classList.toggle('border-electricBlue', button.dataset.arg === arg(el));
+      button.classList.toggle('bg-electricBlue/15', button.dataset.arg === arg(el));
+    }
+    runCalc();
+  },
+  nutriMeals: (el) => {
+    (S.calcDraft ??= {}).meals = arg(el);
+    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriMeals"]')) {
+      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
+      button.classList.toggle('bg-electricBlue', button.dataset.arg === arg(el));
+      button.classList.toggle('text-white', button.dataset.arg === arg(el));
+    }
+    runCalc();
+  },
   nutri: () => {
     const act = document.getElementById('nuAct') as HTMLSelectElement | null;
     const goal = document.getElementById('nuGoal') as HTMLSelectElement | null;
+    const protein = document.getElementById('nuProtein') as HTMLSelectElement | null;
+    const fat = document.getElementById('nuFat') as HTMLSelectElement | null;
     if (act) (S.calcDraft ??= {}).act = act.value;
     if (goal) (S.calcDraft ??= {}).goal = goal.value;
+    if (protein) (S.calcDraft ??= {}).protein = protein.value;
+    if (fat) (S.calcDraft ??= {}).fat = fat.value;
     runCalc();
   },
   ...workoutCtrl.changes,

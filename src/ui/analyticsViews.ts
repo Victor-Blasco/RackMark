@@ -1,5 +1,6 @@
 import type { ChartConfiguration } from 'chart.js';
 import { epley, isoWeekStart, weeklyVolume } from '../lib/analysis';
+import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../lib/nutrition';
 import { MUSCLES } from '../lib/seed';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
 import { icon } from './icons';
@@ -397,6 +398,19 @@ export function viewCalc(S: State): string {
   const cRir = S.calcDraft?.rir ?? '1';
   const cAct = S.calcDraft?.act ?? (S.settings.profile.daysPerWeek ? daysActivityFactor(S.settings.profile.daysPerWeek) : '1.65');
   const cGoal = S.calcDraft?.goal ?? (S.settings.profile.goal ? goalCalorieDelta(S.settings.profile.goal) : '225');
+  const cProtein = S.calcDraft?.protein ?? '2.2';
+  const cFat = S.calcDraft?.fat ?? '1.0';
+  const cMeals = S.calcDraft?.meals ?? '4';
+  const cutoff = todayIso(new Date(Date.now() - 7 * 864e5));
+  const strengthSessions7d = S.analysis.sessions.filter((session) => session.date >= cutoff).length;
+  const recentSteps = S.wellbeing
+    .filter((day) => day.date >= cutoff)
+    .map((day) => day.steps)
+    .filter((steps): steps is number => steps != null);
+  const avgSteps7d = recentSteps.length
+    ? recentSteps.reduce((sum, steps) => sum + steps, 0) / recentSteps.length
+    : 0;
+  const recommendedAct = recommendActivityFactor(strengthSessions7d, avgSteps7d);
   return `<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
   <div class="pb-5 border-b border-white/10 lg:border-b-0 lg:pb-0 lg:border-r lg:border-white/10 lg:pr-6 space-y-3">
     <div>
@@ -405,25 +419,53 @@ export function viewCalc(S: State): string {
       ${usingSampleStrength ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (registra una sesión para cargar tus marcas)</p>` : ''}
     </div>
     ${usingSampleStrength ? '' : `<label class="block"><span class="lbl">Cargar marca de tu última sesión</span><select id="calcPreset" class="inp" data-change="calcPreset">${presets.map((p) => `<option value="${esc(p.w)}|${esc(p.r)}">${esc(p.n)} (${esc(p.w)} kg × ${esc(p.r)})</option>`).join('')}</select></label>`}
-    <div class="grid grid-cols-3 gap-3">
-      <label class="block"><span class="lbl">Peso (kg)</span><input id="calcW" class="inp tabular-nums font-medium" type="number" step="0.5" value="${esc(cW)}" data-input="calc"></label>
-      <label class="block"><span class="lbl">Reps</span><input id="calcR" class="inp tabular-nums font-medium" type="number" min="1" max="30" value="${esc(cR)}" data-input="calc"></label>
-      <label class="block"><span class="lbl">Reps en reserva (RIR 0-5)</span><input id="calcRir" class="inp tabular-nums font-medium" type="number" min="0" max="5" value="${esc(cRir)}" data-input="calc"></label></div>
+    <div class="grid grid-cols-3 items-end gap-3">
+      <label class="flex h-16 flex-col"><span class="lbl min-h-8 leading-4">Peso (kg)</span><input id="calcW" class="inp mt-auto tabular-nums font-medium" type="number" step="0.5" value="${esc(cW)}" data-input="calc"></label>
+      <label class="flex h-16 flex-col"><span class="lbl min-h-8 leading-4">Reps</span><input id="calcR" class="inp mt-auto tabular-nums font-medium" type="number" min="1" max="30" value="${esc(cR)}" data-input="calc"></label>
+      <label class="flex h-16 flex-col"><span class="lbl min-h-8 leading-4">Reps en reserva (RIR 0-5)</span><input id="calcRir" class="inp mt-auto tabular-nums font-medium" type="number" min="0" max="5" value="${esc(cRir)}" data-input="calc"></label></div>
     <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="calcOut"></div>
     <div class="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/10 pb-3 text-sm tabular-nums sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-white/10 sm:text-center" id="calcZones"></div></div>
-  <div class="space-y-3">
+  <div class="min-w-0 space-y-4">
     <div>
       <h2 class="font-bold text-white">Planificador nutricional (${r1(w)} kg · ${r1(bf)}% grasa)</h2>
       ${usingSampleMeasures
         ? `<p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (añade una medida para personalizar)</p>`
         : `<p class="text-xs text-gray-400">Calculado según tu peso y masa libre de grasa (${r1(w * (1 - bf / 100))} kg). Usa tu última medición.</p>`}
     </div>
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label class="block"><span class="lbl">Actividad</span><select id="nuAct" class="inp" data-change="nutri"><option value="1.55" ${cAct === '1.55' ? 'selected' : ''}>Fuerza 3-4 días (×1,55)</option><option value="1.65" ${cAct === '1.65' ? 'selected' : ''}>Fuerza 5-6 días + pasos (×1,65)</option><option value="1.75" ${cAct === '1.75' ? 'selected' : ''}>Intenso (×1,75)</option></select></label>
-      <label class="block"><span class="lbl">Fase energética</span><select id="nuGoal" class="inp" data-change="nutri"><option value="0" ${cGoal === '0' ? 'selected' : ''}>Mantenimiento (0 kcal)</option><option value="225" ${cGoal === '225' ? 'selected' : ''}>Ganancia limpia (+225 kcal)</option><option value="350" ${cGoal === '350' ? 'selected' : ''}>Superávit estándar (+350 kcal)</option><option value="-350" ${cGoal === '-350' ? 'selected' : ''}>Definición suave (−350 kcal)</option></select></label></div>
-    <input type="hidden" id="nuW" value="${w}"><input type="hidden" id="nuBf" value="${bf}">
-    <div class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center" id="nuOut"></div>
-    <div class="grid grid-cols-3 divide-x divide-white/10 py-1 text-center" id="nuMacros"></div></div></div>`;
+    <div class="space-y-2">
+      <span class="lbl">Actividad semanal</span>
+      <div role="radiogroup" aria-label="Factor de actividad" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        ${ACTIVITY_OPTIONS.map((option) => `<button type="button" role="radio" aria-checked="${Number(cAct) === option.factor}" data-act="nutriAct" data-arg="${option.factor}" class="min-h-[44px] rounded-xl border px-3 py-2 text-left transition-colors ${Number(cAct) === option.factor ? 'border-electricBlue bg-electricBlue/15' : 'border-white/10 hover:border-white/25'}">
+          <span class="flex min-h-5 items-center justify-between gap-1"><b class="truncate text-sm text-white">${option.title}</b>${recommendedAct === option.factor ? '<span class="shrink-0 whitespace-nowrap rounded-full bg-emeraldGreen/15 px-1.5 py-0.5 text-[10px] font-bold leading-4 text-emerald-300">Según tus datos</span>' : ''}</span>
+          <span class="mt-0.5 block text-[11px] text-gray-400">${option.subtitle} · ×${option.factor.toFixed(2)}</span>
+        </button>`).join('')}
+      </div>
+    </div>
+    <div class="space-y-2">
+      <span class="lbl">Fase energética</span>
+      <div role="radiogroup" aria-label="Fase energética" class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        ${NUTRITION_PHASES.map((phase) => `<button type="button" role="radio" aria-checked="${Number(cGoal) === phase.delta}" data-act="nutriGoal" data-arg="${phase.delta}" class="min-h-[44px] rounded-xl border px-2 py-2 text-center transition-colors ${Number(cGoal) === phase.delta ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-300 hover:border-white/25 hover:text-white'}">
+          <span class="block text-xs font-bold">${phase.label}</span><span class="mt-0.5 block tabular-nums text-[11px] ${phase.delta > 0 ? 'text-emerald-300' : phase.delta < 0 ? 'text-amberGold' : 'text-gray-400'}">${phase.shortLabel} kcal</span>
+        </button>`).join('')}
+      </div>
+    </div>
+    <input type="hidden" id="nuAct" value="${esc(cAct)}">
+    <input type="hidden" id="nuGoal" value="${esc(cGoal)}">
+    <input type="hidden" id="nuW" value="${w}">
+    <input type="hidden" id="nuBf" value="${bf}">
+    <div id="nuOut"></div>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block"><span class="lbl">Proteína</span><select id="nuProtein" class="inp tabular-nums" data-change="nutri"><option value="1.8" ${cProtein === '1.8' ? 'selected' : ''}>1,8 g/kg</option><option value="2.0" ${cProtein === '2.0' ? 'selected' : ''}>2,0 g/kg</option><option value="2.2" ${cProtein === '2.2' ? 'selected' : ''}>2,2 g/kg</option><option value="2.4" ${cProtein === '2.4' ? 'selected' : ''}>2,4 g/kg</option></select></label>
+      <label class="block"><span class="lbl">Grasas</span><select id="nuFat" class="inp tabular-nums" data-change="nutri"><option value="0.8" ${cFat === '0.8' ? 'selected' : ''}>0,8 g/kg</option><option value="1.0" ${cFat === '1.0' ? 'selected' : ''}>1,0 g/kg</option><option value="1.2" ${cFat === '1.2' ? 'selected' : ''}>1,2 g/kg</option></select></label>
+    </div>
+    <div class="space-y-2">
+      <span class="lbl">Reparto por comidas</span>
+      <div role="radiogroup" aria-label="Número de comidas" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1">
+        ${[3, 4, 5].map((meals) => `<button type="button" role="radio" aria-checked="${Number(cMeals) === meals}" data-act="nutriMeals" data-arg="${meals}" class="min-h-[44px] rounded-lg px-4 text-sm font-bold transition-colors ${Number(cMeals) === meals ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${meals}</button>`).join('')}
+      </div>
+    </div>
+    <div id="nuMacros"></div>
+  </div></div>`;
 }
 
 /** Recalcula los resultados de 1RM y macros en la vista de Calculadoras. */
@@ -443,11 +485,55 @@ export function runCalc() {
   }
   if (g('nuW')) {
     const w = parseFloat(g('nuW')!.value), bf = parseFloat(g('nuBf')!.value);
-    const lbm = w * (1 - bf / 100), bmr = Math.round(370 + 21.6 * lbm);
-    const tdee = Math.round(bmr * parseFloat((document.getElementById('nuAct') as HTMLSelectElement).value));
-    const target = tdee + parseInt((document.getElementById('nuGoal') as HTMLSelectElement).value, 10);
-    const p = Math.round(w * 2.2), f = Math.round(w), pk = p * 4, fk = f * 9, ck = Math.max(0, target - pk - fk);
-    document.getElementById('nuOut')!.innerHTML = col('En reposo (TMB)', `${bmr} kcal`) + col('Gasto diario (TDEE)', `${tdee} kcal`, 'text-electricBlue') + col('Calorías objetivo', `${target} kcal`, 'text-emeraldGreen');
-    document.getElementById('nuMacros')!.innerHTML = col('Proteína 2,2 g/kg', `${p} g`, 'text-emeraldGreen') + col('Grasas 1 g/kg', `${f} g`, 'text-amberGold') + col('Carbohidratos', `${Math.round(ck / 4)} g`, 'text-electricBlue');
+    const act = parseFloat((document.getElementById('nuAct') as HTMLInputElement).value) || 1.55;
+    const delta = parseInt((document.getElementById('nuGoal') as HTMLInputElement).value, 10) || 0;
+    const proteinPerKg = parseFloat((document.getElementById('nuProtein') as HTMLSelectElement | null)?.value ?? '2.2') || 2.2;
+    const fatPerKg = parseFloat((document.getElementById('nuFat') as HTMLSelectElement | null)?.value ?? '1') || 1;
+    const meals = parseInt(document.querySelector<HTMLElement>('[data-act="nutriMeals"][aria-checked="true"]')?.dataset.arg ?? '4', 10) || 4;
+    const result = calculateNutrition(w, bf, act, delta, proteinPerKg, fatPerKg, meals);
+    const deltaSign = delta > 0 ? '+' : '';
+    const projection = result.weeklyProjectionKg;
+    const projectionText = Math.abs(projection) < 0.05
+      ? 'Sin cambio previsto'
+      : `${projection > 0 ? '+' : '−'}${Math.abs(projection).toFixed(2).replace('.', ',')} kg/sem`;
+    document.getElementById('nuOut')!.innerHTML = `
+      <div class="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span class="block text-xs text-gray-400">Calorías objetivo</span>
+            <span class="tabular-nums text-3xl font-extrabold text-white">${result.target} <span class="text-base font-bold text-gray-300">kcal</span></span>
+          </div>
+          <div class="text-right">
+            <span class="inline-flex rounded-full ${delta === 0 ? 'bg-white/5 text-gray-300' : delta > 0 ? 'bg-emeraldGreen/15 text-emerald-300' : 'bg-amberGold/15 text-amberGold'} px-2 py-1 text-xs font-bold">${deltaSign}${delta} kcal/día</span>
+            <span class="mt-1 block text-xs text-gray-400">${projectionText} estimado</span>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 pt-3 text-center">
+          ${col('TMB', `${result.bmr} kcal`)}${col('TDEE', `${result.tdee} kcal`, 'text-electricBlue')}
+        </div>
+      </div>`;
+    const carbWarning = result.target - result.proteinG * 4 - result.fatG * 9 < 0
+      ? '<p class="mt-2 text-xs text-amberGold">Proteína y grasas superan el objetivo: baja uno de los ajustes antes de definir carbohidratos.</p>'
+      : '';
+    document.getElementById('nuMacros')!.innerHTML = `
+      <div class="space-y-3 border-t border-white/10 pt-3">
+        <div class="flex h-2 overflow-hidden rounded-full bg-white/5" aria-label="Distribución de macros">
+          <span class="h-full bg-emeraldGreen" style="width:${result.proteinPct}%"></span>
+          <span class="h-full bg-amberGold" style="width:${result.fatPct}%"></span>
+          <span class="h-full bg-electricBlue" style="width:${result.carbsPct}%"></span>
+        </div>
+        <div class="grid grid-cols-3 divide-x divide-white/10 text-center">
+          ${col(`Proteína ${result.proteinPerKg.toFixed(1).replace('.', ',')} g/kg`, `${result.proteinG} g`, 'text-emerald-300')}
+          ${col(`Grasas ${result.fatPerKg.toFixed(1).replace('.', ',')} g/kg`, `${result.fatG} g`, 'text-amberGold')}
+          ${col('Carbohidratos', `${result.carbsG} g`, 'text-blue-300')}
+        </div>
+        <p class="text-center text-[11px] tabular-nums text-gray-400">${result.proteinPct}% proteína · ${result.fatPct}% grasas · ${result.carbsPct}% carbohidratos</p>
+        ${carbWarning}
+        <div class="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 py-2 text-center">
+          ${col('Por comida · P', `${result.perMeal.proteinG} g`, 'text-emerald-300')}
+          ${col('Por comida · G', `${result.perMeal.fatG} g`, 'text-amberGold')}
+          ${col('Por comida · C', `${result.perMeal.carbsG} g`, 'text-blue-300')}
+        </div>
+      </div>`;
   }
 }

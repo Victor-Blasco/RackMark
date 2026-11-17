@@ -108,7 +108,16 @@ export interface State {
   measurePerimOpen?: boolean;
   measureDraft?: Record<string, string>;
   bodyMetric?: 'weight' | 'muscle';
-  calcDraft?: { w?: string; r?: string; rir?: string; act?: string; goal?: string };
+  calcDraft?: {
+    w?: string;
+    r?: string;
+    rir?: string;
+    act?: string;
+    goal?: string;
+    protein?: string;
+    fat?: string;
+    meals?: string;
+  };
   exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
   routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
   confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
