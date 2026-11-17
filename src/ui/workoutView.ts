@@ -289,7 +289,7 @@ export function viewWorkout(S: State): string {
             <span data-live-set-lbl="${curIdx}|${si}" class="font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}">Serie ${si + 1}${s.done ? ' · Hecha' : ''}</span>
             <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
               <span>Descanso</span>
-              <input class="w-14 min-h-[38px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
+              <input class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="${live.targetRestSec}" data-live-rest="${curIdx}|${si}" aria-label="Descanso en segundos serie ${si + 1}">
               <span>s</span>
             </label>
           </div>
@@ -307,7 +307,7 @@ export function viewWorkout(S: State): string {
               delta: 2.5,
               decAria: `Restar 2,5 kg serie ${si + 1}`,
               incAria: `Sumar 2,5 kg serie ${si + 1}`,
-              btnCls: 'flex h-11 w-10 sm:w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
+              btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
               inpCls: 'inp !h-11 min-w-0 flex-1 !rounded-none !border-x-0 !border-white/15 !bg-transparent !px-1 !py-0 text-center text-base font-bold tabular-nums',
             })}
             ${renderStepper({
@@ -323,7 +323,7 @@ export function viewWorkout(S: State): string {
               delta: 1,
               decAria: `Restar 1 repetición serie ${si + 1}`,
               incAria: `Sumar 1 repetición serie ${si + 1}`,
-              btnCls: 'flex h-11 w-10 sm:w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
+              btnCls: 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95',
               inpCls: 'inp !h-11 min-w-0 flex-1 !rounded-none !border-x-0 !border-white/15 !bg-transparent !px-1 !py-0 text-center text-base font-bold tabular-nums',
             })}
             <button type="button" data-act="liveToggleSet" data-arg="${curIdx}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Marcar'} serie ${si + 1}" class="flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}" style="touch-action:manipulation">${icon('check', 'h-4 w-4')}<span class="hidden sm:inline">${s.done ? 'Hecha' : 'Listo'}</span></button>

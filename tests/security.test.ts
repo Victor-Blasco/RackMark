@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
-import { parseBackup } from '../src/lib/db';
-import { parseMeasuresCsv } from '../src/lib/measures';
+import { analyze, isoWeekStart, weeklyVolume } from '../src/lib/analysis';
+import { parseBackup, sanitizeSettings } from '../src/lib/db';
+import { parseEsDate, parseMeasuresCsv } from '../src/lib/measures';
 import { importSamsungFiles } from '../src/lib/samsung';
+import { isValidIsoDate } from '../src/lib/seed';
 import { hasUnsyncedChanges, stripUndefined } from '../src/lib/sync';
 import { esc, fmtDate, short } from '../src/ui/shared';
 
@@ -106,5 +108,58 @@ describe('security hardening', () => {
     // ZIP con bomba simulada dentro de archivo coincidente (> 150 MB descomprimido)
     const zipped = zipSync({ 'com.samsung.shealth.exercise.2026.csv': strToU8('header\ncol\n') });
     expect(zipped.byteLength).toBeGreaterThan(0);
+  });
+
+  it('rechaza fechas imposibles, filas sin series en parseBackup y sanea IA / límites Firestore', () => {
+    expect(isValidIsoDate('')).toBe(false);
+    expect(isValidIsoDate('2026-99-99')).toBe(false);
+    expect(isValidIsoDate('2026-02-31')).toBe(false);
+    expect(isValidIsoDate('2024-02-29')).toBe(true);
+    expect(parseEsDate('31/02/2026')).toBeNull();
+
+    const badBackup = parseBackup(
+      JSON.stringify({
+        version: 1,
+        exportedAt: '2026-11-16T10:00:00Z',
+        strength: [
+          { id: 'empty-sets', sessionId: 's1', ts: 1, date: '2026-11-16', ref: 'name:Press', sets: [] },
+          { id: 'bad-sets', sessionId: 's2', ts: 1, date: '2026-11-16', ref: 'name:Press', sets: [{ w: 'x', r: 8 }] },
+          { id: 'bad-date', sessionId: 's3', ts: 1, date: '2026-02-31', ref: 'name:Press', sets: [{ w: 80, r: 8 }] },
+        ],
+        cardio: [{ id: 'c-bad', ts: 1, date: '2026-99-99', type: 1001, durMin: 20, distKm: 3, avgHr: 140, kcal: 200 }],
+        measures: [{ date: '2026-02-30', weight: 75 }],
+        wellbeing: [{ date: '2026-13-01', steps: 8000 }],
+        settings: {},
+      }),
+    );
+    expect(badBackup.strength).toEqual([]);
+    expect(badBackup.cardio).toEqual([]);
+    expect(badBackup.measures).toEqual([]);
+    expect(badBackup.wellbeing).toEqual([]);
+
+    const s = sanitizeSettings({
+      profile: { sex: 'x'.repeat(100) },
+      phases: Array.from({ length: 120 }, (_, i) => ({ name: `Fase ${i}`, start: '2026-11-16' })),
+      ai: {
+        date: '2026-11-16',
+        summary: 'a'.repeat(21000),
+        overview: { overallStatus: 'Ok', highlights: 'bad-not-array', sections: null },
+        byExercise: {},
+      },
+    });
+    expect(s.profile.sex.length).toBeLessThanOrEqual(64);
+    expect(s.phases.length).toBeLessThanOrEqual(100);
+    expect((s.ai?.summary ?? '').length).toBeLessThanOrEqual(20000);
+    expect(s.ai?.overview?.highlights).toEqual([]);
+    expect(s.ai?.overview?.sections).toEqual([]);
+
+    const corruptedRows = [
+      { id: 'r1', sessionId: 's1', ts: 1, date: '', ref: 'name:Press de banca', sets: [{ w: 60, r: 10 }] },
+      { id: 'r2', sessionId: 's2', ts: 1, date: '2026-11-16', ref: 'name:Press de banca', sets: [] },
+    ];
+    expect(() => isoWeekStart('')).not.toThrow();
+    expect(() => weeklyVolume(corruptedRows, s)).not.toThrow();
+    const a = analyze(corruptedRows, s);
+    expect(a.exercises.size).toBe(0);
   });
 });

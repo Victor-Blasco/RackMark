@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import type { Measure } from '../types';
+import { isValidIsoDate } from './seed';
 
 const nk = (h: string) => h.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
 
@@ -29,7 +30,8 @@ const num = (v: string | undefined): number | undefined => {
 export function parseEsDate(s: string): string | null {
   const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s.trim());
   if (!m) return null;
-  return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  return isValidIsoDate(iso) ? iso : null;
 }
 
 export interface MeasuresImport { measures: Measure[]; profile: Partial<{ sex: string; age: number; height: number }> }
@@ -45,7 +47,10 @@ export function parseMeasuresCsv(text: string): MeasuresImport {
   const labelCol = header.findIndex((h) => nk(h).startsWith('sexo'));
   const readProfile = (label: string, value: string) => {
     const l = nk(label);
-    if (l.startsWith('sexo')) profile.sex = value.trim();
+    if (l.startsWith('sexo')) {
+      const sex = value.trim().slice(0, 64);
+      if (sex) profile.sex = sex;
+    }
     else if (l.startsWith('edad')) {
       const n = Number(value);
       if (Number.isFinite(n) && n > 0) profile.age = n;

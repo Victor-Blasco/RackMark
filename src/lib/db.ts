@@ -2,12 +2,13 @@ import { MEASURE_FIELDS } from '../types';
 import type {
   AiEntry, AiResult, AiSection, CardioRow, DailyWellbeing, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow,
 } from '../types';
-import { DEFAULT_SETTINGS } from './seed';
+import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
+const MAX_AUX_MAP_ENTRIES = 500;
+const MAX_PHASES = 100;
 const WELLBEING_KEYS: (keyof DailyWellbeing)[] = [
   'sleepMin', 'sleepScore', 'sleepEff', 'remMin', 'deepMin', 'physRec', 'mentalRec',
   'steps', 'stepKm', 'activeMin', 'stepKcal', 'energyScore', 'rhr', 'hrv',
@@ -24,10 +25,11 @@ function pickFiniteNums<T extends object>(src: Record<string, unknown>, keys: (k
   }
 }
 
-function sanitizeStringMap(raw: unknown): Record<string, string> {
+function sanitizeStringMap(raw: unknown, maxEntries = MAX_AUX_MAP_ENTRIES): Record<string, string> {
   if (!isObj(raw)) return {};
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
+    if (Object.keys(out).length >= maxEntries) break;
     if (!UNSAFE_KEYS.has(k) && typeof v === 'string') out[k] = v;
   }
   return out;
@@ -78,7 +80,7 @@ export const deleteKey = async (store: Store, key: IDBValidKey) => { await wrap(
 
 export async function loadSettings(): Promise<Settings> {
   const saved = (await wrap((await tx('kv', 'readonly')).get('settings'))) as Partial<Settings> | undefined;
-  return { ...structuredClone(DEFAULT_SETTINGS), ...(saved ?? {}) } as Settings;
+  return saved ? sanitizeSettings(saved) : structuredClone(DEFAULT_SETTINGS);
 }
 export async function saveSettings(s: Settings): Promise<void> {
   await wrap((await tx('kv', 'readwrite')).put(s, 'settings'));
@@ -117,7 +119,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (!isObj(raw)) return base;
 
   if (isObj(raw.profile)) {
-    if (typeof raw.profile.sex === 'string' && raw.profile.sex.trim()) base.profile.sex = raw.profile.sex.trim();
+    if (typeof raw.profile.sex === 'string' && raw.profile.sex.trim()) base.profile.sex = raw.profile.sex.trim().slice(0, 64);
     const age = fin(raw.profile.age);
     if (age !== undefined && age > 0 && age < 130) base.profile.age = age;
     const height = fin(raw.profile.height);
@@ -179,6 +181,7 @@ export function sanitizeSettings(raw: unknown): Settings {
 
   if (isObj(raw.muscles)) {
     for (const [k, v] of Object.entries(raw.muscles)) {
+      if (Object.keys(base.muscles).length >= MAX_AUX_MAP_ENTRIES) break;
       if (UNSAFE_KEYS.has(k) || !isObj(v) || typeof v.p !== 'string' || !Array.isArray(v.s)) continue;
       const sec = v.s.filter((item): item is string => typeof item === 'string');
       base.muscles[k] = { p: v.p, s: sec } satisfies MuscleMap;
@@ -187,29 +190,30 @@ export function sanitizeSettings(raw: unknown): Settings {
 
   if (Array.isArray(raw.phases)) {
     base.phases = raw.phases.flatMap((p) =>
-      isObj(p) && typeof p.name === 'string' && typeof p.start === 'string' && ISO_DATE_RE.test(p.start)
-        ? [{ name: p.name, start: p.start }]
+      isObj(p) && typeof p.name === 'string' && p.name.trim() && isValidIsoDate(p.start)
+        ? [{ name: p.name.trim().slice(0, 80), start: p.start }]
         : [],
-    );
+    ).slice(0, MAX_PHASES);
   }
 
   if (typeof raw.onboardingCompleted === 'boolean') base.onboardingCompleted = raw.onboardingCompleted;
 
   if (raw.aiTone === 'simple' || raw.aiTone === 'technical') base.aiTone = raw.aiTone;
 
-  if (isObj(raw.ai) && typeof raw.ai.date === 'string' && ISO_DATE_RE.test(raw.ai.date) && isObj(raw.ai.byExercise)) {
+  if (isObj(raw.ai) && isValidIsoDate(raw.ai.date) && isObj(raw.ai.byExercise)) {
     const byExercise: Record<string, AiEntry> = {};
     for (const [k, v] of Object.entries(raw.ai.byExercise)) {
+      if (Object.keys(byExercise).length >= MAX_AUX_MAP_ENTRIES) break;
       if (UNSAFE_KEYS.has(k) || !isObj(v)) continue;
       const entry: AiEntry = {};
-      if (typeof v.status === 'string') entry.status = v.status;
-      if (typeof v.prescription === 'string') entry.prescription = v.prescription;
-      if (typeof v.biomech === 'string') entry.biomech = v.biomech;
+      if (typeof v.status === 'string') entry.status = v.status.slice(0, 500);
+      if (typeof v.prescription === 'string') entry.prescription = v.prescription.slice(0, 1000);
+      if (typeof v.biomech === 'string') entry.biomech = v.biomech.slice(0, 1000);
       byExercise[k] = entry;
     }
     const ai: AiResult = { date: raw.ai.date, byExercise };
     if (raw.ai.tone === 'simple' || raw.ai.tone === 'technical') ai.tone = raw.ai.tone;
-    if (typeof raw.ai.summary === 'string') ai.summary = raw.ai.summary;
+    if (typeof raw.ai.summary === 'string') ai.summary = raw.ai.summary.slice(0, 20000);
     if (isObj(raw.ai.overview) && typeof raw.ai.overview.overallStatus === 'string') {
       const highlights = Array.isArray(raw.ai.overview.highlights)
         ? raw.ai.overview.highlights.filter((h): h is string => typeof h === 'string')
@@ -242,7 +246,7 @@ export function parseBackup(jsonText: string): Backup {
 
   const strength: StrengthRow[] = Array.isArray(raw.strength)
     ? raw.strength.flatMap((r): StrengthRow[] => {
-        if (!isObj(r) || typeof r.id !== 'string' || !r.id || typeof r.date !== 'string' || !ISO_DATE_RE.test(r.date) || typeof r.ref !== 'string' || !r.ref || !Array.isArray(r.sets)) return [];
+        if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date) || typeof r.ref !== 'string' || !r.ref || !Array.isArray(r.sets)) return [];
         const sets = r.sets.flatMap((s) => {
           if (!isObj(s)) return [];
           const w = fin(s.w);
@@ -252,6 +256,7 @@ export function parseBackup(jsonText: string): Backup {
             ? [{ w, r: reps, ...(restSec !== undefined && restSec >= 0 ? { restSec: Math.round(restSec) } : {}) }]
             : [];
         });
+        if (!sets.length) return [];
         const row: StrengthRow = {
           id: r.id,
           sessionId: typeof r.sessionId === 'string' && r.sessionId ? r.sessionId : r.date,
@@ -271,7 +276,7 @@ export function parseBackup(jsonText: string): Backup {
 
   const cardio: CardioRow[] = Array.isArray(raw.cardio)
     ? raw.cardio.flatMap((r): CardioRow[] => {
-        if (!isObj(r) || typeof r.id !== 'string' || !r.id || typeof r.date !== 'string' || !ISO_DATE_RE.test(r.date)) return [];
+        if (!isObj(r) || typeof r.id !== 'string' || !r.id || !isValidIsoDate(r.date)) return [];
         const type = fin(r.type); const durMin = fin(r.durMin); const distKm = fin(r.distKm);
         const avgHr = fin(r.avgHr); const kcal = fin(r.kcal);
         if (type === undefined || durMin === undefined || distKm === undefined || avgHr === undefined || kcal === undefined) return [];
@@ -285,7 +290,7 @@ export function parseBackup(jsonText: string): Backup {
   const measureKeys = MEASURE_FIELDS.map((f) => f.key);
   const measures: Measure[] = Array.isArray(raw.measures)
     ? raw.measures.flatMap((r): Measure[] => {
-        if (!isObj(r) || typeof r.date !== 'string' || !ISO_DATE_RE.test(r.date)) return [];
+        if (!isObj(r) || !isValidIsoDate(r.date)) return [];
         const m: Measure = { date: r.date };
         pickFiniteNums(r, measureKeys, m);
         if (typeof r.note === 'string') m.note = r.note;
@@ -295,7 +300,7 @@ export function parseBackup(jsonText: string): Backup {
 
   const wellbeing: DailyWellbeing[] = Array.isArray(raw.wellbeing)
     ? raw.wellbeing.flatMap((r): DailyWellbeing[] => {
-        if (!isObj(r) || typeof r.date !== 'string' || !ISO_DATE_RE.test(r.date)) return [];
+        if (!isObj(r) || !isValidIsoDate(r.date)) return [];
         const w: DailyWellbeing = { date: r.date };
         pickFiniteNums(r, WELLBEING_KEYS, w);
         return [w];

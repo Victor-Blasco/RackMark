@@ -1015,4 +1015,30 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
     expect(mobHead).toContain('role="tablist"');
     expect(renderMobileNav(state, 0, 0, 'Push', 'body')).toContain('bg-navDark');
   });
+
+  it('evita crash en viewCalc ante sets vacíos y aplica 16px / 44px en inputs de descanso', () => {
+    const settings = sanitizeSettings({});
+    const baseState: State = {
+      tab: 'calc',
+      strength: [{ id: 'bad', sessionId: 's-bad', ts: 1, date: '2026-11-16', ref: 'name:Press horizontal en máquina', sets: [], day: 'Push' }],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([{ id: 'bad', sessionId: 's-bad', ts: 1, date: '2026-11-16', ref: 'name:Press horizontal en máquina', sets: [], day: 'Push' }], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    expect(() => viewCalc(baseState)).not.toThrow();
+
+    const liveHtml = viewWorkout({ ...baseState, tab: 'workout', liveWorkout: initLiveWorkout(baseState, 'Push') });
+    expect(liveHtml).toMatch(/data-live-rest="0\|0"[^>]*>|text-base sm:text-xs[^"]*data-live-rest="0\|0"|min-h-\[44px\][^"]*text-base sm:text-xs[^"]*data-live-rest="0\|0"/);
+    expect(liveHtml).toContain('min-h-[44px]');
+    expect(liveHtml).not.toContain('min-h-[38px]');
+    expect(liveHtml).not.toContain('h-11 w-10 sm:w-11');
+
+    const logHtml = viewLog({ ...baseState, tab: 'log', logDraft: initLogDraft(baseState, 'Push', '2026-11-16') });
+    expect(logHtml).toContain('text-base sm:text-xs font-semibold tabular-nums');
+  });
 });

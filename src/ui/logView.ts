@@ -402,7 +402,7 @@ export function viewLog(S: State): string {
             })}
             <div class="shrink-0">
               <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">Desc (s)</span>
-              <input class="inp !h-11 w-20 !px-2 !py-0 text-center text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
+              <input class="inp !h-11 w-20 !px-2 !py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputmode="numeric" value="${s.restSec ?? ''}" placeholder="Desc (s)" data-log-rest="${ei}|${si}" aria-label="Descanso en segundos serie ${si + 1} de ${esc(ex.name)}">
             </div>
             <button type="button" data-act="logToggleSet" data-arg="${ei}|${si}" aria-pressed="${Boolean(s.done)}" aria-label="${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${esc(ex.name)}" class="ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}" style="touch-action:manipulation">${icon('check', 'h-5 w-5')}</button>
           </div>`).join('')}

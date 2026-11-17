@@ -3,6 +3,15 @@ import type { MuscleMap, Settings } from '../types';
 export const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Comprueba que `s` sea una fecha real de calendario en formato `YYYY-MM-DD`. */
+export function isValidIsoDate(s: unknown): s is string {
+  if (typeof s !== 'string' || !ISO_DATE_RE.test(s)) return false;
+  const ts = Date.parse(`${s}T00:00:00Z`);
+  return Number.isFinite(ts) && new Date(ts).toISOString().slice(0, 10) === s;
+}
+
 /** Devuelve la fecha local en formato `YYYY-MM-DD` sin sesgo UTC. */
 export function todayIso(d: Date = new Date()): string {
   const y = d.getFullYear();

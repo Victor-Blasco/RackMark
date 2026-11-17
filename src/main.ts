@@ -7,7 +7,7 @@ import { clearSyncMeta, hasUnsyncedChanges, loadSyncMeta, markBucketDeletes, mar
 import { importSamsungInWorker } from './lib/samsung';
 import { parseMeasuresCsv } from './lib/measures';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type CardioRow, type DailyWellbeing, type DayName, type ExperienceLevel, type LiveWorkout, type LogDraft, type LogExDraft, type Measure, type RoutineEx, type StrengthRow, type TrainingGoal } from './types';
-import { DEFAULT_SETTINGS, ROUTINE_COLORS, ROUTINE_TEMPLATES, norm } from './lib/seed';
+import { DEFAULT_SETTINGS, ROUTINE_COLORS, ROUTINE_TEMPLATES, isValidIsoDate, norm } from './lib/seed';
 import { manualSessionId, allExerciseNames } from './ui/logView';
 import { buildPerimChartConfig, defaultSetsForEx, initLiveWorkout, initLogDraft, renderAiReport, renderModals, renderPlanCatalogResults, resetCharts, runChartJobs, runCalc, updateChart, viewAdherence, viewBody, viewCalc, viewData, viewDay, viewHome, viewLog, viewPlan, viewSettings, viewVolume, viewWorkout, type State } from './ui/views';
 import { esc, routineColor, routineNames, todayIso, type RangeKey } from './ui/shared';
@@ -365,6 +365,10 @@ async function persistCompletedSession(opts: {
   defaultDurPerEx?: number;
   tsBase?: number;
 }): Promise<number> {
+  if (!isValidIsoDate(opts.date)) {
+    toast('Selecciona una fecha válida antes de guardar.');
+    return 0;
+  }
   const rows: StrengthRow[] = [];
   const fallbackTs = opts.tsBase ?? (Date.parse(`${opts.date}T12:00:00Z`) || Date.now());
   for (const ex of opts.exercises) {
@@ -1230,6 +1234,7 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     try {
       const { generateAnalysis } = await import('./lib/ai');
       S.settings.ai = await generateAnalysis(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing);
+      S.settings = sanitizeSettings(S.settings);
       S.aiTab = 0;
       await saveSettings(S.settings);
       markSettingsDirty();
@@ -1288,6 +1293,8 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     await wipeAll();
     markWipePending();
     S.measureDraft = undefined;
+    S.logDraft = undefined;
+    saveDraft(undefined);
     S.liveWorkout = undefined;
     saveLive(undefined);
     syncRestTicker();
@@ -1441,6 +1448,11 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
 const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void | Promise<void>> = {
   selHome: (el) => { S.sel.home = el.value; render(); },
   logDate: async (el) => {
+    if (!isValidIsoDate(el.value)) {
+      if (S.logDraft) el.value = S.logDraft.date;
+      toast('Introduce una fecha válida.');
+      return;
+    }
     const day = S.logDraft?.day ?? routineNames(S.settings)[0] ?? 'Libre';
     if (!(await confirmSwitchDraft(day, el.value))) {
       if (S.logDraft) el.value = S.logDraft.date;
@@ -1451,6 +1463,11 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
     render();
   },
   measureDate: (el) => {
+    if (el.value && !isValidIsoDate(el.value)) {
+      el.value = S.measureDate ?? '';
+      toast('Introduce una fecha válida.');
+      return;
+    }
     S.measureDate = el.value || undefined;
     S.measurePerimOpen = undefined;
     S.measureDraft = undefined;
@@ -1458,11 +1475,19 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   },
   rangeFrom: (el) => {
     const scope = arg(el);
+    if (el.value && !isValidIsoDate(el.value)) {
+      el.value = S.customRanges?.[scope]?.from ?? '';
+      return;
+    }
     ((S.customRanges ??= {})[scope] ??= {}).from = el.value || undefined;
     render();
   },
   rangeTo: (el) => {
     const scope = arg(el);
+    if (el.value && !isValidIsoDate(el.value)) {
+      el.value = S.customRanges?.[scope]?.to ?? '';
+      return;
+    }
     ((S.customRanges ??= {})[scope] ??= {}).to = el.value || undefined;
     render();
   },
@@ -1776,7 +1801,7 @@ root.addEventListener('submit', async (e) => {
   const f = e.target as HTMLFormElement; const fd = new FormData(f);
   if (f.id === 'f-measure') {
     const date = String(fd.get('date') ?? '').trim();
-    if (!date) return;
+    if (!isValidIsoDate(date)) { toast('Introduce una fecha válida.'); return; }
     const existing = S.measures.find((x) => x.date === date);
     const m: Measure = { date };
     let metricCount = 0;
@@ -1880,7 +1905,14 @@ root.addEventListener('submit', async (e) => {
       toast(`Rutina "${rawName}" actualizada.`);
     }
   } else if (f.id === 'f-phase') {
-    S.settings.phases.push({ name: String(fd.get('name')), start: String(fd.get('start')) }); await persist();
+    const name = String(fd.get('name') ?? '').trim().slice(0, 80);
+    const start = String(fd.get('start') ?? '').trim();
+    if (!name || !isValidIsoDate(start)) {
+      toast('Introduce un nombre y una fecha válida para la fase.');
+      return;
+    }
+    S.settings.phases.push({ name, start });
+    await persist();
   } else if (f.id === 'f-note-modal' && S.noteModal) {
     const { exName } = S.noteModal;
     const val = String(fd.get('note') ?? '').trim();

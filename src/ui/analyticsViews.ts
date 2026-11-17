@@ -380,9 +380,11 @@ export function viewCalc(S: State): string {
   const usingSampleMeasures = latestW == null || latestBf == null;
   const w = latestW ?? 70;
   const bf = latestBf ?? 15;
-  const presets = routineNames(S.settings).flatMap((d) => S.analysis.byDay[d] ?? []).filter((e) => e.last).map((e) => {
-    const best = e.last!.sets.filter((s) => s.w === e.last!.top).sort((a, b) => b.r - a.r)[0];
-    return { n: e.name, w: best.w, r: best.r };
+  const presets = routineNames(S.settings).flatMap((d) => S.analysis.byDay[d] ?? []).flatMap((e) => {
+    const last = e.last;
+    if (!last || !last.sets.length) return [];
+    const best = last.sets.filter((s) => s.w === last.top).sort((a, b) => b.r - a.r)[0] ?? last.sets[0];
+    return best ? [{ n: e.name, w: best.w, r: best.r }] : [];
   });
   const usingSampleStrength = presets.length === 0;
   const first = presets[0] ?? { w: 50, r: 9 };

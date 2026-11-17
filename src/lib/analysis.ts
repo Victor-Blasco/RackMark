@@ -1,5 +1,5 @@
 import type { DayName, Settings, StrengthRow, MuscleMap, Measure, RoutineEx } from '../types';
-import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, norm, todayIso } from './seed';
+import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, isValidIsoDate, norm, todayIso } from './seed';
 
 export const epley = (w: number, r: number) => (r <= 1 ? w : w * (1 + r / 30));
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
@@ -128,6 +128,8 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
   const manualDays = new Map<string, DayName>();
 
   for (const row of rows) {
+    const validSets = row.sets.filter((x) => Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0);
+    if (!validSets.length || !isValidIsoDate(row.date)) continue;
     const name = resolveName(row.ref, s);
     if (name.startsWith('Samsung #')) {
       const u = unm.get(row.ref) ?? { n: 0, last: '' };
@@ -137,14 +139,14 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
     if (row.day) manualDays.set(name, row.day);
     const byDate = perEx.get(name) ?? new Map<string, { sets: { w: number; r: number }[]; notes: string[]; phys: PhysioAcc }>();
     const entry = byDate.get(row.date) ?? { sets: [], notes: [], phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
-    entry.sets.push(...row.sets);
+    entry.sets.push(...validSets);
     if (row.note?.trim()) entry.notes.push(row.note.trim());
     addPhysio(entry.phys, row);
     byDate.set(row.date, entry);
     perEx.set(name, byDate);
     const sm = sessMap.get(row.sessionId) ?? { date: row.date, day: row.day, names: new Set<string>(), sets: 0, phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
     if (row.day && !sm.day) sm.day = row.day;
-    sm.names.add(name); sm.sets += row.sets.length; if (row.date < sm.date) sm.date = row.date;
+    sm.names.add(name); sm.sets += validSets.length; if (row.date < sm.date) sm.date = row.date;
     addPhysio(sm.phys, row);
     sessMap.set(row.sessionId, sm);
   }
@@ -210,7 +212,8 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
 }
 
 export function isoWeekStart(date: string): string {
-  const d = new Date(date + 'T00:00:00Z');
+  const safeDate = isValidIsoDate(date) ? date : todayIso();
+  const d = new Date(safeDate + 'T00:00:00Z');
   const wd = (d.getUTCDay() + 6) % 7;
   d.setUTCDate(d.getUTCDate() - wd);
   return d.toISOString().slice(0, 10);
@@ -220,6 +223,7 @@ export function isoWeekStart(date: string): string {
 export function weeklyVolume(rows: StrengthRow[], s: Settings): Map<string, Map<string, number>> {
   const out = new Map<string, Map<string, number>>();
   for (const row of rows) {
+    if (!isValidIsoDate(row.date) || !row.sets.length) continue;
     const m = musclesOf(resolveName(row.ref, s), s);
     if (!m) continue;
     const wk = isoWeekStart(row.date);
