@@ -275,6 +275,10 @@ export function resetCharts() {
 /** Añade offset, ticks legibles en móvil, leyenda compacta y puntos adaptativos sin pisar opciones explícitas. */
 export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguration {
   const opts = { ...(cfg.options ?? {}) } as Record<string, unknown>;
+  const reducedMotion =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const rawScales = (opts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
   const scales: Record<string, Record<string, unknown>> = { ...rawScales };
   const rawPlugins = (opts.plugins as Record<string, Record<string, unknown>> | undefined) ?? {};
@@ -331,7 +335,7 @@ export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguratio
     ...cfg,
     data: { ...cfg.data, datasets: nextDatasets },
     options: {
-      animation: false,
+      animation: reducedMotion ? false : opts.animation ?? false,
       interaction: { mode: 'index', intersect: false },
       ...opts,
       plugins: { ...rawPlugins, legend },

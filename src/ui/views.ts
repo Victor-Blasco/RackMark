@@ -71,6 +71,7 @@ function exerciseChartConfig(sessions: ExSession[], color: string, metric: ExMet
       ],
     },
     options: {
+      animation: { duration: 320, easing: 'easeOutCubic' },
       interaction: { mode: 'index', intersect: false },
       plugins: {
         tooltip: {
@@ -119,9 +120,9 @@ function statusInline(e: ExStats, aiStatus?: string): string {
 }
 
 function aiStepLabel(title: string): string {
-  if (/composici|cuerpo|antropo/i.test(title)) return 'Cuerpo';
-  if (/rendimiento|fuerza|sobrecarga|ppl/i.test(title)) return 'Fuerza';
-  if (/recuperaci|sueñ|suen|neat|card/i.test(title)) return 'Sueño y FC';
+  if (/composici|cuerpo|antropo|peso|forma\s+f[ií]sica/i.test(title)) return 'Cuerpo';
+  if (/rendimiento|fuerza|sobrecarga|ppl|progreso/i.test(title)) return 'Fuerza';
+  if (/recuperaci|sueñ|suen|neat|card|descanso|pasos|energ[ií]a/i.test(title)) return 'Sueño y FC';
   if (/estrategia|mesociclo|próxim|proxim|plan/i.test(title)) return 'Plan';
   return title.split(/\s+/).slice(0, 2).join(' ');
 }

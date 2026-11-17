@@ -389,7 +389,7 @@ describe('P1 analytics, trends & empty states', () => {
     expect(weightDeltaColor(1.2, 'Mantenimiento')).toBe('text-blue-300');
   });
 
-  it('respeta el fallback de resolveRange y desactiva animaciones por defecto en Chart.js', () => {
+  it('respeta el fallback de resolveRange y permite animaciones explícitas en Chart.js', () => {
     const emptyRanges = {} as unknown as State;
     expect(resolveRange(emptyRanges, 'home').key).toBe('1M');
     expect(resolveRange(emptyRanges, 'body', 'Todo').key).toBe('Todo');

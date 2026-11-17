@@ -121,8 +121,11 @@ export function buildCompChartConfig(
     type: 'line',
     data: { labels: comp.map((m) => short(m.date)), datasets },
     options: hasDualY
-      ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } }
-      : undefined,
+      ? {
+          animation: { duration: 320, easing: 'easeOutCubic' },
+          scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } },
+        }
+      : { animation: { duration: 320, easing: 'easeOutCubic' } },
   };
 }
 
