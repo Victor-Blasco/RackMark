@@ -1,55 +1,39 @@
 import './style.css';
+import { h, render as renderPreact } from 'preact';
+import { useCallback } from 'preact/hooks';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './lib/db';
 import { isValidIsoDate } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
+import { AppShell } from './components/layout/AppShell';
+import { AppStoreProvider, type AppStoreValue } from './store/appStore';
+import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
+import { createLiveWorkoutActions } from './store/workoutActions';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
-import {
-  MODAL_DIALOG_SELECTOR,
-  MODAL_FOCUSABLE_SELECTOR,
-  captureModalTrigger,
-  focusSelector,
-  hasModalTrigger,
-  restoreModalFocus,
-} from './ui/domPatches';
+import { MODAL_FOCUSABLE_SELECTOR, playRestBeep, restoreModalFocus } from './ui/domPatches';
 import { initSortableLists } from './ui/reorder';
-import { esc, inRange, resolveRange, routineNames, todayIso, type RangeKey } from './ui/shared';
+import { inRange, resetCharts, resolveRange, routineNames, runChartJobs, todayIso, updateChart, type RangeKey } from './ui/shared';
 import {
-  ANALYTICS_IDS,
-  FIXED_TAB_IDS,
-  activeTabTitle,
-  isRoutineTab,
-  isValidTab,
-  renderMobileHeader,
-  renderMobileNav,
-  renderSidebar,
-  syncStatusInfo,
-} from './ui/shellView';
-import {
+  buildCompChartConfig,
+  buildHomeExChartConfig,
   buildPerimChartConfig,
   renderAiReport,
-  renderModals,
-  resetCharts,
+  renderLegacyModals,
   runCalc,
-  runChartJobs,
-  updateChart,
   viewAdherence,
   viewBody,
   viewCalc,
   viewData,
   viewDay,
-  buildHomeExChartConfig,
-  buildCompChartConfig,
   viewHome,
   viewLog,
   viewPlan,
   viewSettings,
   viewVolume,
-  viewWorkout,
   type State,
 } from './ui/views';
-import { arg, loadDraft, loadLive, maybeOpenInitialWizard, splitPair, type AppContext } from './app/context';
+import { arg, loadDraft, loadLive, maybeOpenInitialWizard, saveLive, splitPair, type AppContext } from './app/context';
 import { createImportController } from './app/importController';
 import { createPlanController } from './app/planController';
 import { createSyncController } from './app/syncController';
@@ -59,7 +43,7 @@ let swUpdatePending = false;
 const updateSW = registerSW({
   onNeedRefresh() {
     swUpdatePending = true;
-    renderSwUpdateBanner();
+    renderChrome();
   },
 });
 
@@ -82,6 +66,8 @@ const S = {
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
+let cachedLegacyHtml = '';
+let legacyVersion = 0;
 
 function setTab(tab: string) {
   S.tab = isValidTab(S, tab) ? tab : 'home';
@@ -107,69 +93,22 @@ async function reload() {
 }
 
 let toastTimer: number | undefined;
-function renderToast() {
-  let layer = document.getElementById('toast-layer');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'toast-layer';
-    document.body.appendChild(layer);
-  }
-  layer.innerHTML = S.toast
-    ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64">${esc(S.toast)}</div>`
-    : '';
-}
-
 function toast(msg: string) {
   S.toast = msg;
-  renderToast();
+  renderChrome();
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
     if (S.toast === msg) {
       S.toast = undefined;
-      renderToast();
+      renderChrome();
     }
   }, 5000);
 }
 
-function renderSwUpdateBanner() {
-  let layer = document.getElementById('sw-update-layer');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'sw-update-layer';
-    layer.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-sw-act]');
-      if (!btn) return;
-      const act = btn.dataset.swAct;
-      swUpdatePending = false;
-      renderSwUpdateBanner();
-      if (act === 'reload') void updateSW(true);
-    });
-    document.body.appendChild(layer);
-  }
-  layer.innerHTML = swUpdatePending
-    ? `<div role="status" aria-live="polite" class="fixed inset-x-3 bottom-20 z-50 mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-electricBlue/50 bg-floatDark p-3 text-sm text-gray-100 shadow-2xl lg:bottom-6 lg:left-64">
-        <span class="font-medium text-gray-200">Nueva versión disponible.</span>
-        <div class="flex shrink-0 items-center gap-1.5">
-          <button type="button" data-sw-act="dismiss" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white">Después</button>
-          <button type="button" data-sw-act="reload" class="min-h-[44px] sm:min-h-[36px] rounded-lg bg-electricBlue px-3 text-xs font-bold text-white hover:bg-blue-500">Actualizar</button>
-        </div>
-      </div>`
-    : '';
-}
-
-function updateSyncDom() {
-  const st = syncStatusInfo(S, hasUnsyncedChanges());
-  root.querySelectorAll<HTMLElement>('[data-sync-badge]').forEach((el) => {
-    el.textContent = st.text;
-    el.className = `${el.dataset.syncBase ?? 'truncate text-[10px]'} ${st.cls}`;
-  });
-}
-
-function view(): string {
+function legacyViewHtml(): string {
   if (isRoutineTab(S, S.tab)) return viewDay(S, S.tab);
   switch (S.tab) {
     case 'home': return viewHome(S);
-    case 'workout': return viewWorkout(S);
     case 'log': return viewLog(S);
     case 'plan': return viewPlan(S);
     case 'body': return viewBody(S);
@@ -181,46 +120,25 @@ function view(): string {
   }
 }
 
-/** Re-renderiza el panel preservando posición de scroll, foco y selección de texto del control activo. */
-function render() {
-  const y = window.scrollY;
-  const activeEl = document.activeElement;
-  const activeSel = focusSelector(activeEl);
-  const selStart =
-    activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement ? activeEl.selectionStart : null;
-  const selEnd =
-    activeEl instanceof HTMLInputElement || activeEl instanceof HTMLTextAreaElement ? activeEl.selectionEnd : null;
-  resetCharts();
-  const html = view();
-  const statsText = S.strength.length ? `${S.analysis.sessions.length} sesiones · ${S.measures.length} medidas` : 'Sin sesiones aún';
-  const liveCount = S.liveWorkout?.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0) ?? 0;
-  const draftCount = S.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
-  const unsynced = hasUnsyncedChanges();
-
-  root.innerHTML = `
-  ${renderSidebar(S, statsText, liveCount, draftCount, unsynced)}
-  ${renderMobileHeader(S, statsText, unsynced)}
-  <div class="lg:pl-64">
-    <main id="main-content" tabindex="-1" class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none"><h1 class="sr-only hidden lg:block">${esc(activeTabTitle(S))}</h1>${html}</main>
-  </div>
-  ${renderMobileNav(S, liveCount, draftCount, lastRoutine, lastAnalytics)}
-  ${renderModals(S)}`;
-  if (S.wizard?.anim) S.wizard.anim = undefined;
+function onLegacyBridgeMount() {
   runChartJobs();
   runCalc();
-  window.scrollTo(0, y);
-  if (activeSel) {
-    const nextEl = root.querySelector<HTMLElement>(activeSel);
-    nextEl?.focus({ preventScroll: true });
-    if ((nextEl instanceof HTMLInputElement || nextEl instanceof HTMLTextAreaElement) && selStart != null && selEnd != null) {
-      try {
-        nextEl.setSelectionRange(selStart, selEnd);
-      } catch {
-        /* algunos inputs como number/date no admiten setSelectionRange */
-      }
-    }
+}
+
+function renderChrome() {
+  mountApp();
+}
+
+function render() {
+  if (S.tab !== 'workout') {
+    resetCharts();
+    cachedLegacyHtml = legacyViewHtml();
+    legacyVersion++;
+  } else {
+    cachedLegacyHtml = '';
   }
-  workoutCtrl.syncRestTicker();
+  mountApp();
+  if (S.wizard?.anim) S.wizard.anim = undefined;
 }
 
 async function persist() {
@@ -236,22 +154,47 @@ function resolveConfirm(ok: boolean) {
   const res = confirmResolver;
   confirmResolver = null;
   S.confirmModal = undefined;
-  render();
-  restoreModalFocus(root, S);
+  if (S.activeModal?.type === 'confirm') S.activeModal = null;
+  renderChrome();
   res?.(ok);
 }
 
 function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> {
   if (confirmResolver) confirmResolver(false);
-  if (!hasModalTrigger()) captureModalTrigger(root);
   S.confirmModal = opts;
-  render();
-  root.querySelector<HTMLElement>('#confirm-modal [data-act="confirmNo"], #confirm-modal button')?.focus({
-    preventScroll: true,
-  });
+  S.activeModal = { type: 'confirm', ...opts };
+  renderChrome();
   return new Promise((resolve) => {
     confirmResolver = resolve;
   });
+}
+
+function closeModal() {
+  const hadLegacy = Boolean(S.exModal || S.routineModal || S.wizard);
+  if (!hadLegacy && !S.noteModal && !S.activeModal) return;
+  S.exModal = undefined;
+  S.routineModal = undefined;
+  S.noteModal = undefined;
+  if (S.activeModal?.type !== 'confirm') S.activeModal = null;
+  renderChrome();
+  if (hadLegacy) restoreModalFocus(root, S);
+}
+
+function closeWorkoutSummary() {
+  if (!S.workoutSummary && S.activeModal?.type !== 'workoutSummary') return;
+  S.workoutSummary = undefined;
+  if (S.activeModal?.type === 'workoutSummary') S.activeModal = null;
+  renderChrome();
+}
+
+async function saveNoteModal(exName: string, rawNote: string) {
+  const val = rawNote.trim();
+  if (val) S.settings.notes[exName] = val;
+  else delete S.settings.notes[exName];
+  S.noteModal = undefined;
+  if (S.activeModal?.type === 'note') S.activeModal = null;
+  await persist();
+  toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
 }
 
 const ctx: AppContext = {
@@ -267,7 +210,7 @@ const ctx: AppContext = {
     lastRoutine = day;
   },
   queueSync: () => syncCtrl.queueSync(),
-  updateSyncDom,
+  updateSyncDom: renderChrome,
   askConfirm,
   clearActiveWorkouts: () => workoutCtrl.clearActiveWorkouts(),
   addExToDraft: (name, fallbackSets, fallbackReps) => workoutCtrl.addExToDraft(name, fallbackSets, fallbackReps),
@@ -279,21 +222,97 @@ const workoutCtrl = createWorkoutController(ctx);
 const planCtrl = createPlanController(ctx);
 const importCtrl = createImportController(ctx);
 
+const liveActions = createLiveWorkoutActions({
+  getState: () => S,
+  saveLiveOnly: (live) => {
+    S.liveWorkout = live;
+    saveLive(live);
+  },
+  commitLive: (live) => {
+    S.liveWorkout = live;
+    saveLive(live);
+    renderChrome();
+  },
+  reload,
+  setTab: (tab) => {
+    setTab(tab);
+    render();
+  },
+  queueSync: () => syncCtrl.queueSync(),
+  toast,
+  askConfirm,
+  openNoteModal: (exName) => {
+    const val = S.settings.notes[exName] ?? '';
+    S.noteModal = { exName, value: val };
+    S.activeModal = { type: 'note', exName, value: val };
+    renderChrome();
+  },
+  showSummary: (summary) => {
+    S.workoutSummary = summary;
+    S.activeModal = { type: 'workoutSummary', summary };
+    render();
+    syncCtrl.queueSync();
+  },
+});
+
+function navigateTab(tab: string) {
+  setTab(tab);
+  render();
+  window.scrollTo(0, 0);
+}
+
+function handleRestExpire() {
+  try { navigator?.vibrate?.([40, 40, 40]); } catch { /* opcional */ }
+  playRestBeep();
+  if (S.tab !== 'workout') toast('Descanso completado · listo para la siguiente serie.');
+}
+
+function RootShell() {
+  const mountBridge = useCallback(() => onLegacyBridgeMount(), []);
+  const getLegacyHtml = useCallback(() => cachedLegacyHtml, []);
+  const storeValue: AppStoreValue = {
+    state: S,
+    lastRoutine,
+    lastAnalytics,
+    unsynced: hasUnsyncedChanges(),
+    swUpdatePending,
+    setTab: navigateTab,
+    cloudLogin: () => void syncCtrl.actions.cloudLogin(root),
+    resolveConfirm,
+    closeModal,
+    saveNoteModal,
+    closeWorkoutSummary,
+    dismissSwUpdate: () => {
+      swUpdatePending = false;
+      renderChrome();
+    },
+    reloadSwUpdate: () => {
+      swUpdatePending = false;
+      renderChrome();
+      void updateSW(true);
+    },
+    live: liveActions,
+    renderLegacyViewHtml: getLegacyHtml,
+    legacyVersion,
+    renderLegacyModalHtml: renderLegacyModals,
+    onLegacyBridgeMount: mountBridge,
+  };
+  return h(AppStoreProvider, { value: storeValue, children: h(AppShell, { onRestExpire: handleRestExpire }) });
+}
+
+function mountApp() {
+  renderPreact(h(RootShell, null), root);
+}
+
 const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
-  tab: (el) => {
-    setTab(arg(el));
-    render();
-    window.scrollTo(0, 0);
-  },
+  tab: (el) => navigateTab(arg(el)),
   openExDetail: (el) => {
     const [day, ex] = splitPair(arg(el));
     if (!day || !ex) return;
     S.sel[day] = ex;
-    setTab(day);
-    render();
-    window.scrollTo(0, 0);
+    navigateTab(day);
   },
   selEx: (el) => {
     const [d, n] = splitPair(arg(el));
@@ -326,18 +345,13 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     const m = arg(el);
     const next = m === 'e1rm' || m === 'volume' ? m : 'top';
     S.exMetric = next;
-
     root.querySelectorAll<HTMLElement>('[data-act="setExMetric"]').forEach((btn) => {
       const active = btn.dataset.arg === next;
       btn.setAttribute('aria-pressed', String(active));
       btn.classList.remove('bg-electricBlue', 'text-white', 'text-gray-400', 'hover:text-white');
-      if (active) {
-        btn.classList.add('bg-electricBlue', 'text-white');
-      } else {
-        btn.classList.add('text-gray-400', 'hover:text-white');
-      }
+      if (active) btn.classList.add('bg-electricBlue', 'text-white');
+      else btn.classList.add('text-gray-400', 'hover:text-white');
     });
-
     const cfg = S.tab === 'home' ? buildHomeExChartConfig(S) : null;
     if (!cfg || !updateChart('c-home-ex', cfg)) render();
   },
@@ -348,37 +362,25 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
       render();
       return;
     }
-    const activeSel = focusSelector(document.activeElement);
+    const activeSel = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).id : '';
     panel.outerHTML = renderAiReport(S);
-    if (activeSel) document.getElementById('ai-report')?.querySelector<HTMLElement>(activeSel)?.focus({ preventScroll: true });
+    if (activeSel) document.getElementById(activeSel)?.focus({ preventScroll: true });
   },
   setBodyMetric: (el) => {
     S.bodyMetric = arg(el) === 'muscle' ? 'muscle' : 'weight';
     const bounds = resolveRange(S, 'body');
-    const cfg = buildCompChartConfig(
-      S.measures.filter((m) => inRange(m.date, bounds)),
-      S.bodyMetric,
-    );
+    const cfg = buildCompChartConfig(S.measures.filter((m) => inRange(m.date, bounds)), S.bodyMetric);
     if (!cfg || !updateChart('c-comp', cfg)) render();
   },
   editNote: (el) => {
     const n = arg(el);
     if (!n) return;
-    captureModalTrigger(root);
-    S.noteModal = { exName: n, value: S.settings.notes[n] ?? '' };
-    render();
-    const ta = document.getElementById('noteModalInput') as HTMLTextAreaElement | null;
-    ta?.focus();
-    ta?.setSelectionRange(ta.value.length, ta.value.length);
+    const val = S.settings.notes[n] ?? '';
+    S.noteModal = { exName: n, value: val };
+    S.activeModal = { type: 'note', exName: n, value: val };
+    renderChrome();
   },
-  closeModal: () => {
-    if (!S.exModal && !S.routineModal && !S.noteModal) return;
-    S.exModal = undefined;
-    S.routineModal = undefined;
-    S.noteModal = undefined;
-    render();
-    restoreModalFocus(root, S);
-  },
+  closeModal: () => closeModal(),
   ...workoutCtrl.actions,
   ...syncCtrl.actions,
   ...planCtrl.actions,
@@ -475,8 +477,12 @@ const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void
   ...importCtrl.changes,
 };
 
+const isLegacyEvent = (target: EventTarget | null): target is HTMLElement =>
+  target instanceof HTMLElement && Boolean(target.closest('[data-legacy-view], [data-legacy-modal]'));
+
 root.addEventListener('click', (e) => {
-  const el = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
+  if (!isLegacyEvent(e.target)) return;
+  const el = e.target.closest<HTMLElement>('[data-act]');
   if (el) void actions[el.dataset.act!]?.(el);
 });
 
@@ -500,8 +506,8 @@ root.addEventListener('keydown', (e) => {
         const nextAct = nextTab?.dataset.act;
         if (nextTab && nextAct) {
           e.preventDefault();
-          nextTab.focus({ preventScroll: true });
-          void actions[nextAct]?.(nextTab);
+          if (target?.closest('[data-legacy-view], [data-legacy-modal]')) void actions[nextAct]?.(nextTab);
+          else nextTab.click();
           const lbl = tablist.getAttribute('aria-label');
           const listSel = lbl ? `[role="tablist"][aria-label="${CSS.escape(lbl)}"]` : '[role="tablist"]';
           const nextArg = nextTab.dataset.arg != null ? `[data-arg="${CSS.escape(nextTab.dataset.arg)}"]` : '';
@@ -547,13 +553,15 @@ root.addEventListener('keydown', (e) => {
     }
   }
   if (e.key !== 'Enter' && e.key !== ' ') return;
-  const el = target?.closest<HTMLElement>('[role="button"][data-act]');
+  if (!isLegacyEvent(target)) return;
+  const el = target.closest<HTMLElement>('[role="button"][data-act]');
   if (!el) return;
   e.preventDefault();
   void actions[el.dataset.act!]?.(el);
 });
 
 root.addEventListener('change', async (e) => {
+  if (!isLegacyEvent(e.target)) return;
   const el = e.target as HTMLInputElement;
   if (el.dataset.change) {
     await changes[el.dataset.change]?.(el);
@@ -563,13 +571,13 @@ root.addEventListener('change', async (e) => {
 });
 
 root.addEventListener('focusout', (e) => {
-  const el = e.target as HTMLInputElement;
-  if (!(el instanceof HTMLInputElement)) return;
-  workoutCtrl.handleFocusout(el);
+  if (!isLegacyEvent(e.target) || !(e.target instanceof HTMLInputElement)) return;
+  workoutCtrl.handleFocusout(e.target);
 });
 
 root.addEventListener('input', (e) => {
-  const el = e.target as HTMLInputElement;
+  if (!isLegacyEvent(e.target) || !(e.target instanceof HTMLInputElement)) return;
+  const el = e.target;
   if (el.dataset.input === 'homeExSearch') {
     S.homeExQuery = el.value;
     render();
@@ -588,98 +596,57 @@ root.addEventListener('input', (e) => {
 });
 
 root.addEventListener('submit', async (e) => {
+  if (!isLegacyEvent(e.target)) return;
   e.preventDefault();
   const f = e.target as HTMLFormElement;
   const fd = new FormData(f);
-  if (f.id === 'f-note-modal' && S.noteModal) {
-    const { exName } = S.noteModal;
-    const val = String(fd.get('note') ?? '').trim();
-    if (val) S.settings.notes[exName] = val;
-    else delete S.settings.notes[exName];
-    S.noteModal = undefined;
-    await persist();
-    restoreModalFocus(root, S);
-    toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
-    return;
-  }
   if (await importCtrl.handleSubmit(f, fd)) return;
   await planCtrl.handleSubmit(f, fd);
 });
 
 window.addEventListener('keydown', (e) => {
+  const legacyDialog = document.querySelector<HTMLElement>('[data-legacy-modal] #wizard-modal, [data-legacy-modal] #ex-modal, [data-legacy-modal] #rt-modal');
+  if (!legacyDialog) return;
   if (e.key === 'Tab') {
-    const dialog = document.querySelector<HTMLElement>(MODAL_DIALOG_SELECTOR);
-    if (!dialog) return;
-    const focusables = [...dialog.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)].filter(
+    const focusables = [...legacyDialog.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)].filter(
       (el) => !el.closest('[hidden], [inert]'),
     );
-    if (!focusables.length) {
-      e.preventDefault();
-      return;
-    }
+    if (!focusables.length) return void e.preventDefault();
     const first = focusables[0];
     const last = focusables[focusables.length - 1];
     const activeEl = document.activeElement as HTMLElement | null;
-    if (!activeEl || !dialog.contains(activeEl)) {
+    if (!activeEl || !legacyDialog.contains(activeEl)) {
       e.preventDefault();
       (e.shiftKey ? last : first).focus();
-      return;
-    }
-    if (e.shiftKey && activeEl === first) {
+    } else if (e.shiftKey && activeEl === first) {
       e.preventDefault();
       last.focus();
-      return;
-    }
-    if (!e.shiftKey && activeEl === last) {
+    } else if (!e.shiftKey && activeEl === last) {
       e.preventDefault();
       first.focus();
     }
     return;
   }
   if (e.key !== 'Escape') return;
-  if (S.confirmModal) {
-    resolveConfirm(false);
-    return;
-  }
-  if (S.workoutSummary) {
-    void actions.closeWorkoutSummary(root);
-    return;
-  }
-  if (S.wizard) {
-    void actions.wizardSkip(root);
-    return;
-  }
-  if (S.exModal || S.routineModal || S.noteModal) {
-    S.exModal = undefined;
-    S.routineModal = undefined;
-    S.noteModal = undefined;
-    render();
-    restoreModalFocus(root, S);
-  }
+  if (S.wizard) void actions.wizardSkip(root);
+  else if (S.exModal || S.routineModal) closeModal();
 });
 
 window.addEventListener('hashchange', () => {
   const raw = initialTab();
   const next = isValidTab(S, raw) ? raw : 'home';
-  if (next !== S.tab) {
-    setTab(next);
-    render();
-  }
+  if (next !== S.tab) navigateTab(next);
 });
 
 window.addEventListener('online', () => {
-  updateSyncDom();
+  renderChrome();
   syncCtrl.queueSync();
 });
-window.addEventListener('offline', () => updateSyncDom());
-window.matchMedia('(min-width: 1024px)').addEventListener('change', () => render());
+window.addEventListener('offline', () => renderChrome());
 
 initSortableLists(root, async (scope, from, to) => {
-  if (scope === 'log') {
-    workoutCtrl.handleReorder(from, to);
-  } else {
-    await planCtrl.handleReorder(scope, from, to);
-  }
+  if (scope === 'log') workoutCtrl.handleReorder(from, to);
+  else await planCtrl.handleReorder(scope, from, to);
 });
 
 reload().then(async () => {

@@ -1,0 +1,46 @@
+import { Chart, type ChartConfiguration } from 'chart.js';
+import { useEffect, useRef } from 'preact/hooks';
+import { normalizeChartConfig } from '../../ui/shared';
+
+interface ChartCanvasProps {
+  /** Configuración de Chart.js a normalizar y dibujar en el lienzo. */
+  config: ChartConfiguration;
+  /** Identificador DOM opcional del `<canvas>`. */
+  id?: string;
+  /** Clases Tailwind adicionales para el `<canvas>`. */
+  className?: string;
+  /** Etiqueta accesible opcional para lectores de pantalla. */
+  ariaLabel?: string;
+}
+
+/**
+ * Encapsula el ciclo de vida de Chart.js con creación única, actualización suave y destrucción al desmontar.
+ */
+export function ChartCanvas({ config, id, className, ariaLabel }: ChartCanvasProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const chartRef = useRef<Chart | null>(null);
+  const typeRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el || el.getBoundingClientRect().width === 0) return;
+    const normalized = normalizeChartConfig(config);
+    const cur = chartRef.current;
+    if (cur && cur.canvas === el && typeRef.current === normalized.type) {
+      cur.data = normalized.data;
+      if (normalized.options) cur.options = normalized.options as never;
+      cur.update('none');
+      return;
+    }
+    cur?.destroy();
+    typeRef.current = normalized.type;
+    chartRef.current = new Chart(el, normalized) as unknown as Chart;
+  }, [config]);
+
+  useEffect(() => () => {
+    chartRef.current?.destroy();
+    chartRef.current = null;
+  }, []);
+
+  return <canvas ref={canvasRef} id={id} class={className} aria-label={ariaLabel} />;
+}

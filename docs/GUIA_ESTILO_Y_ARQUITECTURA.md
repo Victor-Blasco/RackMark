@@ -195,20 +195,21 @@ cuando proporcione una experiencia más accesible y suficiente para el caso.
 
 ## 4. Arquitectura, Persistencia y Reglas de Estado
 
-### 4.1 Mapa de Módulos y Fronteras Estrictas
+### 4.1 Mapa de Módulos y Fronteras Estrictas (Migración Preact en curso)
 
 ```text
 src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
     ▲
-    ├── src/lib/*  (db, sync, firebase, samsung, samsungWorker, measures, analysis, ai, seed)
-    │       ▲      · Solo importa ../types, ./ sibling y librerías externas
-    │       │      · PROHIBIDO importar src/ui/* o tocar el DOM
+    ├── src/lib/*         (db, sync, firebase, samsung, samsungWorker, measures, analysis, ai, seed)
+    │       ▲             · PROHIBIDO importar UI o tocar el DOM
     │       │
-    └── src/ui/*   (shared, icons, shellView, domPatches, views, workoutView, logView, planView,
-            ▲       analyticsViews, dataView, settingsView, wizardView, reorder)
-            │      · Renderiza HTML sanitizado y configs Chart.js; sin acceso directo a IDB/Firestore
-            │
-        src/main.ts (orquestador único: State, ciclo de render, delegación, SW, parches DOM)
+    ├── src/store/* &     (types, navigation, appStore, workoutSelectors, workoutActions, useRestTimer, useFocusTrap)
+    │   src/hooks/*       · Estado tipado (ActiveModal), selectores puros y hooks reutilizables (<= 150 lín./archivo)
+    │       ▲
+    ├── src/components/*  (common/, layout/, modals/, workout/) + src/views/* (LiveWorkoutView.tsx...)
+    │   & src/ui/*        · Componentes Preact .tsx (<= 150 lín., Props y TSDoc en español) + LegacyViewBridge temporal
+    │       ▲
+    └── src/main.ts       (punto de entrada: monta AppShell con Preact y mantiene puente para vistas pendientes)
 ```
 
 - **Carga diferida y Workers:**

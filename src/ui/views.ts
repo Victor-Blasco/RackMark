@@ -29,7 +29,7 @@ export { resetCharts, runChartJobs, updateChart, type State } from './shared';
 export { defaultSetsForEx, initLogDraft, viewLog } from './logView';
 export { initLiveWorkout, liveExQuickInfo, viewWorkout } from './workoutView';
 export { viewData } from './dataView';
-export { renderModals, renderPlanCatalogResults, viewPlan } from './planView';
+export { renderLegacyModals, renderModals, renderPlanCatalogResults, viewPlan } from './planView';
 export { viewSettings } from './settingsView';
 export { buildCompChartConfig, buildPerimChartConfig, runCalc, viewAdherence, viewBody, viewCalc, viewVolume } from './analyticsViews';
 export { resolveName, norm };

@@ -16,6 +16,7 @@ import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
 import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
+import type { ActiveModal } from '../store/types';
 import type { WizardDraft } from './wizardView';
 
 export { todayIso };
@@ -123,6 +124,7 @@ export interface State {
   confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
   noteModal?: { exName: string; value: string };
   wizard?: WizardDraft;
+  activeModal?: ActiveModal;
   planSearch?: string;
   exerciseMapSearch?: string;
   exerciseMapMuscle?: string;

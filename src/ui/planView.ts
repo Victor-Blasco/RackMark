@@ -1,3 +1,6 @@
+import { h } from 'preact';
+import { renderToString } from 'preact-render-to-string';
+import { ModalHost } from '../components/modals/ModalHost';
 import { musclesOf } from '../lib/analysis';
 import { MUSCLES, ROUTINE_COLORS, ROUTINE_TEMPLATES } from '../lib/seed';
 import type { Settings } from '../types';
@@ -27,62 +30,9 @@ export function plannedWeeklyVolume(s: Settings): Map<string, number> {
 const sel = (name: string, opts: string[]) =>
   `<option value="" ${name ? '' : 'selected'}>—</option>${opts.map((o) => `<option ${o === name ? 'selected' : ''}>${esc(o)}</option>`).join('')}`;
 
-/** Renderiza los modales activos de creación de ejercicios, rutinas y confirmaciones. */
-export function renderModals(S: State): string {
-  if (S.confirmModal) {
-    const cm = S.confirmModal;
-    return `<div id="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="confirmNo" aria-hidden="true"></div>
-      <div class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4">
-        <div class="flex items-start gap-3">
-          ${cm.danger ? `<div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-coralRed/15 text-coralRed">${icon('warn', 'h-5 w-5')}</div>` : ''}
-          <div class="min-w-0 flex-1">
-            <h3 id="confirmModalTitle" class="text-base font-extrabold text-white">${esc(cm.title)}</h3>
-            <p class="mt-1 text-sm text-gray-300 leading-relaxed">${esc(cm.message)}</p>
-          </div>
-        </div>
-        <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
-          <button type="button" class="btn" data-act="confirmNo">Cancelar</button>
-          <button type="button" class="${cm.danger ? 'btn btn-danger-solid' : 'btn-primary'}" data-act="confirmYes">${esc(cm.confirmLabel ?? 'Confirmar')}</button>
-        </div>
-      </div>
-    </div>`;
-  }
+/** Renderiza los modales aún legados (`wizard`, `exercise`, `routine`) hasta el Bloque B. */
+export function renderLegacyModals(S: State): string {
   if (S.wizard) return renderWizardModal(S);
-  if (S.workoutSummary) {
-    const ws = S.workoutSummary;
-    const tonnageLabel = ws.tonnageKg >= 1000 ? `${(ws.tonnageKg / 1000).toFixed(1).replace('.', ',')} t` : `${Math.round(ws.tonnageKg)} kg`;
-    return `<div id="workout-summary-modal" role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="closeWorkoutSummary" aria-hidden="true"></div>
-      <div class="relative z-10 w-full max-w-md rounded-2xl border border-emeraldGreen/35 bg-modalDark p-5 shadow-2xl space-y-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emeraldGreen/15 text-emeraldGreen">${icon('check', 'h-6 w-6')}</div>
-            <div>
-              <h3 id="workoutSummaryTitle" class="text-lg font-extrabold text-white">¡Entreno completado!</h3>
-              <p class="text-xs text-gray-400">${esc(ws.day === 'Libre' ? 'Entreno libre' : ws.day)} · ${ws.durationMin} min</p>
-            </div>
-          </div>
-          <button type="button" data-act="closeWorkoutSummary" aria-label="Cerrar resumen" class="icon-btn">${icon('close', 'h-4 w-4')}</button>
-        </div>
-
-        <div class="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 bg-white/[0.02] py-3 text-center">
-          <div class="px-2"><span class="block text-[11px] text-gray-400">Ejercicios</span><span class="tabular-nums text-lg font-extrabold text-white">${ws.exercises}</span></div>
-          <div class="px-2"><span class="block text-[11px] text-gray-400">Series</span><span class="tabular-nums text-lg font-extrabold text-emeraldGreen">${ws.sets}</span></div>
-          <div class="px-2"><span class="block text-[11px] text-gray-400">Volumen</span><span class="tabular-nums text-lg font-extrabold text-electricBlue">${esc(tonnageLabel)}</span></div>
-        </div>
-
-        ${ws.prNames.length ? `<div class="rounded-xl border border-emeraldGreen/30 bg-emeraldGreen/10 p-3 space-y-1">
-          <p class="text-xs font-bold text-emerald-300">Nuevas marcas personales (${ws.prNames.length})</p>
-          <p class="text-xs text-gray-200">${esc(ws.prNames.slice(0, 4).join(' · '))}${ws.prNames.length > 4 ? ` y ${ws.prNames.length - 4} más` : ''}</p>
-        </div>` : `<p class="text-xs text-gray-400">Buen trabajo: sesión guardada en tu historial y lista para analizar tu progreso.</p>`}
-
-        <div class="flex justify-end pt-1">
-          <button type="button" class="btn-primary w-full sm:w-auto" data-act="closeWorkoutSummary">Continuar</button>
-        </div>
-      </div>
-    </div>`;
-  }
   if (S.exModal) {
     const routines = routineNames(S.settings);
     const target = S.exModal.routine ?? '';
@@ -190,31 +140,12 @@ export function renderModals(S: State): string {
     </div>`;
   }
 
-  if (S.noteModal) {
-    const nm = S.noteModal;
-    return `<div id="note-modal" role="dialog" aria-modal="true" aria-labelledby="noteModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true"></div>
-      <form id="f-note-modal" class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4">
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <h3 id="noteModalTitle" class="text-base font-extrabold text-white">Nota fija del ejercicio</h3>
-            <p class="text-xs text-gray-400 truncate" title="${esc(nm.exName)}">${esc(nm.exName)}</p>
-          </div>
-          <button type="button" data-act="closeModal" aria-label="Cerrar modal" class="icon-btn">${icon('close', 'h-4 w-4')}</button>
-        </div>
-        <label class="block">
-          <span class="lbl">Ajustes de máquina, asiento, agarre o consejos de técnica</span>
-          <textarea id="noteModalInput" class="inp min-h-[96px] resize-y" name="note" maxlength="400" placeholder="Ej. Asiento en 4, agarre neutro, pausa 1s abajo…">${esc(nm.value)}</textarea>
-        </label>
-        <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-          <button type="button" class="btn" data-act="closeModal">Cancelar</button>
-          <button type="submit" class="btn-primary">${icon('save', 'h-4 w-4')} Guardar nota</button>
-        </div>
-      </form>
-    </div>`;
-  }
-
   return '';
+}
+
+/** Renderiza el modal activo mediante `<ModalHost />` con soporte temporal de modales legados. */
+export function renderModals(S: State): string {
+  return renderToString(h(ModalHost, { state: S, renderLegacyModalHtml: renderLegacyModals }));
 }
 
 /** Renderiza el contador y la lista filtrada del catálogo rápido de ejercicios para parcheo selectivo. */

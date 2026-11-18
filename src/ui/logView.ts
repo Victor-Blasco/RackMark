@@ -1,72 +1,31 @@
-import { musclesOf, resolveName } from '../lib/analysis';
-import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
+import { h } from 'preact';
+import { renderToString } from 'preact-render-to-string';
+import { StepperInput } from '../components/common/StepperInput';
+import { RestTimerBar } from '../components/workout/RestTimerBar';
+import { fmtMMSS } from '../hooks/useRestTimer';
+import { resolveName } from '../lib/analysis';
+import { norm } from '../lib/seed';
+import {
+  allExerciseNames,
+  defaultSetsForEx,
+  exerciseContext,
+  extractTargetWeight,
+  manualSessionId,
+  quickExSuggestions,
+} from '../store/exerciseCatalog';
 import type { DayName, LogDraft, LogExDraft, LogExMeta, SetRec } from '../types';
 import { icon } from './icons';
 import { filterSelectionOptions } from './selection';
-import { empty, esc, fmtDate, isAiFreshForEx, routineColor, routineNames, short, todayIso, type State } from './shared';
+import { empty, esc, fmtDate, routineColor, routineNames, todayIso, type State } from './shared';
 
-/**
- * Devuelve la lista ordenada y deduplicada de todos los nombres de ejercicios conocidos.
- *
- * @param S - Estado global de la aplicación.
- * @returns Lista alfabética de ejercicios disponibles.
- */
-export function allExerciseNames(S: State): string[] {
-  const byNorm = new Map<string, string>();
-  const add = (n: string) => {
-    const t = n.trim();
-    if (!t || t.startsWith('Samsung #')) return;
-    const k = norm(t);
-    if (!byNorm.has(k)) byNorm.set(k, t);
-  };
-  routineNames(S.settings).forEach((d) => (S.settings.routines[d] ?? []).forEach((r) => add(r.name)));
-  CATALOG_EXERCISES.forEach(add);
-  Object.values(S.settings.customNames).forEach(add);
-  Object.values(S.settings.refNames).forEach(add);
-  [...S.analysis.exercises.keys()].forEach(add);
-  return [...byNorm.values()].sort((a, b) => a.localeCompare(b, 'es'));
-}
-
-/**
- * Genera el identificador estable de sesión manual por fecha y rutina,
- * permitiendo registrar varias sesiones distintas en un mismo día.
- */
-export function manualSessionId(date: string, day: DayName | 'Libre'): string {
-  const slug = norm(day || 'libre').replace(/\s+/g, '-') || 'libre';
-  return `manual-${date}-${slug}`;
-}
-
-/**
- * Precarga las series de un ejercicio usando la última sesión registrada o valores por defecto.
- *
- * @param S - Estado global de la aplicación.
- * @param name - Nombre del ejercicio.
- * @param fallbackSets - Número de series si no hay historial.
- * @param fallbackReps - Repeticiones iniciales si no hay historial.
- * @param done - Estado inicial de completado de las series (`false` en sesiones nuevas).
- * @returns Array de series `{ w, r, done }`.
- */
-export function defaultSetsForEx(
-  S: State,
-  name: string,
-  fallbackSets = 2,
-  fallbackReps = 10,
-  done = false,
-): SetRec[] {
-  const k = norm(name);
-  const ex = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
-  if (ex?.last?.sets.length) return ex.last.sets.map((s) => ({ w: s.w, r: s.r, done }));
-  return Array.from({ length: fallbackSets }, () => ({ w: 0, r: fallbackReps, done }));
-}
-
-/** Extrae el peso objetivo en kg sugerido por una prescripción explícita (no captura deltas relativos). */
-export function extractTargetWeight(text: string): number | null {
-  const actMatch = text.match(/(?:^|[.\s])(?:sube a|baja a|mant[eé]n|usa|objetivo:?)\s+(\d+(?:[.,]\d+)?)\s*kg/i);
-  const raw = actMatch?.[1];
-  if (!raw) return null;
-  const val = parseFloat(raw.replace(',', '.'));
-  return Number.isFinite(val) && val >= 0 ? val : null;
-}
+export {
+  allExerciseNames,
+  defaultSetsForEx,
+  exerciseContext,
+  extractTargetWeight,
+  manualSessionId,
+  quickExSuggestions,
+};
 
 /**
  * Construye un borrador de sesión para una rutina y fecha dadas, combinando datos guardados en esa sesión.
@@ -159,96 +118,16 @@ export function initLogDraft(
   };
 }
 
-/** Calcula contexto histórico, prescripción, notas y contadores de series para un ejercicio del borrador/sesión. */
-export function exerciseContext(S: State, day: DayName | 'Libre', ex: LogExDraft) {
-  const k = norm(ex.name);
-  const hist = [...S.analysis.exercises.values()].find((e) => norm(e.name) === k);
-  const tgt = day !== 'Libre' ? (S.settings.routines[day] ?? []).find((r) => norm(r.name) === k) : hist?.target;
-  const lastRef = hist?.last ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin historial previo';
-  const freshAi = isAiFreshForEx(S, hist) ? S.settings.ai?.byExercise[ex.name] : undefined;
-  const prescription = freshAi?.prescription ?? hist?.prescription ?? '';
-  const targetW = prescription ? extractTargetWeight(prescription) : null;
-  const fixedNote = S.settings.notes[ex.name]?.trim() ?? '';
-  const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
-  const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
-  const showApplyBtn = targetW != null && ex.sets.some((s) => !s.done && s.w !== targetW);
-  return { hist, tgt, lastRef, prescription, targetW, fixedNote, doneInEx, allDoneInEx, showApplyBtn };
-}
+export { fmtMMSS };
 
-/** Devuelve ejercicios disponibles y hasta 6 sugerencias musculares afines al día elegido. */
-export function quickExSuggestions(S: State, day: DayName | 'Libre', currentNames: string[], limit = 6) {
-  const inUse = new Set(currentNames.map((n) => norm(n)));
-  const avail = allExerciseNames(S).filter((n) => !inUse.has(norm(n)));
-  const dayMuscles = new Set(
-    day === 'Libre'
-      ? []
-      : (S.settings.routines[day] ?? []).map((r) => musclesOf(r.name, S.settings)?.p).filter((m): m is string => Boolean(m)),
-  );
-  const quick = avail
-    .filter((n) => {
-      if (day === 'Libre') return true;
-      const m = musclesOf(n, S.settings);
-      if (!m) return false;
-      return dayMuscles.size ? dayMuscles.has(m.p) : MUSCLE_DAY[m.p] === day;
-    })
-    .sort((a, b) => (S.analysis.exercises.get(b)?.n ?? 0) - (S.analysis.exercises.get(a)?.n ?? 0))
-    .slice(0, limit);
-  return { avail, quick };
-}
-
-/** Formatea segundos enteros a `M:SS` para el cronómetro de descanso. */
-export function fmtMMSS(sec: number): string {
-  const s = Math.max(0, Math.floor(sec));
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-/** Renderiza la barra ligera de cronómetro de descanso para el entrenamiento en vivo paso a paso. */
+/** Renderiza la barra ligera de cronómetro de descanso delegando en `<RestTimerBar />`. */
 export function renderRestTimerBar(timer: { targetRestSec?: number; restUntil?: number }): string {
-  const restSec = timer.targetRestSec ?? 90;
-  const until = timer.restUntil;
-  const remSec = until != null ? Math.max(0, Math.ceil((until - Date.now()) / 1000)) : 0;
-  const presets = [60, 90, 120, 180];
-
-  if (until != null && remSec > 0) {
-    return `
-    <div id="rest-timer-bar" data-rest-state="running" class="border-l-4 border-electricBlue bg-electricBlue/10 px-3 py-2 rounded-r-xl">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2.5">
-          <span id="rest-timer-val" class="tabular-nums text-2xl font-extrabold text-white">${fmtMMSS(remSec)}</span>
-          <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="-15" aria-label="Restar 15 segundos">−15s</button>
-          <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="30" aria-label="Sumar 30 segundos">+30s</button>
-          <button type="button" class="btn min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" data-act="restStop">Listo</button>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  if (until != null && remSec === 0) {
-    return `
-    <div id="rest-timer-bar" data-rest-state="done" class="border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 rounded-full bg-emeraldGreen" aria-hidden="true"></span>
-          <span class="text-sm font-bold text-emerald-300">¡Descanso listo!</span>
-        </div>
-        <div class="flex items-center gap-1.5">
-          ${presets.map((p) => `<button type="button" class="btn min-h-[44px] px-2.5 text-xs tabular-nums" data-act="restStart" data-arg="${p}">${p}s</button>`).join('')}
-          <button type="button" class="btn min-h-[44px] px-3 text-xs" data-act="restStop">Cerrar</button>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  return `
-  <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
-    <span class="text-gray-400">Descanso auto entre series: <b class="text-white tabular-nums">${restSec}s</b></span>
-    <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
-      ${presets.map((p) => `<button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}" data-act="liveSetRestPreset" data-arg="${p}">${p}s</button>`).join('')}
-    </div>
-  </div>`;
+  return renderToString(
+    h(RestTimerBar, {
+      restUntil: timer.restUntil,
+      targetRestSec: timer.targetRestSec,
+    }),
+  );
 }
 
 export interface StepperOpts {
@@ -269,18 +148,29 @@ export interface StepperOpts {
   inpCls?: string;
 }
 
-/** Renderiza un control numérico táctil `− | valor | +` con etiqueta explícita. */
+/** Renderiza un control numérico táctil delegando en `<StepperInput />`. */
 export function renderStepper(o: StepperOpts): string {
-  const btn = o.btnCls ?? 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
-  const inp = o.inpCls ?? 'inp-stepper min-w-[44px]';
-  return `<div class="${o.wrapCls ?? 'flex-1 min-w-[132px]'}">
-    <span class="${o.labelCls ?? 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400'}">${esc(o.label)}</span>
-    <div class="flex items-center">
-      <button type="button" class="${btn} rounded-l-xl" style="touch-action:manipulation" data-act="${o.stepAct}" data-arg="${o.stepArgPrefix}|-${o.delta}" aria-label="${esc(o.decAria)}">−</button>
-      <input class="${inp}" type="number" step="${o.step}" min="0" inputmode="${o.inputMode}" value="${o.value}" ${o.dataAttr} aria-label="${esc(o.inputAria)}">
-      <button type="button" class="${btn} rounded-r-xl" style="touch-action:manipulation" data-act="${o.stepAct}" data-arg="${o.stepArgPrefix}|${o.delta}" aria-label="${esc(o.incAria)}">+</button>
-    </div>
-  </div>`;
+  const match = o.dataAttr.match(/^([a-z0-9-]+)="([^"]*)"$/i);
+  const inputData = match ? { [match[1]]: match[2] } : undefined;
+  return renderToString(
+    h(StepperInput, {
+      label: o.label,
+      labelClass: o.labelCls,
+      wrapClass: o.wrapCls,
+      value: o.value,
+      step: o.step,
+      inputMode: o.inputMode,
+      inputData,
+      inputAria: o.inputAria,
+      stepAct: o.stepAct,
+      stepArgPrefix: o.stepArgPrefix,
+      delta: o.delta,
+      decAria: o.decAria,
+      incAria: o.incAria,
+      btnClass: o.btnCls,
+      inputClass: o.inpCls,
+    }),
+  );
 }
 
 /**

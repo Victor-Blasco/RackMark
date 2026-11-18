@@ -1,0 +1,75 @@
+import { norm } from '../lib/seed';
+import type { IconName } from '../ui/icons';
+import type { State } from '../ui/shared';
+
+export const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
+  { id: 'body', label: 'Cuerpo', icon: 'body' },
+  { id: 'volume', label: 'Volumen', icon: 'chart' },
+  { id: 'adherence', label: 'Adherencia', icon: 'calendar' },
+  { id: 'calc', label: 'Calculadoras', icon: 'calc' },
+];
+
+export const SYSTEM_TABS = [
+  { id: 'settings', label: 'Cuenta y ajustes' },
+  { id: 'data', label: 'Datos e importar' },
+];
+
+export const TRAIN_TABS = [
+  { id: 'workout', label: 'En vivo' },
+  { id: 'log', label: 'Registrar hecho' },
+];
+
+export const TAB_TITLES: Record<string, string> = {
+  home: 'Resumen',
+  workout: 'Iniciar entrenamiento',
+  log: 'Registrar entreno',
+  plan: 'Plan y rutinas',
+  body: 'Cuerpo',
+  volume: 'Volumen',
+  adherence: 'Adherencia',
+  calc: 'Calculadoras',
+  data: 'Datos e importación',
+  settings: 'Cuenta y ajustes',
+};
+
+export const ANALYTICS_IDS = new Set<string>(ANALYTICS_TABS.map((t) => t.id));
+export const SYSTEM_IDS = new Set<string>(SYSTEM_TABS.map((t) => t.id));
+export const FIXED_TAB_IDS = new Set<string>(Object.keys(TAB_TITLES));
+export const RESERVED_ROUTINE_NORMS = new Set([...FIXED_TAB_IDS, 'libre'].map((x) => norm(x)));
+
+/** Comprueba si el identificador corresponde a una rutina definida en ajustes. */
+export const isRoutineTab = (state: State, tab: string): boolean => Boolean(state.settings?.routines?.[tab]);
+
+/** Comprueba si una pestaña existe como vista fija o rutina activa. */
+export const isValidTab = (state: State, tab: string): boolean => FIXED_TAB_IDS.has(tab) || isRoutineTab(state, tab);
+
+/** Devuelve el título visible y accesible para la pestaña actual. */
+export function activeTabTitle(state: State): string {
+  return TAB_TITLES[state.tab] ?? (isRoutineTab(state, state.tab) ? `Rutina ${state.tab}` : 'GymApp');
+}
+
+/**
+ * Calcula texto y color del indicador de sincronización con la nube.
+ *
+ * @param state - Estado global con usuario y trabajos de sync.
+ * @param unsynced - Indica si hay cambios locales pendientes.
+ * @param online - Estado de conectividad del navegador.
+ * @returns Par `{ text, cls }` listo para pintar en cabecera y barra lateral.
+ */
+export function syncStatusInfo(
+  state: State,
+  unsynced: boolean,
+  online = typeof navigator === 'undefined' ? true : navigator.onLine,
+): { text: string; cls: string } {
+  if (!state.user) return { text: online ? 'Solo local' : 'Sin conexión · local', cls: 'text-gray-400' };
+  if (state.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
+  if (state.syncJob?.status === 'error') return { text: 'Error de sincronización · reintentando', cls: 'text-rose-300' };
+  if (state.syncJob?.status === 'pending') return { text: 'Guardado local · pendiente de subir', cls: 'text-amberGold' };
+  if (!online) {
+    return unsynced
+      ? { text: 'Offline · pendiente de subir', cls: 'text-amberGold' }
+      : { text: 'Sin conexión · caché offline', cls: 'text-gray-400' };
+  }
+  if (unsynced) return { text: 'Pendiente de sincronizar', cls: 'text-amberGold' };
+  return { text: 'Sincronizado', cls: 'text-emerald-400' };
+}
