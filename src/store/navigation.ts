@@ -73,3 +73,21 @@ export function syncStatusInfo(
   if (unsynced) return { text: 'Pendiente de sincronizar', cls: 'text-amberGold' };
   return { text: 'Sincronizado', cls: 'text-emerald-400' };
 }
+
+/**
+ * Calcula los contadores globales de cabecera y navegación del shell raíz.
+ *
+ * @param state - Estado global con sesiones, medidas y borradores activos.
+ * @returns Resumen textual y conteo de series/ejercicios activos.
+ */
+export function buildShellCounters(state: State): { statsText: string; liveCount: number; draftCount: number } {
+  const statsText = state.strength.length
+    ? `${state.analysis.sessions.length} sesiones · ${state.measures.length} medidas`
+    : 'Sin sesiones aún';
+  const liveCount = state.liveWorkout?.exercises.reduce(
+    (acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length,
+    0,
+  ) ?? 0;
+  const draftCount = state.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
+  return { statsText, liveCount, draftCount };
+}

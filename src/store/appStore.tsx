@@ -2,6 +2,8 @@ import { createContext, type ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { DayName } from '../types';
 import type { State } from '../ui/shared';
+import type { AnalyticsActions } from './analyticsActions';
+import type { DataSyncActions } from './dataSyncActions';
 import type { LogWorkoutActions } from './logActions';
 import type { PlanActions } from './planActions';
 import type { WizardActions } from './wizardActions';
@@ -37,7 +39,7 @@ export interface AppStoreValue {
   reloadSwUpdate: () => void;
   /** Abre el modal de nota permanente para un ejercicio concreto. */
   openFixedNote: (exName: string) => void;
-  /** Acciones de la vista piloto `En vivo`. */
+  /** Acciones de la vista `En vivo`. */
   live: LiveWorkoutActions;
   /** Acciones de la vista `Registrar hecho`. */
   log: LogWorkoutActions;
@@ -45,17 +47,15 @@ export interface AppStoreValue {
   plan: PlanActions;
   /** Acciones del asistente inicial de bienvenida. */
   wizard: WizardActions;
-  /** Genera el HTML de vistas aún no migradas para `<LegacyViewBridge />`. */
-  renderLegacyViewHtml?: () => string;
-  /** Contador incremental que sincroniza re-renders legados con `resetCharts()`. */
-  legacyVersion?: number;
-  /** Ejecuta tareas post-render de vistas legadas (`runChartJobs`, `runCalc`, `initSortableLists`). */
-  onLegacyBridgeMount?: (container: HTMLElement) => void;
+  /** Acciones de `Cuerpo`, `Volumen`, `Calculadoras` y perfil del atleta. */
+  analytics: AnalyticsActions;
+  /** Acciones de `Datos y copias`, cuenta Google y preferencias IA. */
+  dataSync: DataSyncActions;
 }
 
 const noop = () => {};
 const noopAsync = async () => {};
-const noopProxy = <T extends object>() => new Proxy({} as T, { get: () => noop });
+const noopProxy = <T extends object>() => new Proxy({} as T, { get: () => noopAsync });
 
 const DEFAULT_STORE: AppStoreValue = {
   state: {} as State,
@@ -76,6 +76,8 @@ const DEFAULT_STORE: AppStoreValue = {
   log: noopProxy<LogWorkoutActions>(),
   plan: noopProxy<PlanActions>(),
   wizard: noopProxy<WizardActions>(),
+  analytics: noopProxy<AnalyticsActions>(),
+  dataSync: noopProxy<DataSyncActions>(),
 };
 
 const AppStoreContext = createContext<AppStoreValue>(DEFAULT_STORE);

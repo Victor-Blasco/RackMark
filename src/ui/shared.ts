@@ -12,9 +12,6 @@ import {
   Tooltip,
   type ChartConfiguration,
 } from 'chart.js';
-import { h } from 'preact';
-import { renderToString } from 'preact-render-to-string';
-import { RangePicker } from '../components/common/RangePicker';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
@@ -45,8 +42,17 @@ export function rangeCutoff(r: RangeKey): string | null {
   return days ? todayIso(new Date(Date.now() - days * 864e5)) : null;
 }
 
+/** Genera el HTML del selector temporal para pruebas aisladas sin arrastrar `preact-render-to-string`. */
 export function rangePicker(scope: string, active: RangeKey, custom?: { from?: string; to?: string }): string {
-  return renderToString(h(RangePicker, { scope, active, custom }));
+  const btns = RANGES.map((r) => {
+    const isSel = active === r.key;
+    const cls = isSel ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white';
+    return `<button type="button" data-act="setRange" data-arg="${esc(scope)}|${r.key}" aria-pressed="${isSel}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${cls}">${r.label}</button>`;
+  }).join('');
+  const customInputs = active === 'Custom'
+    ? `<div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs"><label class="inline-flex items-center gap-1.5 text-gray-400"><span>Desde</span><input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${esc(scope)}" aria-label="Fecha de inicio" /></label><label class="inline-flex items-center gap-1.5 text-gray-400"><span>Hasta</span><input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${esc(scope)}" aria-label="Fecha de fin" /></label></div>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2"><div role="group" aria-label="Filtro temporal" class="inline-flex flex-wrap rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">${btns}</div>${customInputs}</div>`;
 }
 
 export interface WorkoutSummary {
@@ -85,6 +91,7 @@ export interface State {
   measureDate?: string;
   measurePerimOpen?: boolean;
   measureDraft?: Record<string, string>;
+  measureScrollTs?: number;
   bodyMetric?: 'weight' | 'muscle';
   calcDraft?: {
     w?: string;

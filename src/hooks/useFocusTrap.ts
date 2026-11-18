@@ -1,6 +1,9 @@
 import type { RefObject } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
-import { MODAL_FOCUSABLE_SELECTOR } from '../ui/domPatches';
+
+/** Selector CSS de elementos enfocados válidos dentro de un modal accesible. */
+export const MODAL_FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Captura el foco previo, atrapa `Tab` / `Shift+Tab` dentro del modal abierto,

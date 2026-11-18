@@ -21,6 +21,13 @@ const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navig
 
 export interface SyncController {
   actions: Record<string, (el: HTMLElement) => void | Promise<void>>;
+  runAi: () => Promise<void>;
+  retryAi: () => Promise<void>;
+  dismissAi: () => Promise<void>;
+  cloudLogin: () => Promise<void>;
+  cloudSync: () => Promise<void>;
+  cloudLogout: () => Promise<void>;
+  wipe: () => Promise<void>;
   runSync: (showToast?: boolean) => Promise<void>;
   queueSync: () => void;
   initAuth: () => Promise<() => void>;
@@ -222,10 +229,12 @@ export function createSyncController(ctx: AppContext): SyncController {
         await ctx.reload();
       }
       const wizardDismissed = Boolean(
-        S.wizard && (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
+        (S.wizard || S.activeModal?.type === 'wizard') &&
+          (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
       );
       if (wizardDismissed) {
         S.wizard = undefined;
+        if (S.activeModal?.type === 'wizard') S.activeModal = null;
       }
       if (maybeOpenInitialWizard(S) || changed || wizardDismissed) {
         ctx.render();
@@ -329,6 +338,126 @@ export function createSyncController(ctx: AppContext): SyncController {
 
   const getLastSyncAt = (): number | undefined => loadSyncMeta().lastSyncAt;
 
+  const runAi = async (): Promise<void> => {
+    const S = ctx.state;
+    if (!S.user) {
+      ctx.toast('Inicia sesión con Google para generar análisis con IA.');
+      return;
+    }
+    const waitSec = Math.ceil((AI_COOLDOWN_MS - (Date.now() - lastAiAt)) / 1000);
+    if (waitSec > 0) {
+      ctx.toast(`Espera ${waitSec}s antes de generar otro análisis.`);
+      return;
+    }
+    if (S.busy) return;
+    lastAiAt = Date.now();
+    const now = Date.now();
+    const { buildPayload } = await import('../lib/ai');
+    const job: AiJob = {
+      id: createAiJobId(),
+      status: 'pending',
+      tone: S.settings.aiTone === 'simple' ? 'simple' : 'technical',
+      payload: buildPayload(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing),
+      createdAt: now,
+      updatedAt: now,
+      attempts: 0,
+    };
+    S.aiJob = job;
+    try {
+      await saveAiJob(job);
+    } catch (e) {
+      S.aiJob = undefined;
+      ctx.toast(`No se pudo guardar el estado del informe: ${(e as Error).message}`);
+      return;
+    }
+    await runAiJob(job);
+  };
+
+  const retryAi = async (): Promise<void> => {
+    const S = ctx.state;
+    if (S.busy) return;
+    try {
+      await retryAiJob();
+    } catch (e) {
+      ctx.toast(`No se pudo reintentar el informe IA: ${(e as Error).message}`);
+    }
+  };
+
+  const dismissAi = async (): Promise<void> => {
+    const S = ctx.state;
+    if (S.busy) return;
+    try {
+      await clearAiJob();
+      S.aiJob = undefined;
+      ctx.render();
+    } catch (e) {
+      ctx.toast(`No se pudo descartar el estado del informe: ${(e as Error).message}`);
+    }
+  };
+
+  const cloudLogin = async (): Promise<void> => {
+    try {
+      await signInGoogle();
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${(e as Error).message}`);
+    }
+  };
+
+  const cloudSync = async (): Promise<void> => {
+    await runSync(true);
+  };
+
+  const cloudLogout = async (): Promise<void> => {
+    const S = ctx.state;
+    if (S.user && isOnline() && hasUnsyncedChanges()) await runSync(false);
+    if (
+      hasUnsyncedChanges() &&
+      !(await ctx.askConfirm({
+        title: 'Cerrar sesión con cambios locales',
+        message: 'Hay cambios locales sin subir a la nube. Si cierras sesión se limpiarán los datos guardados en este dispositivo.',
+        confirmLabel: 'Cerrar sesión',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    await signOutGoogle();
+    await wipeAll();
+    clearSyncMeta();
+    ctx.clearActiveWorkouts();
+    S.user = null;
+    S.lastSync = undefined;
+    await ctx.reload();
+    ctx.render();
+    ctx.toast('Sesión cerrada en este dispositivo.');
+  };
+
+  const wipe = async (): Promise<void> => {
+    const S = ctx.state;
+    const msg = S.user
+      ? 'Se borrarán todos los datos de este dispositivo y de tu nube conectada. Esta acción es irreversible.'
+      : 'Se borrarán todos los datos almacenados en este dispositivo. Esta acción es irreversible.';
+    if (
+      !(await ctx.askConfirm({
+        title: 'Borrar todos los datos',
+        message: msg,
+        confirmLabel: 'Borrar todo',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    await wipeAll();
+    markWipePending();
+    S.measureDraft = undefined;
+    ctx.clearActiveWorkouts();
+    await ctx.reload();
+    ctx.render();
+    queueSync();
+    ctx.toast('Datos borrados.');
+  };
+
   const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     setAiTone: async (el) => {
       const S = ctx.state;
@@ -338,120 +467,14 @@ export function createSyncController(ctx: AppContext): SyncController {
       await ctx.persist();
       ctx.toast(`Nivel de IA: ${tone === 'simple' ? 'Sencillo y generalista' : 'Técnico y detallado'}.`);
     },
-    ai: async () => {
-      const S = ctx.state;
-      if (!S.user) {
-        ctx.toast('Inicia sesión con Google para generar análisis con IA.');
-        return;
-      }
-      const waitSec = Math.ceil((AI_COOLDOWN_MS - (Date.now() - lastAiAt)) / 1000);
-      if (waitSec > 0) {
-        ctx.toast(`Espera ${waitSec}s antes de generar otro análisis.`);
-        return;
-      }
-      if (S.busy) return;
-      lastAiAt = Date.now();
-      const now = Date.now();
-      const { buildPayload } = await import('../lib/ai');
-      const job: AiJob = {
-        id: createAiJobId(),
-        status: 'pending',
-        tone: S.settings.aiTone === 'simple' ? 'simple' : 'technical',
-        payload: buildPayload(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing),
-        createdAt: now,
-        updatedAt: now,
-        attempts: 0,
-      };
-      S.aiJob = job;
-      try {
-        await saveAiJob(job);
-      } catch (e) {
-        S.aiJob = undefined;
-        ctx.toast(`No se pudo guardar el estado del informe: ${(e as Error).message}`);
-        return;
-      }
-      await runAiJob(job);
-    },
-    aiRetry: async () => {
-      const S = ctx.state;
-      if (S.busy) return;
-      try {
-        await retryAiJob();
-      } catch (e) {
-        ctx.toast(`No se pudo reintentar el informe IA: ${(e as Error).message}`);
-      }
-    },
-    aiDismiss: async () => {
-      const S = ctx.state;
-      if (S.busy) return;
-      try {
-        await clearAiJob();
-        S.aiJob = undefined;
-        ctx.render();
-      } catch (e) {
-        ctx.toast(`No se pudo descartar el estado del informe: ${(e as Error).message}`);
-      }
-    },
-    cloudLogin: async () => {
-      try {
-        await signInGoogle();
-      } catch (e) {
-        const code = (e as { code?: string })?.code;
-        if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${(e as Error).message}`);
-      }
-    },
-    cloudSync: async () => {
-      await runSync(true);
-    },
-    cloudLogout: async () => {
-      const S = ctx.state;
-      if (S.user && isOnline() && hasUnsyncedChanges()) await runSync(false);
-      if (
-        hasUnsyncedChanges() &&
-        !(await ctx.askConfirm({
-          title: 'Cerrar sesión con cambios locales',
-          message: 'Hay cambios locales sin subir a la nube. Si cierras sesión se limpiarán los datos guardados en este dispositivo.',
-          confirmLabel: 'Cerrar sesión',
-          danger: true,
-        }))
-      ) {
-        return;
-      }
-      await signOutGoogle();
-      await wipeAll();
-      clearSyncMeta();
-      ctx.clearActiveWorkouts();
-      S.user = null;
-      S.lastSync = undefined;
-      await ctx.reload();
-      ctx.render();
-      ctx.toast('Sesión cerrada en este dispositivo.');
-    },
-    wipe: async () => {
-      const S = ctx.state;
-      const msg = S.user
-        ? 'Se borrarán todos los datos de este dispositivo y de tu nube conectada. Esta acción es irreversible.'
-        : 'Se borrarán todos los datos almacenados en este dispositivo. Esta acción es irreversible.';
-      if (
-        !(await ctx.askConfirm({
-          title: 'Borrar todos los datos',
-          message: msg,
-          confirmLabel: 'Borrar todo',
-          danger: true,
-        }))
-      ) {
-        return;
-      }
-      await wipeAll();
-      markWipePending();
-      S.measureDraft = undefined;
-      ctx.clearActiveWorkouts();
-      await ctx.reload();
-      ctx.render();
-      queueSync();
-      ctx.toast('Datos borrados.');
-    },
+    ai: runAi,
+    aiRetry: retryAi,
+    aiDismiss: dismissAi,
+    cloudLogin,
+    cloudSync,
+    cloudLogout,
+    wipe,
   };
 
-  return { actions, runSync, queueSync, initAuth, getLastSyncAt };
+  return { actions, runAi, retryAi, dismissAi, cloudLogin, cloudSync, cloudLogout, wipe, runSync, queueSync, initAuth, getLastSyncAt };
 }

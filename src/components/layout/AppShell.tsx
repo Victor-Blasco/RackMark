@@ -1,14 +1,20 @@
 import { useRestTimer } from '../../hooks/useRestTimer';
 import { useAppStore } from '../../store/appStore';
-import { activeTabTitle, isRoutineTab } from '../../store/navigation';
+import { activeTabTitle, buildShellCounters, isRoutineTab } from '../../store/navigation';
+import type { State } from '../../ui/shared';
+import { AdherenceView } from '../../views/AdherenceView';
+import { BodyView } from '../../views/BodyView';
+import { CalcView } from '../../views/CalcView';
+import { DataView } from '../../views/DataView';
 import { DayRoutineView } from '../../views/DayRoutineView';
 import { HomeView } from '../../views/HomeView';
 import { LiveWorkoutView } from '../../views/LiveWorkoutView';
 import { LogWorkoutView } from '../../views/LogWorkoutView';
 import { PlanView } from '../../views/PlanView';
+import { SettingsView } from '../../views/SettingsView';
+import { VolumeView } from '../../views/VolumeView';
 import { SwUpdateBanner, ToastBanner } from '../common/ToastBanner';
 import { ModalHost } from '../modals/ModalHost';
-import { LegacyViewBridge } from './LegacyViewBridge';
 import { MobileBottomNav, MobileHeader } from './MobileNav';
 import { Sidebar } from './Sidebar';
 
@@ -17,23 +23,31 @@ interface AppShellProps {
   onRestExpire?: () => void;
 }
 
+function renderActiveView(state: State) {
+  if (isRoutineTab(state, state.tab)) return <DayRoutineView day={state.tab} />;
+  switch (state.tab) {
+    case 'workout': return <LiveWorkoutView />;
+    case 'log': return <LogWorkoutView />;
+    case 'plan': return <PlanView />;
+    case 'body': return <BodyView />;
+    case 'volume': return <VolumeView />;
+    case 'adherence': return <AdherenceView />;
+    case 'calc': return <CalcView />;
+    case 'data': return <DataView />;
+    case 'settings': return <SettingsView />;
+    default: return <HomeView />;
+  }
+}
+
 /**
- * Contenedor raíz de la aplicación: navega entre la vista piloto Preact (`En vivo`)
- * y el puente temporal para vistas pendientes, junto con navegación, modales y avisos.
+ * Contenedor raíz de la aplicación en Preact: navegación adaptable, vistas activas, modales y avisos.
  */
 export function AppShell({ onRestExpire }: AppShellProps) {
   const store = useAppStore();
   const { state } = store;
 
   const rest = useRestTimer(state.liveWorkout?.restUntil, state.liveWorkout?.targetRestSec, onRestExpire);
-  const statsText = state.strength.length
-    ? `${state.analysis.sessions.length} sesiones · ${state.measures.length} medidas`
-    : 'Sin sesiones aún';
-  const liveCount = state.liveWorkout?.exercises.reduce(
-    (acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length,
-    0,
-  ) ?? 0;
-  const draftCount = state.logDraft?.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length ?? 0;
+  const { statsText, liveCount, draftCount } = buildShellCounters(state);
 
   return (
     <>
@@ -57,24 +71,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
       <div class="lg:pl-64">
         <main id="main-content" tabIndex={-1} class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">
           <h1 class="sr-only hidden lg:block">{activeTabTitle(state)}</h1>
-          {state.tab === 'home' ? (
-            <HomeView />
-          ) : state.tab === 'workout' ? (
-            <LiveWorkoutView />
-          ) : state.tab === 'log' ? (
-            <LogWorkoutView />
-          ) : state.tab === 'plan' ? (
-            <PlanView />
-          ) : isRoutineTab(state, state.tab) ? (
-            <DayRoutineView day={state.tab} />
-          ) : (
-            <LegacyViewBridge
-              tabKey={state.tab}
-              html={store.renderLegacyViewHtml?.() ?? ''}
-              version={store.legacyVersion}
-              onMountHtml={store.onLegacyBridgeMount}
-            />
-          )}
+          {renderActiveView(state)}
         </main>
       </div>
       <MobileBottomNav

@@ -1,5 +1,16 @@
 import { useLayoutEffect, useRef } from 'preact/hooks';
-import { focusSelector } from '../../ui/domPatches';
+
+function resolveLegacyFocusSelector(el: Element | null): string | null {
+  if (!(el instanceof HTMLElement)) return null;
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  const name = el.getAttribute('name');
+  if (name) return `[name="${CSS.escape(name)}"]`;
+  if (el.dataset.act) {
+    const argSel = el.dataset.arg != null ? `[data-arg="${CSS.escape(el.dataset.arg)}"]` : '';
+    return `[data-act="${CSS.escape(el.dataset.act)}"]${argSel}`;
+  }
+  return null;
+}
 
 interface LegacyViewBridgeProps {
   /** Identificador de la pestaña actual para aislar cada vista legada. */
@@ -23,7 +34,7 @@ export function LegacyViewBridge({ tabKey, html, version = 0, onMountHtml }: Leg
     const el = containerRef.current;
     if (!el) return;
     const active = document.activeElement;
-    const activeSel = active && el.contains(active) ? focusSelector(active) : null;
+    const activeSel = active && el.contains(active) ? resolveLegacyFocusSelector(active) : null;
     const selStart = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ? active.selectionStart : null;
     const selEnd = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement ? active.selectionEnd : null;
 

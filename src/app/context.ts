@@ -61,7 +61,17 @@ export const loadLive = (): LiveWorkout | undefined => loadJson<LiveWorkout>(LIV
 export const saveLive = (w?: LiveWorkout): void => saveJson(LIVE_WORKOUT_KEY, w);
 
 export function maybeOpenInitialWizard(S: State): boolean {
-  if (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0 || S.wizard) return false;
-  S.wizard = createWizardDraft(S);
+  if (
+    S.settings.onboardingCompleted ||
+    S.strength.length > 0 ||
+    S.measures.length > 0 ||
+    S.wizard ||
+    S.activeModal?.type === 'wizard'
+  ) {
+    return false;
+  }
+  const draft = createWizardDraft(S);
+  S.wizard = draft;
+  S.activeModal = { type: 'wizard', draft };
   return true;
 }

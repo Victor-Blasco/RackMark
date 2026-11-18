@@ -1,39 +1,26 @@
 import './style.css';
 import { h, render as renderPreact } from 'preact';
-import { useCallback } from 'preact/hooks';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './lib/db';
-import { isValidIsoDate } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
+import { playRestBeep } from './hooks/useRestTimer';
+import { createAnalyticsActions } from './store/analyticsActions';
 import { AppStoreProvider, type AppStoreValue } from './store/appStore';
-import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
+import { createDataSyncActions } from './store/dataSyncActions';
 import { createLogWorkoutActions } from './store/logActions';
+import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
 import { createPlanActions } from './store/planActions';
 import { createWizardActions } from './store/wizardActions';
 import { createLiveWorkoutActions } from './store/workoutActions';
+import { createWorkoutLaunchActions } from './store/workoutLaunchActions';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
-import { playRestBeep } from './ui/domPatches';
+import { initKeyboardNav } from './ui/keyboardNav';
 import { initSortableLists } from './ui/reorder';
-import { inRange, resetCharts, resolveRange, routineNames, runChartJobs, todayIso, updateChart, type RangeKey } from './ui/shared';
-import {
-  buildCompChartConfig,
-  buildPerimChartConfig,
-  runCalc,
-  viewAdherence,
-  viewBody,
-  viewCalc,
-  viewData,
-  viewSettings,
-  viewVolume,
-  type State,
-} from './ui/views';
-import { arg, loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, splitPair, type AppContext } from './app/context';
-import { createImportController } from './app/importController';
-import { createPlanController } from './app/planController';
+import { routineNames, type State } from './ui/shared';
+import { loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, type AppContext } from './app/context';
 import { createSyncController } from './app/syncController';
-import { createWorkoutController } from './app/workoutController';
 
 let swUpdatePending = false;
 const updateSW = registerSW({
@@ -62,15 +49,15 @@ const S = {
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
-let cachedLegacyHtml = '';
-let legacyVersion = 0;
 
 function setTab(tab: string) {
   S.tab = isValidTab(S, tab) ? tab : 'home';
   if (isRoutineTab(S, S.tab)) lastRoutine = S.tab;
   if (ANALYTICS_IDS.has(S.tab)) lastAnalytics = S.tab;
   const encoded = encodeURIComponent(S.tab);
-  if (location.hash.slice(1) !== encoded && location.hash.slice(1) !== S.tab) history.replaceState(null, '', `#${encoded}`);
+  if (location.hash.slice(1) !== encoded && location.hash.slice(1) !== S.tab) {
+    history.replaceState(null, '', `#${encoded}`);
+  }
 }
 
 async function reload() {
@@ -101,39 +88,17 @@ function toast(msg: string) {
   }, 5000);
 }
 
-const isPreactTab = (tab: string): boolean =>
-  tab === 'home' || tab === 'workout' || tab === 'log' || tab === 'plan' || isRoutineTab(S, tab);
-
-function legacyViewHtml(): string {
-  switch (S.tab) {
-    case 'body': return viewBody(S);
-    case 'volume': return viewVolume(S);
-    case 'adherence': return viewAdherence(S);
-    case 'calc': return viewCalc(S);
-    case 'data': return viewData(S);
-    default: return viewSettings(S);
-  }
-}
-
-function onLegacyBridgeMount() {
-  runChartJobs();
-  runCalc();
-}
-
 function renderChrome() {
-  mountApp();
+  renderPreact(h(RootShell, null), root);
 }
 
 function render() {
-  if (!isPreactTab(S.tab)) {
-    resetCharts();
-    cachedLegacyHtml = legacyViewHtml();
-    legacyVersion++;
-  } else {
-    cachedLegacyHtml = '';
+  renderChrome();
+  if (S.wizard?.anim) {
+    const nextWizard = { ...S.wizard, anim: undefined };
+    S.wizard = nextWizard;
+    if (S.activeModal?.type === 'wizard') S.activeModal = { type: 'wizard', draft: nextWizard };
   }
-  mountApp();
-  if (S.wizard?.anim) S.wizard.anim = undefined;
 }
 
 async function persist() {
@@ -189,13 +154,23 @@ function closeWorkoutSummary() {
 
 async function saveNoteModal(exName: string, rawNote: string) {
   const val = rawNote.trim();
-  if (val) S.settings.notes[exName] = val;
-  else delete S.settings.notes[exName];
+  const { [exName]: _removed, ...restNotes } = S.settings.notes;
+  const nextNotes = val ? { ...restNotes, [exName]: val } : restNotes;
+  S.settings = { ...S.settings, notes: nextNotes };
   S.noteModal = undefined;
   if (S.activeModal?.type === 'note') S.activeModal = null;
   await persist();
   toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
 }
+
+const workoutLaunch = createWorkoutLaunchActions({
+  getState: () => S,
+  setTab,
+  render,
+  saveDraft,
+  saveLive,
+  askConfirm,
+});
 
 const ctx: AppContext = {
   state: S,
@@ -212,15 +187,12 @@ const ctx: AppContext = {
   queueSync: () => syncCtrl.queueSync(),
   updateSyncDom: renderChrome,
   askConfirm,
-  clearActiveWorkouts: () => workoutCtrl.clearActiveWorkouts(),
-  addExToDraft: (name, fallbackSets, fallbackReps) => workoutCtrl.addExToDraft(name, fallbackSets, fallbackReps),
-  syncWorkoutRoutineNames: (oldName, newName) => workoutCtrl.syncWorkoutRoutineNames(oldName, newName),
+  clearActiveWorkouts: workoutLaunch.clearActiveWorkouts,
+  addExToDraft: (name, fallbackSets, fallbackReps) => logActions.addExerciseByName(name, fallbackSets, fallbackReps),
+  syncWorkoutRoutineNames: workoutLaunch.syncWorkoutRoutineNames,
 };
 
 const syncCtrl = createSyncController(ctx);
-const workoutCtrl = createWorkoutController(ctx);
-const planCtrl = createPlanController(ctx);
-const importCtrl = createImportController(ctx);
 
 const liveActions = createLiveWorkoutActions({
   getState: () => S,
@@ -250,14 +222,6 @@ const liveActions = createLiveWorkoutActions({
   },
 });
 
-const startWorkoutDay = async (day?: DayName) => {
-  await workoutCtrl.actions.startWorkout({ dataset: { arg: day ?? '' } } as unknown as HTMLElement);
-};
-
-const openLogDay = async (day?: DayName) => {
-  await workoutCtrl.actions.goLog({ dataset: { arg: day ?? '' } } as unknown as HTMLElement);
-};
-
 const wizardActions = createWizardActions({
   getState: () => S,
   getLastRoutine: () => lastRoutine,
@@ -267,7 +231,7 @@ const wizardActions = createWizardActions({
   persist,
   reload,
   render,
-  syncWorkoutRoutineNames: (oldName, newName) => workoutCtrl.syncWorkoutRoutineNames(oldName, newName),
+  syncWorkoutRoutineNames: workoutLaunch.syncWorkoutRoutineNames,
   queueSync: () => syncCtrl.queueSync(),
   toast,
   openWizardModal: (draft) => {
@@ -317,17 +281,40 @@ const planActions = createPlanActions({
   render,
   setTab,
   navigateTab,
-  syncWorkoutRoutineNames: (oldName, newName) => workoutCtrl.syncWorkoutRoutineNames(oldName, newName),
+  syncWorkoutRoutineNames: workoutLaunch.syncWorkoutRoutineNames,
   addExToDraft: (name, fallbackSets, fallbackReps) => logActions.addExerciseByName(name, fallbackSets, fallbackReps),
   askConfirm,
   toast,
-  startWorkoutDay,
-  openLogDay,
-  runAiAnalysis: () => void planCtrl.actions.ai(root),
-  retryAiAnalysis: () => void planCtrl.actions.aiRetry(root),
-  dismissAiJob: () => void planCtrl.actions.aiDismiss(root),
+  startWorkoutDay: workoutLaunch.startWorkoutDay,
+  openLogDay: workoutLaunch.openLogDay,
+  runAiAnalysis: () => void syncCtrl.runAi(),
+  retryAiAnalysis: () => void syncCtrl.retryAi(),
+  dismissAiJob: () => void syncCtrl.dismissAi(),
   openWizard: () => wizardActions.open(),
   closeModal,
+});
+
+const analyticsActions = createAnalyticsActions({
+  getState: () => S,
+  persist,
+  reload,
+  render,
+  queueSync: () => syncCtrl.queueSync(),
+  toast,
+  askConfirm,
+});
+
+const dataSyncActions = createDataSyncActions({
+  getState: () => S,
+  persist,
+  reload,
+  render,
+  queueSync: () => syncCtrl.queueSync(),
+  toast,
+  wipeAllData: syncCtrl.wipe,
+  cloudLogin: syncCtrl.cloudLogin,
+  cloudSync: syncCtrl.cloudSync,
+  cloudLogout: syncCtrl.cloudLogout,
 });
 
 function navigateTab(tab: string) {
@@ -343,8 +330,6 @@ function handleRestExpire() {
 }
 
 function RootShell() {
-  const mountBridge = useCallback(() => onLegacyBridgeMount(), []);
-  const getLegacyHtml = useCallback(() => cachedLegacyHtml, []);
   const storeValue: AppStoreValue = {
     state: S,
     lastRoutine,
@@ -352,7 +337,7 @@ function RootShell() {
     unsynced: hasUnsyncedChanges(),
     swUpdatePending,
     setTab: navigateTab,
-    cloudLogin: () => void syncCtrl.actions.cloudLogin(root),
+    cloudLogin: () => void syncCtrl.cloudLogin(),
     resolveConfirm,
     closeModal,
     saveNoteModal,
@@ -371,266 +356,13 @@ function RootShell() {
     log: logActions,
     plan: planActions,
     wizard: wizardActions,
-    renderLegacyViewHtml: getLegacyHtml,
-    legacyVersion,
-    onLegacyBridgeMount: mountBridge,
+    analytics: analyticsActions,
+    dataSync: dataSyncActions,
   };
   return h(AppStoreProvider, { value: storeValue, children: h(AppShell, { onRestExpire: handleRestExpire }) });
 }
 
-function mountApp() {
-  renderPreact(h(RootShell, null), root);
-}
-
-const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
-  ...workoutCtrl.actions,
-  ...syncCtrl.actions,
-  ...planCtrl.actions,
-  ...importCtrl.actions,
-  confirmYes: () => resolveConfirm(true),
-  confirmNo: () => resolveConfirm(false),
-  tab: (el) => navigateTab(arg(el)),
-  setRange: (el) => {
-    const [scope, key] = splitPair(arg(el));
-    (S.ranges ??= {})[scope] = key as RangeKey;
-    if (key === 'Custom') {
-      const cur = ((S.customRanges ??= {})[scope] ??= {});
-      if (!cur.from && !cur.to) {
-        cur.from = todayIso(new Date(Date.now() - 30 * 864e5));
-        cur.to = todayIso();
-      }
-    }
-    render();
-  },
-  selMuscle: (el) => {
-    S.muscleSel = arg(el);
-    render();
-  },
-  setBodyMetric: (el) => {
-    S.bodyMetric = arg(el) === 'muscle' ? 'muscle' : 'weight';
-    const bounds = resolveRange(S, 'body');
-    const cfg = buildCompChartConfig(S.measures.filter((m) => inRange(m.date, bounds)), S.bodyMetric);
-    if (!cfg || !updateChart('c-comp', cfg)) render();
-  },
-  editNote: (el) => {
-    const n = arg(el);
-    if (n) openFixedNote(n);
-  },
-  closeModal: () => closeModal(),
-  openWizard: () => wizardActions.open(),
-};
-
-const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void | Promise<void>> = {
-  rangeFrom: (el) => {
-    const scope = arg(el);
-    if (el.value && !isValidIsoDate(el.value)) {
-      el.value = S.customRanges?.[scope]?.from ?? '';
-      return;
-    }
-    ((S.customRanges ??= {})[scope] ??= {}).from = el.value || undefined;
-    render();
-  },
-  rangeTo: (el) => {
-    const scope = arg(el);
-    if (el.value && !isValidIsoDate(el.value)) {
-      el.value = S.customRanges?.[scope]?.to ?? '';
-      return;
-    }
-    ((S.customRanges ??= {})[scope] ??= {}).to = el.value || undefined;
-    render();
-  },
-  selPerim: (el) => {
-    S.perimeter = el.value;
-    const cfg = buildPerimChartConfig(S);
-    if (!cfg || !updateChart('c-perim', cfg)) render();
-  },
-  calcPreset: (el) => {
-    const [w, r] = el.value.split('|');
-    (document.getElementById('calcW') as HTMLInputElement).value = w;
-    (document.getElementById('calcR') as HTMLInputElement).value = r;
-    (S.calcDraft ??= {}).w = w;
-    S.calcDraft.r = r;
-    runCalc();
-  },
-  nutriAct: (el) => {
-    (S.calcDraft ??= {}).act = arg(el);
-    const input = document.getElementById('nuAct') as HTMLInputElement | null;
-    if (input) input.value = arg(el);
-    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriAct"]')) {
-      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
-      button.classList.toggle('border-electricBlue', button.dataset.arg === arg(el));
-      button.classList.toggle('bg-electricBlue/15', button.dataset.arg === arg(el));
-    }
-    runCalc();
-  },
-  nutriGoal: (el) => {
-    (S.calcDraft ??= {}).goal = arg(el);
-    const input = document.getElementById('nuGoal') as HTMLInputElement | null;
-    if (input) input.value = arg(el);
-    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriGoal"]')) {
-      button.setAttribute('aria-checked', String(button.dataset.arg === arg(el)));
-      button.classList.toggle('border-electricBlue', button.dataset.arg === arg(el));
-      button.classList.toggle('bg-electricBlue/15', button.dataset.arg === arg(el));
-    }
-    runCalc();
-  },
-  nutriMeals: (el) => {
-    (S.calcDraft ??= {}).meals = arg(el);
-    const input = document.getElementById('nuMeals') as HTMLInputElement | null;
-    if (input) input.value = arg(el);
-    for (const button of root.querySelectorAll<HTMLElement>('[data-act="nutriMeals"]')) {
-      const active = button.dataset.arg === arg(el);
-      button.setAttribute('aria-checked', String(active));
-      button.classList.toggle('bg-electricBlue', active);
-      button.classList.toggle('text-white', active);
-      button.classList.toggle('text-gray-400', !active);
-      button.classList.toggle('hover:text-white', !active);
-    }
-    runCalc();
-  },
-  nutri: () => {
-    const act = document.getElementById('nuAct') as HTMLSelectElement | null;
-    const goal = document.getElementById('nuGoal') as HTMLSelectElement | null;
-    const protein = document.getElementById('nuProtein') as HTMLSelectElement | null;
-    const fat = document.getElementById('nuFat') as HTMLSelectElement | null;
-    if (act) (S.calcDraft ??= {}).act = act.value;
-    if (goal) (S.calcDraft ??= {}).goal = goal.value;
-    if (protein) (S.calcDraft ??= {}).protein = protein.value;
-    if (fat) (S.calcDraft ??= {}).fat = fat.value;
-    runCalc();
-  },
-  ...workoutCtrl.changes,
-  ...planCtrl.changes,
-  ...importCtrl.changes,
-};
-
-const isLegacyEvent = (target: EventTarget | null): target is HTMLElement =>
-  target instanceof HTMLElement && Boolean(target.closest('[data-legacy-view], [data-legacy-modal]'));
-
-root.addEventListener('click', (e) => {
-  if (!isLegacyEvent(e.target)) return;
-  const el = e.target.closest<HTMLElement>('[data-act]');
-  if (el) void actions[el.dataset.act!]?.(el);
-});
-
-root.addEventListener('keydown', (e) => {
-  const target = e.target as HTMLElement | null;
-  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End') {
-    const tab = target?.closest<HTMLElement>('[role="tab"]');
-    const tablist = tab?.closest<HTMLElement>('[role="tablist"]');
-    if (tab && tablist) {
-      const tabs = [...tablist.querySelectorAll<HTMLElement>('[role="tab"]')];
-      const idx = tabs.indexOf(tab);
-      if (idx !== -1 && tabs.length > 0) {
-        const nextIdx = e.key === 'ArrowRight'
-          ? (idx + 1) % tabs.length
-          : e.key === 'ArrowLeft'
-            ? (idx - 1 + tabs.length) % tabs.length
-            : e.key === 'Home'
-              ? 0
-              : tabs.length - 1;
-        const nextTab = tabs[nextIdx];
-        const nextAct = nextTab?.dataset.act;
-        if (nextTab && nextAct) {
-          e.preventDefault();
-          if (target?.closest('[data-legacy-view], [data-legacy-modal]')) void actions[nextAct]?.(nextTab);
-          else nextTab.click();
-          const lbl = tablist.getAttribute('aria-label');
-          const listSel = lbl ? `[role="tablist"][aria-label="${CSS.escape(lbl)}"]` : '[role="tablist"]';
-          const nextArg = nextTab.dataset.arg != null ? `[data-arg="${CSS.escape(nextTab.dataset.arg)}"]` : '';
-          root.querySelector<HTMLElement>(`${listSel} [data-act="${CSS.escape(nextAct)}"]${nextArg}`)?.focus({
-            preventScroll: true,
-          });
-          return;
-        }
-      }
-    }
-  }
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
-    const opt = target?.closest<HTMLElement>('[role="listbox"] [role="option"]');
-    const listbox = opt?.closest<HTMLElement>('[role="listbox"]');
-    if (opt && listbox) {
-      const options = [...listbox.querySelectorAll<HTMLElement>('[role="option"]')];
-      const idx = options.indexOf(opt);
-      if (idx !== -1 && options.length > 0) {
-        const nextIdx = e.key === 'ArrowDown'
-          ? (idx + 1) % options.length
-          : e.key === 'ArrowUp'
-            ? (idx - 1 + options.length) % options.length
-            : e.key === 'Home'
-              ? 0
-              : options.length - 1;
-        const nextOpt = options[nextIdx];
-        const nextAct = nextOpt?.dataset.act;
-        if (nextOpt && nextAct) {
-          e.preventDefault();
-          nextOpt.focus({ preventScroll: true });
-          if (target?.closest('[data-legacy-view], [data-legacy-modal]')) void actions[nextAct]?.(nextOpt);
-          else nextOpt.click();
-          const lbl = listbox.getAttribute('aria-label');
-          const listSel = lbl ? `[role="listbox"][aria-label="${CSS.escape(lbl)}"]` : '[role="listbox"]';
-          const freshListbox = root.querySelector<HTMLElement>(listSel);
-          const freshOpt = (nextOpt.id
-            ? freshListbox?.querySelector<HTMLElement>(`#${CSS.escape(nextOpt.id)}`)
-            : undefined) ?? freshListbox?.querySelectorAll<HTMLElement>('[role="option"]')[nextIdx];
-          freshOpt?.focus({ preventScroll: true });
-          freshOpt?.scrollIntoView({ block: 'nearest' });
-          return;
-        }
-      }
-    }
-  }
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  if (!isLegacyEvent(target)) return;
-  const el = target.closest<HTMLElement>('[role="button"][data-act]');
-  if (!el) return;
-  e.preventDefault();
-  void actions[el.dataset.act!]?.(el);
-});
-
-root.addEventListener('change', async (e) => {
-  if (!isLegacyEvent(e.target)) return;
-  const el = e.target as HTMLInputElement;
-  if (el.dataset.change) {
-    await changes[el.dataset.change]?.(el);
-    return;
-  }
-  await importCtrl.handleFileChange(el);
-});
-
-root.addEventListener('focusout', (e) => {
-  if (!isLegacyEvent(e.target) || !(e.target instanceof HTMLInputElement)) return;
-  workoutCtrl.handleFocusout(e.target);
-});
-
-root.addEventListener('input', (e) => {
-  if (!isLegacyEvent(e.target) || !(e.target instanceof HTMLInputElement)) return;
-  const el = e.target;
-  if (el.dataset.input === 'homeExSearch') {
-    S.homeExQuery = el.value;
-    render();
-    return;
-  }
-  if (el.dataset.input === 'calc') {
-    if (el.id === 'calcW') (S.calcDraft ??= {}).w = el.value;
-    else if (el.id === 'calcR') (S.calcDraft ??= {}).r = el.value;
-    else if (el.id === 'calcRir') (S.calcDraft ??= {}).rir = el.value;
-    runCalc();
-    return;
-  }
-  if (planCtrl.handleInput(el)) return;
-  if (importCtrl.handleInput(el)) return;
-  workoutCtrl.handleInput(el);
-});
-
-root.addEventListener('submit', async (e) => {
-  if (!isLegacyEvent(e.target)) return;
-  e.preventDefault();
-  const f = e.target as HTMLFormElement;
-  const fd = new FormData(f);
-  if (await importCtrl.handleSubmit(f, fd)) return;
-  await planCtrl.handleSubmit(f, fd);
-});
+initKeyboardNav(root);
 
 window.addEventListener('hashchange', () => {
   const raw = initialTab();
@@ -647,7 +379,6 @@ window.addEventListener('offline', () => renderChrome());
 initSortableLists(root, async (scope, from, to) => {
   if (scope === 'log') logActions.reorderExercises(from, to);
   else if (scope.startsWith('rt:')) await planActions.reorderRoutineRows(scope.slice(3), from, to);
-  else await planCtrl.handleReorder(scope, from, to);
 });
 
 reload().then(async () => {

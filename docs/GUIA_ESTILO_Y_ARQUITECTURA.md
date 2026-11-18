@@ -206,10 +206,10 @@ src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
     ├── src/store/* &     (types, navigation, appStore, *Selectors, *Actions, useRestTimer, useFocusTrap)
     │   src/hooks/*       · Estado tipado (ActiveModal), selectores puros y hooks reutilizables
     │       ▲
-    ├── src/components/*  (common/, layout/, modals/, home/, day/, log/, plan/, workout/) + src/views/* (HomeView, DayRoutineView, LiveWorkoutView, LogWorkoutView, PlanView)
-    │   & src/ui/*        · Componentes Preact .tsx (TSDoc y Props explícitas) + LegacyViewBridge solo para análisis y ajustes (Bloque C)
+    ├── src/components/*  (common/, layout/, modals/, home/, day/, log/, plan/, workout/, body/, calc/, settings/) + src/views/* (11 vistas Preact)
+    │   & src/ui/*        · Componentes Preact .tsx (TSDoc y Props explícitas) + adaptadores SSR temporales hasta Bloque D
     │       ▲
-    └── src/main.ts       (punto de entrada: monta AppShell + 6 modales en Preact y mantiene puente para Bloque C)
+    └── src/main.ts       (punto de entrada: monta AppShell con todas las vistas y los 6 modales en Preact)
 ```
 
 - **Carga diferida y Workers:**
