@@ -324,8 +324,21 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   },
   setExMetric: (el) => {
     const m = arg(el);
-    S.exMetric = m === 'e1rm' || m === 'volume' ? m : 'top';
-    const cfg = buildHomeExChartConfig(S);
+    const next = m === 'e1rm' || m === 'volume' ? m : 'top';
+    S.exMetric = next;
+
+    root.querySelectorAll<HTMLElement>('[data-act="setExMetric"]').forEach((btn) => {
+      const active = btn.dataset.arg === next;
+      btn.setAttribute('aria-pressed', String(active));
+      btn.classList.remove('bg-electricBlue', 'text-white', 'text-gray-400', 'hover:text-white');
+      if (active) {
+        btn.classList.add('bg-electricBlue', 'text-white');
+      } else {
+        btn.classList.add('text-gray-400', 'hover:text-white');
+      }
+    });
+
+    const cfg = S.tab === 'home' ? buildHomeExChartConfig(S) : null;
     if (!cfg || !updateChart('c-home-ex', cfg)) render();
   },
   aiTab: (el) => {

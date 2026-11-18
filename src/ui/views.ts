@@ -45,8 +45,8 @@ function aiToneToggle(tone: AiTone): string {
 
 function exMetricToggle(active: ExMetric): string {
   const opts: [ExMetric, string][] = [['top', 'Peso máx'], ['e1rm', 'e1RM'], ['volume', 'Tonelaje']];
-  return `<div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
-    ${opts.map(([k, lbl]) => `<button type="button" data-act="setExMetric" data-arg="${k}" aria-pressed="${active === k}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === k ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${lbl}</button>`).join('')}
+  return `<div data-ex-metric-group role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    ${opts.map(([k, lbl]) => `<button type="button" data-act="setExMetric" data-arg="${k}" aria-pressed="${active === k}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === k ? "bg-electricBlue text-white" : "text-gray-400 hover:text-white"}">${lbl}</button>`).join("")}
   </div>`;
 }
 
