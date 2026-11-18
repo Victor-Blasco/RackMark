@@ -2,6 +2,9 @@ import { createContext, type ComponentChildren } from 'preact';
 import { useContext } from 'preact/hooks';
 import type { DayName } from '../types';
 import type { State } from '../ui/shared';
+import type { LogWorkoutActions } from './logActions';
+import type { PlanActions } from './planActions';
+import type { WizardActions } from './wizardActions';
 import type { LiveWorkoutActions } from './workoutActions';
 
 /** Contrato de estado y acciones compartido por los componentes Preact. */
@@ -32,24 +35,27 @@ export interface AppStoreValue {
   dismissSwUpdate: () => void;
   /** Aplica la actualización pendiente del Service Worker. */
   reloadSwUpdate: () => void;
+  /** Abre el modal de nota permanente para un ejercicio concreto. */
+  openFixedNote: (exName: string) => void;
   /** Acciones de la vista piloto `En vivo`. */
   live: LiveWorkoutActions;
+  /** Acciones de la vista `Registrar hecho`. */
+  log: LogWorkoutActions;
+  /** Acciones de `Plan`, `Resumen` y `Rutina`. */
+  plan: PlanActions;
+  /** Acciones del asistente inicial de bienvenida. */
+  wizard: WizardActions;
   /** Genera el HTML de vistas aún no migradas para `<LegacyViewBridge />`. */
   renderLegacyViewHtml?: () => string;
   /** Contador incremental que sincroniza re-renders legados con `resetCharts()`. */
   legacyVersion?: number;
-  /** Genera el HTML de modales pendientes del Bloque B (`wizard`, `exercise`, `routine`). */
-  renderLegacyModalHtml?: (state: State) => string;
   /** Ejecuta tareas post-render de vistas legadas (`runChartJobs`, `runCalc`, `initSortableLists`). */
   onLegacyBridgeMount?: (container: HTMLElement) => void;
 }
 
 const noop = () => {};
 const noopAsync = async () => {};
-
-const NOOP_LIVE = new Proxy({} as LiveWorkoutActions, {
-  get: () => noop,
-});
+const noopProxy = <T extends object>() => new Proxy({} as T, { get: () => noop });
 
 const DEFAULT_STORE: AppStoreValue = {
   state: {} as State,
@@ -65,7 +71,11 @@ const DEFAULT_STORE: AppStoreValue = {
   closeWorkoutSummary: noop,
   dismissSwUpdate: noop,
   reloadSwUpdate: noop,
-  live: NOOP_LIVE,
+  openFixedNote: noop,
+  live: noopProxy<LiveWorkoutActions>(),
+  log: noopProxy<LogWorkoutActions>(),
+  plan: noopProxy<PlanActions>(),
+  wizard: noopProxy<WizardActions>(),
 };
 
 const AppStoreContext = createContext<AppStoreValue>(DEFAULT_STORE);

@@ -1,21 +1,22 @@
 import { useAppStore } from '../../store/appStore';
 import { resolveActiveModal } from '../../store/types';
-import type { State } from '../../ui/shared';
+import { routineNames, type State } from '../../ui/shared';
 import { ConfirmModal } from './ConfirmModal';
+import { ExerciseModal } from './ExerciseModal';
 import { NoteModal } from './NoteModal';
+import { RoutineModal } from './RoutineModal';
+import { WizardModal } from './WizardModal';
 import { WorkoutSummaryModal } from './WorkoutSummaryModal';
 
 interface ModalHostProps {
   /** Estado explícito opcional (útil en `renderToString` durante tests). */
   state?: State;
-  /** Generador HTML temporal para modales pendientes del Bloque B. */
-  renderLegacyModalHtml?: (state: State) => string;
 }
 
 /**
- * Renderiza declarativamente el modal activo definido por la unión discriminada `ActiveModal`.
+ * Renderiza declarativamente todos los modales definidos en `ActiveModal`.
  */
-export function ModalHost({ state: propState, renderLegacyModalHtml }: ModalHostProps) {
+export function ModalHost({ state: propState }: ModalHostProps) {
   const store = useAppStore();
   const state = propState ?? store.state;
   const modal = resolveActiveModal(state);
@@ -47,9 +48,37 @@ export function ModalHost({ state: propState, renderLegacyModalHtml }: ModalHost
       );
     case 'workoutSummary':
       return <WorkoutSummaryModal summary={modal.summary} onClose={store.closeWorkoutSummary} />;
-    default: {
-      const html = (renderLegacyModalHtml ?? store.renderLegacyModalHtml)?.(state) ?? '';
-      return html ? <div data-legacy-modal="true" dangerouslySetInnerHTML={{ __html: html }} /> : null;
-    }
+    case 'wizard':
+      return (
+        <WizardModal
+          draft={modal.draft}
+          onboardingCompleted={state.settings.onboardingCompleted}
+          onPatch={store.wizard.updateDraft}
+          onBack={store.wizard.back}
+          onSubmitStep={store.wizard.submitStep}
+          onSkip={store.wizard.skip}
+        />
+      );
+    case 'routine':
+      return (
+        <RoutineModal
+          mode={modal.mode}
+          initialName={modal.name}
+          initialSub={modal.sub}
+          initialColor={modal.color}
+          onSave={store.plan.saveRoutineModal}
+          onClose={store.closeModal}
+        />
+      );
+    case 'exercise':
+      return (
+        <ExerciseModal
+          routines={routineNames(state.settings)}
+          defaultRoutine={modal.routine ?? ''}
+          fromLog={modal.fromLog}
+          onSave={store.plan.saveExerciseModal}
+          onClose={store.closeModal}
+        />
+      );
   }
 }

@@ -1,7 +1,11 @@
 import { useRestTimer } from '../../hooks/useRestTimer';
 import { useAppStore } from '../../store/appStore';
-import { activeTabTitle } from '../../store/navigation';
+import { activeTabTitle, isRoutineTab } from '../../store/navigation';
+import { DayRoutineView } from '../../views/DayRoutineView';
+import { HomeView } from '../../views/HomeView';
 import { LiveWorkoutView } from '../../views/LiveWorkoutView';
+import { LogWorkoutView } from '../../views/LogWorkoutView';
+import { PlanView } from '../../views/PlanView';
 import { SwUpdateBanner, ToastBanner } from '../common/ToastBanner';
 import { ModalHost } from '../modals/ModalHost';
 import { LegacyViewBridge } from './LegacyViewBridge';
@@ -53,8 +57,16 @@ export function AppShell({ onRestExpire }: AppShellProps) {
       <div class="lg:pl-64">
         <main id="main-content" tabIndex={-1} class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">
           <h1 class="sr-only hidden lg:block">{activeTabTitle(state)}</h1>
-          {state.tab === 'workout' ? (
+          {state.tab === 'home' ? (
+            <HomeView />
+          ) : state.tab === 'workout' ? (
             <LiveWorkoutView />
+          ) : state.tab === 'log' ? (
+            <LogWorkoutView />
+          ) : state.tab === 'plan' ? (
+            <PlanView />
+          ) : isRoutineTab(state, state.tab) ? (
+            <DayRoutineView day={state.tab} />
           ) : (
             <LegacyViewBridge
               tabKey={state.tab}

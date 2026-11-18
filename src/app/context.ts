@@ -1,6 +1,6 @@
 import type { DayName, LiveWorkout, LogDraft } from '../types';
 import type { State } from '../ui/shared';
-import { createWizardDraft } from '../ui/wizardView';
+import { createWizardDraft } from '../store/wizardSelectors';
 
 export const DRAFT_KEY = 'gymapp_log_draft';
 export const LIVE_WORKOUT_KEY = 'gymapp_live_workout';

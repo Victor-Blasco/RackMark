@@ -12,14 +12,17 @@ import {
   Tooltip,
   type ChartConfiguration,
 } from 'chart.js';
+import { h } from 'preact';
+import { renderToString } from 'preact-render-to-string';
+import { RangePicker } from '../components/common/RangePicker';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
 import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
-import type { ActiveModal } from '../store/types';
-import type { WizardDraft } from './wizardView';
+import { RANGES, type ActiveModal, type RangeKey } from '../store/types';
+import type { WizardDraft } from '../store/wizardSelectors';
 
-export { todayIso };
+export { RANGES, todayIso, type RangeKey };
 
 Chart.register(
   LineController,
@@ -37,39 +40,13 @@ Chart.defaults.color = '#9CA3AF';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
 Chart.defaults.maintainAspectRatio = false;
 
-export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo' | 'Custom';
-export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
-  { key: '1M', label: '1M', days: 30 },
-  { key: '3M', label: '3M', days: 90 },
-  { key: '6M', label: '6M', days: 180 },
-  { key: '1A', label: '1A', days: 365 },
-  { key: 'Todo', label: 'Todo' },
-  { key: 'Custom', label: 'Fechas' },
-];
-
 export function rangeCutoff(r: RangeKey): string | null {
   const days = RANGES.find((x) => x.key === r)?.days;
   return days ? todayIso(new Date(Date.now() - days * 864e5)) : null;
 }
 
 export function rangePicker(scope: string, active: RangeKey, custom?: { from?: string; to?: string }): string {
-  const sEsc = esc(scope);
-  return `<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2">
-    <div role="group" aria-label="Filtro temporal" class="inline-flex flex-wrap rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">
-      ${RANGES.map((r) => `<button type="button" data-act="setRange" data-arg="${sEsc}|${r.key}" aria-pressed="${active === r.key}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active === r.key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}">${r.label}</button>`).join('')}
-    </div>
-    ${active === 'Custom' ? `
-      <div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs">
-        <label class="inline-flex items-center gap-1.5 text-gray-400">
-          <span>Desde</span>
-          <input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${sEsc}" aria-label="Fecha de inicio">
-        </label>
-        <label class="inline-flex items-center gap-1.5 text-gray-400">
-          <span>Hasta</span>
-          <input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${sEsc}" aria-label="Fecha de fin">
-        </label>
-      </div>` : ''}
-  </div>`;
+  return renderToString(h(RangePicker, { scope, active, custom }));
 }
 
 export interface WorkoutSummary {

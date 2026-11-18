@@ -4,7 +4,7 @@ import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivi
 import { MUSCLES } from '../lib/seed';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type DayName, type Measure } from '../types';
 import { icon } from './icons';
-import { daysActivityFactor, goalCalorieDelta } from './wizardView';
+import { daysActivityFactor, goalCalorieDelta } from '../store/wizardSelectors';
 import {
   chart,
   esc,

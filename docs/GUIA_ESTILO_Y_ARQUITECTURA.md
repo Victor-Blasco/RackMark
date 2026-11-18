@@ -17,7 +17,7 @@ GymApp combina dos necesidades operativas opuestas dentro de una misma PWA:
 
 | Dimensión | Contexto Gimnasio (Móvil / En vivo) | Contexto Laboratorio (Escritorio / Histórico) |
 | :--- | :--- | :--- |
-| **Vistas principales** | `Entrenar` -> `En vivo` (`src/ui/workoutView.ts`), `Registrar hecho` (`src/ui/logView.ts`), barra inferior móvil | `Resumen`, `Rutinas` (`Push`/`Pull`/`Leg`...), `Planificación`, `Composición`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes` |
+| **Vistas principales** | `Entrenar` -> `En vivo` (`src/views/LiveWorkoutView.tsx`), `Registrar hecho` (`src/views/LogWorkoutView.tsx`), barra inferior móvil | `Resumen`, `Rutinas` (`Push`/`Pull`/`Leg`...), `Planificación`, `Composición`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes` |
 | **Carga cognitiva** | **Mínima**: un único ejercicio activo en pantalla durante el entreno en vivo | **Alta controlada**: maestro-detalle, tablas comparativas, múltiples gráficas con rango temporal |
 | **Superficie visual** | Lienzo plano `#090D16` con divisores `1px`; cero cards anidadas | Lienzo plano `#090D16` con paneles elevados solo en detalle lateral sticky, modales e informe IA |
 | **Prioridad operativa** | Ergonomía con una mano (`>= 44px`), sin auto-zoom iOS, cero pérdidas de foco/datos | Precisión analítica, edición rápida de rutinas, drag & drop FLIP y exportación/sincronización |
@@ -36,13 +36,13 @@ GymApp combina dos necesidades operativas opuestas dentro de una misma PWA:
 
 El usuario distingue explícitamente entre entrenar **ahora mismo** y registrar un entreno **ya terminado**:
 
-1. **Modo `En vivo` (`src/ui/workoutView.ts`):**
+1. **Modo `En vivo` (`src/views/LiveWorkoutView.tsx`):**
    - Muestra **un solo ejercicio a la vez**, evitando listados largos o sliders horizontales que dispersen la atención.
    - Etiquetas explícitas sobre los campos numéricos (`Peso (kg)` y `Reps`) para evitar dudas con el cansancio del entrenamiento.
    - Temporizador de descanso automático configurable (`60s`, `90s`, `120s`, `180s`) disparado al completar serie, con avance natural hacia las series y el siguiente ejercicio (`liveGoEx`).
    - Flexibilidad real de gimnasio: permitir **añadir/quitar series**, **cambiar el ejercicio por otro** o **añadir un ejercicio adicional** sobre la marcha sin salir de la sesión.
    - Selector de ejercicios mediante **menú tipo hamburguesa animado** (`#live-ex-menu-wrap` / `#live-ex-menu`) con vista rápida de objetivo (`Obj SxR`), historial resumido y acceso a añadir ejercicio.
-2. **Modo `Registrar hecho` (`src/ui/logView.ts`):**
+2. **Modo `Registrar hecho` (`src/views/LogWorkoutView.tsx`):**
    - Pensado para anotar sesiones ya finalizadas sin lanzar temporizadores en segundo plano ni interrumpir la captura manual.
    - El descanso es un dato opcional editable por el usuario si desea dejar constancia de él.
 
@@ -203,13 +203,13 @@ src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
     ├── src/lib/*         (db, sync, firebase, samsung, samsungWorker, measures, analysis, ai, seed)
     │       ▲             · PROHIBIDO importar UI o tocar el DOM
     │       │
-    ├── src/store/* &     (types, navigation, appStore, workoutSelectors, workoutActions, useRestTimer, useFocusTrap)
-    │   src/hooks/*       · Estado tipado (ActiveModal), selectores puros y hooks reutilizables (<= 150 lín./archivo)
+    ├── src/store/* &     (types, navigation, appStore, *Selectors, *Actions, useRestTimer, useFocusTrap)
+    │   src/hooks/*       · Estado tipado (ActiveModal), selectores puros y hooks reutilizables
     │       ▲
-    ├── src/components/*  (common/, layout/, modals/, workout/) + src/views/* (LiveWorkoutView.tsx...)
-    │   & src/ui/*        · Componentes Preact .tsx (<= 150 lín., Props y TSDoc en español) + LegacyViewBridge temporal
+    ├── src/components/*  (common/, layout/, modals/, home/, day/, log/, plan/, workout/) + src/views/* (HomeView, DayRoutineView, LiveWorkoutView, LogWorkoutView, PlanView)
+    │   & src/ui/*        · Componentes Preact .tsx (TSDoc y Props explícitas) + LegacyViewBridge solo para análisis y ajustes (Bloque C)
     │       ▲
-    └── src/main.ts       (punto de entrada: monta AppShell con Preact y mantiene puente para vistas pendientes)
+    └── src/main.ts       (punto de entrada: monta AppShell + 6 modales en Preact y mantiene puente para Bloque C)
 ```
 
 - **Carga diferida y Workers:**

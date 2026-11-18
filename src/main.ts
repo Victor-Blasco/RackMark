@@ -9,31 +9,27 @@ import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
 import { AppStoreProvider, type AppStoreValue } from './store/appStore';
 import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
+import { createLogWorkoutActions } from './store/logActions';
+import { createPlanActions } from './store/planActions';
+import { createWizardActions } from './store/wizardActions';
 import { createLiveWorkoutActions } from './store/workoutActions';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
-import { MODAL_FOCUSABLE_SELECTOR, playRestBeep, restoreModalFocus } from './ui/domPatches';
+import { playRestBeep } from './ui/domPatches';
 import { initSortableLists } from './ui/reorder';
 import { inRange, resetCharts, resolveRange, routineNames, runChartJobs, todayIso, updateChart, type RangeKey } from './ui/shared';
 import {
   buildCompChartConfig,
-  buildHomeExChartConfig,
   buildPerimChartConfig,
-  renderAiReport,
-  renderLegacyModals,
   runCalc,
   viewAdherence,
   viewBody,
   viewCalc,
   viewData,
-  viewDay,
-  viewHome,
-  viewLog,
-  viewPlan,
   viewSettings,
   viewVolume,
   type State,
 } from './ui/views';
-import { arg, loadDraft, loadLive, maybeOpenInitialWizard, saveLive, splitPair, type AppContext } from './app/context';
+import { arg, loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, splitPair, type AppContext } from './app/context';
 import { createImportController } from './app/importController';
 import { createPlanController } from './app/planController';
 import { createSyncController } from './app/syncController';
@@ -105,12 +101,11 @@ function toast(msg: string) {
   }, 5000);
 }
 
+const isPreactTab = (tab: string): boolean =>
+  tab === 'home' || tab === 'workout' || tab === 'log' || tab === 'plan' || isRoutineTab(S, tab);
+
 function legacyViewHtml(): string {
-  if (isRoutineTab(S, S.tab)) return viewDay(S, S.tab);
   switch (S.tab) {
-    case 'home': return viewHome(S);
-    case 'log': return viewLog(S);
-    case 'plan': return viewPlan(S);
     case 'body': return viewBody(S);
     case 'volume': return viewVolume(S);
     case 'adherence': return viewAdherence(S);
@@ -130,7 +125,7 @@ function renderChrome() {
 }
 
 function render() {
-  if (S.tab !== 'workout') {
+  if (!isPreactTab(S.tab)) {
     resetCharts();
     cachedLegacyHtml = legacyViewHtml();
     legacyVersion++;
@@ -170,14 +165,19 @@ function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> 
 }
 
 function closeModal() {
-  const hadLegacy = Boolean(S.exModal || S.routineModal || S.wizard);
-  if (!hadLegacy && !S.noteModal && !S.activeModal) return;
+  if (!S.exModal && !S.routineModal && !S.noteModal && !S.activeModal) return;
   S.exModal = undefined;
   S.routineModal = undefined;
   S.noteModal = undefined;
   if (S.activeModal?.type !== 'confirm') S.activeModal = null;
   renderChrome();
-  if (hadLegacy) restoreModalFocus(root, S);
+}
+
+function openFixedNote(exName: string) {
+  const val = S.settings.notes[exName] ?? '';
+  S.noteModal = { exName, value: val };
+  S.activeModal = { type: 'note', exName, value: val };
+  renderChrome();
 }
 
 function closeWorkoutSummary() {
@@ -241,18 +241,93 @@ const liveActions = createLiveWorkoutActions({
   queueSync: () => syncCtrl.queueSync(),
   toast,
   askConfirm,
-  openNoteModal: (exName) => {
-    const val = S.settings.notes[exName] ?? '';
-    S.noteModal = { exName, value: val };
-    S.activeModal = { type: 'note', exName, value: val };
-    renderChrome();
-  },
+  openNoteModal: openFixedNote,
   showSummary: (summary) => {
     S.workoutSummary = summary;
     S.activeModal = { type: 'workoutSummary', summary };
     render();
     syncCtrl.queueSync();
   },
+});
+
+const startWorkoutDay = async (day?: DayName) => {
+  await workoutCtrl.actions.startWorkout({ dataset: { arg: day ?? '' } } as unknown as HTMLElement);
+};
+
+const openLogDay = async (day?: DayName) => {
+  await workoutCtrl.actions.goLog({ dataset: { arg: day ?? '' } } as unknown as HTMLElement);
+};
+
+const wizardActions = createWizardActions({
+  getState: () => S,
+  getLastRoutine: () => lastRoutine,
+  setLastRoutine: (day) => {
+    lastRoutine = day;
+  },
+  persist,
+  reload,
+  render,
+  syncWorkoutRoutineNames: (oldName, newName) => workoutCtrl.syncWorkoutRoutineNames(oldName, newName),
+  queueSync: () => syncCtrl.queueSync(),
+  toast,
+  openWizardModal: (draft) => {
+    S.wizard = draft;
+    S.activeModal = { type: 'wizard', draft };
+    renderChrome();
+  },
+  closeWizardModal: () => {
+    S.wizard = undefined;
+    if (S.activeModal?.type === 'wizard') S.activeModal = null;
+    renderChrome();
+  },
+});
+
+const logActions = createLogWorkoutActions({
+  getState: () => S,
+  saveDraftOnly: (draft) => {
+    S.logDraft = draft;
+    saveDraft(draft);
+  },
+  commitDraft: (draft) => {
+    S.logDraft = draft;
+    saveDraft(draft);
+    renderChrome();
+  },
+  reload,
+  setTab: navigateTab,
+  queueSync: () => syncCtrl.queueSync(),
+  toast,
+  askConfirm,
+  openNoteModal: openFixedNote,
+  onSearchChange: (q) => {
+    S.logAddQuery = q;
+    renderChrome();
+  },
+  onStartLiveTab: () => navigateTab('workout'),
+  onOpenNewExerciseModal: () => planActions.openExerciseModal({ fromLog: true }),
+});
+
+const planActions = createPlanActions({
+  getState: () => S,
+  getLastRoutine: () => lastRoutine,
+  setLastRoutine: (day) => {
+    lastRoutine = day;
+  },
+  persist,
+  render,
+  setTab,
+  navigateTab,
+  syncWorkoutRoutineNames: (oldName, newName) => workoutCtrl.syncWorkoutRoutineNames(oldName, newName),
+  addExToDraft: (name, fallbackSets, fallbackReps) => logActions.addExerciseByName(name, fallbackSets, fallbackReps),
+  askConfirm,
+  toast,
+  startWorkoutDay,
+  openLogDay,
+  runAiAnalysis: () => void planCtrl.actions.ai(root),
+  retryAiAnalysis: () => void planCtrl.actions.aiRetry(root),
+  dismissAiJob: () => void planCtrl.actions.aiDismiss(root),
+  openWizard: () => wizardActions.open(),
+  closeModal,
 });
 
 function navigateTab(tab: string) {
@@ -291,10 +366,13 @@ function RootShell() {
       renderChrome();
       void updateSW(true);
     },
+    openFixedNote,
     live: liveActions,
+    log: logActions,
+    plan: planActions,
+    wizard: wizardActions,
     renderLegacyViewHtml: getLegacyHtml,
     legacyVersion,
-    renderLegacyModalHtml: renderLegacyModals,
     onLegacyBridgeMount: mountBridge,
   };
   return h(AppStoreProvider, { value: storeValue, children: h(AppShell, { onRestExpire: handleRestExpire }) });
@@ -305,26 +383,13 @@ function mountApp() {
 }
 
 const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
+  ...workoutCtrl.actions,
+  ...syncCtrl.actions,
+  ...planCtrl.actions,
+  ...importCtrl.actions,
   confirmYes: () => resolveConfirm(true),
   confirmNo: () => resolveConfirm(false),
   tab: (el) => navigateTab(arg(el)),
-  openExDetail: (el) => {
-    const [day, ex] = splitPair(arg(el));
-    if (!day || !ex) return;
-    S.sel[day] = ex;
-    navigateTab(day);
-  },
-  selEx: (el) => {
-    const [d, n] = splitPair(arg(el));
-    S.sel[d] = n;
-    render();
-  },
-  setDayScope: (el) => {
-    const [d, mode] = splitPair(arg(el));
-    (S.dayExtra ??= {})[d] = mode === 'extra';
-    delete S.sel[d];
-    render();
-  },
   setRange: (el) => {
     const [scope, key] = splitPair(arg(el));
     (S.ranges ??= {})[scope] = key as RangeKey;
@@ -341,31 +406,6 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
     S.muscleSel = arg(el);
     render();
   },
-  setExMetric: (el) => {
-    const m = arg(el);
-    const next = m === 'e1rm' || m === 'volume' ? m : 'top';
-    S.exMetric = next;
-    root.querySelectorAll<HTMLElement>('[data-act="setExMetric"]').forEach((btn) => {
-      const active = btn.dataset.arg === next;
-      btn.setAttribute('aria-pressed', String(active));
-      btn.classList.remove('bg-electricBlue', 'text-white', 'text-gray-400', 'hover:text-white');
-      if (active) btn.classList.add('bg-electricBlue', 'text-white');
-      else btn.classList.add('text-gray-400', 'hover:text-white');
-    });
-    const cfg = S.tab === 'home' ? buildHomeExChartConfig(S) : null;
-    if (!cfg || !updateChart('c-home-ex', cfg)) render();
-  },
-  aiTab: (el) => {
-    S.aiTab = Math.max(0, +arg(el) || 0);
-    const panel = document.getElementById('ai-report');
-    if (!panel) {
-      render();
-      return;
-    }
-    const activeSel = panel.contains(document.activeElement) ? (document.activeElement as HTMLElement).id : '';
-    panel.outerHTML = renderAiReport(S);
-    if (activeSel) document.getElementById(activeSel)?.focus({ preventScroll: true });
-  },
   setBodyMetric: (el) => {
     S.bodyMetric = arg(el) === 'muscle' ? 'muscle' : 'weight';
     const bounds = resolveRange(S, 'body');
@@ -374,26 +414,13 @@ const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
   },
   editNote: (el) => {
     const n = arg(el);
-    if (!n) return;
-    const val = S.settings.notes[n] ?? '';
-    S.noteModal = { exName: n, value: val };
-    S.activeModal = { type: 'note', exName: n, value: val };
-    renderChrome();
+    if (n) openFixedNote(n);
   },
   closeModal: () => closeModal(),
-  ...workoutCtrl.actions,
-  ...syncCtrl.actions,
-  ...planCtrl.actions,
-  ...importCtrl.actions,
+  openWizard: () => wizardActions.open(),
 };
 
 const changes: Record<string, (el: HTMLInputElement | HTMLSelectElement) => void | Promise<void>> = {
-  selHome: (el) => {
-    S.sel.home = el.value;
-    delete S.homeExQuery;
-    const cfg = buildHomeExChartConfig(S);
-    if (!cfg || !updateChart('c-home-ex', cfg)) render();
-  },
   rangeFrom: (el) => {
     const scope = arg(el);
     if (el.value && !isValidIsoDate(el.value)) {
@@ -538,7 +565,8 @@ root.addEventListener('keydown', (e) => {
         if (nextOpt && nextAct) {
           e.preventDefault();
           nextOpt.focus({ preventScroll: true });
-          void actions[nextAct]?.(nextOpt);
+          if (target?.closest('[data-legacy-view], [data-legacy-modal]')) void actions[nextAct]?.(nextOpt);
+          else nextOpt.click();
           const lbl = listbox.getAttribute('aria-label');
           const listSel = lbl ? `[role="listbox"][aria-label="${CSS.escape(lbl)}"]` : '[role="listbox"]';
           const freshListbox = root.querySelector<HTMLElement>(listSel);
@@ -604,34 +632,6 @@ root.addEventListener('submit', async (e) => {
   await planCtrl.handleSubmit(f, fd);
 });
 
-window.addEventListener('keydown', (e) => {
-  const legacyDialog = document.querySelector<HTMLElement>('[data-legacy-modal] #wizard-modal, [data-legacy-modal] #ex-modal, [data-legacy-modal] #rt-modal');
-  if (!legacyDialog) return;
-  if (e.key === 'Tab') {
-    const focusables = [...legacyDialog.querySelectorAll<HTMLElement>(MODAL_FOCUSABLE_SELECTOR)].filter(
-      (el) => !el.closest('[hidden], [inert]'),
-    );
-    if (!focusables.length) return void e.preventDefault();
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    const activeEl = document.activeElement as HTMLElement | null;
-    if (!activeEl || !legacyDialog.contains(activeEl)) {
-      e.preventDefault();
-      (e.shiftKey ? last : first).focus();
-    } else if (e.shiftKey && activeEl === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && activeEl === last) {
-      e.preventDefault();
-      first.focus();
-    }
-    return;
-  }
-  if (e.key !== 'Escape') return;
-  if (S.wizard) void actions.wizardSkip(root);
-  else if (S.exModal || S.routineModal) closeModal();
-});
-
 window.addEventListener('hashchange', () => {
   const raw = initialTab();
   const next = isValidTab(S, raw) ? raw : 'home';
@@ -645,7 +645,8 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => renderChrome());
 
 initSortableLists(root, async (scope, from, to) => {
-  if (scope === 'log') workoutCtrl.handleReorder(from, to);
+  if (scope === 'log') logActions.reorderExercises(from, to);
+  else if (scope.startsWith('rt:')) await planActions.reorderRoutineRows(scope.slice(3), from, to);
   else await planCtrl.handleReorder(scope, from, to);
 });
 

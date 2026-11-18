@@ -10,8 +10,18 @@ import type {
   SyncJob,
 } from '../types';
 import type { LiveWorkout, LogDraft } from '../types';
-import type { RangeKey, State, WorkoutSummary } from '../ui/shared';
-import type { WizardDraft } from '../ui/wizardView';
+import type { State, WorkoutSummary } from '../ui/shared';
+import type { WizardDraft } from './wizardSelectors';
+
+export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo' | 'Custom';
+export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
+  { key: '1M', label: '1M', days: 30 },
+  { key: '3M', label: '3M', days: 90 },
+  { key: '6M', label: '6M', days: 180 },
+  { key: '1A', label: '1A', days: 365 },
+  { key: 'Todo', label: 'Todo' },
+  { key: 'Custom', label: 'Fechas' },
+];
 
 /** Estado de dominio persistido y su análisis derivado. */
 export interface DomainState {
