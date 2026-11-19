@@ -39,9 +39,9 @@ export function RestTimerBar({
             <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" aria-label="Restar 15 segundos" onClick={() => onAdjust?.(-15)}>−15s</button>
-            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" aria-label="Sumar 30 segundos" onClick={() => onAdjust?.(30)}>+30s</button>
-            <button type="button" class="btn min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" onClick={() => onStop?.()}>Listo</button>
+            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 tabular-nums" aria-label="Restar 15 segundos" onClick={() => onAdjust?.(-15)}>−15s</button>
+            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 tabular-nums" aria-label="Sumar 30 segundos" onClick={() => onAdjust?.(30)}>+30s</button>
+            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" onClick={() => onStop?.()}>Listo</button>
           </div>
         </div>
       </div>

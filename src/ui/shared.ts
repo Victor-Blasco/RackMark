@@ -205,7 +205,7 @@ export function findAiSection(S: State, pattern: RegExp): AiSection | undefined 
 /** Redondea a 1 decimal usando coma decimal española. */
 export const r1 = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
 
-export const DAY_COLOR: Record<string, string> = { Push: '#F43F5E', Pull: '#3B82F6', Leg: '#10B981' };
+export const DAY_COLOR: Record<string, string> = { Push: '#A855F7', Pull: '#3B82F6', Leg: '#10B981' };
 
 /** Devuelve la lista ordenada de rutinas definidas en los ajustes (o PPL por defecto). */
 export function routineNames(s: Settings): string[] {

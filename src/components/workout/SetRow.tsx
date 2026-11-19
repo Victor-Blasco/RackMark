@@ -25,7 +25,7 @@ interface SetRowProps {
   onRestChange: (raw: string) => void;
 }
 
-const STEP_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
+const STEP_BTN = 'flex h-12 sm:h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
 
 /**
  * Fila interactiva de una serie individual en `En vivo` con peso, reps, RIR y descanso.
@@ -95,7 +95,7 @@ export function SetRow({
           decAria={`Restar 2,5 kg serie ${n}`}
           incAria={`Sumar 2,5 kg serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11"
           onStep={onStepWeight}
           onInputValue={(raw) => onWeightChange(raw, false)}
           onBlurValue={(raw) => onWeightChange(raw, true)}
@@ -111,7 +111,7 @@ export function SetRow({
           decAria={`Restar 1 repetición serie ${n}`}
           incAria={`Sumar 1 repetición serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11"
           onStep={onStepReps}
           onInputValue={(raw) => onRepsChange(raw, false)}
           onBlurValue={(raw) => onRepsChange(raw, true)}
@@ -120,7 +120,7 @@ export function SetRow({
           type="button"
           aria-pressed={s.done ? 'true' : 'false'}
           aria-label={`${s.done ? 'Desmarcar' : 'Marcar'} serie ${n}`}
-          class={`flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
+          class={`flex h-12 w-12 sm:h-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
           style={{ touchAction: 'manipulation' }}
           onClick={onToggleDone}
         >

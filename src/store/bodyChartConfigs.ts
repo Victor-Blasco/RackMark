@@ -16,7 +16,7 @@ export const PERIM_GROUPS: { title: string; keys: (keyof Measure)[] }[] = [
 ];
 
 export const PERIM_ALL_KEYS: (keyof Measure)[] = PERIM_GROUPS.flatMap((g) => g.keys);
-const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#A78BFA', '#22D3EE'];
+const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#A78BFA', '#22D3EE', '#6366F1'];
 
 /** Construye la configuración de Composición Corporal separando Peso y Masa muscular. */
 export function buildCompChartConfig(

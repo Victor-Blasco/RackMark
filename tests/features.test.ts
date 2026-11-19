@@ -7,7 +7,7 @@ import { analyze, judge, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
-import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, norm } from '../src/lib/seed';
+import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
@@ -18,7 +18,7 @@ import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
 import { RangePicker } from '../src/components/common/RangePicker';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
-import { buildCompChartConfig } from '../src/store/bodyChartConfigs';
+import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';
 import { allExerciseNames, extractTargetWeight, manualSessionId } from '../src/store/exerciseCatalog';
 import { buildBodyHomeChartConfig, buildHomeExChartConfig } from '../src/store/homeChartConfigs';
 import { initLogDraft } from '../src/store/logSelectors';
@@ -36,6 +36,7 @@ import { ICON_PATHS } from '../src/ui/icons';
 import { moveItem } from '../src/ui/reorder';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
+  DAY_COLOR,
   inRange,
   isAiFreshForEx,
   movingAverage7d,
@@ -1538,7 +1539,8 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
     expect(liveHtml).not.toContain('text-coralRed/90');
-    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base');
+    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11');
+    expect(liveHtml).toContain('h-12 w-12');
     expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
 
@@ -1554,5 +1556,31 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
       expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     }
+  });
+
+  it('reserva coralRed y #EC4899 fuera de paletas neutras de rutinas y gráficas corporales', () => {
+    for (const palette of [ROUTINE_COLORS, Object.values(DAY_COLOR)]) {
+      expect(palette).not.toContain('#F43F5E');
+      expect(palette).not.toContain('#EC4899');
+    }
+
+    const trunkState: State = {
+      tab: 'body',
+      strength: [],
+      cardio: [],
+      measures: [{ date: '2026-11-15', torso: 102, waist: 80, shoulders: 118, glute: 96 }],
+      wellbeing: [],
+      settings: sanitizeSettings({}),
+      analysis: analyze([], sanitizeSettings({})),
+      sel: {},
+      perimeter: 'trunk',
+      muscleSel: 'Pecho',
+      ranges: { body: 'Todo' },
+    };
+    const perimCfg = buildPerimChartConfig(trunkState);
+    const colors = perimCfg?.data.datasets.map((d) => String(d.borderColor)) ?? [];
+    expect(colors.length).toBe(4);
+    expect(colors).not.toContain('#F43F5E');
+    expect(colors).not.toContain('#EC4899');
   });
 });

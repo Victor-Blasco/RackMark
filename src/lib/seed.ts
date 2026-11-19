@@ -121,7 +121,7 @@ export const MUSCLE_DAY: Record<string, 'Push' | 'Pull' | 'Leg' | null> = {
   Cuádriceps: 'Leg', Isquios: 'Leg', Glúteo: 'Leg', Aductores: 'Leg', Gemelos: 'Leg', Abdomen: null,
 };
 
-export const ROUTINE_COLORS = ['#F43F5E', '#3B82F6', '#10B981', '#F59E0B', '#A855F7', '#06B6D4', '#EC4899', '#84CC16'];
+export const ROUTINE_COLORS = ['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#06B6D4', '#6366F1', '#14B8A6', '#84CC16'];
 
 const PPL_ROUTINES: Settings['routines'] = {
   Push: [
@@ -152,7 +152,7 @@ const PPL_ROUTINES: Settings['routines'] = {
 };
 
 const PPL_META: NonNullable<Settings['routineMeta']> = {
-  Push: { color: '#F43F5E', sub: 'Empuje' },
+  Push: { color: '#A855F7', sub: 'Empuje' },
   Pull: { color: '#3B82F6', sub: 'Tirón' },
   Leg: { color: '#10B981', sub: 'Pierna' },
 };
@@ -208,7 +208,7 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
       ],
     },
     meta: {
-      'Torso A': { color: '#F43F5E', sub: 'Fuerza' },
+      'Torso A': { color: '#A855F7', sub: 'Fuerza' },
       'Pierna A': { color: '#10B981', sub: 'Cuádriceps' },
       'Torso B': { color: '#3B82F6', sub: 'Hipertrofia' },
       'Pierna B': { color: '#F59E0B', sub: 'Cadena post.' },
@@ -279,7 +279,7 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
       ],
     },
     meta: {
-      'Pecho y Tríceps': { color: '#F43F5E', sub: 'Empuje' },
+      'Pecho y Tríceps': { color: '#A855F7', sub: 'Empuje' },
       'Espalda y Bíceps': { color: '#3B82F6', sub: 'Tirón' },
       Pierna: { color: '#10B981', sub: 'Tren inf.' },
       Hombro: { color: '#F59E0B', sub: 'Deltoides' },
