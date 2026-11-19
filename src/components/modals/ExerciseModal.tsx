@@ -9,6 +9,8 @@ interface ExerciseModalProps {
   routines: string[];
   /** Rutina preseleccionada si el modal se abrió desde un día concreto. */
   defaultRoutine?: string;
+  /** Nombre inicial sugerido (p. ej. heredado desde el buscador). */
+  initialName?: string;
   /** Indica si se abrió desde `Registrar hecho` (oculta asignación de rutina). */
   fromLog?: boolean;
   /** Guarda el nuevo ejercicio en el catálogo y en la rutina destino. */
@@ -20,8 +22,8 @@ interface ExerciseModalProps {
 /**
  * Modal de creación de ejercicio personalizado con asignación de músculo primario y secundarios.
  */
-export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, onClose }: ExerciseModalProps) {
-  const [name, setName] = useState('');
+export function ExerciseModal({ routines, defaultRoutine = '', initialName = '', fromLog, onSave, onClose }: ExerciseModalProps) {
+  const [name, setName] = useState(initialName);
   const [primary, setPrimary] = useState<string>(MUSCLES[0] ?? 'Pecho');
   const [sets, setSets] = useState(3);
   const [reps, setReps] = useState(10);

@@ -86,7 +86,7 @@ export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: 
             </div>
 
             {list.length === 0 ? (
-              <p class="rounded-xl border border-dashed border-white/10 px-3 py-4 text-xs text-gray-400">Esta rutina aún no tiene ejercicios. Añade una fila o elige uno desde el catálogo rápido.</p>
+              <p class="rounded-xl border border-dashed border-white/10 px-3 py-4 text-xs text-gray-400">Esta rutina aún no tiene ejercicios. Pulsa «+ Añadir ejercicio» para buscar en tu catálogo o crear uno nuevo.</p>
             ) : (
               <div data-sort-list={`rt:${activeRoutine}`} class="space-y-1.5">
                 {list.map((r, i) => {
@@ -118,21 +118,14 @@ export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: 
               </div>
             )}
 
-            <div class="mt-3 flex flex-wrap gap-2">
-              <button type="button" class="btn-sm" onClick={() => void actions.addRoutineRow(activeRoutine)}>+ Añadir fila</button>
-              <button type="button" class="btn-sm btn-accent" onClick={() => actions.openExerciseModal({ routine: activeRoutine })}>+ Crear ejercicio</button>
+            <div class="mt-3">
+              <button type="button" class="btn-sm btn-accent" onClick={() => actions.openRoutineExercisePicker(activeRoutine)}>+ Añadir ejercicio</button>
             </div>
           </div>
         )}
       </div>
 
-      <PlanSidebarWidgets
-        state={state}
-        onChangeTargetRoutine={actions.setTargetRoutine}
-        onSearchChange={actions.setPlanSearch}
-        onQuickAdd={(d, name) => void actions.quickAddToRoutine(d, name)}
-        onOpenNewExercise={(r) => actions.openExerciseModal({ routine: r || undefined })}
-      />
+      <PlanSidebarWidgets state={state} />
     </div>
   );
 }

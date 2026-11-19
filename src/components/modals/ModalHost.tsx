@@ -1,6 +1,7 @@
 import { useAppStore } from '../../store/appStore';
 import { resolveActiveModal } from '../../store/types';
 import { routineNames, type State } from '../../ui/shared';
+import { AddRoutineExerciseModal } from './AddRoutineExerciseModal';
 import { ConfirmModal } from './ConfirmModal';
 import { ExerciseModal } from './ExerciseModal';
 import { NoteModal } from './NoteModal';
@@ -75,8 +76,19 @@ export function ModalHost({ state: propState }: ModalHostProps) {
         <ExerciseModal
           routines={routineNames(state.settings)}
           defaultRoutine={modal.routine ?? ''}
+          initialName={modal.initialName}
           fromLog={modal.fromLog}
           onSave={store.plan.saveExerciseModal}
+          onClose={store.closeModal}
+        />
+      );
+    case 'routineExercisePicker':
+      return (
+        <AddRoutineExerciseModal
+          state={state}
+          routine={modal.routine}
+          onAdd={store.plan.quickAddToRoutine}
+          onCreateExercise={(r, initialName) => store.plan.openExerciseModal({ routine: r, initialName })}
           onClose={store.closeModal}
         />
       );

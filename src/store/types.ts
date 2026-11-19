@@ -54,7 +54,8 @@ export type ActiveModal =
   | null
   | ({ type: 'confirm' } & ConfirmModalOpts)
   | { type: 'wizard'; draft: WizardDraft }
-  | { type: 'exercise'; routine?: string; rowIdx?: number; fromLog?: boolean }
+  | { type: 'exercise'; routine?: string; rowIdx?: number; fromLog?: boolean; initialName?: string }
+  | { type: 'routineExercisePicker'; routine: string }
   | { type: 'routine'; mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string }
   | { type: 'note'; exName: string; value: string }
   | { type: 'workoutSummary'; summary: WorkoutSummary };

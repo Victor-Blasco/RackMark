@@ -79,10 +79,6 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       deps.toast(`Plantilla "${tpl.label}" aplicada.`);
     },
 
-    async addRoutineRow(day: string) {
-      await updateRoutineRows(day, (list) => [...list, { name: '', sets: 2, reps: 10 }]);
-    },
-
     async quickAddToRoutine(day: string, name: string) {
       if (!day || !name) return;
       state().planTargetRoutine = day;

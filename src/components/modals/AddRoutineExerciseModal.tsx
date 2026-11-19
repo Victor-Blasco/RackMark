@@ -1,0 +1,137 @@
+import { useRef, useState } from 'preact/hooks';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { MUSCLES } from '../../lib/seed';
+import { getPlanCatalogData } from '../../store/planSelectors';
+import type { State } from '../../ui/shared';
+import { Icon } from '../common/Icon';
+import { PlanCatalogList } from '../plan/PlanCatalogList';
+
+interface AddRoutineExerciseModalProps {
+  /** Estado global con catálogo completo, rutinas y mapa muscular. */
+  state: State;
+  /** Rutina activa donde se insertará el ejercicio elegido. */
+  routine: string;
+  /** Añade un ejercicio existente a la rutina seleccionada. */
+  onAdd: (routine: string, name: string) => void | Promise<void>;
+  /** Abre el modal de creación de nuevo ejercicio con nombre y rutina preseleccionados. */
+  onCreateExercise: (routine: string, initialName?: string) => void;
+  /** Cierra el modal sin aplicar cambios adicionales. */
+  onClose: () => void;
+}
+
+/** Modal buscador multi-músculo para añadir ejercicios del catálogo o crear uno nuevo en la rutina activa. */
+export function AddRoutineExerciseModal({
+  state, routine, onAdd, onCreateExercise, onClose,
+}: AddRoutineExerciseModalProps) {
+  const [query, setQuery] = useState('');
+  const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true, onClose);
+
+  const toggleMuscle = (m: string) =>
+    setSelectedMuscles((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
+
+  const rows = state.settings.routines[routine] ?? [];
+  const existingCounts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.name) existingCounts.set(row.name, (existingCounts.get(row.name) ?? 0) + 1);
+  }
+  const catalog = getPlanCatalogData(state, { query, muscles: selectedMuscles, routine, limit: 80 });
+  const hasFilters = Boolean(query.trim() || selectedMuscles.length);
+
+  return (
+    <div id="add-routine-ex-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="addRoutineExTitle" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
+      <div class="relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[88dvh]">
+        <div class="shrink-0 space-y-3 border-b border-white/10 px-4 pt-4 pb-3 sm:px-5">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <h3 id="addRoutineExTitle" class="text-base font-extrabold text-white truncate">Añadir ejercicio a {routine}</h3>
+              <p class="text-xs text-gray-400">
+                <span class="tabular-nums">{rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'} en rutina</span>
+                {' · '}
+                <span id="planCatalogCount" aria-live="polite" class="tabular-nums">{catalog.countText}</span>
+              </p>
+            </div>
+            <button type="button" aria-label="Cerrar modal" class="icon-btn" onClick={onClose}>
+              <Icon name="close" className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div class="relative">
+            <input
+              id="planExSearch"
+              type="text"
+              inputMode="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              class="inp pr-10"
+              value={query}
+              placeholder="Buscar ejercicio o músculo (ej. press, biceps)…"
+              aria-label="Buscar ejercicio o músculo"
+              onInput={(e) => setQuery(e.currentTarget.value)}
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Limpiar búsqueda"
+                class="icon-btn absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9"
+                onClick={() => setQuery('')}
+              >
+                <Icon name="close" className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div role="group" aria-label="Filtrar por grupos musculares" class="flex gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap">
+            <button
+              type="button"
+              aria-pressed={selectedMuscles.length === 0}
+              class={`min-h-[40px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${selectedMuscles.length === 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-400 hover:text-white'}`}
+              onClick={() => setSelectedMuscles([])}
+            >
+              Todos
+            </button>
+            {MUSCLES.map((m) => {
+              const active = selectedMuscles.includes(m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={active}
+                  class={`min-h-[40px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25'}`}
+                  onClick={() => toggleMuscle(m)}
+                >
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div id="planCatalogList" class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 divide-y divide-white/[0.06]">
+          <PlanCatalogList
+            items={catalog.items}
+            targetRoutine={routine}
+            searchQuery={query}
+            existingCounts={existingCounts}
+            hasActiveFilters={hasFilters}
+            onClearFilters={() => { setQuery(''); setSelectedMuscles([]); }}
+            onCreateExercise={() => onCreateExercise(routine, query.trim() || undefined)}
+            onQuickAdd={(r, name) => void onAdd(r, name)}
+          />
+        </div>
+
+        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3 sm:px-5">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs text-gray-400">¿No encuentras el ejercicio?</span>
+            <button type="button" class="btn-sm btn-accent" onClick={() => onCreateExercise(routine, query.trim() || undefined)}>
+              + Crear ejercicio
+            </button>
+          </div>
+          <button type="button" class="btn-sm ml-auto shrink-0" onClick={onClose}>Listo</button>
+        </div>
+      </div>
+    </div>
+  );
+}

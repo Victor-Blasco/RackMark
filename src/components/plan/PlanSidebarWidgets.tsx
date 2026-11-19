@@ -1,31 +1,16 @@
 import { MUSCLES } from '../../lib/seed';
-import { getPlanCatalogData, plannedWeeklyVolume } from '../../store/planSelectors';
+import { plannedWeeklyVolume } from '../../store/planSelectors';
 import { routineNames, type State } from '../../ui/shared';
-import { PlanCatalogList } from './PlanCatalogList';
 
 interface PlanSidebarWidgetsProps {
-  /** Estado global con rutinas, músculos y búsqueda del catálogo. */
+  /** Estado global con rutinas y mapa muscular. */
   state: State;
-  /** Cambia la rutina destino de inserción rápida. */
-  onChangeTargetRoutine: (routine: string) => void;
-  /** Filtra el catálogo rápido en tiempo real. */
-  onSearchChange: (query: string) => void;
-  /** Añade un ejercicio del catálogo rápido a la rutina destino. */
-  onQuickAdd: (routine: string, name: string) => void;
-  /** Abre el modal de creación de ejercicio nuevo. */
-  onOpenNewExercise: (targetRoutine: string) => void;
 }
 
 /**
- * Barra lateral derecha de `Plan y rutinas`: simulador de volumen semanal y catálogo rápido.
+ * Panel lateral del editor de rutinas con el simulador de volumen semanal por músculo.
  */
-export function PlanSidebarWidgets({
-  state,
-  onChangeTargetRoutine,
-  onSearchChange,
-  onQuickAdd,
-  onOpenNewExercise,
-}: PlanSidebarWidgetsProps) {
+export function PlanSidebarWidgets({ state }: PlanSidebarWidgetsProps) {
   const s = state.settings;
   const routines = routineNames(s);
   const volMap = plannedWeeklyVolume(s);
@@ -33,10 +18,9 @@ export function PlanSidebarWidgets({
     (acc, d) => acc + (s.routines[d] ?? []).reduce((sum, item) => sum + (item.name ? item.sets : 0), 0),
     0,
   );
-  const catalog = getPlanCatalogData(state);
 
   return (
-    <aside class="lg:col-span-4 lg:sticky lg:top-6 space-y-5">
+    <aside class="lg:col-span-4 lg:sticky lg:top-6">
       <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
         <div class="flex items-baseline justify-between gap-2">
           <h3 class="text-sm font-bold text-white">Simulador de volumen semanal</h3>
@@ -69,34 +53,6 @@ export function PlanSidebarWidgets({
             );
           })}
         </div>
-      </div>
-
-      <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
-        <div class="flex items-baseline justify-between gap-2">
-          <h3 class="text-sm font-bold text-white">Catálogo rápido</h3>
-          <span id="planCatalogCount" aria-live="polite" class="tabular-nums text-xs text-gray-400">{catalog.countText}</span>
-        </div>
-        <label class="block">
-          <span class="lbl">Rutina destino</span>
-          <select class="inp" aria-label="Rutina destino" value={catalog.targetRoutine} onChange={(e) => onChangeTargetRoutine(e.currentTarget.value)}>
-            {routines.map((d) => <option key={d} value={d} selected={d === catalog.targetRoutine}>{d}</option>)}
-          </select>
-        </label>
-        <label class="block">
-          <span class="lbl">Buscar ejercicio o músculo</span>
-          <input id="planExSearch" type="search" enterKeyHint="search" class="inp" value={state.planSearch ?? ''} placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo" onInput={(e) => onSearchChange(e.currentTarget.value)} />
-        </label>
-        <div id="planCatalogList" class="max-h-72 overflow-y-auto divide-y divide-white/[0.06]">
-          <PlanCatalogList
-            items={catalog.items}
-            targetRoutine={catalog.targetRoutine}
-            searchQuery={state.planSearch ?? ''}
-            onQuickAdd={onQuickAdd}
-          />
-        </div>
-        <button type="button" class="btn-sm btn-accent w-full justify-center" onClick={() => onOpenNewExercise(catalog.targetRoutine)}>
-          + Crear nuevo ejercicio
-        </button>
       </div>
     </aside>
   );

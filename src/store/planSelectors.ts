@@ -43,46 +43,51 @@ export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
 }
 
 /**
- * Filtra y prepara el catálogo rápido de ejercicios para añadir a la rutina destino.
+ * Filtra y ordena ejercicios del catálogo para añadir a una rutina (búsqueda sin tildes y multi-músculo).
  *
- * @param state - Estado global con consulta `planSearch` y rutina destino.
- * @returns Rutina destino, texto contador y hasta 12 coincidencias.
+ * @param state - Estado global con rutinas y mapa muscular.
+ * @param opts - Consulta opcional, grupos musculares filtrados, rutina destino y límite visible.
+ * @returns Rutina destino, texto contador y coincidencias ordenadas (primero músculo principal).
  */
-export function getPlanCatalogData(state: State): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
+export function getPlanCatalogData(
+  state: State,
+  opts?: { query?: string; muscles?: string[]; routine?: string; limit?: number },
+): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
   const routines = routineNames(state.settings);
-  const preferred = state.planTargetRoutine || state.planRoutine;
+  const preferred = opts?.routine || state.planTargetRoutine || state.planRoutine;
   const targetRoutine = preferred && routines.includes(preferred) ? preferred : (routines[0] ?? '');
   const names = allExerciseNames(state);
-  const q = (state.planSearch ?? '').trim().toLowerCase();
-  const matches = names.filter((n) => {
-    if (!q) return true;
-    if (n.toLowerCase().includes(q)) return true;
-    const m = musclesOf(n, state.settings);
-    return m ? m.p.toLowerCase().includes(q) || m.s.some((sec) => sec.toLowerCase().includes(q)) : false;
-  });
-  const items: PlanCatalogItem[] = matches.slice(0, 12).map((name) => {
+  const q = normalizeSelectionText(opts?.query ?? state.planSearch ?? '');
+  const tokens = q ? q.split(/\s+/) : [];
+  const muscleSet = opts?.muscles?.length ? new Set(opts.muscles) : null;
+  const matches = names
+    .filter((name) => {
+      const m = musclesOf(name, state.settings);
+      if (muscleSet && !muscleSet.has(m?.p ?? '') && !(m?.s ?? []).some((s) => muscleSet.has(s))) return false;
+      if (!tokens.length) return true;
+      const hay = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
+      return tokens.every((t) => hay.includes(t));
+    })
+    .sort((a, b) => {
+      if (muscleSet) {
+        const ap = muscleSet.has(musclesOf(a, state.settings)?.p ?? '') ? 0 : 1;
+        const bp = muscleSet.has(musclesOf(b, state.settings)?.p ?? '') ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+      }
+      return a.localeCompare(b, 'es');
+    });
+  const items = matches.slice(0, opts?.limit ?? 60).map((name) => {
     const m = musclesOf(name, state.settings);
     return { name, primary: m?.p, secondary: m?.s ?? [] };
   });
-  return {
-    targetRoutine,
-    countText: `${matches.length}/${names.length}`,
-    items,
-  };
+  return { targetRoutine, countText: `${matches.length}/${names.length}`, items };
 }
 
 function getExerciseMapCandidates(state: State): string[] {
   const names = allExerciseNames(state);
   if (state.showAllExerciseMap) return names;
-  const activeRoutineNames = new Set(
-    Object.values(state.settings.routines)
-      .flat()
-      .map((item) => item.name)
-      .filter(Boolean),
-  );
-  return names.filter(
-    (name) => activeRoutineNames.has(name) || state.analysis.exercises.has(name) || !musclesOf(name, state.settings),
-  );
+  const activeRoutineNames = new Set(Object.values(state.settings.routines).flat().map((i) => i.name).filter(Boolean));
+  return names.filter((n) => activeRoutineNames.has(n) || state.analysis.exercises.has(n) || !musclesOf(n, state.settings));
 }
 
 /**

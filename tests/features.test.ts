@@ -28,6 +28,7 @@ import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig }
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
+import { createPlanActions } from '../src/store/planActions';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { createPlanModalActions } from '../src/store/planModalActions';
 import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
@@ -684,16 +685,26 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     const planHtml = renderToString(h(PlanView, { state }));
     expect(planHtml).toContain('lg:grid-cols-12');
     expect(planHtml).toContain('Simulador de volumen semanal');
-    expect(planHtml).toContain('id="planExSearch"');
-    expect(planHtml).toContain('aria-label="Rutina destino"');
-    expect(planHtml).toContain('+ Añadir');
-    expect(planHtml).toContain('Sentadilla Hack');
+    expect(planHtml).toContain('+ Añadir ejercicio');
+    expect(planHtml).not.toContain('Catálogo rápido');
+    expect(planHtml).not.toContain('+ Añadir fila');
+
+    const pickerHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'routineExercisePicker', routine: 'Torso' } } }),
+    );
+    expect(pickerHtml).toContain('id="add-routine-ex-modal"');
+    expect(pickerHtml).toContain('id="planExSearch"');
+    expect(pickerHtml).toContain('+ Añadir');
+    expect(pickerHtml).toContain('Sentadilla Hack');
 
     const exerciseMapHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
     expect(exerciseMapHtml).toContain('min-w-0 space-y-3');
     expect(exerciseMapHtml).not.toContain('space-y-3 overflow-x-auto');
 
-    const emptySearchHtml = renderToString(h(PlanView, { state: { ...state, planSearch: 'zzzznoexiste' } }));
+    const emptyCatalog = getPlanCatalogData({ ...state, planSearch: 'zzzznoexiste' });
+    const emptySearchHtml = renderToString(
+      h(PlanCatalogList, { items: emptyCatalog.items, targetRoutine: 'Torso', searchQuery: 'zzzznoexiste' }),
+    );
     expect(emptySearchHtml).toContain('Sin resultados');
 
     const modalHtml = renderToString(h(ModalHost, { state }));
@@ -1807,8 +1818,13 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect((dataHtml.match(/class="sr-only" type="file"/g) ?? []).length).toBe(3);
 
     const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
-    expect(planHtml).toContain('id="planCatalogCount" aria-live="polite"');
     expect(planHtml).toContain('volumen óptimo');
+    expect(planHtml).toContain('+ Añadir ejercicio');
+
+    const pickerHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'routineExercisePicker', routine: 'Push' } } }),
+    );
+    expect(pickerHtml).toContain('id="planCatalogCount" aria-live="polite"');
   });
 
   it('corrige captura-review: calendario mensual, Sidebar sin doble CTA, AiInsightBanner plano, migración coral, picker 1 toque, chips musculares, animaciones y Editar rutina', async () => {
@@ -2097,5 +2113,88 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     await edits.removeRoutineDay('Brazos');
     expect(baseState.planRoutine).toBe('Torso A');
     expect(baseState.planTargetRoutine).toBe('Torso A');
+  });
+
+  it('unifica añadir ejercicio en modal con búsqueda NFD multi-músculo y retira catálogo rápido', () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'plan',
+      planTab: 'routines',
+      planRoutine: 'Push',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. PlanView solo muestra un botón "+ Añadir ejercicio" y "Simulador de volumen semanal" sin "Catálogo rápido"
+    const planHtml = renderToString(h(PlanView, { state }));
+    expect(planHtml).toContain('+ Añadir ejercicio');
+    expect(planHtml).not.toContain('+ Añadir fila');
+    expect(planHtml).not.toContain('> + Crear ejercicio<');
+    expect(planHtml).not.toContain('+ Crear ejercicio');
+    expect(planHtml).not.toContain('Catálogo rápido');
+    expect(planHtml).toContain('Simulador de volumen semanal');
+
+    // 2. Búsqueda sin tildes/mayúsculas y filtro multi-músculo priorizando primarios
+    const noAccents = getPlanCatalogData(state, { query: 'BICEPS' });
+    expect(noAccents.items.some((i) => i.name.includes('bíceps'))).toBe(true);
+
+    const multi = getPlanCatalogData(state, { muscles: ['Pecho', 'Tríceps'] });
+    expect(multi.items.length).toBeGreaterThan(0);
+    expect(multi.items.every((i) => ['Pecho', 'Tríceps'].includes(i.primary ?? '') || i.secondary.some((s) => s === 'Pecho' || s === 'Tríceps'))).toBe(true);
+    expect(['Pecho', 'Tríceps']).toContain(multi.items[0]?.primary);
+
+    // 3. ModalHost renderiza AddRoutineExerciseModal completo con "En rutina" y nota de crear ejercicio
+    const pickerHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'routineExercisePicker', routine: 'Push' } } }),
+    );
+    expect(pickerHtml).toContain('id="add-routine-ex-modal"');
+    expect(pickerHtml).toContain('Añadir ejercicio a Push');
+    expect(pickerHtml).toContain('id="planExSearch"');
+    expect(pickerHtml).toContain('id="planCatalogCount" aria-live="polite"');
+    expect(pickerHtml).toContain('aria-label="Filtrar por grupos musculares"');
+    expect(pickerHtml).toContain('En rutina');
+    expect(pickerHtml).toContain('¿No encuentras el ejercicio?');
+    expect(pickerHtml).toContain('+ Crear ejercicio');
+    expect(pickerHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+
+    // 4. ExerciseModal pre-rellena initialName heredado desde el buscador
+    const createHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'exercise', routine: 'Push', initialName: 'Remo Gironda' } } }),
+    );
+    expect(createHtml).toContain('id="newExName"');
+    expect(createHtml).toContain('value="Remo Gironda"');
+
+    // 5. Acciones openRoutineExercisePicker y openExerciseModal({ initialName })
+    const actions = createPlanActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      persist: async () => {},
+      render: () => {},
+      setTab: () => {},
+      navigateTab: () => {},
+      syncWorkoutRoutineNames: () => {},
+      addExToDraft: () => {},
+      askConfirm: async () => true,
+      toast: () => {},
+      startWorkoutDay: async () => {},
+      openLogDay: async () => {},
+      runAiAnalysis: () => {},
+      retryAiAnalysis: () => {},
+      dismissAiJob: () => {},
+      openWizard: () => {},
+      closeModal: () => {},
+    });
+    actions.openRoutineExercisePicker('Pull');
+    expect(state.activeModal).toEqual({ type: 'routineExercisePicker', routine: 'Pull' });
+    actions.openExerciseModal({ routine: 'Pull', initialName: 'Remo Gironda' });
+    expect(state.activeModal).toEqual({ type: 'exercise', routine: 'Pull', initialName: 'Remo Gironda' });
   });
 });

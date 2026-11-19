@@ -66,8 +66,14 @@ export function createPlanActions(deps: PlanActionDeps) {
       deps.render();
     },
 
-    openExerciseModal: (opts: { routine?: string; rowIdx?: number; fromLog?: boolean } = {}) => {
+    openExerciseModal: (opts: { routine?: string; rowIdx?: number; fromLog?: boolean; initialName?: string } = {}) => {
       state().activeModal = { type: 'exercise', ...opts };
+      deps.render();
+    },
+
+    openRoutineExercisePicker: (routine: string) => {
+      if (!routine) return;
+      state().activeModal = { type: 'routineExercisePicker', routine };
       deps.render();
     },
 
