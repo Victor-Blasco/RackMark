@@ -50,7 +50,7 @@ export function LiveExerciseMenu({
         <nav id="live-ex-menu" inert={!open} aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-floatDark p-2.5 shadow-2xl shadow-black/45 space-y-2">
           <div class="flex items-center justify-between px-1.5 pb-1">
             <span id="liveMenuSummary" class="text-xs font-bold uppercase tracking-wide text-gray-300">Ejercicios ({doneExCount}/{items.length} listos)</span>
-            <button type="button" class="flex min-h-[44px] sm:min-h-[34px] items-center gap-1 rounded-full bg-white/5 px-3.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white" data-act="liveToggleMenu" onClick={onToggleMenu}>
+            <button type="button" class="flex min-h-[44px] sm:min-h-[34px] items-center gap-1 rounded-full bg-white/5 px-3.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white" onClick={onToggleMenu}>
               <Icon name="close" className="h-3.5 w-3.5" /> Cerrar
             </button>
           </div>
@@ -63,8 +63,6 @@ export function LiveExerciseMenu({
                   <button
                     key={`${idx}-${item.name}`}
                     type="button"
-                    data-act="liveGoEx"
-                    data-arg={String(idx)}
                     class={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${active ? 'bg-electricBlue/20 ring-1 ring-electricBlue/40' : 'hover:bg-white/[0.05]'}`}
                     onClick={() => onSelectExercise(idx)}
                   >
@@ -77,10 +75,10 @@ export function LiveExerciseMenu({
                           <span class={`truncate text-sm font-bold ${active ? 'text-white' : allDoneInEx ? 'text-emerald-200' : 'text-gray-100'}`}>{item.name}</span>
                           {active && <span class="shrink-0 rounded-full bg-electricBlue/25 px-2 py-0.5 text-[10px] font-bold text-blue-200">Actual</span>}
                         </div>
-                        <p data-live-menu-info={String(idx)} class="truncate text-xs text-gray-400 tabular-nums">{infoLine}</p>
+                        <p class="truncate text-xs text-gray-400 tabular-nums">{infoLine}</p>
                       </div>
                     </div>
-                    <span data-live-menu-count={String(idx)} class={`shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`}>
+                    <span class={`shrink-0 rounded-full bg-white/5 px-2 py-0.5 text-xs font-bold tabular-nums ${allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`}>
                       {doneInEx}/{item.sets.length}
                     </span>
                   </button>
@@ -91,7 +89,7 @@ export function LiveExerciseMenu({
             <p class="px-2.5 py-3 text-xs text-gray-400">Todavía no hay ejercicios en esta sesión.</p>
           )}
 
-          <button type="button" class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-electricBlue/15 text-xs font-bold text-blue-300 hover:bg-electricBlue/25" data-act="liveOpenPicker" data-arg="add" onClick={onOpenAddPicker}>
+          <button type="button" class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl bg-electricBlue/15 text-xs font-bold text-blue-300 hover:bg-electricBlue/25" onClick={onOpenAddPicker}>
             <Icon name="plus" className="h-4 w-4" /> Añadir ejercicio al entreno
           </button>
         </nav>

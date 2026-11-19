@@ -6,7 +6,9 @@ import { parseEsDate, parseMeasuresCsv } from '../src/lib/measures';
 import { importSamsungFiles } from '../src/lib/samsung';
 import { isValidIsoDate } from '../src/lib/seed';
 import { hasUnsyncedChanges, stripUndefined } from '../src/lib/sync';
-import { esc, fmtDate, short } from '../src/ui/shared';
+import { h } from 'preact';
+import renderToString from 'preact-render-to-string';
+import { fmtDate, short } from '../src/ui/shared';
 
 describe('security hardening', () => {
   it('elimina claves peligrosas de prototipo y valores no finitos en stripUndefined', () => {
@@ -94,8 +96,11 @@ describe('security hardening', () => {
     ).toBe(true);
   });
 
-  it('escapa texto potencialmente malicioso en esc, fmtDate y short', () => {
-    expect(esc('<script>alert("x")</script>')).toBe('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;');
+  it('escapa texto potencialmente malicioso en Preact JSX, fmtDate y short', () => {
+    const rendered = renderToString(h('span', { title: 'x"y' }, '<script>alert("x")</script>'));
+    expect(rendered).toContain('&lt;script>');
+    expect(rendered).toContain('title="x&quot;y"');
+    expect(rendered).not.toContain('<script>');
     expect(fmtDate('<img/onerror=1>')).not.toContain('<');
     expect(short('<svg/onload=1>')).not.toContain('<');
   });

@@ -1,17 +1,7 @@
 import type { ChartConfiguration } from 'chart.js';
 import { isoWeekStart } from '../lib/analysis';
 import type { DayName } from '../types';
-import {
-  fmtDate,
-  inRange,
-  resolveRange,
-  routineColor,
-  routineNames,
-  routineShort,
-  short,
-  type DateBounds,
-  type State,
-} from '../ui/shared';
+import { fmtDate, inRange, resolveRange, routineColor, routineNames, routineShort, short, type DateBounds, type State } from '../ui/shared';
 import { weeksForBounds } from './volumeSelectors';
 
 /**
@@ -109,29 +99,14 @@ export function buildAdherenceViewModel(state: State) {
     d.setUTCDate(d.getUTCDate() + dayIdx);
     const iso = d.toISOString().slice(0, 10);
     if (!byDate.has(iso)) {
-      return {
-        iso,
-        bg: 'rgba(255,255,255,0.05)',
-        label: `${fmtDate(iso)}: Sin sesión`,
-        code: '',
-      };
+      return { iso, bg: 'rgba(255,255,255,0.05)', label: `${fmtDate(iso)}: Sin sesión`, code: '' };
     }
     const day = byDate.get(iso);
     if (!day) {
-      return {
-        iso,
-        bg: '#6B7280',
-        label: `${fmtDate(iso)}: Otro entrenamiento`,
-        code: '·',
-      };
+      return { iso, bg: '#6B7280', label: `${fmtDate(iso)}: Otro entrenamiento`, code: '·' };
     }
     const rIdx = Math.max(0, routines.indexOf(day));
-    return {
-      iso,
-      bg: routineColor(day, state.settings, rIdx),
-      label: `${fmtDate(iso)}: ${day}`,
-      code: routineShort(day),
-    };
+    return { iso, bg: routineColor(day, state.settings, rIdx), label: `${fmtDate(iso)}: ${day}`, code: routineShort(day) };
   };
 
   return {

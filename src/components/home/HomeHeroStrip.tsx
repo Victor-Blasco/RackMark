@@ -56,10 +56,10 @@ export function HomeHeroStrip({
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="btn-primary min-h-[44px] px-4 py-2 text-xs sm:text-sm" data-act="startWorkout" onClick={onStartWorkout}>
+          <button type="button" class="btn-primary min-h-[44px] px-4 py-2 text-xs sm:text-sm" onClick={onStartWorkout}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar entreno
           </button>
-          <button type="button" class="btn min-h-[44px] px-3 py-2 text-xs sm:text-sm" data-act="goLog" onClick={onGoLog}>
+          <button type="button" class="btn min-h-[44px] px-3 py-2 text-xs sm:text-sm" onClick={onGoLog}>
             <Icon name="edit" className="h-3.5 w-3.5" /> Registrar hecho
           </button>
         </div>

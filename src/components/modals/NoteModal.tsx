@@ -27,7 +27,7 @@ export function NoteModal({ exName, value, onSave, onClose }: NoteModalProps) {
 
   return (
     <div id="note-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="noteModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true" onClick={onClose} />
+      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
       <form
         id="f-note-modal"
         class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4"
@@ -41,7 +41,7 @@ export function NoteModal({ exName, value, onSave, onClose }: NoteModalProps) {
             <h3 id="noteModalTitle" class="text-base font-extrabold text-white">Nota fija del ejercicio</h3>
             <p class="text-xs text-gray-400 truncate" title={exName}>{exName}</p>
           </div>
-          <button type="button" data-act="closeModal" aria-label="Cerrar modal" class="icon-btn" onClick={onClose}>
+          <button type="button" aria-label="Cerrar modal" class="icon-btn" onClick={onClose}>
             <Icon name="close" className="h-4 w-4" />
           </button>
         </div>
@@ -58,7 +58,7 @@ export function NoteModal({ exName, value, onSave, onClose }: NoteModalProps) {
           />
         </label>
         <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-          <button type="button" class="btn" data-act="closeModal" onClick={onClose}>Cancelar</button>
+          <button type="button" class="btn" onClick={onClose}>Cancelar</button>
           <button type="submit" class="btn-primary">
             <Icon name="save" className="h-4 w-4" /> Guardar nota
           </button>

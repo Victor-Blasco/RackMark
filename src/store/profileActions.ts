@@ -1,6 +1,6 @@
 import type { State } from '../ui/shared';
 
-/** Dependencias para actualizar de forma inmutable el perfil del atleta. */
+/** Dependencias para actualizar perfil del atleta y calculadoras. */
 export interface ProfileActionDeps {
   getState: () => State;
   persist: () => Promise<void>;
@@ -9,10 +9,10 @@ export interface ProfileActionDeps {
 }
 
 /**
- * Crea las acciones inmutables del formulario `Perfil del atleta`.
+ * Crea las acciones inmutables del formulario `Perfil del atleta` y las calculadoras 1RM/macros.
  *
  * @param deps - Puentes al estado, persistencia en ajustes y avisos al usuario.
- * @returns Manejadores tipados de sexo, edad, altura, objetivo, experiencia y días.
+ * @returns Manejadores tipados de perfil biométrico y parámetros de cálculo.
  */
 export function createProfileActions(deps: ProfileActionDeps) {
   const state = () => deps.getState();
@@ -82,6 +82,22 @@ export function createProfileActions(deps: ProfileActionDeps) {
         const { daysPerWeek: _removed, ...rest } = cur;
         return rest;
       });
+    },
+
+    applyCalcPreset(raw: string) {
+      const [w, r] = raw.split('|');
+      const S = state();
+      S.calcDraft = { ...S.calcDraft, w, r };
+      deps.render();
+    },
+
+    updateCalcField(
+      field: 'w' | 'r' | 'rir' | 'act' | 'goal' | 'protein' | 'fat' | 'meals',
+      value: string,
+    ) {
+      const S = state();
+      S.calcDraft = { ...S.calcDraft, [field]: value };
+      deps.render();
     },
   };
 }

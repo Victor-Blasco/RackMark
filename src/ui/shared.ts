@@ -17,7 +17,6 @@ import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
 import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
 import { RANGES, type ActiveModal, type RangeKey } from '../store/types';
-import type { WizardDraft } from '../store/wizardSelectors';
 
 export { RANGES, todayIso, type RangeKey };
 
@@ -40,19 +39,6 @@ Chart.defaults.maintainAspectRatio = false;
 export function rangeCutoff(r: RangeKey): string | null {
   const days = RANGES.find((x) => x.key === r)?.days;
   return days ? todayIso(new Date(Date.now() - days * 864e5)) : null;
-}
-
-/** Genera el HTML del selector temporal para pruebas aisladas sin arrastrar `preact-render-to-string`. */
-export function rangePicker(scope: string, active: RangeKey, custom?: { from?: string; to?: string }): string {
-  const btns = RANGES.map((r) => {
-    const isSel = active === r.key;
-    const cls = isSel ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white';
-    return `<button type="button" data-act="setRange" data-arg="${esc(scope)}|${r.key}" aria-pressed="${isSel}" class="inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${cls}">${r.label}</button>`;
-  }).join('');
-  const customInputs = active === 'Custom'
-    ? `<div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs"><label class="inline-flex items-center gap-1.5 text-gray-400"><span>Desde</span><input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.from ?? '')}" data-change="rangeFrom" data-arg="${esc(scope)}" aria-label="Fecha de inicio" /></label><label class="inline-flex items-center gap-1.5 text-gray-400"><span>Hasta</span><input type="date" class="inp w-auto py-1 px-2 tabular-nums" value="${esc(custom?.to ?? '')}" data-change="rangeTo" data-arg="${esc(scope)}" aria-label="Fecha de fin" /></label></div>`
-    : '';
-  return `<div class="flex flex-wrap items-center justify-start sm:justify-end gap-2"><div role="group" aria-label="Filtro temporal" class="inline-flex flex-wrap rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-0.5">${btns}</div>${customInputs}</div>`;
 }
 
 export interface WorkoutSummary {
@@ -80,7 +66,6 @@ export interface State {
   muscleSel: string;
   logDraft?: LogDraft;
   liveWorkout?: LiveWorkout;
-  workoutSummary?: WorkoutSummary;
   logFilter?: string;
   planTab?: 'routines' | 'exercises';
   aiTab?: number;
@@ -103,11 +88,6 @@ export interface State {
     fat?: string;
     meals?: string;
   };
-  exModal?: { routine?: string; rowIdx?: number; fromLog?: boolean };
-  routineModal?: { mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string };
-  confirmModal?: { title: string; message: string; confirmLabel?: string; danger?: boolean };
-  noteModal?: { exName: string; value: string };
-  wizard?: WizardDraft;
   activeModal?: ActiveModal;
   planSearch?: string;
   exerciseMapSearch?: string;
@@ -124,15 +104,13 @@ export interface State {
   toast?: string;
 }
 
-/** Escapa caracteres especiales HTML para interpolación segura en plantillas. */
-export const esc = (s: unknown) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+const safeDateSlice = (d: string, a: number, b: number) => d.replace(/[<>&"']/g, '').slice(a, b);
 
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a `DD/MM/YYYY`. */
-export const fmtDate = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`);
+export const fmtDate = (d: string) => `${safeDateSlice(d, 8, 10)}/${safeDateSlice(d, 5, 7)}/${safeDateSlice(d, 0, 4)}`;
 
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a formato corto `DD/MM`. */
-export const short = (d: string) => esc(`${d.slice(8, 10)}/${d.slice(5, 7)}`);
+export const short = (d: string) => `${safeDateSlice(d, 8, 10)}/${safeDateSlice(d, 5, 7)}`;
 
 export interface DateBounds {
   key: RangeKey;
@@ -255,24 +233,6 @@ export function routineShort(name: string): string {
   return pool.slice(0, 3).map((w) => (/^\d+$/.test(w) ? w[0] : w[0].toUpperCase())).join('');
 }
 
-const charts = new Map<string, Chart>();
-type ChartJob = () => void;
-let jobs: ChartJob[] = [];
-
-/** Ejecuta los trabajos de inicialización de gráficas pendientes tras el render. */
-export const runChartJobs = () => {
-  const pending = jobs;
-  jobs = [];
-  pending.forEach((fn) => fn());
-};
-
-/** Destruye todas las instancias activas de Chart.js y limpia la cola. */
-export function resetCharts() {
-  charts.forEach((c) => c.destroy());
-  charts.clear();
-  jobs = [];
-}
-
 /** Añade offset, ticks legibles en móvil, leyenda compacta y puntos adaptativos sin pisar opciones explícitas. */
 export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguration {
   const opts = { ...(cfg.options ?? {}) } as Record<string, unknown>;
@@ -344,46 +304,3 @@ export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguratio
     },
   } as ChartConfiguration;
 }
-
-/** Programa la creación de una gráfica Chart.js tras montar el `<canvas>` en el DOM. */
-export function chart(id: string, cfg: ChartConfiguration) {
-  const normalized = normalizeChartConfig(cfg);
-  jobs.push(() => {
-    const el = document.getElementById(id) as HTMLCanvasElement | null;
-    if (!el || el.getBoundingClientRect().width === 0) return;
-    charts.get(id)?.destroy();
-    charts.set(id, new Chart(el, normalized) as unknown as Chart);
-  });
-}
-
-/** Actualiza una gráfica existente en el DOM sin destruir el `<canvas>`, o devuelve `false` si no está montada. */
-export function updateChart(id: string, cfg: ChartConfiguration): boolean {
-  const el = document.getElementById(id) as HTMLCanvasElement | null;
-  if (!el || el.getBoundingClientRect().width === 0) return false;
-  const normalized = normalizeChartConfig(cfg);
-  const existing = charts.get(id) as (Chart & { canvas?: HTMLCanvasElement; config?: ChartConfiguration }) | undefined;
-  if (existing && existing.canvas === el && existing.config?.type === normalized.type) {
-    existing.data = normalized.data;
-    if (normalized.options) existing.options = normalized.options as never;
-    existing.update('none');
-    return true;
-  }
-  existing?.destroy();
-  charts.set(id, new Chart(el, normalized) as unknown as Chart);
-  return true;
-}
-
-export function empty(msg: string) {
-  return `<div class="card text-center text-sm text-gray-400">${msg}</div>`;
-}
-
-export const noData = (S: State) =>
-  S.strength.length
-    ? ''
-    : `<div class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-300">
-        <p>Aún no hay entrenamientos guardados. Registra tu primera sesión o importa tus datos previos.</p>
-        <div class="flex shrink-0 flex-wrap gap-2">
-          <button class="btn-primary-sm" data-act="goLog">+ Registrar entreno</button>
-          <button class="btn-sm" data-act="tab" data-arg="data">Importar datos</button>
-        </div>
-      </div>`;

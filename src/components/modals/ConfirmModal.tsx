@@ -33,7 +33,7 @@ export function ConfirmModal({
 
   return (
     <div id="confirm-modal" ref={dialogRef} role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="confirmNo" aria-hidden="true" onClick={onCancel} />
+      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onCancel} />
       <div class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4">
         <div class="flex items-start gap-3">
           {danger && (
@@ -47,8 +47,8 @@ export function ConfirmModal({
           </div>
         </div>
         <div class="flex justify-end gap-2 border-t border-white/10 pt-3">
-          <button type="button" class="btn" data-act="confirmNo" onClick={onCancel}>Cancelar</button>
-          <button type="button" class={danger ? 'btn btn-danger-solid' : 'btn-primary'} data-act="confirmYes" onClick={onConfirm}>
+          <button type="button" class="btn" onClick={onCancel}>Cancelar</button>
+          <button type="button" class={danger ? 'btn btn-danger-solid' : 'btn-primary'} onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

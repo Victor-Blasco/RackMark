@@ -43,22 +43,22 @@ export function MobileBottomNav({
   return (
     <nav aria-label="Navegación principal móvil" class="fixed inset-x-0 bottom-0 z-30 border-t border-borderDark bg-navDark px-2 pb-[env(safe-area-inset-bottom)] lg:hidden">
       <div class="mx-auto grid max-w-md grid-cols-4 items-center gap-1">
-        <button type="button" data-act="tab" data-arg="home" aria-current={state.tab === 'home' ? 'page' : undefined} class={`bnav-item ${state.tab === 'home' ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab('home')}>
+        <button type="button" aria-current={state.tab === 'home' ? 'page' : undefined} class={`bnav-item ${state.tab === 'home' ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab('home')}>
           <Icon name="home" className="h-5 w-5" />
           <span>Resumen</span>
         </button>
-        <button type="button" data-act="tab" data-arg={lastRoutine} aria-current={inRoutine ? 'page' : undefined} class={`bnav-item ${inRoutine ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab(lastRoutine)}>
+        <button type="button" aria-current={inRoutine ? 'page' : undefined} class={`bnav-item ${inRoutine ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab(lastRoutine)}>
           <Icon name="barbell" className="h-5 w-5" />
           <span class="truncate max-w-full">{routineLabel}</span>
         </button>
-        <button type="button" data-act="tab" data-arg={lastAnalytics} aria-current={inAnalytics ? 'page' : undefined} class={`bnav-item ${inAnalytics ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab(lastAnalytics)}>
+        <button type="button" aria-current={inAnalytics ? 'page' : undefined} class={`bnav-item ${inAnalytics ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab(lastAnalytics)}>
           <Icon name="chart" className="h-5 w-5" />
           <span>Análisis</span>
         </button>
-        <button type="button" data-act="tab" data-arg="workout" aria-current={inTrain ? 'page' : undefined} class="bnav-item" onClick={() => onSelectTab('workout')}>
+        <button type="button" aria-current={inTrain ? 'page' : undefined} class="bnav-item" onClick={() => onSelectTab('workout')}>
           <span class={`relative inline-flex items-center justify-center rounded-full px-3.5 py-1 text-white shadow-sm bg-electricBlue ${inTrain ? 'ring-2 ring-blue-300/60' : ''}`}>
             <Icon name="play" className="h-4 w-4" />
-            <span data-nav-rest class={`ml-1 text-[10px] font-bold tabular-nums text-blue-100 ${restRemSec > 0 ? '' : 'hidden'}`}>
+            <span class={`ml-1 text-[10px] font-bold tabular-nums text-blue-100 ${restRemSec > 0 ? '' : 'hidden'}`}>
               {restRemSec > 0 ? fmtMMSS(restRemSec) : ''}
             </span>
             {(liveCount > 0 || state.liveWorkout != null || draftCount > 0) && (

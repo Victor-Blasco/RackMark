@@ -12,6 +12,7 @@ import { createDataSyncActions } from './store/dataSyncActions';
 import { createLogWorkoutActions } from './store/logActions';
 import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
 import { createPlanActions } from './store/planActions';
+import type { ConfirmModalOpts } from './store/types';
 import { createWizardActions } from './store/wizardActions';
 import { createLiveWorkoutActions } from './store/workoutActions';
 import { createWorkoutLaunchActions } from './store/workoutLaunchActions';
@@ -49,6 +50,15 @@ const S = {
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
+
+function downloadBrowserFile(name: string, data: string, type: string): void {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
 
 function setTab(tab: string) {
   S.tab = isValidTab(S, tab) ? tab : 'home';
@@ -94,10 +104,8 @@ function renderChrome() {
 
 function render() {
   renderChrome();
-  if (S.wizard?.anim) {
-    const nextWizard = { ...S.wizard, anim: undefined };
-    S.wizard = nextWizard;
-    if (S.activeModal?.type === 'wizard') S.activeModal = { type: 'wizard', draft: nextWizard };
+  if (S.activeModal?.type === 'wizard' && S.activeModal.draft.anim) {
+    S.activeModal = { type: 'wizard', draft: { ...S.activeModal.draft, anim: undefined } };
   }
 }
 
@@ -113,15 +121,13 @@ let confirmResolver: ((ok: boolean) => void) | null = null;
 function resolveConfirm(ok: boolean) {
   const res = confirmResolver;
   confirmResolver = null;
-  S.confirmModal = undefined;
   if (S.activeModal?.type === 'confirm') S.activeModal = null;
   renderChrome();
   res?.(ok);
 }
 
-function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> {
+function askConfirm(opts: ConfirmModalOpts): Promise<boolean> {
   if (confirmResolver) confirmResolver(false);
-  S.confirmModal = opts;
   S.activeModal = { type: 'confirm', ...opts };
   renderChrome();
   return new Promise((resolve) => {
@@ -130,25 +136,20 @@ function askConfirm(opts: NonNullable<State['confirmModal']>): Promise<boolean> 
 }
 
 function closeModal() {
-  if (!S.exModal && !S.routineModal && !S.noteModal && !S.activeModal) return;
-  S.exModal = undefined;
-  S.routineModal = undefined;
-  S.noteModal = undefined;
-  if (S.activeModal?.type !== 'confirm') S.activeModal = null;
+  if (!S.activeModal || S.activeModal.type === 'confirm') return;
+  S.activeModal = null;
   renderChrome();
 }
 
 function openFixedNote(exName: string) {
   const val = S.settings.notes[exName] ?? '';
-  S.noteModal = { exName, value: val };
   S.activeModal = { type: 'note', exName, value: val };
   renderChrome();
 }
 
 function closeWorkoutSummary() {
-  if (!S.workoutSummary && S.activeModal?.type !== 'workoutSummary') return;
-  S.workoutSummary = undefined;
-  if (S.activeModal?.type === 'workoutSummary') S.activeModal = null;
+  if (S.activeModal?.type !== 'workoutSummary') return;
+  S.activeModal = null;
   renderChrome();
 }
 
@@ -157,7 +158,6 @@ async function saveNoteModal(exName: string, rawNote: string) {
   const { [exName]: _removed, ...restNotes } = S.settings.notes;
   const nextNotes = val ? { ...restNotes, [exName]: val } : restNotes;
   S.settings = { ...S.settings, notes: nextNotes };
-  S.noteModal = undefined;
   if (S.activeModal?.type === 'note') S.activeModal = null;
   await persist();
   toast(val ? `Nota guardada para ${exName}` : `Nota eliminada de ${exName}`);
@@ -174,7 +174,6 @@ const workoutLaunch = createWorkoutLaunchActions({
 
 const ctx: AppContext = {
   state: S,
-  root,
   render,
   reload,
   persist,
@@ -185,7 +184,6 @@ const ctx: AppContext = {
     lastRoutine = day;
   },
   queueSync: () => syncCtrl.queueSync(),
-  updateSyncDom: renderChrome,
   askConfirm,
   clearActiveWorkouts: workoutLaunch.clearActiveWorkouts,
   addExToDraft: (name, fallbackSets, fallbackReps) => logActions.addExerciseByName(name, fallbackSets, fallbackReps),
@@ -215,7 +213,6 @@ const liveActions = createLiveWorkoutActions({
   askConfirm,
   openNoteModal: openFixedNote,
   showSummary: (summary) => {
-    S.workoutSummary = summary;
     S.activeModal = { type: 'workoutSummary', summary };
     render();
     syncCtrl.queueSync();
@@ -235,12 +232,10 @@ const wizardActions = createWizardActions({
   queueSync: () => syncCtrl.queueSync(),
   toast,
   openWizardModal: (draft) => {
-    S.wizard = draft;
     S.activeModal = { type: 'wizard', draft };
     renderChrome();
   },
   closeWizardModal: () => {
-    S.wizard = undefined;
     if (S.activeModal?.type === 'wizard') S.activeModal = null;
     renderChrome();
   },
@@ -311,6 +306,7 @@ const dataSyncActions = createDataSyncActions({
   render,
   queueSync: () => syncCtrl.queueSync(),
   toast,
+  downloadFile: downloadBrowserFile,
   wipeAllData: syncCtrl.wipe,
   cloudLogin: syncCtrl.cloudLogin,
   cloudSync: syncCtrl.cloudSync,

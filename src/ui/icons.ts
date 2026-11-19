@@ -28,14 +28,3 @@ export const ICON_PATHS = {
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;
-
-/**
- * Renderiza un icono SVG inline de Phosphor (Bold) marcado como decorativo.
- *
- * @param name - Identificador del icono en `ICON_PATHS`.
- * @param cls - Clases Tailwind de tamaño y alineación.
- * @returns Cadena HTML con el elemento `<svg>`.
- */
-export function icon(name: IconName, cls = 'h-4 w-4'): string {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="currentColor" class="inline-block shrink-0 ${cls}" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
-}

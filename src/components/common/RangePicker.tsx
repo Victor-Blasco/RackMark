@@ -19,7 +19,6 @@ interface RangePickerProps {
  * Selector temporal unificado (`1M`, `3M`, `6M`, `1A`, `Todo` o rango personalizado de fechas).
  */
 export function RangePicker({
-  scope,
   active,
   custom,
   onSelectRange,
@@ -35,8 +34,6 @@ export function RangePicker({
             <button
               key={r.key}
               type="button"
-              data-act="setRange"
-              data-arg={`${scope}|${r.key}`}
               aria-pressed={isSelected ? 'true' : 'false'}
               class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${isSelected ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
               onClick={() => onSelectRange?.(r.key)}
@@ -55,8 +52,6 @@ export function RangePicker({
               type="date"
               class="inp w-auto py-1 px-2 tabular-nums"
               value={custom?.from ?? ''}
-              data-change="rangeFrom"
-              data-arg={scope}
               aria-label="Fecha de inicio"
               onChange={(e) => onChangeFrom?.(e.currentTarget.value)}
             />
@@ -67,8 +62,6 @@ export function RangePicker({
               type="date"
               class="inp w-auto py-1 px-2 tabular-nums"
               value={custom?.to ?? ''}
-              data-change="rangeTo"
-              data-arg={scope}
               aria-label="Fecha de fin"
               onChange={(e) => onChangeTo?.(e.currentTarget.value)}
             />

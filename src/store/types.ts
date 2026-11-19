@@ -4,12 +4,13 @@ import type {
   AiJob,
   CardioRow,
   DailyWellbeing,
+  LiveWorkout,
+  LogDraft,
   Measure,
   Settings,
   StrengthRow,
   SyncJob,
 } from '../types';
-import type { LiveWorkout, LogDraft } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import type { WizardDraft } from './wizardSelectors';
 
@@ -22,6 +23,15 @@ export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
   { key: 'Todo', label: 'Todo' },
   { key: 'Custom', label: 'Fechas' },
 ];
+
+/** Opciones de diálogo de confirmación modal. */
+export interface ConfirmModalOpts {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  danger?: boolean;
+  onConfirm?: () => void;
+}
 
 /** Estado de dominio persistido y su análisis derivado. */
 export interface DomainState {
@@ -36,14 +46,7 @@ export interface DomainState {
 /** Unión discriminada de todos los modales posibles en la aplicación. */
 export type ActiveModal =
   | null
-  | {
-      type: 'confirm';
-      title: string;
-      message: string;
-      confirmLabel?: string;
-      danger?: boolean;
-      onConfirm?: () => void;
-    }
+  | ({ type: 'confirm' } & ConfirmModalOpts)
   | { type: 'wizard'; draft: WizardDraft }
   | { type: 'exercise'; routine?: string; rowIdx?: number; fromLog?: boolean }
   | { type: 'routine'; mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string }
@@ -72,19 +75,11 @@ export interface UiState {
 }
 
 /**
- * Resuelve el modal activo leyendo la unión tipada `activeModal` o los campos
- * heredados durante la convivencia entre Preact y controladores antiguos.
+ * Resuelve el modal activo leyendo la unión tipada `activeModal`.
  *
  * @param state - Estado global de la aplicación.
  * @returns El descriptor discriminado del modal abierto o `null`.
  */
 export function resolveActiveModal(state: State): ActiveModal {
-  if (state.activeModal) return state.activeModal;
-  if (state.confirmModal) return { type: 'confirm', ...state.confirmModal };
-  if (state.wizard) return { type: 'wizard', draft: state.wizard };
-  if (state.workoutSummary) return { type: 'workoutSummary', summary: state.workoutSummary };
-  if (state.exModal) return { type: 'exercise', ...state.exModal };
-  if (state.routineModal) return { type: 'routine', ...state.routineModal };
-  if (state.noteModal) return { type: 'note', ...state.noteModal };
-  return null;
+  return state.activeModal ?? null;
 }

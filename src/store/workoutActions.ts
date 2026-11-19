@@ -1,8 +1,9 @@
-import { norm } from '../lib/seed';
-import type { DayName, LiveWorkout, LogExDraft } from '../types';
+import type { DayName, LiveWorkout } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
-import { defaultSetsForEx, manualSessionId } from './exerciseCatalog';
+import { manualSessionId } from './exerciseCatalog';
 import { buildWorkoutSummary, persistCompletedSession } from './sessionPersistence';
+import type { ConfirmModalOpts } from './types';
+import { createWorkoutPickerActions } from './workoutPickerActions';
 import { createWorkoutRestActions } from './workoutRestActions';
 import { initLiveWorkout } from './workoutSelectors';
 import { createWorkoutSetActions } from './workoutSetActions';
@@ -16,7 +17,7 @@ export interface WorkoutActionDeps {
   setTab: (tab: string) => void;
   queueSync: () => void;
   toast: (msg: string) => void;
-  askConfirm: (opts: { title: string; message: string; confirmLabel?: string; danger?: boolean }) => Promise<boolean>;
+  askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   openNoteModal: (exName: string) => void;
   showSummary: (summary: WorkoutSummary) => void;
 }
@@ -49,6 +50,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
   return {
     ...createWorkoutRestActions(getLive, deps.commitLive),
     ...createWorkoutSetActions(getLive, deps.saveLiveOnly, deps.commitLive, deps.toast),
+    ...createWorkoutPickerActions(deps.getState, getLive, deps.commitLive, deps.toast),
     selectExercise,
 
     start(day: DayName | 'Libre' = 'Libre') {
@@ -113,117 +115,15 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
 
     prevExercise() {
       const live = getLive();
-      if (live && live.curIdx > 0) {
-        selectExercise(live.curIdx - 1);
-      }
+      if (live && live.curIdx > 0) selectExercise(live.curIdx - 1);
     },
 
     nextExercise() {
       const live = getLive();
-      if (live && live.curIdx < live.exercises.length - 1) {
-        selectExercise(live.curIdx + 1);
-      }
+      if (live && live.curIdx < live.exercises.length - 1) selectExercise(live.curIdx + 1);
     },
 
-    toggleMenu() {
-      const live = getLive();
-      if (!live) return;
-      const exMenuOpen = !live.exMenuOpen;
-      deps.commitLive({
-        ...live,
-        exMenuOpen,
-        pickerMode: exMenuOpen ? undefined : live.pickerMode,
-      });
-    },
-
-    openPicker(mode: 'add' | 'swap') {
-      const live = getLive();
-      if (!live) return;
-      deps.commitLive({
-        ...live,
-        pickerMode: mode,
-        pickerQuery: undefined,
-        exMenuOpen: undefined,
-      });
-    },
-
-    closePicker() {
-      const live = getLive();
-      if (!live) return;
-      deps.commitLive({
-        ...live,
-        pickerMode: undefined,
-        pickerQuery: undefined,
-      });
-    },
-
-    setPickerQuery(query: string) {
-      const live = getLive();
-      if (!live) return;
-      deps.commitLive({
-        ...live,
-        pickerQuery: query,
-      });
-    },
-
-    pickExercise(rawName: string) {
-      const state = deps.getState();
-      const live = state.liveWorkout;
-      const name = rawName.trim();
-      if (!live || !live.pickerMode) return;
-      if (!name) {
-        deps.toast('Elige o escribe un ejercicio.');
-        return;
-      }
-
-      const planned = live.day !== 'Libre'
-        ? state.settings.routines[live.day]?.find((x) => norm(x.name) === norm(name))
-        : undefined;
-      const exDraft: LogExDraft = {
-        name,
-        done: false,
-        sets: defaultSetsForEx(state, name, planned?.sets ?? 3, planned?.reps ?? 10, false),
-        note: '',
-      };
-
-      let nextExercises: LogExDraft[];
-      let nextIdx = live.curIdx;
-      if (live.pickerMode === 'swap' && live.exercises[live.curIdx]) {
-        nextExercises = live.exercises.map((ex, i) => (i === live.curIdx ? exDraft : ex));
-        deps.toast(`Cambiado a ${name}.`);
-      } else {
-        nextIdx = live.exercises.length ? Math.min(live.curIdx + 1, live.exercises.length) : 0;
-        nextExercises = [
-          ...live.exercises.slice(0, nextIdx),
-          exDraft,
-          ...live.exercises.slice(nextIdx),
-        ];
-        deps.toast(`${name} añadido al entreno.`);
-      }
-
-      deps.commitLive({
-        ...live,
-        exercises: nextExercises,
-        curIdx: nextIdx,
-        lastCompletedExIdx: undefined,
-        pickerMode: undefined,
-        pickerQuery: undefined,
-        exMenuOpen: undefined,
-      });
-    },
-
-    clearPrevBanner() {
-      const live = getLive();
-      if (!live) return;
-      deps.commitLive({
-        ...live,
-        lastCompletedExIdx: undefined,
-      });
-    },
-
-    openFixedNote(exName: string) {
-      deps.openNoteModal(exName);
-    },
+    openFixedNote: (exName: string) => deps.openNoteModal(exName),
 
     goLogTab() {
       deps.setTab('log');

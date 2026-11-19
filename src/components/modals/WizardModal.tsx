@@ -46,7 +46,7 @@ export function WizardModal({
 
   return (
     <div id="wizard-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="wizardTitle" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-      <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} data-act="wizardSkip" aria-hidden="true" onClick={() => void onSkip()} />
+      <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} aria-hidden="true" onClick={() => void onSkip()} />
       <form
         id="f-wizard"
         class={`relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-modalDark p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${modalAnim}`}
@@ -62,7 +62,7 @@ export function WizardModal({
               <h3 id="wizardTitle" class="text-lg font-extrabold text-white mt-0.5">{info.title}</h3>
               <p class="text-xs text-gray-400 mt-0.5">{info.sub}</p>
             </div>
-            <button type="button" data-act="wizardSkip" class="inline-flex min-h-[44px] sm:min-h-[34px] shrink-0 items-center rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={() => void onSkip()}>
+            <button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] shrink-0 items-center rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={() => void onSkip()}>
               Omitir
             </button>
           </div>
@@ -88,9 +88,9 @@ export function WizardModal({
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
           <div>
             {draft.step > 1 ? (
-              <button type="button" class="btn min-h-[44px]" data-act="wizardBack" onClick={onBack}>← Anterior</button>
+              <button type="button" class="btn min-h-[44px]" onClick={onBack}>← Anterior</button>
             ) : (
-              <button type="button" class="btn min-h-[44px]" data-act="wizardSkip" onClick={() => void onSkip()}>Omitir por ahora</button>
+              <button type="button" class="btn min-h-[44px]" onClick={() => void onSkip()}>Omitir por ahora</button>
             )}
           </div>
           <button id="wizardNext" type="submit" class="btn-primary min-h-[44px] px-5">

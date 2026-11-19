@@ -49,7 +49,7 @@ export function createPlanModalActions(deps: PlanModalDeps) {
       const S = state();
       const rawName = payload.name.trim().slice(0, 80);
       if (!rawName) return;
-      const modal = S.exModal;
+      const modal = S.activeModal?.type === 'exercise' ? S.activeModal : undefined;
       const existingName = allExerciseNames(S).find((n) => norm(n) === norm(rawName));
       if (existingName && !modal?.fromLog && modal?.rowIdx == null) {
         deps.toast(`Ya existe "${existingName}" en tu biblioteca.`);
@@ -57,11 +57,16 @@ export function createPlanModalActions(deps: PlanModalDeps) {
       }
       const finalName = existingName ?? rawName;
       const sec = payload.secondary.filter((m) => m && m !== payload.primary);
-      if (payload.primary) S.settings.muscles[norm(finalName)] = { p: payload.primary, s: [...new Set(sec)] };
-      if (!existingName) S.settings.customNames[`manual:${norm(finalName)}`] = finalName;
+      const muscles = payload.primary
+        ? { ...S.settings.muscles, [norm(finalName)]: { p: payload.primary, s: [...new Set(sec)] } }
+        : S.settings.muscles;
+      const customNames = existingName
+        ? S.settings.customNames
+        : { ...S.settings.customNames, [`manual:${norm(finalName)}`]: finalName };
       const sets = Math.max(1, Math.min(20, Math.round(payload.sets || 3)));
       const reps = Math.max(1, Math.min(100, Math.round(payload.reps || 10)));
       const targetRoutine = (payload.routine || modal?.routine || '').trim();
+      let routines = S.settings.routines;
       if (!modal?.fromLog && targetRoutine && S.settings.routines[targetRoutine]) {
         const list = [...S.settings.routines[targetRoutine]];
         if (modal?.rowIdx != null && modal.routine === targetRoutine && list[modal.rowIdx]) {
@@ -69,9 +74,9 @@ export function createPlanModalActions(deps: PlanModalDeps) {
         } else {
           list.push({ name: finalName, sets, reps });
         }
-        S.settings.routines[targetRoutine] = list;
+        routines = { ...S.settings.routines, [targetRoutine]: list };
       }
-      S.exModal = undefined;
+      S.settings = { ...S.settings, muscles, customNames, routines };
       if (S.activeModal?.type === 'exercise') S.activeModal = null;
       await deps.persist();
       if (modal?.fromLog) deps.addExToDraft(finalName, sets, reps);
@@ -80,16 +85,11 @@ export function createPlanModalActions(deps: PlanModalDeps) {
 
     async saveRoutineModal(payload: SaveRoutinePayload) {
       const S = state();
-      const rm = S.routineModal;
+      const rm = S.activeModal?.type === 'routine' ? S.activeModal : undefined;
       if (!rm) return;
       const rawName = payload.name.replace(/\|/g, '/').trim().slice(0, 40);
       if (!rawName) return;
-      if (
-        RESERVED_ROUTINE_NORMS.has(norm(rawName)) ||
-        rawName === '__proto__' ||
-        rawName === 'constructor' ||
-        rawName === 'prototype'
-      ) {
+      if (RESERVED_ROUTINE_NORMS.has(norm(rawName)) || ['__proto__', 'constructor', 'prototype'].includes(rawName)) {
         deps.toast(`"${rawName}" es un nombre reservado. Elige otro nombre.`);
         return;
       }
@@ -101,17 +101,19 @@ export function createPlanModalActions(deps: PlanModalDeps) {
       }
       const sub = payload.sub.trim().slice(0, 40);
       const validColor = ROUTINE_COLORS.includes(payload.color) ? payload.color : rm.color;
-      S.settings.routineMeta ??= {};
+      const entryMeta = { color: validColor, ...(sub ? { sub } : {}) };
 
       if (rm.mode === 'create') {
         if (existingKeys.length >= 20) {
           deps.toast('Máximo 20 rutinas permitidas.');
           return;
         }
-        S.settings.routines[rawName] = [];
-        S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
-        S.routineModal = undefined;
-        if (S.activeModal?.type === 'routine') S.activeModal = null;
+        S.settings = {
+          ...S.settings,
+          routines: { ...S.settings.routines, [rawName]: [] },
+          routineMeta: { ...(S.settings.routineMeta ?? {}), [rawName]: entryMeta },
+        };
+        S.activeModal = null;
         await deps.persist();
         deps.toast(`Rutina "${rawName}" creada.`);
         return;
@@ -119,16 +121,17 @@ export function createPlanModalActions(deps: PlanModalDeps) {
 
       if (rm.oldName && S.settings.routines[rm.oldName]) {
         const oldName = rm.oldName;
+        let nextRoutines = S.settings.routines;
+        const { [oldName]: _removedMeta, ...restMeta } = S.settings.routineMeta ?? {};
         if (rawName !== oldName) {
-          const nextRoutines: Record<string, RoutineEx[]> = {};
+          const rebuilt: Record<string, RoutineEx[]> = {};
           for (const [k, v] of Object.entries(S.settings.routines)) {
-            nextRoutines[k === oldName ? rawName : k] = v;
+            rebuilt[k === oldName ? rawName : k] = v;
           }
-          S.settings.routines = nextRoutines;
-          delete S.settings.routineMeta[oldName];
+          nextRoutines = rebuilt;
           if (deps.getLastRoutine() === oldName) deps.setLastRoutine(rawName);
           if (S.tab === oldName) deps.setTab(rawName);
-          if (S.sel.home === oldName) S.sel.home = rawName;
+          if (S.sel.home === oldName) S.sel = { ...S.sel, home: rawName };
           deps.syncWorkoutRoutineNames(oldName, rawName);
           const migrated = S.strength.filter((r) => r.day === oldName).map((r) => ({ ...r, day: rawName }));
           if (migrated.length) {
@@ -137,9 +140,8 @@ export function createPlanModalActions(deps: PlanModalDeps) {
             S.strength = S.strength.map((r) => (r.day === oldName ? { ...r, day: rawName } : r));
           }
         }
-        S.settings.routineMeta[rawName] = { color: validColor, ...(sub ? { sub } : {}) };
-        S.routineModal = undefined;
-        if (S.activeModal?.type === 'routine') S.activeModal = null;
+        S.settings = { ...S.settings, routines: nextRoutines, routineMeta: { ...restMeta, [rawName]: entryMeta } };
+        S.activeModal = null;
         await deps.persist();
         deps.toast(`Rutina "${rawName}" actualizada.`);
       }

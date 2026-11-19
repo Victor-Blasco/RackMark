@@ -8,7 +8,7 @@ import {
   markWipePending,
   syncWithCloud,
 } from '../lib/sync';
-import { arg, maybeOpenInitialWizard, type AppContext } from './context';
+import { maybeOpenInitialWizard, type AppContext } from './context';
 import type { AiJob, SyncJob } from '../types';
 
 const AI_COOLDOWN_MS = 15_000;
@@ -20,7 +20,6 @@ const SYNC_RETRY_MAX_MS = 5 * 60 * 1000;
 const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navigator.onLine !== false);
 
 export interface SyncController {
-  actions: Record<string, (el: HTMLElement) => void | Promise<void>>;
   runAi: () => Promise<void>;
   retryAi: () => Promise<void>;
   dismissAi: () => Promise<void>;
@@ -185,14 +184,14 @@ export function createSyncController(ctx: AppContext): SyncController {
     }
     syncInFlight = true;
     S.syncing = true;
-    ctx.updateSyncDom();
+    ctx.render();
     let previousJob: SyncJob | undefined;
     try {
       previousJob = await loadSyncJob();
     } catch (e) {
       S.syncing = false;
       syncInFlight = false;
-      ctx.updateSyncDom();
+      ctx.render();
       if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${(e as Error).message}`);
       return;
     }
@@ -210,7 +209,7 @@ export function createSyncController(ctx: AppContext): SyncController {
     } catch (e) {
       S.syncing = false;
       syncInFlight = false;
-      ctx.updateSyncDom();
+      ctx.render();
       if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${(e as Error).message}`);
       return;
     }
@@ -229,12 +228,11 @@ export function createSyncController(ctx: AppContext): SyncController {
         await ctx.reload();
       }
       const wizardDismissed = Boolean(
-        (S.wizard || S.activeModal?.type === 'wizard') &&
+        S.activeModal?.type === 'wizard' &&
           (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
       );
       if (wizardDismissed) {
-        S.wizard = undefined;
-        if (S.activeModal?.type === 'wizard') S.activeModal = null;
+        S.activeModal = null;
       }
       if (maybeOpenInitialWizard(S) || changed || wizardDismissed) {
         ctx.render();
@@ -267,7 +265,7 @@ export function createSyncController(ctx: AppContext): SyncController {
     } finally {
       S.syncing = false;
       syncInFlight = false;
-      ctx.updateSyncDom();
+      ctx.render();
       if (syncPending) {
         syncPending = false;
         void runSync(false);
@@ -276,7 +274,7 @@ export function createSyncController(ctx: AppContext): SyncController {
   }
 
   function queueSync(): void {
-    ctx.updateSyncDom();
+    ctx.render();
     const now = Date.now();
     syncJobWrite = (syncJobWrite ?? Promise.resolve())
       .then(async () => {
@@ -458,23 +456,5 @@ export function createSyncController(ctx: AppContext): SyncController {
     ctx.toast('Datos borrados.');
   };
 
-  const actions: Record<string, (el: HTMLElement) => void | Promise<void>> = {
-    setAiTone: async (el) => {
-      const S = ctx.state;
-      const tone = arg(el) === 'simple' ? 'simple' : 'technical';
-      if (S.settings.aiTone === tone) return;
-      S.settings.aiTone = tone;
-      await ctx.persist();
-      ctx.toast(`Nivel de IA: ${tone === 'simple' ? 'Sencillo y generalista' : 'Técnico y detallado'}.`);
-    },
-    ai: runAi,
-    aiRetry: retryAi,
-    aiDismiss: dismissAi,
-    cloudLogin,
-    cloudSync,
-    cloudLogout,
-    wipe,
-  };
-
-  return { actions, runAi, retryAi, dismissAi, cloudLogin, cloudSync, cloudLogout, wipe, runSync, queueSync, initAuth, getLastSyncAt };
+  return { runAi, retryAi, dismissAi, cloudLogin, cloudSync, cloudLogout, wipe, runSync, queueSync, initAuth, getLastSyncAt };
 }

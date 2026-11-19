@@ -60,14 +60,14 @@ export function LogSessionHeader({
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn btn-accent min-h-[44px] text-xs sm:text-sm" data-act="tab" data-arg="workout" onClick={onOpenLive}>
+          <button type="button" class="btn btn-accent min-h-[44px] text-xs sm:text-sm" onClick={onOpenLive}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar entreno en vivo
           </button>
           <a href="#log-add-section" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm">+ Añadir ejercicio</a>
-          <button type="button" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm" data-act="logReset" onClick={onReset}>
+          <button type="button" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm" onClick={onReset}>
             <Icon name="reset" className="h-3.5 w-3.5" /> Reiniciar
           </button>
-          <button type="button" class="btn-primary min-h-[44px] py-1.5" data-act="logSave" onClick={onSave}>
+          <button type="button" class="btn-primary min-h-[44px] py-1.5" onClick={onSave}>
             <Icon name="save" className="h-4 w-4" /> Guardar ({doneSetsCount})
           </button>
         </div>
@@ -76,7 +76,7 @@ export function LogSessionHeader({
       <div class="flex flex-wrap items-center gap-2">
         <label class="flex items-center gap-2 text-xs text-gray-400">
           <span>Fecha</span>
-          <input class="inp w-auto min-h-[44px] tabular-nums" type="date" value={date} data-change="logDate" aria-label="Fecha de la sesión" onChange={(e) => onChangeDate(e.currentTarget.value)} />
+          <input class="inp w-auto min-h-[44px] tabular-nums" type="date" value={date} aria-label="Fecha de la sesión" onChange={(e) => onChangeDate(e.currentTarget.value)} />
         </label>
         <div class="flex flex-wrap gap-1.5" role="group" aria-label="Rutina de la sesión">
           {[...routines, 'Libre'].map((d, idx) => {
@@ -86,8 +86,6 @@ export function LogSessionHeader({
               <button
                 key={d}
                 type="button"
-                data-act="logDay"
-                data-arg={d}
                 aria-pressed={on ? 'true' : 'false'}
                 class={`tab min-h-[44px] ${on ? 'tab-on' : ''}`}
                 style={on && d !== 'Libre' ? { borderColor: col, color: col } : undefined}

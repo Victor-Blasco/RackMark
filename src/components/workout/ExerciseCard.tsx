@@ -34,7 +34,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
               {ctx.lastRef}
             </p>
           </div>
-          <span data-live-ex-counter={String(curIdx)} class={`shrink-0 pt-1 text-xs font-bold tabular-nums ${ctx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`}>
+          <span class={`shrink-0 pt-1 text-xs font-bold tabular-nums ${ctx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`}>
             {ctx.doneInEx}/{ex.sets.length} series
           </span>
         </div>
@@ -48,8 +48,6 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
                   <button
                     type="button"
                     class="inline-flex min-h-[44px] sm:min-h-[34px] items-center px-2 font-bold text-emerald-300 hover:underline"
-                    data-act="liveApplyWeight"
-                    data-arg={`${curIdx}|${ctx.targetW}`}
                     onClick={() => actions.applyTargetWeight(curIdx, ctx.targetW!)}
                   >
                     Aplicar {ctx.targetW} kg
@@ -64,13 +62,13 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
         )}
 
         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5 text-xs font-semibold text-gray-300">
-          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="swap" onClick={() => actions.openPicker('swap')}>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" onClick={() => actions.openPicker('swap')}>
             <Icon name="refresh" className="h-3.5 w-3.5 text-blue-300" /> Cambiar ejercicio
           </button>
-          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="liveOpenPicker" data-arg="add" onClick={() => actions.openPicker('add')}>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" onClick={() => actions.openPicker('add')}>
             <Icon name="plus" className="h-3.5 w-3.5 text-blue-300" /> Añadir ejercicio
           </button>
-          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" data-act="editNote" data-arg={ex.name} onClick={() => actions.openFixedNote(ex.name)}>
+          <button type="button" class="inline-flex min-h-[44px] sm:min-h-[36px] items-center gap-1 hover:text-white" onClick={() => actions.openFixedNote(ex.name)}>
             <Icon name="edit" className="h-3.5 w-3.5 text-gray-400" /> Nota permanente
           </button>
         </div>
@@ -79,8 +77,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
       <div class="divide-y divide-white/10 border-y border-white/10">
         {ex.sets.map((s, si) => (
           <SetRow
-            key={`${curIdx}-${si}`}
-            exIdx={curIdx}
+            key={si}
             setIndex={si}
             set={s}
             targetRestSec={targetRestSec}
@@ -98,11 +95,11 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
       <div class="space-y-2.5 pt-1">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-3">
-            <button type="button" class="inline-flex min-h-[44px] items-center gap-1 text-xs sm:text-sm font-bold text-blue-300 hover:text-white" data-act="liveAddSet" data-arg={String(curIdx)} onClick={() => actions.addSet(curIdx)}>
+            <button type="button" class="inline-flex min-h-[44px] items-center gap-1 text-xs sm:text-sm font-bold text-blue-300 hover:text-white" onClick={() => actions.addSet(curIdx)}>
               + Añadir serie
             </button>
             {ex.sets.length > 1 && (
-              <button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-rose-300 hover:text-rose-200" data-act="liveDelSet" data-arg={`${curIdx}|${ex.sets.length - 1}`} onClick={() => actions.delSet(curIdx, ex.sets.length - 1)}>
+              <button type="button" class="inline-flex min-h-[44px] items-center text-xs font-semibold text-rose-300 hover:text-rose-200" onClick={() => actions.delSet(curIdx, ex.sets.length - 1)}>
                 − Quitar serie
               </button>
             )}
@@ -111,7 +108,6 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
         <input
           class="w-full border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus:outline-none"
           value={ex.note}
-          data-live-note={String(curIdx)}
           placeholder="Nota de hoy (sensaciones, ajustes)…"
           aria-label={`Nota para ${ex.name}`}
           onInput={(e) => actions.updateNote(curIdx, e.currentTarget.value)}

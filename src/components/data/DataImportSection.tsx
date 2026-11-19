@@ -50,7 +50,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
                 Importa tu histórico de peso, % grasa y perímetros, o añade mediciones nuevas manualmente desde la pestaña Cuerpo.
               </p>
             </div>
-            <button type="button" class="btn-sm" data-act="tab" data-arg="body" onClick={onGoBody}>
+            <button type="button" class="btn-sm" onClick={onGoBody}>
               Ir a Cuerpo
             </button>
           </div>

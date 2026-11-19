@@ -32,8 +32,6 @@ export function PlanCatalogList({ items, targetRoutine, searchQuery, onQuickAdd 
           <button
             type="button"
             class="btn-sm shrink-0"
-            data-act="rtQuickAdd"
-            data-arg={`${targetRoutine}|${item.name}`}
             disabled={!targetRoutine}
             onClick={() => targetRoutine && onQuickAdd?.(targetRoutine, item.name)}
           >
@@ -66,8 +64,6 @@ export function PlanExerciseMapList({ items, onChangePrimary, onChangeSecondary 
           <span class="w-36 shrink-0 truncate xl:w-40 2xl:w-44" title={item.name}>{item.name}</span>
           <select
             class="inp w-28 shrink-0 sm:w-32"
-            data-change="musP"
-            data-arg={item.name}
             aria-label={`Músculo principal de ${item.name}`}
             value={item.primary}
             onChange={(e) => onChangePrimary?.(item.name, e.currentTarget.value)}
@@ -79,8 +75,6 @@ export function PlanExerciseMapList({ items, onChangePrimary, onChangeSecondary 
             class="inp min-w-0 flex-1"
             placeholder="Ej. Tríceps, Hombros…"
             value={item.secondaryText}
-            data-change="musS"
-            data-arg={item.name}
             aria-label={`Músculos secundarios de ${item.name}`}
             onChange={(e) => onChangeSecondary?.(item.name, e.currentTarget.value)}
           />

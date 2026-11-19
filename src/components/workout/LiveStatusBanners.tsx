@@ -14,18 +14,18 @@ interface PrevCompletedBannerProps {
 }
 
 /** Aviso contextual tras avanzar automáticamente al terminar todas las series de un ejercicio. */
-export function PrevCompletedBanner({ prevName, prevIdx, onGoBack, onAddExtraSet, onDismiss }: PrevCompletedBannerProps) {
+export function PrevCompletedBanner({ prevName, onGoBack, onAddExtraSet, onDismiss }: PrevCompletedBannerProps) {
   return (
     <div class="flex flex-wrap items-center justify-between gap-2 border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl text-xs">
       <span class="font-semibold text-emerald-200">{prevName} completado · siguiente</span>
       <div class="flex flex-wrap items-center gap-1.5">
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10" data-act="liveGoEx" data-arg={String(prevIdx)} onClick={onGoBack}>
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10" onClick={onGoBack}>
           Volver
         </button>
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" data-act="liveAddExtraSetPrev" onClick={onAddExtraSet}>
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" onClick={onAddExtraSet}>
           + Serie extra en {prevName}
         </button>
-        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" data-act="liveClearBanner" aria-label="Cerrar aviso" onClick={onDismiss}>
+        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" aria-label="Cerrar aviso" onClick={onDismiss}>
           <Icon name="close" className="h-4 w-4" />
         </button>
       </div>
@@ -55,10 +55,10 @@ export function AllDoneBanner({ doneExCount, doneSetsCount, elapsedLabel, onSave
         <p class="text-xs text-gray-300 tabular-nums">{doneExCount} ejercicios · {doneSetsCount} series · {elapsedLabel}</p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <button type="button" class="btn-primary min-h-[44px] flex-1 sm:flex-initial" data-act="liveSave" onClick={onSave}>
+        <button type="button" class="btn-primary min-h-[44px] flex-1 sm:flex-initial" onClick={onSave}>
           <Icon name="save" className="h-4 w-4" /> Guardar entrenamiento
         </button>
-        <button type="button" class="btn min-h-[44px]" data-act="liveOpenPicker" data-arg="add" onClick={onAddExercise}>
+        <button type="button" class="btn min-h-[44px]" onClick={onAddExercise}>
           + Añadir ejercicio
         </button>
       </div>

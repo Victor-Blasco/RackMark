@@ -13,8 +13,8 @@ Antes de diseñar vistas nuevas, tocar estilos o modificar persistencia/sincroni
 - **Superficies elevadas (`cardDark`, `rounded-2xl`):** Úsalas solo en capas flotantes/transitorias (`#live-ex-menu`, panel swap/añadir), modales, `#ai-report`, panel maestro-detalle de escritorio o zonas destructivas.
 - **Tokens y deuda CSS:** No introduzcas nuevos hexadecimales literales ni nuevos modificadores `!important` (`!`) de Tailwind; limpia las clases base en `src/style.css` cuando modifiques un componente.
 - **Semántica y contraste:** Reserva `coralRed` / `rose-*` para errores, acciones destructivas o alertas reales (evita aplicarlo a métricas neutras nuevas). Mínimo `text-gray-400` en textos informativos (no uses `text-gray-500`) y aplica `.num-col` / `tabular-nums` en todas las cifras.
-- **Iconos y animaciones:** Usa exclusivamente Phosphor Icons Bold vía `icon()` (`src/ui/icons.ts`), nunca emojis funcionales. Anima acordeones/menús mediante `grid-rows-[0fr]` / `grid-rows-[1fr]` sin destruir el nodo DOM y respeta `prefers-reduced-motion`.
-- **Gráficas (`Chart.js`):** Crea toda gráfica vía `normalizeChartConfig()` / `chart()` / `runChartJobs()` (`src/ui/shared.ts`) con un único eje `y` salvo unidades distintas (`y` kg vs `y1` % o HRV).
+- **Iconos y animaciones:** Usa exclusivamente Phosphor Icons Bold vía `<Icon />` (`src/components/common/Icon.tsx`, paths en `src/ui/icons.ts`), nunca emojis funcionales. Anima acordeones/menús mediante `grid-rows-[0fr]` / `grid-rows-[1fr]` sin destruir el nodo DOM y respeta `prefers-reduced-motion`.
+- **Gráficas (`Chart.js`):** Renderiza toda gráfica declarativamente mediante `<ChartCanvas config={...} />` (`src/components/common/ChartCanvas.tsx`) con `normalizeChartConfig()` (`src/ui/shared.ts`) y un único eje `y` salvo unidades distintas (`y` kg vs `y1` % o HRV).
 
 ## 3. Patrones de selección por coste de interacción
 - **2–3 opciones:** usa segmented control o radio group inline; todas las opciones deben estar visibles y seleccionables en un toque.
@@ -27,12 +27,12 @@ Antes de diseñar vistas nuevas, tocar estilos o modificar persistencia/sincroni
 - **Anti-AI-Slop:** no uses bento grids forzados, AI glow, glassmorphism innecesario, cards anidadas, gráficas decorativas ni chatbots genéricos. Prioriza jerarquía, aire, divisores, datos accionables y movimiento sobrio.
 
 ## 4. Arquitectura, Persistencia y Seguridad
-- **Fronteras estrictas:** `src/types.ts` (puro) -> `src/lib/*` (lógica, IDB, sync, parseo, sin importar UI ni tocar el DOM) -> `src/store/*` y `src/hooks/*` (estado, selectores puros, modales `ActiveModal` y acciones sin acceso directo a vistas) -> `src/components/*` y `src/views/*` (componentes Preact `.tsx` <= 150 líneas con `Props` y TSDoc en español, más `LegacyViewBridge` durante la migración) -> `src/main.ts` (orquestador).
+- **Fronteras estrictas:** `src/types.ts` (puro) -> `src/lib/*` (lógica, IDB, sync, parseo, sin importar UI ni tocar el DOM) -> `src/store/*` y `src/hooks/*` (estado, selectores puros, modales `ActiveModal` y acciones sin acceso directo a vistas ni al DOM) -> `src/components/*` y `src/views/*` (componentes Preact `.tsx` <= 150 líneas con `Props` y TSDoc en español) -> `src/main.ts` (orquestador).
 - **Carga pesada aislada:** Mantén `src/lib/ai.ts` con import dinámico y el parseo Samsung ZIP/CSV dentro del Web Worker (`src/lib/samsungWorker.ts`).
 - **Fechas locales:** Usa `todayIso()` (`src/lib/seed.ts`) para el día actual; nunca `new Date().toISOString().slice(0, 10)` directamente para registros locales del usuario.
-- **Render sin saltos:** Todas las vistas principales (`Resumen`, `Rutinas / Día`, `En vivo`, `Registrar hecho`, `Planificación`, `Cuerpo`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes`) y los 6 modales (`ModalHost`) ya renderizan de forma declarativa en Preact difiriendo el DOM sin reconstruir `#app`; solo quedan los adaptadores SSR de `src/ui/` hasta la limpieza final del Bloque D.
+- **Render sin saltos:** Todas las vistas principales (`Resumen`, `Rutinas / Día`, `En vivo`, `Registrar hecho`, `Planificación`, `Cuerpo`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes`) y los 6 modales unificados en `State.activeModal` (`ModalHost`) renderizan de forma declarativa en Preact difiriendo el DOM sin reconstruir `#app`.
 - **Contrato Cloud Firestore:** Si cambias `Settings`, rutinas, fases o `buckets`, revisa obligatoriamente `firestore.rules` (delegando al subagente `firestore-rules-author`) y actualiza `tests/sync.test.ts` y `tests/security.test.ts`.
-- **Seguridad e integridad:** Envuelve toda interpolación dinámica en HTML con `esc()` (`src/ui/shared.ts`), sanea `Settings` con `sanitizeSettings()` en ingestas/pulls, valida importaciones externas (`parseBackup`, `stripUndefined`) y respeta la CSP de `firebase.json`.
+- **Seguridad e integridad:** Mantén el escape automático de JSX en Preact sin `dangerouslySetInnerHTML`, sanea texto en `fmtDate`/`short` (`src/ui/shared.ts`), sanea `Settings` con `sanitizeSettings()` en ingestas/pulls, valida importaciones externas (`parseBackup`, `stripUndefined`) y respeta la CSP de `firebase.json`.
 
 ## 5. Verificación Obligatoria
 - Antes de dar por terminado cualquier cambio, ejecuta desde la raíz del workspace/worktree activo:

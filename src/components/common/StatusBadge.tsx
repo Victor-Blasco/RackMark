@@ -37,13 +37,11 @@ const METRIC_OPTS: [ExMetric, string][] = [
 /** Selector segmentado entre Peso máximo, e1RM estimado y Tonelaje. */
 export function ExMetricToggle({ active, onChange }: ExMetricToggleProps) {
   return (
-    <div data-ex-metric-group role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    <div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
       {METRIC_OPTS.map(([key, label]) => (
         <button
           key={key}
           type="button"
-          data-act="setExMetric"
-          data-arg={key}
           aria-pressed={active === key ? 'true' : 'false'}
           class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
           onClick={() => onChange(key)}
@@ -68,8 +66,6 @@ export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
     <div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
       <button
         type="button"
-        data-act="setAiTone"
-        data-arg="simple"
         aria-pressed={tone === 'simple' ? 'true' : 'false'}
         class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
         onClick={() => onChange('simple')}
@@ -78,8 +74,6 @@ export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
       </button>
       <button
         type="button"
-        data-act="setAiTone"
-        data-arg="technical"
         aria-pressed={tone === 'technical' ? 'true' : 'false'}
         class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
         onClick={() => onChange('technical')}

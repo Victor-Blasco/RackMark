@@ -26,8 +26,8 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
       <div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
         <p>Esta rutina aún no tiene ejercicios asignados.</p>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-sm" data-act="tab" data-arg="plan" onClick={() => setTab('plan')}>Configurar rutina en Plan</button>
-          <button type="button" class="btn-primary-sm" data-act="startWorkout" data-arg={day} onClick={() => plan.startWorkout(day)}>
+          <button type="button" class="btn-sm" onClick={() => setTab('plan')}>Configurar rutina en Plan</button>
+          <button type="button" class="btn-primary-sm" onClick={() => plan.startWorkout(day)}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {day}
           </button>
         </div>
@@ -53,15 +53,15 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
           </div>
           <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {state.analysis.unmapped.length > 0 && (
-              <button type="button" class="btn-sm border-amberGold/40 text-amberGold" data-act="openUnmapped" onClick={plan.openUnmapped}>
+              <button type="button" class="btn-sm border-amberGold/40 text-amberGold" onClick={plan.openUnmapped}>
                 {state.analysis.unmapped.length} sin nombre
               </button>
             )}
-            <button type="button" class="btn-sm sm:text-sm" data-act="tab" data-arg="plan" onClick={() => setTab('plan')}>
+            <button type="button" class="btn-sm sm:text-sm" onClick={() => setTab('plan')}>
               <Icon name="edit" className="h-3.5 w-3.5" /> Editar rutina
             </button>
-            <button type="button" class="btn-sm sm:text-sm" data-act="goLog" data-arg={day} onClick={() => plan.openLog(day)}>Registrar hecho</button>
-            <button type="button" class="btn-primary-sm flex-1 sm:flex-initial sm:text-sm" data-act="startWorkout" data-arg={day} onClick={() => plan.startWorkout(day)}>
+            <button type="button" class="btn-sm sm:text-sm" onClick={() => plan.openLog(day)}>Registrar hecho</button>
+            <button type="button" class="btn-primary-sm flex-1 sm:flex-initial sm:text-sm" onClick={() => plan.startWorkout(day)}>
               <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {day}
             </button>
           </div>
@@ -70,10 +70,10 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
           {vm.extraAll.length > 0 && vm.primary.length > 0 ? (
             <div role="tablist" aria-label="Filtro de ejercicios" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-              <button type="button" role="tab" aria-selected={!vm.showingExtra ? 'true' : 'false'} data-act="setDayScope" data-arg={`${day}|routine`} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'routine')}>
+              <button type="button" role="tab" aria-selected={!vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'routine')}>
                 En rutina ({vm.primary.length})
               </button>
-              <button type="button" role="tab" aria-selected={vm.showingExtra ? 'true' : 'false'} data-act="setDayScope" data-arg={`${day}|extra`} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'extra')}>
+              <button type="button" role="tab" aria-selected={vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'extra')}>
                 Anteriores ({vm.extraAll.length})
               </button>
             </div>

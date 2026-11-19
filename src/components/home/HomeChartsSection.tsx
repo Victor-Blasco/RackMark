@@ -61,13 +61,11 @@ export function HomeChartsSection({
                 value={query}
                 placeholder="Buscar ejercicio"
                 aria-label="Buscar ejercicio para gráfica"
-                data-input="homeExSearch"
                 onInput={(e) => onSearchChange(e.currentTarget.value)}
               />
             )}
             <select
               class="inp w-auto max-w-full sm:max-w-[220px]"
-              data-change="selHome"
               aria-label="Seleccionar ejercicio para gráfica"
               value={selectedEx ?? ''}
               onChange={(e) => onSelectEx(e.currentTarget.value)}

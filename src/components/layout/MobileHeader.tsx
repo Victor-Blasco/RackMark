@@ -52,18 +52,18 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onCloudL
           <div class="min-w-0">
             <h1 class="truncate text-sm font-extrabold leading-tight text-white">{activeTabTitle(state)}</h1>
             <p class="truncate text-[11px] text-gray-400 tabular-nums">
-              {statsText} · <span data-sync-badge data-sync-base="font-medium" class={`font-medium ${st.cls}`}>{st.text}</span>
+              {statsText} · <span class={`font-medium ${st.cls}`}>{st.text}</span>
             </p>
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-2">
           {state.authReady && !state.user && (
-            <button type="button" data-act="cloudLogin" disabled={state.syncing} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onCloudLogin}>
+            <button type="button" disabled={state.syncing} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onCloudLogin}>
               <Icon name="login" className="h-3.5 w-3.5" />
               <span>Entrar</span>
             </button>
           )}
-          <button type="button" data-act="tab" data-arg="settings" aria-label="Cuenta y ajustes" aria-current={inSystem ? 'page' : undefined} class={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${inSystem ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-borderDark bg-gray-900/80 text-gray-400 hover:text-white'}`} onClick={() => onSelectTab('settings')}>
+          <button type="button" aria-label="Cuenta y ajustes" aria-current={inSystem ? 'page' : undefined} class={`flex h-11 w-11 items-center justify-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${inSystem ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-borderDark bg-gray-900/80 text-gray-400 hover:text-white'}`} onClick={() => onSelectTab('settings')}>
             <Icon name="gear" className="h-5 w-5" />
           </button>
         </div>
@@ -72,12 +72,12 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onCloudL
       {inRoutine && (
         <div role="tablist" aria-label="Rutinas" class="mt-2 flex gap-1 overflow-x-auto rounded-xl border border-borderDark/80 bg-navDark p-1">
           {rNames.map((id, idx) => (
-            <button key={id} type="button" role="tab" aria-selected={state.tab === id} data-act="tab" data-arg={id} class={`flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === id ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab(id)}>
+            <button key={id} type="button" role="tab" aria-selected={state.tab === id} class={`flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === id ? 'bg-gray-800 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab(id)}>
               <span class="h-2 w-2 rounded-full" style={{ backgroundColor: routineColor(id, state.settings, idx) }} />
               <span>{id}</span>
             </button>
           ))}
-          <button type="button" role="tab" aria-selected={state.tab === 'plan'} data-act="tab" data-arg="plan" class={`inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === 'plan' ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab('plan')}>
+          <button type="button" role="tab" aria-selected={state.tab === 'plan'} class={`inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === 'plan' ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab('plan')}>
             Plan
           </button>
         </div>
@@ -86,7 +86,7 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onCloudL
       {subTabs && (
         <div role="tablist" aria-label={subLabel} class={`mt-2 grid gap-1 rounded-xl border border-borderDark/80 bg-navDark p-1 ${inAnalytics ? 'grid-cols-4' : 'grid-cols-2'}`}>
           {subTabs.map((t) => (
-            <button key={t.id} type="button" role="tab" aria-selected={state.tab === t.id} data-act="tab" data-arg={t.id} class={`flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center ${inAnalytics ? 'text-[11px] px-1.5' : 'text-xs'} font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === t.id ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab(t.id)}>
+            <button key={t.id} type="button" role="tab" aria-selected={state.tab === t.id} class={`flex min-h-[44px] min-w-0 items-center justify-center rounded-lg px-2 py-1.5 text-center ${inAnalytics ? 'text-[11px] px-1.5' : 'text-xs'} font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.tab === t.id ? 'bg-electricBlue/20 text-blue-300' : 'text-gray-400 hover:text-gray-200'}`} onClick={() => onSelectTab(t.id)}>
               <span class="truncate">{t.label}</span>
             </button>
           ))}

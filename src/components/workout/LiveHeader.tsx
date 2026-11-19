@@ -46,7 +46,6 @@ export function LiveHeader({
       <div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
         <button
           type="button"
-          data-act="liveToggleMenu"
           aria-expanded={menuOpen ? 'true' : 'false'}
           aria-controls="live-ex-menu"
           aria-label="Abrir lista de ejercicios"
@@ -68,10 +67,10 @@ export function LiveHeader({
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-1">
-        <button type="button" class="flex h-11 items-center px-1.5 sm:px-2 text-xs font-semibold text-gray-400 hover:text-coralRed" data-act="liveDiscard" onClick={onDiscard}>
+        <button type="button" class="flex h-11 items-center px-1.5 sm:px-2 text-xs font-semibold text-gray-400 hover:text-coralRed" onClick={onDiscard}>
           Descartar
         </button>
-        <button type="button" class="btn-primary min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm" data-act="liveSave" onClick={onSave}>
+        <button type="button" class="btn-primary min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm" onClick={onSave}>
           <Icon name="save" className="h-4 w-4" /> <span id="liveFinishLabel">Terminar ({doneSetsCount})</span>
         </button>
       </div>

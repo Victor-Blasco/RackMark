@@ -50,10 +50,10 @@ export function NoDataCard({ onGoLog, onImportData }: NoDataCardProps) {
     <div class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-300">
       <p>Aún no hay entrenamientos guardados. Registra tu primera sesión o importa tus datos previos.</p>
       <div class="flex shrink-0 flex-wrap gap-2">
-        <button type="button" class="btn-primary-sm" data-act="goLog" onClick={onGoLog}>
+        <button type="button" class="btn-primary-sm" onClick={onGoLog}>
           + Registrar entreno
         </button>
-        <button type="button" class="btn-sm" data-act="tab" data-arg="data" onClick={onImportData}>
+        <button type="button" class="btn-sm" onClick={onImportData}>
           Importar datos
         </button>
       </div>

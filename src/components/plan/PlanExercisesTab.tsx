@@ -36,7 +36,7 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
             {[...state.analysis.unmapped].sort((a, b) => b.last.localeCompare(a.last)).map((u) => (
               <div key={u.ref} class="flex items-center gap-2 text-sm">
                 <span class="w-40 shrink-0 tabular-nums text-gray-400">{u.ref} · {u.n}× · {fmtDate(u.last)}</span>
-                <input class="inp" list="exnames" placeholder="Nombre del ejercicio…" data-change="refName" data-arg={u.ref} aria-label={`Nombre para ${u.ref}`} onChange={(e) => void actions.assignRefName(u.ref, e.currentTarget.value)} />
+                <input class="inp" list="exnames" placeholder="Nombre del ejercicio…" aria-label={`Nombre para ${u.ref}`} onChange={(e) => void actions.assignRefName(u.ref, e.currentTarget.value)} />
               </div>
             ))}
           </div>
@@ -57,14 +57,14 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
             <option value="">—</option>
             {knownNames.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-          <button type="button" class="btn" data-act="merge" onClick={() => void actions.mergeExercises(mergeFromRef.current?.value ?? '', mergeToRef.current?.value ?? '')}>
+          <button type="button" class="btn" onClick={() => void actions.mergeExercises(mergeFromRef.current?.value ?? '', mergeToRef.current?.value ?? '')}>
             Fusionar
           </button>
         </div>
         {Object.entries(state.settings.aliases).map(([a, b]) => (
           <div key={a} class="flex items-center gap-2 text-xs text-gray-400">
             <span>{a} → {b}</span>
-            <button type="button" class="icon-btn text-coralRed hover:bg-coralRed/10" data-act="unmerge" data-arg={a} aria-label={`Deshacer fusión ${a}`} onClick={() => void actions.unmergeExercise(a)}>
+            <button type="button" class="icon-btn text-coralRed hover:bg-coralRed/10" aria-label={`Deshacer fusión ${a}`} onClick={() => void actions.unmergeExercise(a)}>
               <Icon name="close" className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -79,10 +79,10 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <span id="exercise-map-count" class="text-xs text-gray-400 tabular-nums">{mapRes.countText}</span>
-            <button type="button" class="btn-sm" data-act="toggleExerciseMapAll" onClick={actions.toggleExerciseMapAll}>
+            <button type="button" class="btn-sm" onClick={actions.toggleExerciseMapAll}>
               {state.showAllExerciseMap ? 'Mostrar solo relevantes' : 'Mostrar catálogo completo'}
             </button>
-            <button type="button" class="btn-sm btn-accent" data-act="openExModal" data-arg="" onClick={() => actions.openExerciseModal()}>
+            <button type="button" class="btn-sm btn-accent" onClick={() => actions.openExerciseModal()}>
               + Nuevo ejercicio
             </button>
           </div>
@@ -92,9 +92,9 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           <div class="flex items-center gap-2">
             <label class="relative min-w-0 flex-1">
               <span class="sr-only">Buscar ejercicio o músculo</span>
-              <input id="exerciseMapSearch" class="inp min-w-0 w-full pr-10" type="search" value={state.exerciseMapSearch ?? ''} placeholder="Buscar por nombre o músculo…" aria-label="Buscar ejercicio o músculo" data-input="exerciseMapSearch" onInput={(e) => actions.setExerciseMapSearch(e.currentTarget.value)} />
+              <input id="exerciseMapSearch" class="inp min-w-0 w-full pr-10" type="search" value={state.exerciseMapSearch ?? ''} placeholder="Buscar por nombre o músculo…" aria-label="Buscar ejercicio o músculo" onInput={(e) => actions.setExerciseMapSearch(e.currentTarget.value)} />
               {state.exerciseMapSearch && (
-                <button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" data-act="clearExerciseMapSearch" aria-label="Limpiar búsqueda" onClick={actions.clearExerciseMapSearch}>
+                <button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" aria-label="Limpiar búsqueda" onClick={actions.clearExerciseMapSearch}>
                   <Icon name="close" className="h-4 w-4" />
                 </button>
               )}
@@ -102,11 +102,11 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           </div>
           {facets.length > 0 && (
             <div class="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filtrar por músculo">
-              <button type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} data-act="exerciseMapMuscle" data-arg="" onClick={() => actions.setExerciseMapMuscle(undefined)}>
+              <button type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(undefined)}>
                 Todos
               </button>
               {facets.map((f) => (
-                <button key={f.name} type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} data-act="exerciseMapMuscle" data-arg={f.name} onClick={() => actions.setExerciseMapMuscle(f.name)}>
+                <button key={f.name} type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(f.name)}>
                   {f.name} <span class="tabular-nums text-[11px]">{f.count}</span>
                 </button>
               ))}

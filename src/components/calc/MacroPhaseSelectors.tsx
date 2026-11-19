@@ -38,8 +38,6 @@ export function MacroPhaseSelectors({ cAct, cGoal, recommendedAct, onUpdateField
                 type="button"
                 role="radio"
                 aria-checked={active ? 'true' : 'false'}
-                data-act="nutriAct"
-                data-arg={String(option.factor)}
                 class={`${ACT_BTN_BASE} ${cls}`}
                 onClick={() => onUpdateField('act', String(option.factor))}
               >
@@ -72,8 +70,6 @@ export function MacroPhaseSelectors({ cAct, cGoal, recommendedAct, onUpdateField
                 type="button"
                 role="radio"
                 aria-checked={active ? 'true' : 'false'}
-                data-act="nutriGoal"
-                data-arg={String(phase.delta)}
                 class={`${PHASE_BTN_BASE} ${cls}`}
                 onClick={() => onUpdateField('goal', String(phase.delta))}
               >

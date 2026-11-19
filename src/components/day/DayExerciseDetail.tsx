@@ -1,6 +1,6 @@
 import type { ChartConfiguration } from 'chart.js';
-import type { ExMetric } from '../../store/homeSelectors';
 import type { ExStats } from '../../lib/analysis';
+import type { ExMetric } from '../../store/homeSelectors';
 import type { AiEntry } from '../../types';
 import { fmtDate, r1, short } from '../../ui/shared';
 import { ChartCanvas } from '../common/ChartCanvas';
@@ -36,27 +36,17 @@ interface DayExerciseDetailProps {
   onChangeMetric: (metric: ExMetric) => void;
 }
 
-/**
- * Panel maestro-detalle de un ejercicio concreto dentro de una rutina.
- */
-export function DayExerciseDetail({
-  exercise: e,
-  aiAdvice,
-  userNote,
-  aiDate,
-  canvasId,
-  historyLimit,
-  rangeLabel,
-  metric,
-  chartConfig,
-  embedded = false,
-  onStartWorkout,
-  onEditNote,
-  onChangeMetric,
-}: DayExerciseDetailProps) {
+/** Panel maestro-detalle de un ejercicio concreto dentro de una rutina. */
+export function DayExerciseDetail(props: DayExerciseDetailProps) {
+  const { exercise: e, aiAdvice, userNote, aiDate, canvasId, historyLimit, rangeLabel, metric, chartConfig, embedded = false, onStartWorkout, onEditNote, onChangeMetric } = props;
   const aiBiomech = aiAdvice?.biomech?.trim() ?? '';
   const recent = [...e.sessions].reverse().slice(0, historyLimit);
   const prescLabel = aiAdvice?.prescription && aiDate ? `Próxima sesión · IA (${short(aiDate)})` : 'Próxima sesión';
+  const kpis = [
+    { lbl: 'Peso máx', val: e.n ? `${e.maxWeight} kg` : '—', cls: 'text-white' },
+    { lbl: 'e1RM pico', val: e.n ? `${r1(e.maxE1rm)} kg` : '—', cls: 'text-white' },
+    { lbl: 'FC media', val: e.avgHr ? `${e.avgHr} lpm` : '—', cls: 'text-cyan-300' },
+  ];
 
   return (
     <div class={embedded ? 'border-t border-white/10 bg-embedDark p-4 space-y-4' : 'rounded-2xl border border-white/10 bg-cardDark p-4 sm:p-5 space-y-5'}>
@@ -69,10 +59,8 @@ export function DayExerciseDetail({
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="btn-primary-sm" data-act="startWorkout" data-arg={e.day ?? ''} onClick={onStartWorkout}>Entrenar hoy</button>
-          <button type="button" class="btn-sm" data-act="editNote" data-arg={e.name} onClick={onEditNote}>
-            <Icon name="edit" className="h-3.5 w-3.5" /> Nota
-          </button>
+          <button type="button" class="btn-primary-sm" onClick={onStartWorkout}>Entrenar hoy</button>
+          <button type="button" class="btn-sm" onClick={onEditNote}><Icon name="edit" className="h-3.5 w-3.5" /> Nota</button>
         </div>
       </div>
 
@@ -82,18 +70,12 @@ export function DayExerciseDetail({
       </div>
 
       <div class="grid grid-cols-3 gap-3 border-y border-white/5 py-3">
-        <div>
-          <span class="block text-xs text-gray-400">Peso máx</span>
-          <span class="mt-0.5 block text-base sm:text-lg font-bold text-white tabular-nums">{e.n ? `${e.maxWeight} kg` : '—'}</span>
-        </div>
-        <div>
-          <span class="block text-xs text-gray-400">e1RM pico</span>
-          <span class="mt-0.5 block text-base sm:text-lg font-bold text-white tabular-nums">{e.n ? `${r1(e.maxE1rm)} kg` : '—'}</span>
-        </div>
-        <div>
-          <span class="block text-xs text-gray-400">FC media</span>
-          <span class="mt-0.5 block text-base sm:text-lg font-bold text-cyan-300 tabular-nums">{e.avgHr ? `${e.avgHr} lpm` : '—'}</span>
-        </div>
+        {kpis.map((k) => (
+          <div key={k.lbl}>
+            <span class="block text-xs text-gray-400">{k.lbl}</span>
+            <span class={`mt-0.5 block text-base sm:text-lg font-bold tabular-nums ${k.cls}`}>{k.val}</span>
+          </div>
+        ))}
       </div>
 
       <div class="space-y-2">
@@ -101,11 +83,9 @@ export function DayExerciseDetail({
           <p class="text-xs font-semibold text-gray-400">Progresión · toca un punto para ver repes, e1RM y pulso</p>
           <ExMetricToggle active={metric} onChange={onChangeMetric} />
         </div>
-        {chartConfig ? (
-          <div class="chart-box"><ChartCanvas id={canvasId} config={chartConfig} /></div>
-        ) : (
-          <p class="py-8 text-center text-sm text-gray-400">Sin registros para este ejercicio en {rangeLabel}.</p>
-        )}
+        {chartConfig
+          ? <div class="chart-box"><ChartCanvas id={canvasId} config={chartConfig} /></div>
+          : <p class="py-8 text-center text-sm text-gray-400">Sin registros para este ejercicio en {rangeLabel}.</p>}
       </div>
 
       {e.last?.note && (
@@ -115,14 +95,10 @@ export function DayExerciseDetail({
         </p>
       )}
       {userNote && (
-        <p class="text-xs sm:text-sm text-gray-200 leading-relaxed">
-          <span class="font-semibold text-white">Nota fija:</span> {userNote}
-        </p>
+        <p class="text-xs sm:text-sm text-gray-200 leading-relaxed"><span class="font-semibold text-white">Nota fija:</span> {userNote}</p>
       )}
       {aiBiomech && aiBiomech !== userNote && (
-        <p class="text-xs sm:text-sm text-gray-300 leading-relaxed">
-          <span class="font-semibold text-gray-200">Biomecánica (IA):</span> {aiBiomech}
-        </p>
+        <p class="text-xs sm:text-sm text-gray-300 leading-relaxed"><span class="font-semibold text-gray-200">Biomecánica (IA):</span> {aiBiomech}</p>
       )}
 
       {recent.length > 0 && (

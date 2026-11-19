@@ -1,7 +1,7 @@
 import type { AiTone } from '../../types';
 import { fmtDate, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
-import { AiJobStatusBanner } from '../home/AiCoachPanel';
+import { AiJobStatusBanner } from '../home/AiJobStatusBanner';
 
 interface AiPreferencesSectionProps {
   /** Estado global con preferencias IA, fecha del último informe y trabajo activo. */

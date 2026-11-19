@@ -1,9 +1,10 @@
 import type { ChartConfiguration } from 'chart.js';
-import { STATUS_STYLE, type ExMetric } from '../../store/homeSelectors';
 import type { ExStats } from '../../lib/analysis';
+import { STATUS_STYLE, type ExMetric } from '../../store/homeSelectors';
 import type { AiEntry } from '../../types';
 import { short } from '../../ui/shared';
 import { DayExerciseDetail } from './DayExerciseDetail';
+import { DayMobileAccordion } from './DayMobileAccordion';
 
 interface DayMasterListProps {
   /** Nombre de la rutina mostrada. */
@@ -49,35 +50,17 @@ const lastSummary = (x: ExStats, rangeLabel: string) => {
 /**
  * Maestro-detalle adaptable: acordeón vertical en móvil y `role="listbox"` + panel fijo en escritorio.
  */
-export function DayMasterList({
-  day,
-  exercises,
-  desktopCur,
-  mobileCur,
-  desktopEx,
-  desktopChartCfg,
-  mobileChartCfg,
-  rangeLabel,
-  metric,
-  aiDate,
-  userNotes,
-  aiFor,
-  onSelectEx,
-  onStartWorkout,
-  onEditNote,
-  onChangeMetric,
-}: DayMasterListProps) {
+export function DayMasterList(props: DayMasterListProps) {
+  const { day, exercises, desktopCur, desktopEx, desktopChartCfg, rangeLabel, metric, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote, onChangeMetric } = props;
+
   const onOptionKeyDown = (e: KeyboardEvent, idx: number) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) || !exercises.length) return;
     e.preventDefault();
-    const nextIdx =
-      e.key === 'ArrowDown'
-        ? (idx + 1) % exercises.length
-        : e.key === 'ArrowUp'
-          ? (idx - 1 + exercises.length) % exercises.length
-          : e.key === 'Home'
-            ? 0
-            : exercises.length - 1;
+    const nextIdx = e.key === 'ArrowDown'
+      ? (idx + 1) % exercises.length
+      : e.key === 'ArrowUp'
+        ? (idx - 1 + exercises.length) % exercises.length
+        : e.key === 'Home' ? 0 : exercises.length - 1;
     const next = exercises[nextIdx];
     if (!next) return;
     onSelectEx(next.name);
@@ -88,51 +71,7 @@ export function DayMasterList({
 
   return (
     <>
-      <div class="lg:hidden space-y-3">
-        {exercises.map((x) => {
-          const open = x.name === mobileCur;
-          const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
-          const advice = aiFor(x);
-          return (
-            <div key={x.name} class={`rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark overflow-hidden`}>
-              <button
-                type="button"
-                data-act="selEx"
-                data-arg={`${day}|${open ? '__closed__' : x.name}`}
-                aria-expanded={open ? 'true' : 'false'}
-                class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]"
-                onClick={() => onSelectEx(open ? '__closed__' : x.name)}
-              >
-                <div class="min-w-0 space-y-1">
-                  <p class="text-sm font-bold text-white truncate">{x.name}</p>
-                  <p class="text-[13px] font-medium text-gray-300 tabular-nums truncate">{lastSummary(x, rangeLabel)}</p>
-                </div>
-                <div class="shrink-0 flex items-center gap-2.5">
-                  <span class={`h-2.5 w-2.5 rounded-full ${st.dot}`} title={advice?.status ?? x.status} />
-                  <span class="text-xs text-gray-400">{open ? '▲' : '▼'}</span>
-                </div>
-              </button>
-              {open && (
-                <DayExerciseDetail
-                  exercise={x}
-                  aiAdvice={advice}
-                  userNote={userNotes[x.name]?.trim() ?? ''}
-                  aiDate={aiDate}
-                  canvasId="c-day-mob"
-                  historyLimit={8}
-                  rangeLabel={rangeLabel}
-                  metric={metric}
-                  chartConfig={mobileChartCfg}
-                  embedded
-                  onStartWorkout={onStartWorkout}
-                  onEditNote={() => onEditNote(x.name)}
-                  onChangeMetric={onChangeMetric}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <DayMobileAccordion {...props} />
 
       <div class="hidden lg:grid lg:grid-cols-12 lg:gap-5 xl:gap-6 lg:items-start">
         <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-orientation="vertical" aria-label={`Ejercicios de ${day}`}>
@@ -148,8 +87,6 @@ export function DayMasterList({
                 id={`day-opt-${idx}`}
                 role="option"
                 tabIndex={sel ? 0 : -1}
-                data-act="selEx"
-                data-arg={`${day}|${x.name}`}
                 aria-selected={sel ? 'true' : 'false'}
                 class={`w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}`}
                 onClick={() => onSelectEx(x.name)}

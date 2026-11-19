@@ -23,12 +23,6 @@ interface StepperInputProps {
   btnClass?: string;
   /** Clases opcionales del `<input>` central. */
   inputClass?: string;
-  /** Atributos `data-*` opcionales sobre el `<input>` (p. ej. `data-live-w`). */
-  inputData?: Record<string, string>;
-  /** Nombre `data-act` heredado para vistas aún no migradas. */
-  stepAct?: string;
-  /** Prefijo `data-arg` heredado para botones de paso. */
-  stepArgPrefix?: string;
   /** Callback al pulsar `−` o `+` con el delta firmado. */
   onStep?: (delta: number) => void;
   /** Callback al escribir en el campo de texto. */
@@ -45,12 +39,6 @@ const DEFAULT_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border 
 export function StepperInput(props: StepperInputProps) {
   const btn = props.btnClass ?? DEFAULT_BTN;
   const inp = props.inputClass ?? 'inp-stepper min-w-[44px]';
-  const decActProps = props.stepAct && props.stepArgPrefix
-    ? { 'data-act': props.stepAct, 'data-arg': `${props.stepArgPrefix}|-${props.delta}` }
-    : {};
-  const incActProps = props.stepAct && props.stepArgPrefix
-    ? { 'data-act': props.stepAct, 'data-arg': `${props.stepArgPrefix}|${props.delta}` }
-    : {};
 
   return (
     <div class={props.wrapClass ?? 'flex-1 min-w-[132px]'}>
@@ -63,7 +51,6 @@ export function StepperInput(props: StepperInputProps) {
           class={`${btn} rounded-l-xl`}
           style={{ touchAction: 'manipulation' }}
           aria-label={props.decAria}
-          {...decActProps}
           onClick={() => props.onStep?.(-props.delta)}
         >
           −
@@ -76,7 +63,6 @@ export function StepperInput(props: StepperInputProps) {
           inputMode={props.inputMode}
           value={props.value}
           aria-label={props.inputAria}
-          {...(props.inputData ?? {})}
           onInput={(e) => props.onInputValue?.(e.currentTarget.value)}
           onBlur={(e) => props.onBlurValue?.(e.currentTarget.value)}
         />
@@ -85,7 +71,6 @@ export function StepperInput(props: StepperInputProps) {
           class={`${btn} rounded-r-xl`}
           style={{ touchAction: 'manipulation' }}
           aria-label={props.incAria}
-          {...incActProps}
           onClick={() => props.onStep?.(props.delta)}
         >
           +

@@ -1,3 +1,4 @@
+import { isValidIsoDate } from '../lib/seed';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type Measure } from '../types';
 import { inRange, r1, resolveRange, todayIso, type State } from '../ui/shared';
 import {
@@ -88,4 +89,42 @@ export function buildBodyViewModel(state: State) {
     noteValue: state.measureDraft?.note ?? currentEntry?.note ?? '',
     getFieldInputMeta,
   };
+}
+
+const parseMeasureDecimal = (v: string): number | undefined => {
+  const n = parseFloat(v.replace(',', '.'));
+  return Number.isFinite(n) ? n : undefined;
+};
+
+/**
+ * Extrae y valida un registro `Measure` a partir de un `FormData` preservando campos ocultos previos.
+ *
+ * @param fd - Datos enviados desde el formulario de medidas corporales.
+ * @param existingByDate - Buscador del registro previo por fecha para conservar campos no editados.
+ * @returns Fecha validada y objeto `Measure`, o mensaje de error en caso de validación fallida.
+ */
+export function parseMeasureFormData(
+  fd: FormData,
+  existingByDate: (date: string) => Measure | undefined,
+): { date: string; measure: Measure } | { error: string } {
+  const date = String(fd.get('date') ?? '').trim();
+  if (!isValidIsoDate(date)) return { error: 'Introduce una fecha válida.' };
+  const existing = existingByDate(date);
+  const measure: Measure = { date };
+  let metricCount = 0;
+  for (const { key } of MEASURE_FIELDS) {
+    const val = fd.has(key)
+      ? parseMeasureDecimal(String(fd.get(key) ?? ''))
+      : typeof existing?.[key] === 'number'
+        ? existing[key]
+        : undefined;
+    if (val != null) {
+      (measure as unknown as Record<string, number>)[key] = val;
+      metricCount++;
+    }
+  }
+  if (!metricCount) return { error: 'Introduce al menos una métrica numérica (por ejemplo, peso o % de grasa).' };
+  const note = fd.has('note') ? String(fd.get('note') ?? '').trim() : (existing?.note ?? '');
+  if (note) measure.note = note;
+  return { date, measure };
 }

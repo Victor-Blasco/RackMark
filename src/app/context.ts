@@ -1,13 +1,13 @@
+import type { ConfirmModalOpts } from '../store/types';
+import { createWizardDraft } from '../store/wizardSelectors';
 import type { DayName, LiveWorkout, LogDraft } from '../types';
 import type { State } from '../ui/shared';
-import { createWizardDraft } from '../store/wizardSelectors';
 
 export const DRAFT_KEY = 'gymapp_log_draft';
 export const LIVE_WORKOUT_KEY = 'gymapp_live_workout';
 
 export interface AppContext {
   readonly state: State;
-  readonly root: HTMLElement;
   render: () => void;
   reload: () => Promise<void>;
   persist: () => Promise<void>;
@@ -16,14 +16,11 @@ export interface AppContext {
   getLastRoutine: () => DayName;
   setLastRoutine: (day: DayName) => void;
   queueSync: () => void;
-  updateSyncDom: () => void;
-  askConfirm: (opts: NonNullable<State['confirmModal']>) => Promise<boolean>;
+  askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   clearActiveWorkouts: () => void;
   addExToDraft: (name: string, fallbackSets?: number, fallbackReps?: number) => void;
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
 }
-
-export const arg = (el: HTMLElement): string => el.dataset.arg ?? '';
 
 export const splitPair = (raw: string): [string, string] => {
   const sep = raw.lastIndexOf('|');
@@ -65,13 +62,11 @@ export function maybeOpenInitialWizard(S: State): boolean {
     S.settings.onboardingCompleted ||
     S.strength.length > 0 ||
     S.measures.length > 0 ||
-    S.wizard ||
     S.activeModal?.type === 'wizard'
   ) {
     return false;
   }
   const draft = createWizardDraft(S);
-  S.wizard = draft;
   S.activeModal = { type: 'wizard', draft };
   return true;
 }

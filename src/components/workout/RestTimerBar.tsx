@@ -39,9 +39,9 @@ export function RestTimerBar({
             <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="-15" aria-label="Restar 15 segundos" onClick={() => onAdjust?.(-15)}>−15s</button>
-            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" data-act="restAdjust" data-arg="30" aria-label="Sumar 30 segundos" onClick={() => onAdjust?.(30)}>+30s</button>
-            <button type="button" class="btn min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" data-act="restStop" onClick={() => onStop?.()}>Listo</button>
+            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" aria-label="Restar 15 segundos" onClick={() => onAdjust?.(-15)}>−15s</button>
+            <button type="button" class="btn min-h-[44px] px-3 tabular-nums" aria-label="Sumar 30 segundos" onClick={() => onAdjust?.(30)}>+30s</button>
+            <button type="button" class="btn min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" onClick={() => onStop?.()}>Listo</button>
           </div>
         </div>
       </div>
@@ -58,9 +58,9 @@ export function RestTimerBar({
           </div>
           <div class="flex items-center gap-1.5">
             {REST_PRESETS.map((p) => (
-              <button key={p} type="button" class="btn min-h-[44px] px-2.5 text-xs tabular-nums" data-act="restStart" data-arg={String(p)} onClick={() => onStart?.(p)}>{p}s</button>
+              <button key={p} type="button" class="btn min-h-[44px] px-2.5 text-xs tabular-nums" onClick={() => onStart?.(p)}>{p}s</button>
             ))}
-            <button type="button" class="btn min-h-[44px] px-3 text-xs" data-act="restStop" onClick={() => onStop?.()}>Cerrar</button>
+            <button type="button" class="btn min-h-[44px] px-3 text-xs" onClick={() => onStop?.()}>Cerrar</button>
           </div>
         </div>
       </div>
@@ -76,8 +76,6 @@ export function RestTimerBar({
             key={p}
             type="button"
             class={`min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
-            data-act="liveSetRestPreset"
-            data-arg={String(p)}
             onClick={() => onSelectPreset?.(p)}
           >
             {p}s

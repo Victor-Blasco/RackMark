@@ -23,7 +23,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
 
   return (
     <div id="workout-summary-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="workoutSummaryTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="closeWorkoutSummary" aria-hidden="true" onClick={onClose} />
+      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
       <div class="relative z-10 w-full max-w-md rounded-2xl border border-emeraldGreen/35 bg-modalDark p-5 shadow-2xl space-y-4">
         <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3">
@@ -35,7 +35,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
               <p class="text-xs text-gray-400">{summary.day === 'Libre' ? 'Entreno libre' : summary.day} · {summary.durationMin} min</p>
             </div>
           </div>
-          <button type="button" data-act="closeWorkoutSummary" aria-label="Cerrar resumen" class="icon-btn" onClick={onClose}>
+          <button type="button" aria-label="Cerrar resumen" class="icon-btn" onClick={onClose}>
             <Icon name="close" className="h-4 w-4" />
           </button>
         </div>
@@ -68,7 +68,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
         )}
 
         <div class="flex justify-end pt-1">
-          <button type="button" class="btn-primary w-full sm:w-auto" data-act="closeWorkoutSummary" onClick={onClose}>
+          <button type="button" class="btn-primary w-full sm:w-auto" onClick={onClose}>
             Continuar
           </button>
         </div>

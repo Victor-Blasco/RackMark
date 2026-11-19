@@ -59,10 +59,10 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
       )}
 
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" class="btn min-h-[44px]" data-act="logReset" onClick={() => void actions.resetDraft()}>
+        <button type="button" class="btn min-h-[44px]" onClick={() => void actions.resetDraft()}>
           <Icon name="reset" className="h-4 w-4" /> Reiniciar borrador
         </button>
-        <button type="button" class="btn-primary min-h-[44px] px-5 py-2.5" data-act="logSave" onClick={() => void actions.saveSession()}>
+        <button type="button" class="btn-primary min-h-[44px] px-5 py-2.5" onClick={() => void actions.saveSession()}>
           <Icon name="save" className="h-4 w-4" /> Guardar sesión ({vm.doneSetsCount} series)
         </button>
       </div>

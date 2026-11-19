@@ -1,8 +1,9 @@
 import { deleteKey, putMany } from '../lib/db';
 import { isValidIsoDate } from '../lib/seed';
 import { markBucketDeletes, markBucketUpserts } from '../lib/sync';
-import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type Measure } from '../types';
+import { BASIC_MEASURE_KEYS, MEASURE_FIELDS } from '../types';
 import { todayIso, type State } from '../ui/shared';
+import { parseMeasureFormData } from './bodySelectors';
 import { createProfileActions } from './profileActions';
 
 /** Dependencias para acciones de Cuerpo, Volumen, Calculadoras y Perfil. */
@@ -19,19 +20,21 @@ export interface AnalyticsActionDeps {
 /** Tipo de retorno completo de las acciones analíticas y biométricas. */
 export type AnalyticsActions = ReturnType<typeof createAnalyticsActions>;
 
-const parseDecimal = (v: string): number | undefined => {
-  const n = parseFloat(v.replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-};
-
 /**
  * Crea acciones reactivas para composición corporal, medidas, volumen, calculadoras y perfil.
  *
  * @param deps - Puentes al estado, IndexedDB, persistencia, avisos y confirmaciones.
- * @returns Conjunto tipado de acciones para las vistas de Bloque C.
+ * @returns Conjunto tipado de acciones para las vistas de analítica y ajustes.
  */
 export function createAnalyticsActions(deps: AnalyticsActionDeps) {
   const state = () => deps.getState();
+
+  const resetMeasureDraft = (date?: string) => {
+    const S = state();
+    S.measureDate = date;
+    S.measurePerimOpen = undefined;
+    S.measureDraft = undefined;
+  };
 
   return {
     ...createProfileActions(deps),
@@ -47,23 +50,17 @@ export function createAnalyticsActions(deps: AnalyticsActionDeps) {
     },
 
     setMeasureDate(rawDate: string) {
-      const S = state();
       if (rawDate && !isValidIsoDate(rawDate)) {
         deps.toast('Introduce una fecha válida.');
         deps.render();
         return;
       }
-      S.measureDate = rawDate || undefined;
-      S.measurePerimOpen = undefined;
-      S.measureDraft = undefined;
+      resetMeasureDraft(rawDate || undefined);
       deps.render();
     },
 
     clearMeasureDate() {
-      const S = state();
-      S.measureDate = undefined;
-      S.measurePerimOpen = undefined;
-      S.measureDraft = undefined;
+      resetMeasureDraft(undefined);
       deps.render();
     },
 
@@ -86,37 +83,14 @@ export function createAnalyticsActions(deps: AnalyticsActionDeps) {
 
     async saveMeasure(fd: FormData) {
       const S = state();
-      const date = String(fd.get('date') ?? '').trim();
-      if (!isValidIsoDate(date)) {
-        deps.toast('Introduce una fecha válida.');
+      const parsed = parseMeasureFormData(fd, (date) => S.measures.find((x) => x.date === date));
+      if ('error' in parsed) {
+        deps.toast(parsed.error);
         return;
       }
-      const existing = S.measures.find((x) => x.date === date);
-      const m: Measure = { date };
-      let metricCount = 0;
-      for (const { key } of MEASURE_FIELDS) {
-        if (fd.has(key)) {
-          const v = parseDecimal(String(fd.get(key) ?? ''));
-          if (v != null) {
-            (m as unknown as Record<string, number>)[key] = v;
-            metricCount++;
-          }
-        } else if (typeof existing?.[key] === 'number') {
-          (m as unknown as Record<string, number>)[key] = existing[key] as number;
-          metricCount++;
-        }
-      }
-      if (!metricCount) {
-        deps.toast('Introduce al menos una métrica numérica (por ejemplo, peso o % de grasa).');
-        return;
-      }
-      const note = fd.has('note') ? String(fd.get('note') ?? '').trim() : (existing?.note ?? '');
-      if (note) m.note = note;
-      await putMany('measures', [m]);
-      markBucketUpserts('measures', [m]);
-      S.measureDate = date;
-      S.measurePerimOpen = undefined;
-      S.measureDraft = undefined;
+      await putMany('measures', [parsed.measure]);
+      markBucketUpserts('measures', [parsed.measure]);
+      resetMeasureDraft(parsed.date);
       await deps.reload();
       deps.render();
       deps.queueSync();
@@ -125,11 +99,8 @@ export function createAnalyticsActions(deps: AnalyticsActionDeps) {
 
     editMeasure(date: string) {
       if (!date) return;
-      const S = state();
-      S.measureDate = date;
-      S.measurePerimOpen = undefined;
-      S.measureDraft = undefined;
-      S.measureScrollTs = Date.now();
+      resetMeasureDraft(date);
+      state().measureScrollTs = Date.now();
       deps.render();
     },
 
@@ -151,22 +122,6 @@ export function createAnalyticsActions(deps: AnalyticsActionDeps) {
 
     selectMuscle(muscle: string) {
       state().muscleSel = muscle;
-      deps.render();
-    },
-
-    applyCalcPreset(raw: string) {
-      const [w, r] = raw.split('|');
-      const S = state();
-      S.calcDraft = { ...S.calcDraft, w, r };
-      deps.render();
-    },
-
-    updateCalcField(
-      field: 'w' | 'r' | 'rir' | 'act' | 'goal' | 'protein' | 'fat' | 'meals',
-      value: string,
-    ) {
-      const S = state();
-      S.calcDraft = { ...S.calcDraft, [field]: value };
       deps.render();
     },
   };

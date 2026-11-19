@@ -28,10 +28,10 @@ export function PlanView({ state: propState }: PlanViewProps) {
           <p class="text-xs text-gray-400">Crea tus propias rutinas o usa una plantilla, define fases del bloque y gestiona los ejercicios.</p>
         </div>
         <div role="tablist" aria-label="Secciones de planificación" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-          <button type="button" role="tab" aria-selected={tab === 'routines' ? 'true' : 'false'} data-act="planTab" data-arg="routines" class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'routines' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => actions.setPlanTab('routines')}>
+          <button type="button" role="tab" aria-selected={tab === 'routines' ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'routines' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => actions.setPlanTab('routines')}>
             Rutinas y fases
           </button>
-          <button type="button" role="tab" aria-selected={tab === 'exercises' ? 'true' : 'false'} data-act="planTab" data-arg="exercises" class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'exercises' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => actions.setPlanTab('exercises')}>
+          <button type="button" role="tab" aria-selected={tab === 'exercises' ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${tab === 'exercises' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => actions.setPlanTab('exercises')}>
             <span>Ejercicios y músculos</span>
             {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 tabular-nums text-[11px] font-bold text-amberGold">{unmappedCount}</span>}
           </button>

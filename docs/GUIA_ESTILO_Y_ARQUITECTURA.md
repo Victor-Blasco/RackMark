@@ -112,24 +112,23 @@ El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentr
 
 - Clases compartidas en `src/style.css`: `.card`, `.btn`, `.btn-primary`, `.inp`, `.lbl`, `.tab` / `.tab-on`, `.nav-item` / `.nav-item-on` / `.nav-sec-lbl`, `.bnav-item` / `.bnav-item-on`, `.num-col`, `.chart-box`.
 - Los inputs numéricos ocultan spinners nativos y los `<select>` mantienen paleta oscura legible (`#F9FAFB` sobre fondo oscuro).
-- **Deuda técnica conocida (`!`):** `.btn` y `.inp` fijan espaciado y ancho en `src/style.css`, lo que provocó **212 overrides `!important` (`!`)** distribuidos en `src/ui/` y `src/main.ts`. **Regla:** no añadir nuevos modificadores `!` de Tailwind; al tocar una vista o componente, sustituir los overrides `!` por clases base o variantes limpias (ej. `.btn-sm` vs `.btn-touch`).
+- **Tokens y clases base (`!`):** No añadir nuevos modificadores `!important` (`!`) de Tailwind sobre `.btn`, `.inp` o `.tab`; utilizar las variantes limpias de `src/style.css` (ej. `.btn-sm`, `.btn-accent`, `.btn-danger`, `.icon-btn`).
 
-### 3.6 Iconografía (`src/ui/icons.ts`)
+### 3.6 Iconografía (`src/components/common/Icon.tsx` y `src/ui/icons.ts`)
 
-- Todos los iconos funcionales de interfaz usan SVG de **Phosphor Icons Bold** (`viewBox="0 0 256 256"`) renderizados mediante `icon(name, cls)` (25 iconos activos definidos).
+- Todos los iconos funcionales de interfaz usan SVG de **Phosphor Icons Bold** (`viewBox="0 0 256 256"`) renderizados mediante `<Icon name={...} />` desde `ICON_PATHS`.
 - **Prohibido usar emojis como iconos de navegación o acción** en la UI de aplicación.
 - No mantener iconos muertos en `icons.ts`.
 
-### 3.7 Gráficas (`Chart.js` en `src/ui/shared.ts` y `analyticsViews.ts`)
+### 3.7 Gráficas (`Chart.js` con `<ChartCanvas />` y `src/ui/shared.ts`)
 
-- Instanciar todas las gráficas exclusivamente a través de **`normalizeChartConfig()`**, **`chart()`** y **`runChartJobs()`** definidos en `src/ui/shared.ts`.
+- Renderizar todas las gráficas de forma declarativa con **`<ChartCanvas config={...} />`** (`src/components/common/ChartCanvas.tsx`), apoyado en **`normalizeChartConfig()`** (`src/ui/shared.ts`).
 - **Un eje `y` por defecto:** Mantener una sola escala vertical salvo cuando convivan magnitudes de distinta unidad (por ejemplo, `y` en `kg` y `y1` en `% grasa` o `HRV`).
-- Respetar los selectores temporales unificados (`rangePicker`, `resolveRange`, `inRange`) y medias móviles (`movingAverage7d`).
-- Evitar llamadas innecesarias a `resetCharts()` en acciones que no modifican los datos graficados.
+- Respetar `<RangePicker />`, `resolveRange()`, `inRange()` y medias móviles (`movingAverage7d()`).
 
 ### 3.8 Animaciones y Microinteracciones
 
-- Los paneles desplegables y menús contextuales deben animar altura mediante **`grid-template-rows` (`grid-rows-[0fr]` -> `grid-rows-[1fr]`)** + transición de opacidad sobre contenedor interno `overflow-hidden`, **sin desmontar el nodo** ni provocar saltos bruscos de layout (patrón aplicado en `#live-ex-menu-wrap` de `src/ui/workoutView.ts`).
+- Los paneles desplegables y menús contextuales deben animar altura mediante **`grid-template-rows` (`grid-rows-[0fr]` -> `grid-rows-[1fr]`)** + transición de opacidad sobre contenedor interno `overflow-hidden`, **sin desmontar el nodo** ni provocar saltos bruscos de layout (patrón aplicado en `#live-ex-menu-wrap` de `src/components/workout/LiveExerciseMenu.tsx`).
 - Toda animación o transición nueva —incluidas las transiciones FLIP en `src/ui/reorder.ts`— debe respetar **`prefers-reduced-motion: reduce`** (actualmente cubierto en CSS solo para `.wizard-*` y utilidades `motion-reduce:` puntuales).
 
 ### 3.9 Patrones de selección por coste de interacción
@@ -195,7 +194,7 @@ cuando proporcione una experiencia más accesible y suficiente para el caso.
 
 ## 4. Arquitectura, Persistencia y Reglas de Estado
 
-### 4.1 Mapa de Módulos y Fronteras Estrictas (Migración Preact en curso)
+### 4.1 Mapa de Módulos y Fronteras Estrictas (Arquitectura Preact)
 
 ```text
 src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
@@ -203,13 +202,15 @@ src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
     ├── src/lib/*         (db, sync, firebase, samsung, samsungWorker, measures, analysis, ai, seed)
     │       ▲             · PROHIBIDO importar UI o tocar el DOM
     │       │
-    ├── src/store/* &     (types, navigation, appStore, *Selectors, *Actions, useRestTimer, useFocusTrap)
-    │   src/hooks/*       · Estado tipado (ActiveModal), selectores puros y hooks reutilizables
+    ├── src/store/* &     (types, navigation, appStore, *Selectors, *ChartConfigs, *Actions,
+    │   src/hooks/*        useRestTimer, useFocusTrap)
+    │       ▲             · Estado tipado (ActiveModal unificado), selectores puros, cero acceso al DOM
+    │       │
+    ├── src/components/*  (common/, layout/, modals/, home/, day/, log/, plan/, workout/, body/, calc/, settings/)
+    │   + src/views/*     · 11 vistas y componentes Preact .tsx <= 150 líneas (TSDoc y Props explícitas)
+    │   + src/ui/*        · Utilidades puras compartidas (shared, icons, selection, reorder, keyboardNav)
     │       ▲
-    ├── src/components/*  (common/, layout/, modals/, home/, day/, log/, plan/, workout/, body/, calc/, settings/) + src/views/* (11 vistas Preact)
-    │   & src/ui/*        · Componentes Preact .tsx (TSDoc y Props explícitas) + adaptadores SSR temporales hasta Bloque D
-    │       ▲
-    └── src/main.ts       (punto de entrada: monta AppShell con todas las vistas y los 6 modales en Preact)
+    └── src/main.ts       (punto de entrada: monta AppShell y conecta syncController, IndexedDB y Firebase)
 ```
 
 - **Carga diferida y Workers:**
@@ -222,7 +223,7 @@ src/types.ts  (contratos de dominio puros, cero dependencias de runtime)
 | Capa | Módulos | Qué almacena | Regla clave |
 | :--- | :--- | :--- | :--- |
 | **IndexedDB (`gymapp` v2)** | `src/lib/db.ts` | 5 *object stores* con el histórico local (fuerza, cardio, bienestar, medidas, ajustes/estado) | Fuente de verdad local *offline-first* |
-| **`localStorage`** | `src/main.ts`, `workoutView.ts`, `logView.ts`, `sync.ts` | Borradores activos (`LogDraft`, `LiveWorkout`) y metadatos de sync | Nunca almacenar secretos ni datos masivos históricos |
+| **`localStorage`** | `src/app/context.ts`, `src/lib/sync.ts`, `src/main.ts` | Borradores activos (`LogDraft`, `LiveWorkout`) y metadatos de sync | Nunca almacenar secretos ni datos masivos históricos |
 | **Cloud Firestore** | `src/lib/sync.ts`, `src/lib/firebase.ts` | Configuración (`settings`) y `buckets` (`items`/`deleted` por `{kind}_{year\|all}`) por `uid` | Protegido por `firestore.rules` (solo propietario con email verificado) |
 
 #### Invariantes de Esquema en `firestore.rules` y Sincronización (`src/lib/sync.ts`)
@@ -241,13 +242,13 @@ Cualquier cambio en `Settings`, rutinas, fases o buckets de sincronización **ex
 - Para generar o comparar la fecha del día actual del usuario, utilizar **`todayIso()`** en `src/lib/seed.ts` (calculada en hora local).
 - **Prohibido usar `new Date().toISOString().slice(0, 10)` directamente** para fechas de entrenamiento o bienestar del usuario, ya que provoca saltos de día en zonas horarias distintas de UTC cerca de medianoche (solo aceptable en manipulaciones de rangos ISO ya normalizados).
 
-### 4.4 Ciclo de Render, Foco y Parches DOM (`src/main.ts`)
+### 4.4 Ciclo de Render, Foco y Estado Reactivo (`Preact`)
 
-- Gran parte de las vistas reconstruyen `#app` vía `root.innerHTML`; sin embargo, en flujos de alta frecuencia se deben usar **parches DOM selectivos** (como ya hacen `syncSetDom`, `updateLogCountersDom`, `updateSyncDom`, `updateRestBarDom`, `logStepW`/`logStepR`/`logToggleSet` y `liveToggleMenu`) para evitar:
-  - Pérdida de foco (`focusSelector`) o cierre del teclado virtual en móvil.
-  - Saltos de posición de scroll.
-  - Destrucción y reconstrucción innecesaria de gráficas `Chart.js` (`resetCharts()`).
-- **Pendiente de migrar a parche selectivo:** `liveStepW`, `liveStepR`, `liveToggleSet` y `planSearch` en `src/main.ts` siguen disparando `render()` completo. Al añadir interacciones nuevas, evitar `root.innerHTML` cuando baste actualizar nodos identificados por `data-*` o `id`.
+- Todas las vistas y modales renderizan declarativamente mediante **Preact (`src/store/appStore.tsx`)** sin reconstruir `#app`:
+  - El foco de `<input>` y botones se mantiene entre actualizaciones por diferenciación de Virtual DOM.
+  - Las gráficas se gestionan en `<ChartCanvas />` actualizando datos sin recrear innecesariamente el `<canvas>` y destruyendo instancias limpiamente al desmontar.
+  - El cronómetro de descanso (`useRestTimer`) aísla el tick por segundo dentro de `RestTimerBar` y de los indicadores de navegación sin provocar re-renders de toda la pantalla.
+  - Los 6 modales comparten `State.activeModal` dentro de `ModalHost` con captura y retorno de foco en `useFocusTrap`.
 
 ---
 
@@ -255,7 +256,7 @@ Cualquier cambio en `Settings`, rutinas, fases o buckets de sincronización **ex
 
 ### 5.1 Reglas de Seguridad y Calidad de Código
 
-- **Prevención XSS:** Todo contenido textual dinámico (nombres de rutinas, ejercicios, notas, CSV importados, errores) interpolado en plantillas HTML debe envolverse con **`esc()`** (`src/ui/shared.ts`).
+- **Prevención XSS:** Todo contenido textual dinámico (nombres de rutinas, ejercicios, notas, CSV importados, errores) se renderiza mediante nodos JSX de Preact (con escape automático y sin `dangerouslySetInnerHTML`), acompañado del saneado de `fmtDate()` / `short()` en `src/ui/shared.ts`.
 - **Validación en fronteras externas:** Sanitizar entradas en importación JSON/CSV (`parseBackup`, prevención de contaminación de prototipos, limpieza con `stripUndefined` antes de persistir/sincronizar en Firestore).
 - **CSP (`firebase.json`):** Mantener compatibles los scripts, estilos y Web Workers con la cabecera CSP (`default-src 'self'`, `worker-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`, `style-src 'self' 'unsafe-inline'`, `COOP same-origin-allow-popups`, `X-Frame-Options DENY`).
 - **Calidad de código:** Funciones pequeñas, retorno temprano, cero helpers *passthrough* triviales y evitar programación defensiva redundante sobre tipos internos ya garantizados por TypeScript.
@@ -265,7 +266,7 @@ Cualquier cambio en `Settings`, rutinas, fases o buckets de sincronización **ex
 Ejecutar desde la raíz del worktree activo (o añadiendo `--prefix .worktrees/auditoria-v2` desde la raíz del repo):
 
 ```bash
-# Suite de tests unitarios y contratos (Vitest: tests/features.test.ts, sync.test.ts, security.test.ts, parsers.test.ts)
+# Suite de tests unitarios y contratos (Vitest: tests/features.test.ts, integration.test.ts, sync.test.ts, security.test.ts, parsers.test.ts)
 npm test
 
 # Comprobación estricta de tipos TypeScript + bundle de producción (tsc --noEmit && vite build)
@@ -281,3 +282,4 @@ Los tres bloques prioritarios detectados en la auditoría v2 han quedado resuelt
 - **Bloque 1 (PWA / Offline, Sync e Integridad, Parches DOM):** migración de `registerType` a `'prompt'` con banner de actualización controlada, saneamiento `sanitizeSettings()` en ingestas y pulls, limpieza de `gymapp_live_workout` en wipe/cambio de cuenta, troceo de batches en Firestore, sustitución de `confirm()` nativo por `#confirm-modal`, y parches DOM selectivos en `En vivo` y `Plan`.
 - **Bloque 2 (Ergonomía táctil, Tokens, Contraste y Accesibilidad):** tokens de superficie en `tailwind.config.js`, sistema de botones `.btn-sm` / `.btn-danger` / `.icon-btn`, texto mínimo `text-gray-400`, desacople semántico de `coralRed`, áreas táctiles `>= 44 px` en móvil, `<h1>` accesible en escritorio, navegación por teclado en `[role="tablist"]`, `role="option"` en `listbox` y *focus trap* modal + `prefers-reduced-motion` en FLIP.
 - **Bloque 3 (Gráficas, Modularización, Limpieza y Tests):** reutilización de instancias `Chart.js` vía `updateChart()` sin recrear el `<canvas>`, separación entre Peso y Masa muscular en composición corporal, extracción de `src/ui/shellView.ts` y `src/ui/domPatches.ts` desde `src/main.ts`, eliminación de iconos muertos (`sparkle`, `info`) y `geminiKey` legacy, y eliminación de tests omitidos mediante fixtures sintéticos en `tests/parsers.test.ts`.
+- **Bloque D (Migración Preact completa):** retirada de `LegacyViewBridge`, adaptadores SSR en `src/ui/`, `domPatches.ts` y controladores legacy (`planController.ts`, `workoutController.ts`, `importController.ts`); unificación total de modales en `State.activeModal` y `<ModalHost />`; eliminación de atributos legacy `data-act`/`data-change`/`data-input`; división modular de `src/store/`, `src/hooks/`, `src/components/` y `src/views/` (`<= 150` líneas por archivo); y migración completa de la suite de tests a componentes Preact y acciones/selectores del store.

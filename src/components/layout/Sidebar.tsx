@@ -51,10 +51,10 @@ export function Sidebar({
       </div>
 
       <div class="p-3 space-y-2">
-        <button type="button" data-act="tab" data-arg="workout" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${state.tab === 'workout' ? 'bg-electricBlue ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}`} onClick={() => onSelectTab('workout')}>
+        <button type="button" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${state.tab === 'workout' ? 'bg-electricBlue ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}`} onClick={() => onSelectTab('workout')}>
           <Icon name="play" className="h-4 w-4" />
           <span>Iniciar entreno</span>
-          <span data-nav-rest class={`ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white ${restRemSec > 0 ? '' : 'hidden'}`}>{restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
+          <span class={`ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white ${restRemSec > 0 ? '' : 'hidden'}`}>{restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
           {liveCount > 0 && (
             <span class={`${restRemSec > 0 ? '' : 'ml-auto '}inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200`}>
               <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />
@@ -62,7 +62,7 @@ export function Sidebar({
             </span>
           )}
         </button>
-        <button type="button" data-act="tab" data-arg="log" aria-current={state.tab === 'log' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${state.tab === 'log' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}`} onClick={() => onSelectTab('log')}>
+        <button type="button" aria-current={state.tab === 'log' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${state.tab === 'log' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}`} onClick={() => onSelectTab('log')}>
           <Icon name="edit" className="h-3.5 w-3.5" />
           <span>Registrar ya hecho</span>
           {draftCount > 0 && <span class="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-gray-200 tabular-nums">{draftCount}</span>}
@@ -72,7 +72,7 @@ export function Sidebar({
       <nav class="flex-1 space-y-3.5 overflow-y-auto px-3 py-1">
         <div>
           <p class="nav-sec-lbl">General</p>
-          <button type="button" data-act="tab" data-arg="home" aria-current={state.tab === 'home' ? 'page' : undefined} class={`nav-item ${state.tab === 'home' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('home')}>
+          <button type="button" aria-current={state.tab === 'home' ? 'page' : undefined} class={`nav-item ${state.tab === 'home' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('home')}>
             <Icon name="home" className="h-4 w-4" />
             <span>Resumen</span>
           </button>
@@ -85,7 +85,7 @@ export function Sidebar({
               const active = state.tab === id;
               const sub = state.settings.routineMeta?.[id]?.sub;
               return (
-                <button key={id} type="button" data-act="tab" data-arg={id} aria-current={active ? 'page' : undefined} class={`nav-item ${active ? 'nav-item-on' : ''}`} onClick={() => onSelectTab(id)}>
+                <button key={id} type="button" aria-current={active ? 'page' : undefined} class={`nav-item ${active ? 'nav-item-on' : ''}`} onClick={() => onSelectTab(id)}>
                   <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: routineColor(id, state.settings, idx) }} />
                   <span class="flex-1 truncate text-left">
                     {id}{sub ? <span class="text-xs font-normal text-gray-400"> · {sub}</span> : null}
@@ -94,7 +94,7 @@ export function Sidebar({
                 </button>
               );
             })}
-            <button type="button" data-act="tab" data-arg="plan" aria-current={state.tab === 'plan' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('plan')}>
+            <button type="button" aria-current={state.tab === 'plan' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('plan')}>
               <Icon name="edit" className="h-4 w-4" />
               <span class="flex-1 text-left">Plan y rutinas</span>
               {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amberGold">{unmappedCount}</span>}
@@ -106,7 +106,7 @@ export function Sidebar({
           <p class="nav-sec-lbl">Análisis y métricas</p>
           <div class="space-y-1">
             {ANALYTICS_TABS.map((a) => (
-              <button key={a.id} type="button" data-act="tab" data-arg={a.id} aria-current={state.tab === a.id ? 'page' : undefined} class={`nav-item ${state.tab === a.id ? 'nav-item-on' : ''}`} onClick={() => onSelectTab(a.id)}>
+              <button key={a.id} type="button" aria-current={state.tab === a.id ? 'page' : undefined} class={`nav-item ${state.tab === a.id ? 'nav-item-on' : ''}`} onClick={() => onSelectTab(a.id)}>
                 <Icon name={a.icon} className="h-4 w-4" />
                 <span>{a.label}</span>
               </button>
@@ -116,7 +116,7 @@ export function Sidebar({
 
         <div>
           <p class="nav-sec-lbl">Datos</p>
-          <button type="button" data-act="tab" data-arg="data" aria-current={state.tab === 'data' ? 'page' : undefined} class={`nav-item ${state.tab === 'data' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('data')}>
+          <button type="button" aria-current={state.tab === 'data' ? 'page' : undefined} class={`nav-item ${state.tab === 'data' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('data')}>
             <Icon name="upload" className="h-4 w-4" />
             <span>Datos y copias</span>
           </button>

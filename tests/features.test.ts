@@ -1,43 +1,62 @@
+import { h } from 'preact';
+import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPrompt } from '../src/lib/ai';
 import { analyze, judge, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
+import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, norm } from '../src/lib/seed';
-import { viewAdherence, viewBody, viewCalc, viewVolume } from '../src/ui/analyticsViews';
-import { ICON_PATHS } from '../src/ui/icons';
-import { allExerciseNames, extractTargetWeight, fmtMMSS, initLogDraft, manualSessionId, renderRestTimerBar, viewLog } from '../src/ui/logView';
-import { plannedWeeklyVolume, renderModals, renderPlanCatalogResults, viewPlan } from '../src/ui/planView';
-import { moveItem } from '../src/ui/reorder';
-import { activeTabTitle, renderMobileHeader, renderMobileNav, renderSidebar, syncStatusInfo } from '../src/ui/shellView';
-import {
-  inRange,
-  isAiFreshForEx,
-  movingAverage7d,
-  normalizeChartConfig,
-  rangePicker,
-  resetCharts,
-  resolveRange,
-  routineShort,
-  todayIso,
-  weightDeltaColor,
-  type State,
-} from '../src/ui/shared';
-import { buildBodyHomeChartConfig, buildCompChartConfig, buildHomeExChartConfig, renderAiReport, viewDay, viewHome } from '../src/ui/views';
-import { viewSettings } from '../src/ui/settingsView';
-import { viewData } from '../src/ui/dataView';
-import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
-import { initLiveWorkout, viewWorkout } from '../src/ui/workoutView';
-import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
+import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
+import { MobileHeader } from '../src/components/layout/MobileHeader';
+import { MobileBottomNav } from '../src/components/layout/MobileNav';
+import { Sidebar } from '../src/components/layout/Sidebar';
+import { ModalHost } from '../src/components/modals/ModalHost';
+import { WizardModal } from '../src/components/modals/WizardModal';
+import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { RangePicker } from '../src/components/common/RangePicker';
+import { RestTimerBar } from '../src/components/workout/RestTimerBar';
+import { fmtMMSS } from '../src/hooks/useRestTimer';
+import { buildCompChartConfig } from '../src/store/bodyChartConfigs';
+import { allExerciseNames, extractTargetWeight, manualSessionId } from '../src/store/exerciseCatalog';
+import { buildBodyHomeChartConfig, buildHomeExChartConfig } from '../src/store/homeChartConfigs';
+import { initLogDraft } from '../src/store/logSelectors';
+import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
+import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
 import {
   createWizardDraft,
   daysActivityFactor,
   goalCalorieDelta,
   goalPhaseName,
   recommendTemplate,
-  renderWizardModal,
-} from '../src/ui/wizardView';
+} from '../src/store/wizardSelectors';
+import { initLiveWorkout } from '../src/store/workoutSelectors';
+import { ICON_PATHS } from '../src/ui/icons';
+import { moveItem } from '../src/ui/reorder';
+import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
+import {
+  inRange,
+  isAiFreshForEx,
+  movingAverage7d,
+  normalizeChartConfig,
+  resolveRange,
+  routineShort,
+  todayIso,
+  weightDeltaColor,
+  type State,
+} from '../src/ui/shared';
+import { AdherenceView } from '../src/views/AdherenceView';
+import { BodyView } from '../src/views/BodyView';
+import { CalcView } from '../src/views/CalcView';
+import { DataView } from '../src/views/DataView';
+import { DayRoutineView } from '../src/views/DayRoutineView';
+import { HomeView } from '../src/views/HomeView';
+import { LiveWorkoutView } from '../src/views/LiveWorkoutView';
+import { LogWorkoutView } from '../src/views/LogWorkoutView';
+import { PlanView } from '../src/views/PlanView';
+import { SettingsView } from '../src/views/SettingsView';
+import { VolumeView } from '../src/views/VolumeView';
 
 describe('selection patterns', () => {
   it('normaliza tildes, busca aliases, agrupa y ordena recientes', () => {
@@ -440,29 +459,27 @@ describe('P1 analytics, trends & empty states', () => {
       muscleSel: 'Pecho',
     };
 
-    const volHtml = viewVolume(emptyState);
+    const volHtml = renderToString(h(VolumeView, { state: emptyState }));
     expect(volHtml).toContain('+ Registrar entreno');
     expect(volHtml).toContain('Importar datos');
     expect(volHtml).not.toContain('<canvas');
     expect(volHtml).not.toContain('min-w-[640px]');
 
-    const adhHtml = viewAdherence(emptyState);
+    const adhHtml = renderToString(h(AdherenceView, { state: emptyState }));
     expect(adhHtml).toContain('+ Registrar entreno');
     expect(adhHtml).not.toContain('<canvas');
     expect(adhHtml).not.toContain('Calendario (últimas');
 
-    const homeHtml = viewHome(emptyState);
+    const homeHtml = renderToString(h(HomeView, { state: emptyState }));
     expect(homeHtml).toContain('+ Empezar primer entreno hoy');
     expect(homeHtml).not.toContain('<canvas');
     expect(homeHtml).not.toContain('ai-report');
 
-    const calcHtml = viewCalc(emptyState);
+    const calcHtml = renderToString(h(CalcView, { state: emptyState }));
     expect(calcHtml).toContain('Valores de ejemplo');
 
-    const bodyHtml = viewBody(emptyState);
+    const bodyHtml = renderToString(h(BodyView, { state: emptyState }));
     expect(bodyHtml).toContain('Filtro temporal');
-
-    resetCharts();
   });
 });
 
@@ -507,12 +524,12 @@ describe('calculadora nutricional', () => {
       perimeter: 'waist',
       muscleSel: 'Pecho',
     } as State;
-    const html = viewCalc(state);
+    const html = renderToString(h(CalcView, { state }));
     expect(html).toContain('aria-label="Factor de actividad"');
     expect(html).toContain('aria-label="Fase energética"');
     expect(html).toContain('aria-label="Número de comidas"');
     expect(html).toContain('id="nuMeals"');
-    expect(html).toContain('data-act="nutriAct"');
+    expect(html).toContain('role="radio"');
     expect(html).toContain('whitespace-nowrap');
     expect(html).toContain('items-end gap-3');
     expect(html).toContain('lbl min-h-8 leading-4');
@@ -600,20 +617,24 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
   });
 
   it('mantiene la zona de peligro plana y roja solo en borde y textos', () => {
-    const html = viewData({
-      analysis: { unmapped: [] },
-      strength: [],
-      cardio: [],
-      wellbeing: [],
-      measures: [],
-      user: null,
-    } as unknown as State);
+    const html = renderToString(
+      h(DataView, {
+        state: {
+          analysis: { unmapped: [] },
+          strength: [],
+          cardio: [],
+          wellbeing: [],
+          measures: [],
+          user: null,
+        } as unknown as State,
+      }),
+    );
     expect(html).toContain('border-coralRed/30');
     expect(html).toContain('text-coralRed');
     expect(html).not.toContain('bg-coralRed/5');
   });
 
-  it('renderiza Modo Laboratorio en viewPlan, modal de notas y cross-links sin card-itis', async () => {
+  it('renderiza Modo Laboratorio en PlanView, modal de notas y cross-links sin card-itis', async () => {
     const settings = sanitizeSettings({
       routines: {
         Torso: [{ name: 'Press Banca X', sets: 4, reps: 8 }],
@@ -642,50 +663,49 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
       muscleSel: 'Pecho',
       planSearch: 'Hack',
       planTargetRoutine: 'Torso',
-      noteModal: { exName: 'Press Banca X', value: 'Pausa 1s abajo' },
+      activeModal: { type: 'note', exName: 'Press Banca X', value: 'Pausa 1s abajo' },
     };
 
-    const planHtml = viewPlan(state);
+    const planHtml = renderToString(h(PlanView, { state }));
     expect(planHtml).toContain('lg:grid-cols-12');
     expect(planHtml).toContain('Simulador de volumen semanal');
     expect(planHtml).toContain('id="planExSearch"');
-    expect(planHtml).toContain('data-change="planTargetRoutine"');
-    expect(planHtml).toContain('data-act="rtQuickAdd"');
+    expect(planHtml).toContain('aria-label="Rutina destino"');
+    expect(planHtml).toContain('+ Añadir');
     expect(planHtml).toContain('Sentadilla Hack');
 
-    const exerciseMapHtml = viewPlan({ ...state, tab: 'plan', planTab: 'exercises' });
+    const exerciseMapHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
     expect(exerciseMapHtml).toContain('min-w-0 space-y-3');
     expect(exerciseMapHtml).not.toContain('space-y-3 overflow-x-auto');
 
-    const emptySearchHtml = viewPlan({ ...state, planSearch: 'zzzznoexiste' });
+    const emptySearchHtml = renderToString(h(PlanView, { state: { ...state, planSearch: 'zzzznoexiste' } }));
     expect(emptySearchHtml).toContain('Sin resultados');
 
-    const modalHtml = renderModals(state);
+    const modalHtml = renderToString(h(ModalHost, { state }));
     expect(modalHtml).toContain('id="note-modal"');
     expect(modalHtml).toContain('id="f-note-modal"');
     expect(modalHtml).toContain('id="noteModalInput"');
     expect(modalHtml).toContain('Pausa 1s abajo');
     expect(modalHtml).not.toContain('backdrop-blur');
 
-    const homeHtml = viewHome(state);
-    expect(homeHtml).toContain('data-act="openExDetail"');
-    expect(homeHtml).toContain('Torso|Press Banca X');
+    const homeHtml = renderToString(h(HomeView, { state }));
+    expect(homeHtml).toContain('role="button"');
+    expect(homeHtml).toContain('Torso');
+    expect(homeHtml).toContain('Press Banca X');
 
-    const volHtml = viewVolume(state);
+    const volHtml = renderToString(h(VolumeView, { state }));
     expect(volHtml).toContain('hidden md:block');
     expect(volHtml).toContain('md:hidden');
 
-    const adhHtml = viewAdherence(state);
+    const adhHtml = renderToString(h(AdherenceView, { state }));
     expect(adhHtml).toContain('hidden md:flex');
     expect(adhHtml).toContain('flex md:hidden');
 
-    const calcHtml = viewCalc(state);
+    const calcHtml = renderToString(h(CalcView, { state }));
     expect(calcHtml).toContain('divide-white/10');
 
     const emptyImport = await importSamsungInWorker([]);
     expect(emptyImport.strength).toEqual([]);
-
-    resetCharts();
   });
 });
 
@@ -770,7 +790,19 @@ describe('onboarding wizard & athlete profile', () => {
     expect(draft.templateKey).toBe('fullBody');
     expect(draft.aiTone).toBe('simple');
 
-    const step1Html = renderModals({ ...baseState, wizard: draft });
+    const renderWizard = (wizardDraft: ReturnType<typeof createWizardDraft>) =>
+      renderToString(
+        h(WizardModal, {
+          draft: wizardDraft,
+          onboardingCompleted: Boolean(baseState.settings.onboardingCompleted),
+          onPatch: () => {},
+          onBack: () => {},
+          onSubmitStep: () => {},
+          onSkip: () => {},
+        }),
+      );
+
+    const step1Html = renderToString(h(ModalHost, { state: { ...baseState, activeModal: { type: 'wizard', draft } } }));
     expect(step1Html).toContain('id="wizard-modal"');
     expect(step1Html).toContain('id="f-wizard"');
     expect(step1Html).toContain('id="wizAge"');
@@ -778,35 +810,33 @@ describe('onboarding wizard & athlete profile', () => {
     expect(step1Html).toContain('wizard-modal-in');
     expect(step1Html).not.toContain('backdrop-blur');
 
-    const step2Html = renderWizardModal({ ...baseState, wizard: { ...draft, step: 2, anim: 'next' } });
+    const step2Html = renderWizard({ ...draft, step: 2, anim: 'next' });
     expect(step2Html).toContain('Objetivo principal');
-    expect(step2Html).toContain('data-act="wizardPickGoal"');
-    expect(step2Html).toContain('data-act="wizardBack"');
+    expect(step2Html).toContain('aria-label="Objetivo principal"');
+    expect(step2Html).toContain('← Anterior');
     expect(step2Html).toContain('wizard-step-next');
     expect(step2Html).toContain('wizard-bar-fill');
 
-    const stepBackHtml = renderWizardModal({ ...baseState, wizard: { ...draft, step: 1, anim: 'prev' } });
+    const stepBackHtml = renderWizard({ ...draft, step: 1, anim: 'prev' });
     expect(stepBackHtml).toContain('wizard-step-prev');
 
-    const stepStaticHtml = renderWizardModal({ ...baseState, wizard: { ...draft, step: 2, anim: undefined } });
+    const stepStaticHtml = renderWizard({ ...draft, step: 2, anim: undefined });
     expect(stepStaticHtml).not.toContain('wizard-step-next');
     expect(stepStaticHtml).not.toContain('wizard-step-prev');
 
-    const step3Html = renderWizardModal({ ...baseState, wizard: { ...draft, step: 3, anim: undefined } });
+    const step3Html = renderWizard({ ...draft, step: 3, anim: undefined });
     expect(step3Html).toContain('Recomendada');
-    expect(step3Html).toContain('data-act="wizardPickTpl"');
-    expect(step3Html).toContain('data-act="wizardPickTone"');
+    expect(step3Html).toContain('aria-label="Plantilla de rutina"');
+    expect(step3Html).toContain('aria-label="Tono del Coach IA"');
 
-    const homeHtml = viewHome({ ...baseState, measures: [] });
-    expect(homeHtml).toContain('data-act="openWizard"');
+    const homeHtml = renderToString(h(HomeView, { state: { ...baseState, measures: [] } }));
+    expect(homeHtml).toContain('Configurar perfil y objetivo');
 
-    const settingsHtml = viewSettings(baseState);
-    expect(settingsHtml).toContain('data-act="openWizard"');
-    expect(settingsHtml).toContain('data-change="pfGoal"');
-    expect(settingsHtml).toContain('data-change="pfExp"');
-    expect(settingsHtml).toContain('data-change="pfDays"');
-
-    resetCharts();
+    const settingsHtml = renderToString(h(SettingsView, { state: baseState }));
+    expect(settingsHtml).toContain('Asistente inicial');
+    expect(settingsHtml).toContain('Objetivo');
+    expect(settingsHtml).toContain('Experiencia');
+    expect(settingsHtml).toContain('Días / semana');
   });
 
   it('corrige P0: todayIso local, extractTargetWeight sin falsos deltas, telemetría en initLogDraft y timer estable', () => {
@@ -864,16 +894,16 @@ describe('onboarding wizard & athlete profile', () => {
     expect(fmtMMSS(95)).toBe('1:35');
     expect(fmtMMSS(0)).toBe('0:00');
     const live = initLiveWorkout(state, 'Push');
-    const runningHtml = renderRestTimerBar({ ...live, restUntil: Date.now() + 65_000 });
+    const runningHtml = renderToString(h(RestTimerBar, { restUntil: Date.now() + 65_000, targetRestSec: live.targetRestSec }));
     expect(runningHtml).toContain('data-rest-state="running"');
     expect(runningHtml).toContain('id="rest-timer-val"');
-    expect(renderRestTimerBar({ ...live, restUntil: Date.now() - 1000 })).toContain('data-rest-state="done"');
-    expect(renderRestTimerBar({ ...live, restUntil: undefined })).toContain('data-rest-state="idle"');
+    expect(renderToString(h(RestTimerBar, { restUntil: Date.now() - 1000, targetRestSec: live.targetRestSec }))).toContain('data-rest-state="done"');
+    expect(renderToString(h(RestTimerBar, { targetRestSec: live.targetRestSec }))).toContain('data-rest-state="idle"');
 
-    const logHtml = viewLog({ ...state, logDraft: draft });
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, logDraft: draft } }));
     expect(logHtml).not.toContain('id="rest-timer-bar"');
-    expect(logHtml).toContain('data-log-rest="');
-    expect(logHtml).toContain('data-act="tab" data-arg="workout"');
+    expect(logHtml).toContain('aria-label="Descanso en segundos serie 1');
+    expect(logHtml).toContain('Iniciar entreno en vivo');
     expect(logHtml).toContain('Peso (kg)');
     expect(logHtml).toContain('Reps');
     expect(logHtml).toContain('flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5');
@@ -909,16 +939,16 @@ describe('live workout & manual rest separation', () => {
       sets: [{ w: 80, r: 8, restSec: 105 }],
     };
     const state = makeState([pushSession]);
-    const html = viewWorkout(state);
+    const html = renderToString(h(LiveWorkoutView, { state }));
     expect(html).toContain('Iniciar entrenamiento');
     expect(html).toContain('Toca hoy');
-    expect(html).toContain('data-act="liveStart" data-arg="Pull"');
-    expect(html).toContain('data-act="liveStart" data-arg="Libre"');
-    expect(html).toContain('data-act="tab" data-arg="log"');
+    expect(html).toContain('Pull');
+    expect(html).toContain('Entreno libre');
+    expect(html).toContain('Registrar un entreno ya hecho');
 
-    const homeHtml = viewHome(state);
-    expect(homeHtml).toContain('data-act="startWorkout"');
-    expect(homeHtml).toContain('data-act="goLog"');
+    const homeHtml = renderToString(h(HomeView, { state }));
+    expect(homeHtml).toContain('Iniciar entreno');
+    expect(homeHtml).toContain('Registrar hecho');
   });
 
   it('renderiza solo el ejercicio activo en liveWorkout, paneles swap/add, aviso de avance y conserva restSec', () => {
@@ -939,52 +969,68 @@ describe('live workout & manual rest separation', () => {
 
     const live = initLiveWorkout(state, 'Push');
     expect(live.exercises.length).toBeGreaterThan(1);
-    const step1Html = viewWorkout({ ...state, liveWorkout: live });
+    const ex0Name = live.exercises[0].name;
+    const ex1Name = live.exercises[1].name;
+
+    const step1Html = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(step1Html).toContain('id="rest-timer-bar"');
-    expect(step1Html).toContain('data-live-set="0|0"');
-    expect(step1Html).toContain('data-live-rest="0|0"');
+    expect(step1Html).toContain('aria-label="Peso kg serie 1"');
+    expect(step1Html).toContain('aria-label="Descanso en segundos serie 1"');
     expect(step1Html).toContain('Peso (kg)');
     expect(step1Html).toContain('Reps');
-    expect(step1Html).toContain('data-act="liveToggleMenu"');
+    expect(step1Html).toContain('aria-label="Abrir lista de ejercicios"');
     expect(step1Html).not.toContain('role="tablist"');
     expect(step1Html).not.toContain('bg-cardDark');
     expect(step1Html).toContain('id="live-ex-menu-wrap" data-open="false"');
     expect(step1Html).toContain('grid-rows-[0fr]');
-    expect(step1Html).toContain('data-act="liveAddSet"');
-    expect(step1Html).toContain('data-act="liveOpenPicker" data-arg="swap"');
-    expect(step1Html).toContain('data-act="liveOpenPicker" data-arg="add"');
-    expect(step1Html).not.toContain('data-live-set="1|0"');
+    expect(step1Html).toContain('+ Añadir serie');
+    expect(step1Html).toContain('Cambiar ejercicio');
+    expect(step1Html).toContain('Añadir ejercicio');
+    expect(step1Html).toContain(`aria-label="Nota para ${ex0Name}"`);
+    expect(step1Html).not.toContain(`aria-label="Nota para ${ex1Name}"`);
 
-    const menuHtml = viewWorkout({
-      ...state,
-      liveWorkout: { ...live, exMenuOpen: true },
-    });
+    const menuHtml = renderToString(
+      h(LiveWorkoutView, {
+        state: {
+          ...state,
+          liveWorkout: { ...live, exMenuOpen: true },
+        },
+      }),
+    );
     expect(menuHtml).toContain('id="live-ex-menu-wrap" data-open="true"');
     expect(menuHtml).toContain('grid-rows-[1fr]');
     expect(menuHtml).toContain('id="live-ex-menu"');
     expect(menuHtml).toContain('rounded-2xl');
-    expect(menuHtml).toContain('data-act="liveGoEx" data-arg="1"');
+    expect(menuHtml).toContain(ex1Name);
     expect(menuHtml).toContain('Obj 2×10');
     expect(menuHtml).toContain('Últ. 80 kg × 8');
 
-    const step2Html = viewWorkout({
-      ...state,
-      liveWorkout: { ...live, curIdx: 1, lastCompletedExIdx: 0 },
-    });
-    expect(step2Html).toContain('data-live-set="1|0"');
-    expect(step2Html).not.toContain('data-live-set="0|0"');
-    expect(step2Html).toContain('data-act="liveAddExtraSetPrev"');
+    const step2Html = renderToString(
+      h(LiveWorkoutView, {
+        state: {
+          ...state,
+          liveWorkout: { ...live, curIdx: 1, lastCompletedExIdx: 0 },
+        },
+      }),
+    );
+    expect(step2Html).toContain(`aria-label="Nota para ${ex1Name}"`);
+    expect(step2Html).not.toContain(`aria-label="Nota para ${ex0Name}"`);
+    expect(step2Html).toContain(`+ Serie extra en ${ex0Name}`);
 
-    const swapHtml = viewWorkout({
-      ...state,
-      liveWorkout: { ...live, pickerMode: 'swap' },
-    });
+    const swapHtml = renderToString(
+      h(LiveWorkoutView, {
+        state: {
+          ...state,
+          liveWorkout: { ...live, pickerMode: 'swap' },
+        },
+      }),
+    );
     expect(swapHtml).toContain('Cambiar &quot;');
     expect(swapHtml).toContain('id="livePickerSelect"');
     expect(swapHtml).toContain('id="livePickerCustom"');
 
     const libreLive = initLiveWorkout(state, 'Libre');
-    const libreHtml = viewWorkout({ ...state, liveWorkout: libreLive });
+    const libreHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: libreLive } }));
     expect(libreHtml).toContain('Añadir ejercicio a este entreno');
 
     // Round-trip de restSec en initLogDraft y parseBackup
@@ -1019,29 +1065,41 @@ describe('live workout & manual rest separation', () => {
     expect(parsed.strength[0].sets[1].restSec).toBeUndefined();
   });
 
-  it('incluye anclajes DOM de parcheo en viewWorkout, filtro parcial de catálogo y DEFAULT_SETTINGS sin fases personales', () => {
+  it('incluye identificadores de resumen en LiveWorkoutView, filtro de catálogo en Plan y DEFAULT_SETTINGS sin fases', () => {
     expect(DEFAULT_SETTINGS.phases).toEqual([]);
 
     const state = makeState();
     const live = initLiveWorkout(state, 'Push');
-    const html = viewWorkout({ ...state, liveWorkout: live });
+    const html = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(html).toContain('id="liveCountSummary"');
     expect(html).toContain('id="liveFinishLabel"');
     expect(html).toContain('id="liveMenuSummary"');
-    expect(html).toContain('data-live-ex-counter="0"');
-    expect(html).toContain('data-live-set-lbl="0|0"');
-    expect(html).toContain('data-live-menu-info="0"');
-    expect(html).toContain('data-live-menu-count="0"');
+    expect(html).toContain('Serie 1');
+    expect(html).toContain(`1/${live.exercises.length}`);
 
-    const byName = renderPlanCatalogResults({ ...state, planSearch: 'hack' });
+    const renderCatalog = (search: string) => {
+      const cat = getPlanCatalogData({ ...state, planSearch: search });
+      return {
+        countText: cat.countText,
+        listHtml: renderToString(
+          h(PlanCatalogList, {
+            items: cat.items,
+            targetRoutine: cat.targetRoutine,
+            searchQuery: search,
+          }),
+        ),
+      };
+    };
+
+    const byName = renderCatalog('hack');
     expect(byName.countText).toMatch(/^\d+\/\d+$/);
     expect(byName.listHtml).toContain('Sentadilla Hack');
     expect(byName.listHtml).not.toContain('Press Banca');
 
-    const byMuscle = renderPlanCatalogResults({ ...state, planSearch: 'bíceps' });
+    const byMuscle = renderCatalog('bíceps');
     expect(byMuscle.listHtml).toContain('Bíceps');
 
-    const noMatch = renderPlanCatalogResults({ ...state, planSearch: 'xyznomatch123' });
+    const noMatch = renderCatalog('xyznomatch123');
     expect(noMatch.countText.startsWith('0/')).toBe(true);
     expect(noMatch.listHtml).toContain('Sin resultados');
   });
@@ -1076,7 +1134,7 @@ describe('Bloque 2 tokens, contraste y accesibilidad', () => {
     };
 
     try {
-      const homeHtml = viewHome(state);
+      const homeHtml = renderToString(h(HomeView, { state }));
       expect(homeHtml).toContain('% Grasa');
       expect(homeHtml).toContain('text-amberGold');
       expect(homeHtml).toContain('Pulso');
@@ -1085,29 +1143,33 @@ describe('Bloque 2 tokens, contraste y accesibilidad', () => {
       expect(homeHtml).not.toContain('#0D1320');
       expect(homeHtml).not.toContain('text-gray-500');
 
-      const bodyHtml = viewBody(state);
+      const bodyHtml = renderToString(h(BodyView, { state }));
       expect(bodyHtml).not.toContain('text-gray-500');
 
-      const dayHtml = viewDay(state, 'Push');
+      const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
       expect(dayHtml).toContain('role="listbox"');
-      expect(dayHtml).toMatch(/role="option"[^>]*data-act="selEx"|data-act="selEx"[^>]*role="option"/);
+      expect(dayHtml).toMatch(/id="day-opt-0"[^>]*role="option"|role="option"[^>]*id="day-opt-0"/);
       expect(dayHtml).not.toContain('bg-[#0D1320]');
 
       const live = initLiveWorkout(state, 'Push');
-      const liveHtml = viewWorkout({ ...state, liveWorkout: { ...live, exMenuOpen: true } });
+      const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: { ...live, exMenuOpen: true } } }));
       expect(liveHtml).toContain('bg-floatDark');
       expect(liveHtml).not.toContain('bg-[#0E1525]');
       expect(liveHtml).not.toContain('text-gray-500');
       expect(liveHtml).not.toContain('placeholder-gray-500');
 
-      const wizardHtml = renderWizardModal({
-        ...state,
-        wizard: createWizardDraft(state),
-      });
+      const wizardHtml = renderToString(
+        h(ModalHost, {
+          state: {
+            ...state,
+            activeModal: { type: 'wizard', draft: createWizardDraft(state) },
+          },
+        }),
+      );
       expect(wizardHtml).toContain('bg-modalDark');
       expect(wizardHtml).not.toContain('bg-[#0F1624]');
     } finally {
-      resetCharts();
+      // Sin caché imperativa de gráficas tras migración Preact
     }
   });
 });
@@ -1145,14 +1207,45 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
     };
     expect(activeTabTitle(state)).toBe('Cuerpo');
     expect(syncStatusInfo(state, false, true).text).toBe('Solo local');
-    expect(renderSidebar(state, 'sin datos', 0, 0, false)).toContain('bg-navDark');
-    const mobHead = renderMobileHeader(state, 'sin datos', false);
+    expect(
+      renderToString(
+        h(Sidebar, {
+          state,
+          statsText: 'sin datos',
+          liveCount: 0,
+          draftCount: 0,
+          unsynced: false,
+          onSelectTab: () => {},
+          onCloudLogin: () => {},
+        }),
+      ),
+    ).toContain('bg-navDark');
+    const mobHead = renderToString(
+      h(MobileHeader, {
+        state,
+        statsText: 'sin datos',
+        unsynced: false,
+        onSelectTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
     expect(mobHead).toContain('<h1');
     expect(mobHead).toContain('role="tablist"');
-    expect(renderMobileNav(state, 0, 0, 'Push', 'body')).toContain('bg-navDark');
+    expect(
+      renderToString(
+        h(MobileBottomNav, {
+          state,
+          liveCount: 0,
+          draftCount: 0,
+          lastRoutine: 'Push',
+          lastAnalytics: 'body',
+          onSelectTab: () => {},
+        }),
+      ),
+    ).toContain('bg-navDark');
   });
 
-  it('evita crash en viewCalc ante sets vacíos y aplica 16px / 44px en inputs de descanso', () => {
+  it('evita crash en CalcView ante sets vacíos y aplica 16px / 44px en inputs de descanso', () => {
     const settings = sanitizeSettings({});
     const baseState: State = {
       tab: 'calc',
@@ -1166,15 +1259,16 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
       perimeter: 'arms',
       muscleSel: 'Pecho',
     };
-    expect(() => viewCalc(baseState)).not.toThrow();
+    expect(() => renderToString(h(CalcView, { state: baseState }))).not.toThrow();
 
-    const liveHtml = viewWorkout({ ...baseState, tab: 'workout', liveWorkout: initLiveWorkout(baseState, 'Push') });
-    expect(liveHtml).toMatch(/data-live-rest="0\|0"[^>]*>|text-base sm:text-xs[^"]*data-live-rest="0\|0"|min-h-\[44px\][^"]*text-base sm:text-xs[^"]*data-live-rest="0\|0"/);
+    const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...baseState, tab: 'workout', liveWorkout: initLiveWorkout(baseState, 'Push') } }));
+    expect(liveHtml).toContain('aria-label="Descanso en segundos serie 1"');
     expect(liveHtml).toContain('min-h-[44px]');
+    expect(liveHtml).toContain('text-base sm:text-xs');
     expect(liveHtml).not.toContain('min-h-[38px]');
     expect(liveHtml).not.toContain('h-11 w-10 sm:w-11');
 
-    const logHtml = viewLog({ ...baseState, tab: 'log', logDraft: initLogDraft(baseState, 'Push', '2026-11-16') });
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...baseState, tab: 'log', logDraft: initLogDraft(baseState, 'Push', '2026-11-16') } }));
     expect(logHtml).toContain('text-base sm:text-xs font-semibold tabular-nums');
   });
 });
@@ -1201,73 +1295,76 @@ describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', ()
       muscleSel: 'Pecho',
     };
 
-    try {
-      const homeHtml = viewHome(emptyState);
-      expect(homeHtml).toContain('data-act="startWorkout">+ Empezar primer entreno hoy');
-      expect(homeHtml).toContain('data-act="startWorkout" data-arg="Push"');
+    const homeHtml = renderToString(h(HomeView, { state: emptyState }));
+    expect(homeHtml).toContain('+ Empezar primer entreno hoy');
+    expect(homeHtml).toContain('<span>Push</span>');
 
-      const dayHtml = viewDay(emptyState, 'Push');
-      expect(dayHtml).toContain('Press horizontal en máquina');
-      expect(dayHtml).toContain('Pendiente de estrenar');
-      expect(dayHtml).toContain('Sin estrenar');
-      expect(dayHtml).not.toContain('No hay ejercicios con datos para esta rutina');
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: emptyState }));
+    expect(dayHtml).toContain('Press horizontal en máquina');
+    expect(dayHtml).toContain('Pendiente de estrenar');
+    expect(dayHtml).toContain('Sin estrenar');
+    expect(dayHtml).not.toContain('No hay ejercicios con datos para esta rutina');
 
-      const liveEmpty = initLiveWorkout(emptyState, 'Vacía');
-      expect(liveEmpty.pickerMode).toBe('add');
+    const liveEmpty = initLiveWorkout(emptyState, 'Vacía');
+    expect(liveEmpty.pickerMode).toBe('add');
 
-      const settingsHtml = viewSettings(emptyState);
-      expect(settingsHtml).not.toContain('VITE_RECAPTCHA_SITE_KEY');
-      expect(settingsHtml).not.toContain('App Check');
-      expect(settingsHtml).not.toContain('Firebase AI Logic');
-      expect(settingsHtml).toContain('2 días');
+    const settingsHtml = renderToString(h(SettingsView, { state: emptyState }));
+    expect(settingsHtml).not.toContain('VITE_RECAPTCHA_SITE_KEY');
+    expect(settingsHtml).not.toContain('App Check');
+    expect(settingsHtml).not.toContain('Firebase AI Logic');
+    expect(settingsHtml).toContain('2 días');
 
-      const calcHtml = viewCalc({ ...emptyState, tab: 'calc' });
-      expect(calcHtml).toContain('data-act="nutriAct"');
-      expect(calcHtml).toContain('data-act="nutriGoal"');
-      expect(calcHtml).toContain('Estima el peso máximo que podrías mover a 1 repetición');
+    const calcHtml = renderToString(h(CalcView, { state: { ...emptyState, tab: 'calc' } }));
+    expect(calcHtml).toContain('aria-label="Factor de actividad"');
+    expect(calcHtml).toContain('aria-label="Fase energética"');
+    expect(calcHtml).toContain('Estima el peso máximo que podrías mover a 1 repetición');
 
-      const liveFirstTime = initLiveWorkout(emptyState, 'Push');
-      const liveHtml = viewWorkout({ ...emptyState, tab: 'workout', liveWorkout: liveFirstTime });
-      expect(liveHtml).toContain('Primera vez: empieza con un peso cómodo');
-      expect(liveHtml).toContain('Desc. real');
+    const liveFirstTime = initLiveWorkout(emptyState, 'Push');
+    const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...emptyState, tab: 'workout', liveWorkout: liveFirstTime } }));
+    expect(liveHtml).toContain('Primera vez: empieza con un peso cómodo');
+    expect(liveHtml).toContain('Desc. real');
 
-      const summaryModalHtml = renderModals({
-        ...emptyState,
-        workoutSummary: {
-          day: 'Push',
-          durationMin: 42,
-          exercises: 5,
-          sets: 14,
-          tonnageKg: 3250,
-          prNames: ['Press horizontal en máquina'],
+    const summaryModalHtml = renderToString(
+      h(ModalHost, {
+        state: {
+          ...emptyState,
+          activeModal: {
+            type: 'workoutSummary',
+            summary: {
+              day: 'Push',
+              durationMin: 42,
+              exercises: 5,
+              sets: 14,
+              tonnageKg: 3250,
+              prNames: ['Press horizontal en máquina'],
+            },
+          },
         },
-      });
-      expect(summaryModalHtml).toContain('id="workout-summary-modal"');
-      expect(summaryModalHtml).toContain('¡Entreno completado!');
-      expect(summaryModalHtml).toContain('Nuevas marcas personales (1)');
+      }),
+    );
+    expect(summaryModalHtml).toContain('id="workout-summary-modal"');
+    expect(summaryModalHtml).toContain('¡Entreno completado!');
+    expect(summaryModalHtml).toContain('Nuevas marcas personales (1)');
 
-      expect(DEFAULT_MUSCLES.aductores?.p).toBe('Aductores');
-      expect(DEFAULT_MUSCLES.adductores?.p).toBe('Aductores');
+    expect(DEFAULT_MUSCLES.aductores?.p).toBe('Aductores');
+    expect(DEFAULT_MUSCLES.adductores?.p).toBe('Aductores');
 
-      const freeStrength = [
-        {
-          id: 'free-1',
-          sessionId: 'manual-2026-11-10-libre',
-          ts: Date.parse('2026-11-10T10:00:00Z'),
-          date: '2026-11-10',
-          ref: 'name:Ejercicio Libre Nuevo',
-          sets: [{ w: 40, r: 10 }],
-        },
-      ];
-      const freeState: State = {
-        ...emptyState,
-        strength: freeStrength,
-        analysis: analyze(freeStrength, settings),
-      };
-      expect(buildHomeExChartConfig(freeState)).not.toBeNull();
-    } finally {
-      resetCharts();
-    }
+    const freeStrength = [
+      {
+        id: 'free-1',
+        sessionId: 'manual-2026-11-10-libre',
+        ts: Date.parse('2026-11-10T10:00:00Z'),
+        date: '2026-11-10',
+        ref: 'name:Ejercicio Libre Nuevo',
+        sets: [{ w: 40, r: 10 }],
+      },
+    ];
+    const freeState: State = {
+      ...emptyState,
+      strength: freeStrength,
+      analysis: analyze(freeStrength, settings),
+    };
+    expect(buildHomeExChartConfig(freeState)).not.toBeNull();
   });
 });
 
@@ -1286,12 +1383,21 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
       perimeter: 'arms',
       muscleSel: 'Pecho',
     };
-    const wizardHtml = renderWizardModal({ ...state, wizard: createWizardDraft(state) });
+    const wizardHtml = renderToString(
+      h(WizardModal, {
+        draft: createWizardDraft(state),
+        onboardingCompleted: false,
+        onPatch: () => {},
+        onBack: () => {},
+        onSubmitStep: () => {},
+        onSkip: () => {},
+      }),
+    );
     expect(wizardHtml).toMatch(/<button\s+id="wizardNext"\s+type="submit"\s+class="btn-primary min-h-\[44px\] px-5">/);
     expect(wizardHtml).not.toMatch(/id="wizardNext"[^>]*data-act=/);
   });
 
-  it('mantiene jerarquía de encabezados h2/h3 continua en viewCalc, viewSettings y viewHome', () => {
+  it('mantiene jerarquía de encabezados h2/h3 continua en CalcView, SettingsView y HomeView', () => {
     const settings = sanitizeSettings({
       ai: {
         date: '2026-11-15',
@@ -1329,38 +1435,38 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
       muscleSel: 'Pecho',
     };
 
-    try {
-      const calcHtml = viewCalc(state);
-      expect(calcHtml).toContain('<h2 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h2>');
-      expect(calcHtml).toContain('<h2 class="font-bold text-white">Planificador nutricional');
-      expect(calcHtml).not.toContain('<h3');
+    const calcHtml = renderToString(h(CalcView, { state }));
+    expect(calcHtml).toContain('<h2 class="font-bold text-white">Calculadora de fuerza máxima (1RM)</h2>');
+    expect(calcHtml).toContain('<h2 class="font-bold text-white">Planificador nutricional');
+    expect(calcHtml).not.toContain('<h3');
 
-      const settingsOut = viewSettings(state);
-      expect(settingsOut).toContain('<h2 class="font-bold text-white">Cuenta y sincronización</h2>');
-      expect(settingsOut).toContain('<h2 class="font-bold text-white">Perfil del atleta</h2>');
-      expect(settingsOut).toContain('<h2 class="font-bold text-white">Preferencias del Coach IA</h2>');
-      expect(settingsOut).toContain('<h2 class="text-sm font-bold text-white">Accesos relacionados</h2>');
-      expect(settingsOut).not.toContain('<h3');
+    const settingsOut = renderToString(h(SettingsView, { state }));
+    expect(settingsOut).toContain('<h2 class="font-bold text-white">Cuenta y sincronización</h2>');
+    expect(settingsOut).toContain('<h2 class="font-bold text-white">Perfil del atleta</h2>');
+    expect(settingsOut).toContain('<h2 class="font-bold text-white">Preferencias del Coach IA</h2>');
+    expect(settingsOut).toContain('<h2 class="text-sm font-bold text-white">Accesos relacionados</h2>');
+    expect(settingsOut).not.toContain('<h3');
 
-      const homeWithAi = viewHome(state);
-      expect(homeWithAi).toContain('<h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>');
-      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Evolución de cargas</h2>');
-      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Peso y % de grasa</h2>');
-      expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>');
-      expect(homeWithAi).not.toContain('<h4');
+    const homeWithAi = renderToString(h(HomeView, { state }));
+    expect(homeWithAi).toContain('<h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>');
+    expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Evolución de cargas</h2>');
+    expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Peso y % de grasa</h2>');
+    expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>');
+    expect(homeWithAi).not.toContain('<h4');
 
-      const homeNoAi = viewHome({
-        ...state,
-        settings: sanitizeSettings({}),
-      });
-      expect(homeNoAi).toContain('<h2 class="text-base font-extrabold text-white">Informe IA</h2>');
-      expect(homeNoAi).not.toContain('<h3');
-    } finally {
-      resetCharts();
-    }
+    const homeNoAi = renderToString(
+      h(HomeView, {
+        state: {
+          ...state,
+          settings: sanitizeSettings({}),
+        },
+      }),
+    );
+    expect(homeNoAi).toContain('<h2 class="text-base font-extrabold text-white">Informe IA</h2>');
+    expect(homeNoAi).not.toContain('<h3');
   });
 
-  it('vincula ai-tabpanel con aria-labelledby solo cuando hay múltiples pestañas y configura listbox en viewDay', () => {
+  it('vincula ai-tabpanel con aria-labelledby solo cuando hay múltiples pestañas y configura listbox en DayRoutineView', () => {
     const settingsMulti = sanitizeSettings({
       ai: {
         date: '2026-11-15',
@@ -1388,7 +1494,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
       aiTab: 1,
     };
 
-    const multiHtml = renderAiReport(base);
+    const multiHtml = renderToString(h(AiCoachPanel, { state: base, tone: 'simple' }));
     expect(multiHtml).toContain('id="ai-tab-1"');
     expect(multiHtml).toContain('aria-controls="ai-tabpanel"');
     expect(multiHtml).toContain('id="ai-tabpanel" role="tabpanel" aria-labelledby="ai-tab-1"');
@@ -1402,18 +1508,14 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         byExercise: {},
       },
     });
-    const singleHtml = renderAiReport({ ...base, settings: singleSettings });
+    const singleHtml = renderToString(h(AiCoachPanel, { state: { ...base, settings: singleSettings }, tone: 'simple' }));
     expect(singleHtml).not.toContain('role="tabpanel"');
     expect(singleHtml).not.toContain('aria-labelledby="ai-tab-');
 
-    try {
-      const dayHtml = viewDay(base, 'Push');
-      expect(dayHtml).toContain('role="listbox" aria-orientation="vertical"');
-      expect(dayHtml).toContain('id="day-opt-0" role="option" tabindex="0" data-act="selEx"');
-      expect(dayHtml).toContain('id="day-opt-1" role="option" tabindex="-1" data-act="selEx"');
-    } finally {
-      resetCharts();
-    }
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: base }));
+    expect(dayHtml).toContain('role="listbox" aria-orientation="vertical"');
+    expect(dayHtml).toContain('id="day-opt-0" role="option" tabindex="0"');
+    expect(dayHtml).toContain('id="day-opt-1" role="option" tabindex="-1"');
   });
 
   it('mejora contraste de quitar serie en vivo y elimina modificadores ! de .btn/.inp/.tab', () => {
@@ -1432,29 +1534,25 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
       ranges: { home: 'Custom' },
     };
 
-    try {
-      const live = initLiveWorkout(state, 'Push');
-      const liveHtml = viewWorkout({ ...state, liveWorkout: live });
-      expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
-      expect(liveHtml).not.toContain('text-coralRed/90');
-      expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base');
-      expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
-      expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
+    const live = initLiveWorkout(state, 'Push');
+    const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
+    expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
+    expect(liveHtml).not.toContain('text-coralRed/90');
+    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base');
+    expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+    expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
 
-      const logHtml = viewLog({ ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') });
-      expect(logHtml).toContain('inp-stepper min-w-[44px]');
-      expect(logHtml).toContain('btn btn-accent');
-      expect(logHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') } }));
+    expect(logHtml).toContain('inp-stepper min-w-[44px]');
+    expect(logHtml).toContain('btn btn-accent');
+    expect(logHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
 
-      const planHtml = viewPlan({ ...state, tab: 'plan', planTab: 'routines' });
-      const planExHtml = viewPlan({ ...state, tab: 'plan', planTab: 'exercises' });
-      const bodyHtml = viewBody({ ...state, tab: 'body' });
-      const pickerHtml = rangePicker('home', 'Custom', {});
-      for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
-        expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
-      }
-    } finally {
-      resetCharts();
+    const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
+    const planExHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
+    const bodyHtml = renderToString(h(BodyView, { state: { ...state, tab: 'body' } }));
+    const pickerHtml = renderToString(h(RangePicker, { scope: 'home', active: 'Custom', custom: {} }));
+    for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
+      expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     }
   });
 });

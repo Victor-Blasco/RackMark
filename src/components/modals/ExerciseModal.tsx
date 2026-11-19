@@ -35,7 +35,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
 
   return (
     <div id="ex-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="exModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" data-act="closeModal" aria-hidden="true" onClick={onClose} />
+      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
       <form
         id="f-new-ex"
         class="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
@@ -49,7 +49,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
             <h3 id="exModalTitle" class="text-base font-extrabold text-white">Crear nuevo ejercicio</h3>
             <p class="text-xs text-gray-400">Se añadirá a tu biblioteca muscular y podrás asignarlo a una rutina.</p>
           </div>
-          <button type="button" data-act="closeModal" aria-label="Cerrar modal" class="icon-btn" onClick={onClose}>
+          <button type="button" aria-label="Cerrar modal" class="icon-btn" onClick={onClose}>
             <Icon name="close" className="h-4 w-4" />
           </button>
         </div>
@@ -99,7 +99,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
         )}
 
         <div class="flex items-center justify-end gap-2 border-t border-white/10 pt-3">
-          <button type="button" class="btn" data-act="closeModal" onClick={onClose}>Cancelar</button>
+          <button type="button" class="btn" onClick={onClose}>Cancelar</button>
           <button type="submit" class="btn-primary">
             <Icon name="save" className="h-4 w-4" /> Guardar ejercicio
           </button>

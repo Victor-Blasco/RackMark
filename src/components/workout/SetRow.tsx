@@ -3,8 +3,6 @@ import { Icon } from '../common/Icon';
 import { StepperInput } from '../common/StepperInput';
 
 interface SetRowProps {
-  /** Índice del ejercicio activo dentro de `liveWorkout`. */
-  exIdx: number;
   /** Índice base 0 de esta serie dentro del ejercicio. */
   setIndex: number;
   /** Datos de peso, repeticiones, RIR, descanso y estado de la serie. */
@@ -33,7 +31,6 @@ const STEP_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border bor
  * Fila interactiva de una serie individual en `En vivo` con peso, reps, RIR y descanso.
  */
 export function SetRow({
-  exIdx,
   setIndex,
   set: s,
   targetRestSec,
@@ -45,13 +42,12 @@ export function SetRow({
   onRirChange,
   onRestChange,
 }: SetRowProps) {
-  const key = `${exIdx}|${setIndex}`;
   const n = setIndex + 1;
 
   return (
-    <div data-live-set={key} class={`py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`}>
+    <div class={`py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`}>
       <div class="flex items-center justify-between gap-2 text-xs">
-        <span data-live-set-lbl={key} class={`font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}`}>
+        <span class={`font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}`}>
           Serie {n}{s.done ? ' · Hecha' : ''}
         </span>
         <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
@@ -65,7 +61,6 @@ export function SetRow({
             inputMode="numeric"
             value={s.rir ?? ''}
             placeholder="—"
-            data-live-rir={key}
             aria-label={`RIR de serie ${n}`}
             onInput={(e) => onRirChange(e.currentTarget.value)}
           />
@@ -81,7 +76,6 @@ export function SetRow({
             inputMode="numeric"
             value={s.restSec ?? ''}
             placeholder={String(targetRestSec)}
-            data-live-rest={key}
             aria-label={`Descanso en segundos serie ${n}`}
             onInput={(e) => onRestChange(e.currentTarget.value)}
           />
@@ -96,10 +90,7 @@ export function SetRow({
           value={s.w}
           step="0.5"
           inputMode="decimal"
-          inputData={{ 'data-live-w': key }}
           inputAria={`Peso kg serie ${n}`}
-          stepAct="liveStepW"
-          stepArgPrefix={key}
           delta={2.5}
           decAria={`Restar 2,5 kg serie ${n}`}
           incAria={`Sumar 2,5 kg serie ${n}`}
@@ -115,10 +106,7 @@ export function SetRow({
           value={s.r}
           step="1"
           inputMode="numeric"
-          inputData={{ 'data-live-r': key }}
           inputAria={`Repeticiones serie ${n}`}
-          stepAct="liveStepR"
-          stepArgPrefix={key}
           delta={1}
           decAria={`Restar 1 repetición serie ${n}`}
           incAria={`Sumar 1 repetición serie ${n}`}
@@ -130,8 +118,6 @@ export function SetRow({
         />
         <button
           type="button"
-          data-act="liveToggleSet"
-          data-arg={key}
           aria-pressed={s.done ? 'true' : 'false'}
           aria-label={`${s.done ? 'Desmarcar' : 'Marcar'} serie ${n}`}
           class={`flex h-11 w-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}

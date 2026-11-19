@@ -41,12 +41,12 @@ export function LogRecentSessions({ state, routines, sessions, onEditSession, on
                 <div class="text-xs text-gray-400 truncate" title={exSummary}>{exSummary}</div>
               </div>
               <div class="flex shrink-0 items-center gap-1.5">
-                <button type="button" class="btn min-h-[44px] px-3 py-2 text-xs" data-act="logEditSession" data-arg={`${s.id}|${s.date}|${day}`} onClick={() => onEditSession(s.id, s.date, day)}>
+                <button type="button" class="btn min-h-[44px] px-3 py-2 text-xs" onClick={() => onEditSession(s.id, s.date, day)}>
                   <Icon name="edit" className="h-3.5 w-3.5" />
                   <span class="hidden sm:inline">Cargar / Editar</span>
                   <span class="sm:hidden">Editar</span>
                 </button>
-                <button type="button" class="btn btn-danger min-h-[44px] min-w-[44px] px-2.5 py-2 text-xs" data-act="logDelSession" data-arg={`${s.id}|${s.date}`} aria-label={`Borrar sesión del ${fmtDate(s.date)}`} title="Borrar sesión" onClick={() => onDeleteSession(s.id, s.date)}>
+                <button type="button" class="btn btn-danger min-h-[44px] min-w-[44px] px-2.5 py-2 text-xs" aria-label={`Borrar sesión del ${fmtDate(s.date)}`} title="Borrar sesión" onClick={() => onDeleteSession(s.id, s.date)}>
                   <Icon name="trash" className="h-3.5 w-3.5" />
                 </button>
               </div>

@@ -109,7 +109,7 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
       {!vm.currentEx && !live.pickerMode && (
         <div class="rounded-2xl border border-white/10 bg-cardDark p-5 text-center space-y-3">
           <p class="text-sm text-gray-300">Esta rutina todavía no tiene ejercicios añadidos.</p>
-          <button type="button" class="btn-primary min-h-[44px]" data-act="liveOpenPicker" data-arg="add" onClick={() => actions.openPicker('add')}>
+          <button type="button" class="btn-primary min-h-[44px]" onClick={() => actions.openPicker('add')}>
             + Añadir primer ejercicio al entreno
           </button>
         </div>
@@ -127,10 +127,10 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
 
       {vm.total > 1 && (
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" data-act="livePrevEx" disabled={vm.curIdx === 0} onClick={actions.prevExercise}>
+          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" disabled={vm.curIdx === 0} onClick={actions.prevExercise}>
             ← Anterior
           </button>
-          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" data-act="liveNextEx" disabled={vm.curIdx >= vm.total - 1} onClick={actions.nextExercise}>
+          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" disabled={vm.curIdx >= vm.total - 1} onClick={actions.nextExercise}>
             Siguiente →
           </button>
         </div>

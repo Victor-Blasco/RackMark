@@ -28,8 +28,6 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
           <button
             key={item.day}
             type="button"
-            data-act="liveStart"
-            data-arg={item.day}
             class={`flex min-h-[68px] w-full items-center justify-between gap-3 py-3.5 px-1 text-left transition-colors active:bg-white/5 ${item.isSuggested ? 'bg-electricBlue/[0.06]' : 'hover:bg-white/[0.03]'}`}
             onClick={() => onStartWorkout(item.day)}
           >
@@ -50,8 +48,6 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
 
         <button
           type="button"
-          data-act="liveStart"
-          data-arg="Libre"
           class="flex min-h-[64px] w-full items-center justify-between gap-3 py-3.5 px-1 text-left transition-colors hover:bg-white/[0.03] active:bg-white/5"
           onClick={() => onStartWorkout('Libre')}
         >
@@ -66,8 +62,6 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
       <div class="pt-1 text-center">
         <button
           type="button"
-          data-act="tab"
-          data-arg="log"
           class="inline-flex min-h-[44px] items-center gap-1.5 px-3 text-xs font-semibold text-gray-300 hover:text-white"
           onClick={onGoToLog}
         >

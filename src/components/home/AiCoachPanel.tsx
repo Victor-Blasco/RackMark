@@ -1,43 +1,11 @@
 import { buildAiReportViewModel } from '../../store/homeSelectors';
-import type { AiJob, AiTone } from '../../types';
+import type { AiTone } from '../../types';
 import { fmtDate, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { AiToneToggle } from '../common/StatusBadge';
+import { AiJobStatusBanner } from './AiJobStatusBanner';
 
-interface AiJobStatusBannerProps {
-  /** Estado persistente del trabajo en curso o con error del Coach IA. */
-  job?: AiJob;
-  /** Reintenta la generación tras un fallo. */
-  onRetry?: () => void;
-  /** Descarta el aviso de error. */
-  onDismiss?: () => void;
-}
-
-/** Banner de progreso o error durante la generación del informe de Coach IA. */
-export function AiJobStatusBanner({ job, onRetry, onDismiss }: AiJobStatusBannerProps) {
-  if (!job || job.status === 'completed') return null;
-  if (job.status === 'error') {
-    return (
-      <div role="alert" class="space-y-2 rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2.5 text-sm">
-        <p class="font-semibold text-rose-200">No se pudo generar el informe.</p>
-        <p class="text-gray-300">{job.error ?? 'Se produjo un error inesperado.'}</p>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-sm min-h-[44px] sm:min-h-[36px]" data-act="aiRetry" onClick={onRetry}>
-            <Icon name="refresh" className="h-3.5 w-3.5" /> Reintentar
-          </button>
-          <button type="button" class="btn-sm min-h-[44px] sm:min-h-[36px]" data-act="aiDismiss" onClick={onDismiss}>
-            Descartar aviso
-          </button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div role="status" aria-live="polite" class="rounded-xl border border-electricBlue/30 bg-electricBlue/10 px-3 py-2.5 text-sm text-blue-100">
-      {job.attempts > 1 ? 'Reintentando generación tras recuperar la sesión…' : 'Generando informe…'}
-    </div>
-  );
-}
+export { AiJobStatusBanner };
 
 interface AiCoachPanelProps {
   /** Estado global con informe guardado y trabajo activo. */
@@ -79,7 +47,7 @@ export function AiCoachPanel({
           <AiToneToggle tone={tone} onChange={onToneChange} />
         </div>
         <AiJobStatusBanner job={state.aiJob} onRetry={onRetry} onDismiss={onDismiss} />
-        <button type="button" class="btn-primary w-full text-xs sm:text-sm" data-act="ai" disabled={state.busy === 'ai'} onClick={onGenerate}>
+        <button type="button" class="btn-primary w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
           <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
         </button>
       </section>
@@ -105,7 +73,7 @@ export function AiCoachPanel({
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <AiToneToggle tone={activeTone} onChange={onToneChange} />
-          <button type="button" class="btn-sm" data-act="ai" disabled={state.busy === 'ai'} onClick={onGenerate}>
+          <button type="button" class="btn-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
             <Icon name="refresh" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Actualizar'}
           </button>
         </div>
@@ -124,8 +92,6 @@ export function AiCoachPanel({
               aria-selected={idx === activeIdx ? 'true' : 'false'}
               aria-controls="ai-tabpanel"
               tabIndex={idx === activeIdx ? 0 : -1}
-              data-act="aiTab"
-              data-arg={String(idx)}
               class={`tab whitespace-nowrap min-h-[44px] sm:min-h-[36px] px-3 py-1.5 text-xs sm:text-sm inline-flex items-center gap-2 ${idx === activeIdx ? 'tab-on' : ''}`}
               onClick={() => onSelectTab(idx)}
             >

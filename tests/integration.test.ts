@@ -1,16 +1,22 @@
+import { h } from 'preact';
+import renderToString from 'preact-render-to-string';
 import { describe, expect, it, vi } from 'vitest';
-import { createPlanController } from '../src/app/planController';
-import { createWorkoutController } from '../src/app/workoutController';
-import { maybeOpenInitialWizard, num, splitPair, type AppContext } from '../src/app/context';
+import { maybeOpenInitialWizard, num, splitPair } from '../src/app/context';
+import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
+import { AiJobStatusBanner } from '../src/components/home/AiJobStatusBanner';
+import { ModalHost } from '../src/components/modals/ModalHost';
+import { RestTimerBar } from '../src/components/workout/RestTimerBar';
+import { fmtMMSS } from '../src/hooks/useRestTimer';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
 import { analyze } from '../src/lib/analysis';
 import { parseBackup, sanitizeDataRecord, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
-import { focusSelector, updateNavRestBadges, updateRestBarDom } from '../src/ui/domPatches';
+import { createPlanActions } from '../src/store/planActions';
+import { createLiveWorkoutActions } from '../src/store/workoutActions';
+import { createWorkoutLaunchActions } from '../src/store/workoutLaunchActions';
+import { initLiveWorkout } from '../src/store/workoutSelectors';
 import { moveItem } from '../src/ui/reorder';
 import type { State } from '../src/ui/shared';
-import { initLiveWorkout } from '../src/ui/workoutView';
-import { renderAiJobStatus, renderAiReport } from '../src/ui/views';
 
 function makeTestState(): State {
   const settings = sanitizeSettings({
@@ -33,22 +39,7 @@ function makeTestState(): State {
   };
 }
 
-function makeFakeElement(opts: {
-  id?: string;
-  name?: string;
-  dataset?: Record<string, string>;
-  inMeasureForm?: boolean;
-}): HTMLElement {
-  const proto = typeof HTMLElement !== 'undefined' ? HTMLElement.prototype : Object.prototype;
-  const el = Object.create(proto) as HTMLElement & { name?: string };
-  Object.defineProperty(el, 'id', { value: opts.id ?? '', configurable: true });
-  Object.defineProperty(el, 'dataset', { value: opts.dataset ?? {}, configurable: true });
-  if (opts.name) el.name = opts.name;
-  el.closest = ((sel: string) => (sel === '#f-measure' && opts.inMeasureForm ? ({} as Element) : null)) as HTMLElement['closest'];
-  return el;
-}
-
-describe('Integración Fase 4: db.ts, ai.ts, domPatches.ts, reorder.ts y controladores src/app/*', () => {
+describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y acciones de store', () => {
   it('valida sanitizeDataRecord en las 4 colecciones y descarta entradas inválidas', () => {
     expect(
       sanitizeDataRecord('strength', {
@@ -142,7 +133,7 @@ describe('Integración Fase 4: db.ts, ai.ts, domPatches.ts, reorder.ts y control
       attempts: 1,
       error: 'Tiempo agotado al generar el informe.',
     };
-    const html = renderAiJobStatus(state);
+    const html = renderToString(h(AiJobStatusBanner, { job: state.aiJob }));
     expect(html).toContain('No se pudo generar el informe');
     expect(html).toContain('Reintentar');
     expect(state.settings.ai.summary).toBe('Informe anterior');
@@ -166,40 +157,22 @@ describe('Integración Fase 4: db.ts, ai.ts, domPatches.ts, reorder.ts y control
         }],
       },
     };
-    const html = renderAiReport(state);
+    const html = renderToString(h(AiCoachPanel, { state, tone: 'simple' }));
     expect(html).toContain('Peso y forma física');
     expect(html).toContain('<span>Cuerpo</span>');
   });
 
-  it('resuelve selectores de foco y parches DOM sin reconstruir la vista (domPatches.ts & reorder.ts)', () => {
-    if (typeof HTMLElement !== 'undefined') {
-      expect(focusSelector(makeFakeElement({ id: 'wizardNext' }))).toBe('#wizardNext');
-      expect(focusSelector(makeFakeElement({ dataset: { liveR: '0|1' } }))).toBe('[data-live-r="0|1"]');
-      expect(focusSelector(makeFakeElement({ dataset: { logW: '2|0' } }))).toBe('[data-log-w="2|0"]');
-      expect(focusSelector(makeFakeElement({ name: 'weight', inMeasureForm: true }))).toBe('#f-measure [name="weight"]');
-      expect(focusSelector(makeFakeElement({ dataset: { act: 'selEx', arg: 'Push|Press' } }))).toBe(
-        '[data-act="selEx"][data-arg="Push|Press"]',
-      );
-    }
+  it('formatea descanso declarativo en RestTimerBar, fmtMMSS y reordenación inmutable (reorder.ts)', () => {
+    expect(fmtMMSS(75)).toBe('1:15');
 
-    const badge = {
-      textContent: '',
-      classList: { remove: vi.fn(), add: vi.fn(), toggle: vi.fn() },
-    };
-    const bar = { outerHTML: '', dataset: {} };
-    const fakeRoot = {
-      querySelectorAll: (sel: string) => (sel === '[data-nav-rest]' ? [badge] : []),
-      querySelector: (sel: string) => (sel === '#rest-timer-bar' ? bar : null),
-    } as unknown as HTMLElement;
+    const idleHtml = renderToString(h(RestTimerBar, { targetRestSec: 90 }));
+    expect(idleHtml).toContain('id="rest-timer-bar"');
+    expect(idleHtml).toContain('data-rest-state="idle"');
 
-    updateNavRestBadges(fakeRoot, 75);
-    expect(badge.textContent).toBe('1:15');
-    expect(badge.classList.toggle).toHaveBeenCalledWith('hidden', false);
-
-    const state = makeTestState();
-    state.liveWorkout = initLiveWorkout(state, 'Push');
-    updateRestBarDom(fakeRoot, state);
-    expect(bar.outerHTML).toContain('id="rest-timer-bar"');
+    const runningHtml = renderToString(h(RestTimerBar, { restUntil: Date.now() + 75_000, targetRestSec: 90 }));
+    expect(runningHtml).toContain('id="rest-timer-bar"');
+    expect(runningHtml).toContain('data-rest-state="running"');
+    expect(runningHtml).toContain('id="rest-timer-val"');
 
     const items = ['A', 'B', 'C'];
     expect(moveItem(items, 0, 2)).toBe(true);
@@ -207,66 +180,96 @@ describe('Integración Fase 4: db.ts, ai.ts, domPatches.ts, reorder.ts y control
     expect(moveItem(items, 1, 1)).toBe(false);
   });
 
-  it('ejecuta flujos clave de controladores en src/app/*: phaseDel con askConfirm y restStart sin render completo', async () => {
+  it('ejecuta flujos clave del store: deletePhase con askConfirm, ModalHost, startRest y wizard inicial', async () => {
     const state = makeTestState();
     state.liveWorkout = initLiveWorkout(state, 'Push');
-
-    const bar = { outerHTML: '', dataset: {} };
-    const restInput = { placeholder: '' };
-    const fakeRoot = {
-      querySelector: (sel: string) => (sel === '#rest-timer-bar' ? bar : null),
-      querySelectorAll: (sel: string) => (sel === '[data-live-rest]' ? [restInput] : []),
-    } as unknown as HTMLElement;
 
     const renderSpy = vi.fn();
     const persistSpy = vi.fn(async () => {});
     const askConfirmSpy = vi.fn(async () => false);
-
-    const ctx: AppContext = {
-      state,
-      root: fakeRoot,
-      render: renderSpy,
-      reload: async () => {},
-      persist: persistSpy,
-      toast: () => {},
+    const launch = createWorkoutLaunchActions({
+      getState: () => state,
       setTab: () => {},
+      render: renderSpy,
+      saveDraft: () => {},
+      saveLive: () => {},
+      askConfirm: askConfirmSpy,
+    });
+    const planActions = createPlanActions({
+      getState: () => state,
       getLastRoutine: () => 'Push',
       setLastRoutine: () => {},
-      queueSync: () => {},
-      updateSyncDom: () => {},
-      askConfirm: askConfirmSpy,
-      clearActiveWorkouts: () => {},
-      addExToDraft: () => {},
+      persist: persistSpy,
+      render: renderSpy,
+      setTab: () => {},
+      navigateTab: () => {},
       syncWorkoutRoutineNames: () => {},
-    };
+      addExToDraft: () => {},
+      askConfirm: askConfirmSpy,
+      toast: () => {},
+      startWorkoutDay: launch.startWorkoutDay,
+      openLogDay: launch.openLogDay,
+      runAiAnalysis: () => {},
+      retryAiAnalysis: () => {},
+      dismissAiJob: () => {},
+      openWizard: () => {},
+      closeModal: () => {
+        state.activeModal = null;
+      },
+    });
+    const workoutActions = createLiveWorkoutActions({
+      getState: () => state,
+      saveLiveOnly: (live) => {
+        state.liveWorkout = live;
+      },
+      commitLive: (live) => {
+        state.liveWorkout = live;
+      },
+      reload: async () => {},
+      setTab: () => {},
+      queueSync: () => {},
+      toast: () => {},
+      askConfirm: askConfirmSpy,
+      openNoteModal: () => {},
+      showSummary: () => {},
+    });
 
-    const planCtrl = createPlanController(ctx);
-    const workoutCtrl = createWorkoutController(ctx);
+    // 1. Modal de confirmación declarativo vía State.activeModal
+    state.activeModal = { type: 'confirm', title: '¿Borrar fase?', message: 'Acción irreversible' };
+    const confirmHtml = renderToString(h(ModalHost, { state }));
+    expect(confirmHtml).toContain('id="confirm-modal"');
+    expect(confirmHtml).toContain('¿Borrar fase?');
+    state.activeModal = null;
 
-    // 1. phaseDel cancelado en askConfirm no borra la fase
-    await planCtrl.actions.phaseDel({ dataset: { arg: '0' } } as unknown as HTMLElement);
+    // 2. deletePhase cancelado en askConfirm no borra la fase
+    await planActions.deletePhase(0);
     expect(askConfirmSpy).toHaveBeenCalledTimes(1);
     expect(state.settings.phases).toHaveLength(2);
 
-    // 2. phaseDel confirmado borra la fase y persiste
+    // 3. deletePhase confirmado borra la fase y persiste
     askConfirmSpy.mockResolvedValueOnce(true);
-    await planCtrl.actions.phaseDel({ dataset: { arg: '0' } } as unknown as HTMLElement);
+    await planActions.deletePhase(0);
     expect(state.settings.phases).toHaveLength(1);
     expect(state.settings.phases[0].name).toBe('Definición');
     expect(persistSpy).toHaveBeenCalledTimes(1);
 
-    // 3. restStart actualiza la barra de descanso sin disparar ctx.render()
+    // 4. startRest actualiza liveWorkout de forma inmutable sin invocar render de otras vistas
     renderSpy.mockClear();
-    workoutCtrl.actions.restStart({ dataset: { arg: '120' } } as unknown as HTMLElement);
+    workoutActions.startRest(120);
     expect(renderSpy).not.toHaveBeenCalled();
     expect(state.liveWorkout?.targetRestSec).toBe(120);
-    expect(restInput.placeholder).toBe('120');
-    expect(bar.outerHTML).toContain('data-rest-state="running"');
-    workoutCtrl.clearActiveWorkouts();
+    const barHtml = renderToString(
+      h(RestTimerBar, { restUntil: state.liveWorkout?.restUntil, targetRestSec: state.liveWorkout?.targetRestSec }),
+    );
+    expect(barHtml).toContain('data-rest-state="running"');
+    launch.clearActiveWorkouts();
+    expect(state.liveWorkout).toBeUndefined();
 
-    // 4. Utilidades de contexto
+    // 5. Utilidades de contexto y apertura única del wizard inicial en activeModal
     expect(splitPair('Push|Press de banca')).toEqual(['Push', 'Press de banca']);
     expect(num('72,5')).toBe(72.5);
     expect(maybeOpenInitialWizard(state)).toBe(true);
+    expect((state as State).activeModal?.type).toBe('wizard');
+    expect(maybeOpenInitialWizard(state)).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import type { AiTone, ExperienceLevel, TrainingGoal } from '../types';
+import type { AiTone, ExperienceLevel, Settings, TrainingGoal } from '../types';
 import type { State } from '../ui/shared';
 
 /** Borrador paso a paso del asistente de configuración inicial. */
@@ -109,4 +109,25 @@ export function createWizardDraft(state: State): WizardDraft {
     aiTone: state.settings.aiTone ?? (experience === 'beginner' ? 'simple' : 'technical'),
     anim: 'open',
   };
+}
+
+/** Parsea texto decimal aceptando coma o punto en campos numéricos del asistente. */
+export const parseWizardNum = (v: string): number | undefined => {
+  const n = parseFloat(v.replace(',', '.'));
+  return Number.isFinite(n) ? n : undefined;
+};
+
+/** Calcula las fases de entrenamiento resultantes al completar el asistente inicial. */
+export function resolveWizardPhases(
+  phases: Settings['phases'],
+  wasOnboarded: boolean,
+  hasStrength: boolean,
+  phaseName: string,
+  today: string,
+): Settings['phases'] {
+  if (!wasOnboarded && !hasStrength && phases.length === 0) return [{ name: phaseName, start: today }];
+  if (phases.some((p) => p.start === today)) {
+    return phases.map((p) => (p.start === today ? { ...p, name: phaseName } : p));
+  }
+  return [...phases, { name: phaseName, start: today }];
 }

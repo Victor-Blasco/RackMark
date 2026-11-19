@@ -35,15 +35,13 @@ export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlS
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
-        <button type="button" class="btn-primary-sm sm:text-sm" data-act="goLog" onClick={onGoLog}>+ Registrar entreno</button>
+        <button type="button" class="btn-primary-sm sm:text-sm" onClick={onGoLog}>+ Registrar entreno</button>
       </div>
 
       <div class="md:hidden divide-y divide-white/10">
         {rows.map(({ d, c, e, aiStatus }) => (
           <div
             key={`${d}|${e.name}`}
-            data-act="openExDetail"
-            data-arg={`${d}|${e.name}`}
             role="button"
             tabIndex={0}
             class="py-3 space-y-1.5 cursor-pointer rounded-xl px-1 -mx-1 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
@@ -85,8 +83,6 @@ export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlS
               return (
                 <tr
                   key={`${d}|${e.name}`}
-                  data-act="openExDetail"
-                  data-arg={`${d}|${e.name}`}
                   role="button"
                   tabIndex={0}
                   class="cursor-pointer hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"

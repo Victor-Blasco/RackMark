@@ -72,13 +72,13 @@ export function PlanSidebarWidgets({
         </div>
         <label class="block">
           <span class="lbl">Rutina destino</span>
-          <select class="inp" data-change="planTargetRoutine" aria-label="Rutina destino" value={catalog.targetRoutine} onChange={(e) => onChangeTargetRoutine(e.currentTarget.value)}>
+          <select class="inp" aria-label="Rutina destino" value={catalog.targetRoutine} onChange={(e) => onChangeTargetRoutine(e.currentTarget.value)}>
             {routines.map((d) => <option key={d} value={d} selected={d === catalog.targetRoutine}>{d}</option>)}
           </select>
         </label>
         <label class="block">
           <span class="lbl">Buscar ejercicio o músculo</span>
-          <input id="planExSearch" type="search" class="inp" data-input="planSearch" value={state.planSearch ?? ''} placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo" onInput={(e) => onSearchChange(e.currentTarget.value)} />
+          <input id="planExSearch" type="search" class="inp" value={state.planSearch ?? ''} placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo" onInput={(e) => onSearchChange(e.currentTarget.value)} />
         </label>
         <div id="planCatalogList" class="max-h-72 overflow-y-auto divide-y divide-white/[0.06]">
           <PlanCatalogList
@@ -88,7 +88,7 @@ export function PlanSidebarWidgets({
             onQuickAdd={onQuickAdd}
           />
         </div>
-        <button type="button" class="btn-sm btn-accent w-full justify-center" data-act="openExModal" data-arg={catalog.targetRoutine} onClick={() => onOpenNewExercise(catalog.targetRoutine)}>
+        <button type="button" class="btn-sm btn-accent w-full justify-center" onClick={() => onOpenNewExercise(catalog.targetRoutine)}>
           + Crear nuevo ejercicio
         </button>
       </div>

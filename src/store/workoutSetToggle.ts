@@ -43,7 +43,6 @@ export function applyToggleLiveSet(
 
   if (!s.done && !(s.r > 0)) {
     toast('Indica al menos 1 repetición antes de marcar la serie.');
-    document.querySelector<HTMLInputElement>(`[data-live-r="${ei}|${si}"]`)?.focus?.();
     return { nextLive: live, changed: false, advanced: false };
   }
 

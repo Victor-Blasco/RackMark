@@ -43,10 +43,10 @@ export function OnboardingHome({
             </p>
           </div>
           <div class="flex flex-wrap gap-2 shrink-0">
-            <button type="button" class="btn btn-accent min-h-[44px]" data-act="openWizard" onClick={onOpenWizard}>
+            <button type="button" class="btn btn-accent min-h-[44px]" onClick={onOpenWizard}>
               {state.settings.onboardingCompleted ? 'Editar perfil y objetivo' : 'Configurar perfil y objetivo (1 min)'}
             </button>
-            <button type="button" class="btn-primary shrink-0 min-h-[44px] px-5" data-act="startWorkout" onClick={() => onStartWorkout()}>
+            <button type="button" class="btn-primary shrink-0 min-h-[44px] px-5" onClick={() => onStartWorkout()}>
               + Empezar primer entreno hoy
             </button>
           </div>
@@ -59,14 +59,14 @@ export function OnboardingHome({
               const hex = routineColor(r, state.settings, idx);
               const count = state.settings.routines[r]?.length ?? 0;
               return (
-                <button key={r} type="button" class="btn min-h-[44px]" data-act="startWorkout" data-arg={r} onClick={() => onStartWorkout(r)}>
+                <button key={r} type="button" class="btn min-h-[44px]" onClick={() => onStartWorkout(r)}>
                   <span class="h-2.5 w-2.5 rounded-full" style={{ background: hex }} aria-hidden="true" />
                   <span>{r}</span>
                   <span class="text-xs text-gray-400 tabular-nums">({count})</span>
                 </button>
               );
             })}
-            <button type="button" class="btn-sm" data-act="goLog" onClick={onGoLog}>
+            <button type="button" class="btn-sm" onClick={onGoLog}>
               ¿Ya terminaste? Registrar sesión pasada
             </button>
           </div>
@@ -79,7 +79,7 @@ export function OnboardingHome({
             <h3 class="text-base font-bold text-white">Plantillas de rutina</h3>
             <p class="text-xs text-gray-400">Cambia la distribución en un toque o edita los ejercicios a tu gusto.</p>
           </div>
-          <button type="button" class="btn-sm" data-act="tab" data-arg="plan" onClick={() => onNavigateTab('plan')}>
+          <button type="button" class="btn-sm" onClick={() => onNavigateTab('plan')}>
             Personalizar en Plan y rutinas
           </button>
         </div>
@@ -88,8 +88,6 @@ export function OnboardingHome({
             <button
               key={key}
               type="button"
-              data-act="rtApplyTpl"
-              data-arg={key}
               class="rounded-2xl border border-white/10 bg-cardDark p-4 text-left transition-colors hover:border-electricBlue/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
               onClick={() => onApplyTemplate(key)}
             >
@@ -103,10 +101,10 @@ export function OnboardingHome({
       <section class="flex flex-wrap items-center justify-between gap-3">
         <div class="text-sm text-gray-300">¿Prefieres empezar registrando tu peso inicial o trayendo datos previos?</div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn min-h-[44px]" data-act="tab" data-arg="body" onClick={() => onNavigateTab('body')}>
+          <button type="button" class="btn min-h-[44px]" onClick={() => onNavigateTab('body')}>
             <Icon name="body" className="h-4 w-4" /> Registrar primeras medidas
           </button>
-          <button type="button" class="btn min-h-[44px]" data-act="tab" data-arg="data" onClick={() => onNavigateTab('data')}>
+          <button type="button" class="btn min-h-[44px]" onClick={() => onNavigateTab('data')}>
             <Icon name="upload" className="h-4 w-4" /> Importar Samsung Health / CSV
           </button>
         </div>

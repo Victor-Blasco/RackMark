@@ -45,7 +45,7 @@ export function AthleteProfileSection({
             Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.
           </p>
         </div>
-        <button type="button" class="btn-sm btn-accent" data-act="openWizard" onClick={onOpenWizard}>
+        <button type="button" class="btn-sm btn-accent" onClick={onOpenWizard}>
           Asistente inicial
         </button>
       </div>
@@ -86,7 +86,7 @@ export function AthleteProfileSection({
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label class="block">
           <span class="lbl">Objetivo</span>
-          <select class="inp" data-change="pfGoal" value={profile.goal ?? ''} onChange={(e) => onChangeGoal(e.currentTarget.value)}>
+          <select class="inp" value={profile.goal ?? ''} onChange={(e) => onChangeGoal(e.currentTarget.value)}>
             <option value="" selected={!profile.goal}>Sin definir</option>
             <option value="bulk" selected={profile.goal === 'bulk'}>Ganar músculo</option>
             <option value="cut" selected={profile.goal === 'cut'}>Definición</option>
@@ -96,7 +96,7 @@ export function AthleteProfileSection({
         </label>
         <label class="block">
           <span class="lbl">Experiencia</span>
-          <select class="inp" data-change="pfExp" value={profile.experience ?? ''} onChange={(e) => onChangeExperience(e.currentTarget.value)}>
+          <select class="inp" value={profile.experience ?? ''} onChange={(e) => onChangeExperience(e.currentTarget.value)}>
             <option value="" selected={!profile.experience}>Sin definir</option>
             <option value="beginner" selected={profile.experience === 'beginner'}>Principiante (&lt;1 año)</option>
             <option value="intermediate" selected={profile.experience === 'intermediate'}>Intermedio (1–3 años)</option>
@@ -107,7 +107,6 @@ export function AthleteProfileSection({
           <span class="lbl">Días / semana</span>
           <select
             class="inp tabular-nums"
-            data-change="pfDays"
             value={profile.daysPerWeek != null ? String(profile.daysPerWeek) : ''}
             onChange={(e) => onChangeDays(e.currentTarget.value)}
           >

@@ -15,15 +15,6 @@ import { todayIso, type State } from '../ui/shared';
 
 const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
 
-function defaultDownloadFile(name: string, data: string, type: string): void {
-  const url = URL.createObjectURL(new Blob([data], { type }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 /** Dependencias para exportación, importaciones pesadas, nube y tono IA. */
 export interface DataSyncActionDeps {
   getState: () => State;
@@ -50,12 +41,11 @@ export type DataSyncActions = ReturnType<typeof createDataSyncActions>;
  */
 export function createDataSyncActions(deps: DataSyncActionDeps) {
   const state = () => deps.getState();
-  const download = deps.downloadFile ?? defaultDownloadFile;
 
   return {
     async exportBackupFile() {
       const data = JSON.stringify(await exportBackup());
-      download(`gymapp-backup-${todayIso()}.json`, data, 'application/json');
+      deps.downloadFile?.(`gymapp-backup-${todayIso()}.json`, data, 'application/json');
     },
 
     async importFiles(kind: 'samsung' | 'measures' | 'backup', fileList: FileList | null) {
