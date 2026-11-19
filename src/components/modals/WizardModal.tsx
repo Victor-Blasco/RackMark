@@ -49,13 +49,13 @@ export function WizardModal({
       <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} aria-hidden="true" onClick={() => void onSkip()} />
       <form
         id="f-wizard"
-        class={`relative z-10 w-full max-w-xl rounded-2xl border border-white/10 bg-modalDark p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto ${modalAnim}`}
+        class={`relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[90dvh] ${modalAnim}`}
         onSubmit={(e) => {
           e.preventDefault();
           void onSubmitStep();
         }}
       >
-        <div class="overflow-x-hidden space-y-4">
+        <div class="shrink-0 space-y-3 border-b border-white/10 px-4 pt-4 pb-3 sm:px-6 sm:pt-5">
           <div class="flex items-start justify-between gap-3">
             <div class={`min-w-0 ${stepAnim}`}>
               <span class="text-[11px] font-bold uppercase tracking-wider text-blue-300 tabular-nums">Paso {draft.step} de 3 · Configuración inicial</span>
@@ -77,7 +77,9 @@ export function WizardModal({
               );
             })}
           </div>
+        </div>
 
+        <div class="flex-1 overflow-y-auto overflow-x-clip px-4 py-3.5 sm:px-6 sm:py-4">
           <div class={stepAnim}>
             {draft.step === 1 && <WizardStep1 draft={draft} onPatch={onPatch} />}
             {draft.step === 2 && <WizardStep2 draft={draft} onPatch={onPatch} />}
@@ -85,12 +87,10 @@ export function WizardModal({
           </div>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3 sm:px-6">
           <div>
-            {draft.step > 1 ? (
+            {draft.step > 1 && (
               <button type="button" class="btn min-h-[44px]" onClick={onBack}>← Anterior</button>
-            ) : (
-              <button type="button" class="btn min-h-[44px]" onClick={() => void onSkip()}>Omitir por ahora</button>
             )}
           </div>
           <button id="wizardNext" type="submit" class="btn-primary min-h-[44px] px-5">

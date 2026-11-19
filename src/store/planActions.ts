@@ -5,7 +5,7 @@ import { createCatalogMapActions } from './catalogMapActions';
 import { createPlanFilterActions } from './planFilterActions';
 import { createPlanModalActions, type SaveExercisePayload, type SaveRoutinePayload } from './planModalActions';
 import { createRoutineEditActions } from './routineEditActions';
-import type { ConfirmModalOpts } from './types';
+import type { ConfirmModalOpts, ToastAction } from './types';
 
 export type { SaveExercisePayload, SaveRoutinePayload };
 
@@ -21,7 +21,7 @@ export interface PlanActionDeps {
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
   addExToDraft: (name: string, fallbackSets?: number, fallbackReps?: number) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
-  toast: (msg: string) => void;
+  toast: (msg: string, action?: ToastAction) => void;
   startWorkoutDay: (day?: DayName) => Promise<void>;
   openLogDay: (day?: DayName) => Promise<void>;
   runAiAnalysis: () => void;

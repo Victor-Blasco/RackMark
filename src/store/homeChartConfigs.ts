@@ -13,12 +13,12 @@ import {
 
 export type ExMetric = 'top' | 'e1rm' | 'volume';
 
-export const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string }> = {
-  emeraldGreen: { dot: 'bg-emeraldGreen', text: 'text-emerald-300' },
-  electricBlue: { dot: 'bg-electricBlue', text: 'text-blue-300' },
-  amberGold: { dot: 'bg-amberGold', text: 'text-amber-300' },
-  coralRed: { dot: 'bg-coralRed', text: 'text-rose-300' },
-  gray: { dot: 'bg-gray-500', text: 'text-gray-400' },
+export const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string; glyph: string }> = {
+  emeraldGreen: { dot: 'bg-emeraldGreen', text: 'text-emerald-300', glyph: '↑' },
+  electricBlue: { dot: 'bg-electricBlue', text: 'text-blue-300', glyph: '★' },
+  amberGold: { dot: 'bg-amberGold', text: 'text-amber-300', glyph: '=' },
+  coralRed: { dot: 'bg-coralRed', text: 'text-rose-300', glyph: '↓' },
+  gray: { dot: 'bg-gray-500', text: 'text-gray-400', glyph: '—' },
 };
 
 /** Reduce el título largo de una sección del informe IA a una etiqueta corta de pestaña. */

@@ -75,7 +75,7 @@ export function RestTimerBar({
           <button
             key={p}
             type="button"
-            class={`min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
+            class={`min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
             onClick={() => onSelectPreset?.(p)}
           >
             {p}s

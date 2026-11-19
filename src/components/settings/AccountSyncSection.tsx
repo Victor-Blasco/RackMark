@@ -1,4 +1,4 @@
-import type { State } from '../../ui/shared';
+import { humanizeError, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 
 interface AccountSyncSectionProps {
@@ -18,7 +18,7 @@ function resolveSyncStatusText(state: State): string {
     const retry = state.syncJob.nextAttemptAt
       ? ` · reintento ${new Date(state.syncJob.nextAttemptAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
       : '';
-    return `Pendiente: ${state.syncJob.error ?? 'error recuperable'}${retry}`;
+    return `Pendiente: ${humanizeError(state.syncJob.error, 'error recuperable')}${retry}`;
   }
   if (state.syncJob?.status === 'pending') return 'Guardado localmente · pendiente de sincronizar';
   if (state.lastSync) {

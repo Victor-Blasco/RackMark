@@ -35,8 +35,15 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
 
   const vm = buildLiveWorkoutViewModel(state, live);
   const pickerData = live.pickerMode
-    ? quickExSuggestions(state, live.day, live.exercises.map((e) => e.name), 8)
+    ? quickExSuggestions(
+      state,
+      live.day,
+      live.exercises.map((e) => e.name),
+      8,
+      live.pickerMode === 'swap' ? vm.currentEx?.name : undefined,
+    )
     : null;
+  const secondarySave = vm.allDone || (!vm.currentEx && !live.pickerMode);
 
   return (
     <div class="mx-auto max-w-xl space-y-3">
@@ -49,8 +56,8 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
         totalSetsCount={vm.totalSetsCount}
         elapsedLabel={vm.elapsedLabel}
         menuOpen={Boolean(live.exMenuOpen)}
+        secondarySave={secondarySave}
         onToggleMenu={actions.toggleMenu}
-        onDiscard={() => void actions.discard()}
         onSave={() => void actions.save()}
       />
 
@@ -62,6 +69,7 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
         onToggleMenu={actions.toggleMenu}
         onSelectExercise={actions.selectExercise}
         onOpenAddPicker={() => actions.openPicker('add')}
+        onDiscard={() => void actions.discard()}
       />
 
       {vm.prevBannerEx && live.lastCompletedExIdx != null && (
@@ -127,10 +135,10 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
 
       {vm.total > 1 && (
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" disabled={vm.curIdx === 0} onClick={actions.prevExercise}>
+          <button type="button" class="flex min-h-[44px] items-center justify-center rounded-lg text-xs sm:text-sm font-semibold text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:opacity-30" disabled={vm.curIdx === 0} onClick={actions.prevExercise}>
             ← Anterior
           </button>
-          <button type="button" class="flex min-h-[44px] items-center justify-center text-xs sm:text-sm font-semibold text-gray-300 hover:text-white disabled:opacity-30" disabled={vm.curIdx >= vm.total - 1} onClick={actions.nextExercise}>
+          <button type="button" class="flex min-h-[44px] items-center justify-center rounded-lg text-xs sm:text-sm font-semibold text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:opacity-30" disabled={vm.curIdx >= vm.total - 1} onClick={actions.nextExercise}>
             Siguiente →
           </button>
         </div>

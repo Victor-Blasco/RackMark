@@ -44,7 +44,7 @@ export function LogAddExerciseSection({
       <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
         <div class="flex flex-wrap gap-2">
           {availableCount > 12 && (
-            <input class="inp min-h-[44px] min-w-[180px] flex-1" type="search" value={query} placeholder="Buscar ejercicio…" aria-label="Buscar ejercicio para añadir" onInput={(e) => onSearchChange(e.currentTarget.value)} />
+            <input class="inp min-h-[44px] min-w-[180px] flex-1" type="search" enterKeyHint="search" value={query} placeholder="Buscar ejercicio…" aria-label="Buscar ejercicio para añadir" onInput={(e) => onSearchChange(e.currentTarget.value)} />
           )}
           <select id="logAddSelect" ref={selectRef} class="inp min-h-[44px] min-w-[200px] flex-1" aria-label="Seleccionar ejercicio para añadir">
             <option value="">Selecciona cualquier ejercicio ({availableCount})…</option>
@@ -56,11 +56,11 @@ export function LogAddExerciseSection({
         </div>
 
         {availableCount > 12 && !filteredOptions.length && (
-          <p class="text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
+          <p aria-live="polite" class="text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
         )}
 
         <div class="flex flex-wrap gap-2">
-          <input id="logNewExName" ref={customRef} class="inp min-h-[44px] min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo" />
+          <input id="logNewExName" ref={customRef} enterKeyHint="done" class="inp min-h-[44px] min-w-[180px] flex-1" placeholder="Añadir rápido por nombre…" aria-label="Nombre de ejercicio nuevo" />
           <button type="button" class="btn min-h-[44px]" onClick={() => {
             const val = customRef.current?.value ?? '';
             if (val.trim()) onAddExercise(val);

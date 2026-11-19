@@ -63,7 +63,7 @@ export function DayMobileAccordion({
             <button
               type="button"
               aria-expanded={open ? 'true' : 'false'}
-              class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02]"
+              class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
               onClick={() => onSelectEx(open ? '__closed__' : x.name)}
             >
               <div class="min-w-0 space-y-1">
@@ -71,8 +71,12 @@ export function DayMobileAccordion({
                 <p class="text-[13px] font-medium text-gray-300 tabular-nums truncate">{summary}</p>
               </div>
               <div class="shrink-0 flex items-center gap-2.5">
-                <span class={`h-2.5 w-2.5 rounded-full ${st.dot}`} title={advice?.status ?? x.status} />
-                <span class="text-xs text-gray-400">{open ? '▲' : '▼'}</span>
+                <span class={`inline-flex items-center gap-1 text-[11px] font-bold ${st.text}`} title={advice?.status ?? x.status}>
+                  <span class={`h-2 w-2 rounded-full ${st.dot}`} aria-hidden="true" />
+                  <span aria-hidden="true">{st.glyph}</span>
+                  <span class="sr-only">{advice?.status ?? x.status}</span>
+                </span>
+                <span class="text-xs text-gray-400" aria-hidden="true">{open ? '▲' : '▼'}</span>
               </div>
             </button>
             {open && (

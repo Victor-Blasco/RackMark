@@ -56,7 +56,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
 
         <label class="block">
           <span class="lbl">Nombre del ejercicio</span>
-          <input id="newExName" class="inp" name="name" maxLength={80} value={name} placeholder="Ej. Remo en polea gironda" required onInput={(e) => setName(e.currentTarget.value)} />
+          <input id="newExName" class="inp" name="name" maxLength={80} enterKeyHint="next" value={name} placeholder="Ej. Remo en polea gironda" required onInput={(e) => setName(e.currentTarget.value)} />
         </label>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -68,11 +68,11 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
           </label>
           <label class="block">
             <span class="lbl">Series objetivo</span>
-            <input class="inp tabular-nums font-medium" type="number" name="sets" min="1" max="20" value={sets} required onInput={(e) => setSets(Math.max(1, +e.currentTarget.value || 1))} />
+            <input class="inp tabular-nums font-medium" type="number" inputMode="numeric" enterKeyHint="next" name="sets" min="1" max="20" value={sets} required onInput={(e) => setSets(Math.max(1, +e.currentTarget.value || 1))} />
           </label>
           <label class="block">
             <span class="lbl">Reps objetivo</span>
-            <input class="inp tabular-nums font-medium" type="number" name="reps" min="1" max="100" value={reps} required onInput={(e) => setReps(Math.max(1, +e.currentTarget.value || 1))} />
+            <input class="inp tabular-nums font-medium" type="number" inputMode="numeric" enterKeyHint="done" name="reps" min="1" max="100" value={reps} required onInput={(e) => setReps(Math.max(1, +e.currentTarget.value || 1))} />
           </label>
         </div>
 

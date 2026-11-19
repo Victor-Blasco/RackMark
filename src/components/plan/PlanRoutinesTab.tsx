@@ -38,7 +38,7 @@ export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: 
           <div class="flex flex-wrap items-center gap-1.5 text-xs">
             <span class="font-semibold text-gray-400">Plantillas rápidas:</span>
             {Object.entries(ROUTINE_TEMPLATES).map(([k, tpl]) => (
-              <button key={k} type="button" title={tpl.desc} class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors" onClick={() => void actions.applyTemplate(k)}>
+              <button key={k} type="button" title={tpl.desc} class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1 font-medium text-gray-300 hover:border-electricBlue/50 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={() => void actions.applyTemplate(k)}>
                 {tpl.label}
               </button>
             ))}
@@ -77,27 +77,27 @@ export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: 
                       return (
                         <div key={`${i}-${r.name}`} data-sort-item data-sort-idx={i} class="flex flex-col sm:flex-row sm:items-center gap-1.5 rounded-xl bg-white/[0.02] p-1.5 sm:px-1.5 sm:py-1 transition-shadow">
                           <div class="flex min-w-0 flex-1 items-center gap-1.5">
-                            <button type="button" data-sort-handle class="icon-btn touch-none cursor-grab active:cursor-grabbing select-none" aria-label={`Arrastrar ${exLbl} en ${d}`} title="Arrastrar para reordenar">
+                            <button type="button" data-sort-handle class="icon-btn rounded-md touch-none cursor-grab active:cursor-grabbing select-none" aria-label={`Arrastrar ${exLbl} en ${d}`} title="Arrastrar para reordenar">
                               <Icon name="grip" className="h-3.5 w-3.5" />
                             </button>
-                            <select class="inp min-w-0 flex-1" aria-label={`Ejercicio ${i + 1} de ${d}`} value={r.name} onChange={(e) => void actions.changeRoutineExName(d, i, e.currentTarget.value)}>
+                            <select class="inp min-w-0 flex-1 rounded-md" aria-label={`Ejercicio ${i + 1} de ${d}`} value={r.name} onChange={(e) => void actions.changeRoutineExName(d, i, e.currentTarget.value)}>
                               <option value="" selected={!r.name}>—</option>
                               {opts.map((o) => <option key={o} value={o} selected={o === r.name}>{o}</option>)}
                               <option value="__new__">+ Crear nuevo ejercicio…</option>
                             </select>
                           </div>
                           <div class="flex shrink-0 items-center justify-end gap-1 pl-6 sm:pl-0">
-                            <input class="inp w-12 px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value={r.sets} aria-label={`Series objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExSets(d, i, e.currentTarget.value)} />
+                            <input class="inp w-12 rounded-md px-1.5 text-center font-semibold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={r.sets} aria-label={`Series objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExSets(d, i, e.currentTarget.value)} />
                             <span class="text-gray-400" aria-hidden="true">×</span>
-                            <input class="inp w-12 px-1.5 text-center font-semibold tabular-nums" type="number" min="1" value={r.reps} aria-label={`Repeticiones objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExReps(d, i, e.currentTarget.value)} />
+                            <input class="inp w-12 rounded-md px-1.5 text-center font-semibold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={r.reps} aria-label={`Repeticiones objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExReps(d, i, e.currentTarget.value)} />
                             <div class="flex shrink-0 items-center">
-                              <button type="button" class="icon-btn" disabled={i === 0} aria-label={`Subir ${exLbl} en ${d}`} title="Subir" onClick={() => void actions.moveRoutineRow(d, i, -1)}>
+                              <button type="button" class="icon-btn rounded-md" disabled={i === 0} aria-label={`Subir ${exLbl} en ${d}`} title="Subir" onClick={() => void actions.moveRoutineRow(d, i, -1)}>
                                 <Icon name="caretUp" className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" class="icon-btn" disabled={i === list.length - 1} aria-label={`Bajar ${exLbl} en ${d}`} title="Bajar" onClick={() => void actions.moveRoutineRow(d, i, 1)}>
+                              <button type="button" class="icon-btn rounded-md" disabled={i === list.length - 1} aria-label={`Bajar ${exLbl} en ${d}`} title="Bajar" onClick={() => void actions.moveRoutineRow(d, i, 1)}>
                                 <Icon name="caretDown" className="h-3.5 w-3.5" />
                               </button>
-                              <button type="button" class="icon-btn text-coralRed hover:bg-coralRed/10" aria-label={`Eliminar ${exLbl} de ${d}`} onClick={() => void actions.deleteRoutineRow(d, i)}>
+                              <button type="button" class="icon-btn rounded-md text-coralRed hover:bg-coralRed/10" aria-label={`Eliminar ${exLbl} de ${d}`} onClick={() => void actions.deleteRoutineRow(d, i)}>
                                 <Icon name="close" className="h-4 w-4" />
                               </button>
                             </div>

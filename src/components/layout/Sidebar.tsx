@@ -56,7 +56,7 @@ export function Sidebar({
           <span>Iniciar entreno</span>
           <span class={`ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white ${restRemSec > 0 ? '' : 'hidden'}`}>{restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
           {liveCount > 0 && (
-            <span class={`${restRemSec > 0 ? '' : 'ml-auto '}inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold text-emerald-200`}>
+            <span class={`${restRemSec > 0 ? '' : 'ml-auto '}inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-200`}>
               <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />
               {liveCount}
             </span>
@@ -97,7 +97,7 @@ export function Sidebar({
             <button type="button" aria-current={state.tab === 'plan' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('plan')}>
               <Icon name="edit" className="h-4 w-4" />
               <span class="flex-1 text-left">Plan y rutinas</span>
-              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amberGold">{unmappedCount}</span>}
+              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
             </button>
           </div>
         </div>

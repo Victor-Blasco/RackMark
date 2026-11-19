@@ -21,7 +21,7 @@ export function DataView({ state: propState }: DataViewProps) {
       <div class="space-y-4 pb-5 border-b border-white/10">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 class="text-lg font-extrabold text-white">Datos e importación</h2>
+            <h1 class="text-lg font-extrabold text-white">Datos e importación</h1>
             <p class="text-xs text-gray-400">
               Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados.
             </p>

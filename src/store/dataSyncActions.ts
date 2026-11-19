@@ -12,6 +12,7 @@ import { importSamsungInWorker } from '../lib/samsung';
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import type { AiTone } from '../types';
 import { todayIso, type State } from '../ui/shared';
+import { humanizeError } from './types';
 
 const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
 
@@ -119,7 +120,7 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
           deps.toast('Copia restaurada.');
         }
       } catch (err) {
-        deps.toast(`Error al importar: ${(err as Error).message}`);
+        deps.toast(`Error al importar: ${humanizeError(err, 'revisa que el archivo tenga un formato válido.')}`);
       }
     },
 

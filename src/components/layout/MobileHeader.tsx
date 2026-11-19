@@ -32,6 +32,7 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onCloudL
   const inTrain = state.tab === 'workout' || state.tab === 'log';
   const rNames = routineNames(state.settings);
   const st = syncStatusInfo(state, unsynced);
+  const compactStats = statsText.replace(/ sesiones?\b/, ' ses.').replace(/ medidas?\b/, ' med.');
 
   const subTabs = inAnalytics
     ? ANALYTICS_TABS.map((a) => ({ id: a.id, label: a.label === 'Calculadoras' ? 'Calc.' : a.label }))
@@ -51,8 +52,10 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onCloudL
           </div>
           <div class="min-w-0">
             <h1 class="truncate text-sm font-extrabold leading-tight text-white">{activeTabTitle(state)}</h1>
-            <p class="truncate text-[11px] text-gray-400 tabular-nums">
-              {statsText} · <span class={`font-medium ${st.cls}`}>{st.text}</span>
+            <p class="flex flex-wrap items-center gap-x-1 text-[11px] leading-tight text-gray-400 tabular-nums">
+              <span class={`font-medium ${st.cls}`}>{st.text}</span>
+              <span aria-hidden="true">·</span>
+              <span class="truncate">{compactStats}</span>
             </p>
           </div>
         </div>

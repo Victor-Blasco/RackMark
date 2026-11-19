@@ -35,7 +35,7 @@ export function RangePicker({
               key={r.key}
               type="button"
               aria-pressed={isSelected ? 'true' : 'false'}
-              class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${isSelected ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+              class={`inline-flex min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-0 items-center justify-center rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${isSelected ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
               onClick={() => onSelectRange?.(r.key)}
             >
               {r.label}

@@ -29,7 +29,7 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
 
       <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
-          <h2 class="text-lg font-extrabold text-white">Adherencia y bienestar</h2>
+          <h1 class="text-lg font-extrabold text-white">Adherencia y bienestar</h1>
           <p class="text-xs text-gray-400">Constancia semanal, cardio, sueño y actividad diaria ({vm.bounds.label}).</p>
         </div>
         <RangePicker
@@ -65,7 +65,7 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
         <div>
           <span class="block text-xs text-gray-400">Cardio ({vm.bounds.label})</span>
           <span class="tabular-nums text-xl font-extrabold text-white">{vm.cardioCount}</span>
-          <span class="block text-xs text-gray-400">
+          <span class="block text-xs tabular-nums text-gray-400">
             {r1(vm.cardioDistKm)} km · {Math.round(vm.cardioDurMin)} min
           </span>
         </div>

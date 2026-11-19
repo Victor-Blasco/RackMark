@@ -30,16 +30,19 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
               Sube el archivo ZIP o los CSV exportados desde Samsung Health. Puedes volver a importar cuando quieras sin duplicar sesiones.
             </p>
           </div>
-          <label class="block">
-            <span class="lbl">Archivo ZIP o CSV (máx. 50 MB por archivo)</span>
-            <input
-              class="inp"
-              type="file"
-              accept=".zip,.csv"
-              multiple
-              onChange={(e) => handleFile('samsung', e.currentTarget)}
-            />
-          </label>
+          <div class="space-y-1.5">
+            <p class="lbl">Archivo ZIP o CSV (máx. 50 MB por archivo)</p>
+            <label class="btn cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-electricBlue">
+              <Icon name="upload" className="h-4 w-4" /> Seleccionar ZIP o CSV
+              <input
+                class="sr-only"
+                type="file"
+                accept=".zip,.csv"
+                multiple
+                onChange={(e) => handleFile('samsung', e.currentTarget)}
+              />
+            </label>
+          </div>
         </div>
 
         <div class="space-y-3">
@@ -54,15 +57,18 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
               Ir a Cuerpo
             </button>
           </div>
-          <label class="block">
-            <span class="lbl">Archivo CSV de medidas</span>
-            <input
-              class="inp"
-              type="file"
-              accept=".csv"
-              onChange={(e) => handleFile('measures', e.currentTarget)}
-            />
-          </label>
+          <div class="space-y-1.5">
+            <p class="lbl">Archivo CSV de medidas</p>
+            <label class="btn cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-electricBlue">
+              <Icon name="upload" className="h-4 w-4" /> Seleccionar CSV de medidas
+              <input
+                class="sr-only"
+                type="file"
+                accept=".csv"
+                onChange={(e) => handleFile('measures', e.currentTarget)}
+              />
+            </label>
+          </div>
         </div>
       </div>
 
@@ -77,7 +83,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
           <button type="button" class="btn" onClick={() => void onExportBackup()}>
             <Icon name="download" className="h-4 w-4" /> Descargar copia de seguridad
           </button>
-          <label class="btn cursor-pointer">
+          <label class="btn cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-electricBlue">
             <Icon name="upload" className="h-4 w-4" /> Restaurar copia de seguridad
             <input
               class="sr-only"

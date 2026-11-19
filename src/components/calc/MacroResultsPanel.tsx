@@ -31,7 +31,7 @@ export function CalorieSummaryCard({ nutrition, deltaNum, deltaSign, projectionT
               {nutrition.target} <span class="text-base font-bold text-gray-300">kcal</span>
             </span>
           </div>
-          <div class="text-right">
+          <div class="text-right tabular-nums">
             <span class={`inline-flex rounded-full ${deltaBadgeClass(deltaNum)} px-2 py-1 text-xs font-bold`}>
               {deltaSign}{deltaNum} kcal/día
             </span>
@@ -74,11 +74,11 @@ export function MacroDistributionPanel({ nutrition, carbWarning }: MacroDistribu
         </div>
         <div class="grid grid-cols-3 divide-x divide-white/10 text-center">
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">Proteína {nutrition.proteinPerKg.toFixed(1).replace('.', ',')} g/kg</span>
+            <span class="block text-[11px] tabular-nums text-gray-400">Proteína {nutrition.proteinPerKg.toFixed(1).replace('.', ',')} g/kg</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-emerald-300">{nutrition.proteinG} g</span>
           </div>
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">Grasas {nutrition.fatPerKg.toFixed(1).replace('.', ',')} g/kg</span>
+            <span class="block text-[11px] tabular-nums text-gray-400">Grasas {nutrition.fatPerKg.toFixed(1).replace('.', ',')} g/kg</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-amberGold">{nutrition.fatG} g</span>
           </div>
           <div class="px-2">

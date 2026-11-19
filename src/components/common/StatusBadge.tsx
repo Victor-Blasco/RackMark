@@ -37,13 +37,13 @@ const METRIC_OPTS: [ExMetric, string][] = [
 /** Selector segmentado entre Peso máximo, e1RM estimado y Tonelaje. */
 export function ExMetricToggle({ active, onChange }: ExMetricToggleProps) {
   return (
-    <div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    <div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]">
       {METRIC_OPTS.map(([key, label]) => (
         <button
           key={key}
           type="button"
           aria-pressed={active === key ? 'true' : 'false'}
-          class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${active === key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+          class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active === key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
           onClick={() => onChange(key)}
         >
           {label}
@@ -63,11 +63,11 @@ interface AiToneToggleProps {
 /** Selector segmentado para elegir el nivel técnico de los informes del Coach IA. */
 export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
   return (
-    <div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]">
+    <div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]">
       <button
         type="button"
         aria-pressed={tone === 'simple' ? 'true' : 'false'}
-        class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+        class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
         onClick={() => onChange('simple')}
       >
         Sencillo
@@ -75,7 +75,7 @@ export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
       <button
         type="button"
         aria-pressed={tone === 'technical' ? 'true' : 'false'}
-        class={`inline-flex min-h-[40px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+        class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
         onClick={() => onChange('technical')}
       >
         Técnico

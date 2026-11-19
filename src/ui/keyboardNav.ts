@@ -33,12 +33,15 @@ function handleTabNav(root: HTMLElement, e: KeyboardEvent, target: HTMLElement |
 }
 
 function handleListboxNav(root: HTMLElement, e: KeyboardEvent, target: HTMLElement | null): boolean {
-  const opt = target?.closest<HTMLElement>('[role="listbox"] [role="option"]');
-  const listbox = opt?.closest<HTMLElement>('[role="listbox"]');
-  if (!opt || !listbox) return false;
+  const listbox = target?.closest<HTMLElement>('[role="listbox"]');
+  if (!listbox) return false;
   const options = [...listbox.querySelectorAll<HTMLElement>('[role="option"]')];
+  if (!options.length) return false;
+  const opt = target?.closest<HTMLElement>('[role="listbox"] [role="option"]')
+    ?? listbox.querySelector<HTMLElement>('[role="option"][aria-selected="true"]')
+    ?? options[0];
   const idx = options.indexOf(opt);
-  if (idx === -1 || options.length === 0) return false;
+  if (idx === -1) return false;
   const nextIdx = resolveNavIndex(e.key, idx, options.length, true);
   if (nextIdx === null) return false;
   const nextOpt = options[nextIdx];
@@ -65,6 +68,7 @@ function handleListboxNav(root: HTMLElement, e: KeyboardEvent, target: HTMLEleme
  */
 export function initKeyboardNav(root: HTMLElement): void {
   root.addEventListener('keydown', (e) => {
+    if (e.defaultPrevented) return;
     const target = e.target as HTMLElement | null;
     if (handleTabNav(root, e, target)) return;
     handleListboxNav(root, e, target);

@@ -34,7 +34,7 @@ export function BodyView({ state: propState }: BodyViewProps) {
     <div class="space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
-          <h2 class="text-lg font-extrabold text-white">Cuerpo y medidas</h2>
+          <h1 class="text-lg font-extrabold text-white">Cuerpo y medidas</h1>
           <p class="text-xs text-gray-400">
             Peso con media móvil de 7 días, composición corporal y perímetros{vm.hasFilter ? ` · ${vm.bounds.label}` : ''}.
           </p>

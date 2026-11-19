@@ -41,7 +41,9 @@ export function MeasureForm(props: MeasureFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (scrollSignal) formRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    if (!scrollSignal) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    formRef.current?.scrollIntoView?.({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
   }, [scrollSignal]);
 
   return (
@@ -82,7 +84,7 @@ export function MeasureForm(props: MeasureFormProps) {
         })}
         <label class="col-span-2 sm:col-span-1 lg:col-span-1 block">
           <span class="lbl">Nota (opcional)</span>
-          <input class="inp" name="note" value={noteValue} placeholder="p. ej. en ayunas…" onInput={(e) => onUpdateDraft('note', e.currentTarget.value)} />
+          <input class="inp" name="note" enterKeyHint="done" value={noteValue} placeholder="p. ej. en ayunas…" onInput={(e) => onUpdateDraft('note', e.currentTarget.value)} />
         </label>
       </div>
 

@@ -2,7 +2,7 @@ import type { DayName, LiveWorkout } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import { manualSessionId } from './exerciseCatalog';
 import { buildWorkoutSummary, persistCompletedSession } from './sessionPersistence';
-import type { ConfirmModalOpts } from './types';
+import type { ConfirmModalOpts, ToastAction } from './types';
 import { createWorkoutPickerActions } from './workoutPickerActions';
 import { createWorkoutRestActions } from './workoutRestActions';
 import { initLiveWorkout } from './workoutSelectors';
@@ -16,7 +16,7 @@ export interface WorkoutActionDeps {
   reload: () => Promise<void>;
   setTab: (tab: string) => void;
   queueSync: () => void;
-  toast: (msg: string) => void;
+  toast: (msg: string, action?: ToastAction) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   openNoteModal: (exName: string) => void;
   showSummary: (summary: WorkoutSummary) => void;
@@ -79,6 +79,18 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
       const state = deps.getState();
       const live = state.liveWorkout;
       if (!live) return;
+
+      const doneSets = live.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
+      const totalSets = live.exercises.reduce((acc, e) => acc + e.sets.length, 0);
+      if (doneSets > 0 && doneSets < totalSets) {
+        const pending = totalSets - doneSets;
+        const confirmed = await deps.askConfirm({
+          title: 'Terminar entrenamiento',
+          message: `Has completado ${doneSets} de ${totalSets} series (${pending === 1 ? 'queda 1 sin marcar' : `quedan ${pending} sin marcar`}). ¿Guardar el entreno igualmente?`,
+          confirmLabel: 'Guardar entreno',
+        });
+        if (!confirmed) return;
+      }
 
       const validEx = live.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
       const totalDurMin = Math.max(1, Math.round((Date.now() - live.startedAt) / 60000));

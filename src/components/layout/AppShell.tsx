@@ -70,7 +70,9 @@ export function AppShell({ onRestExpire }: AppShellProps) {
       />
       <div class="lg:pl-64">
         <main id="main-content" tabIndex={-1} class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">
-          <h1 class="sr-only hidden lg:block">{activeTabTitle(state)}</h1>
+          {['home', 'calc', 'settings'].includes(state.tab) && (
+            <h1 class="hidden lg:block text-lg font-extrabold text-white">{activeTabTitle(state)}</h1>
+          )}
           {renderActiveView(state)}
         </main>
       </div>
@@ -84,7 +86,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         onSelectTab={store.setTab}
       />
       <ModalHost />
-      <ToastBanner message={state.toast} />
+      <ToastBanner message={state.toast} action={state.toastAction} />
       <SwUpdateBanner
         visible={store.swUpdatePending}
         onDismiss={store.dismissSwUpdate}

@@ -107,24 +107,39 @@ export function exerciseContext(state: State, day: DayName | 'Libre', ex: LogExD
  * @param day - Rutina activa o `'Libre'`.
  * @param currentNames - Nombres ya presentes en la sesión para excluirlos.
  * @param limit - Máximo de sugerencias rápidas devueltas.
+ * @param preferredExName - Ejercicio a sustituir para priorizar su músculo principal.
  * @returns Listas `avail` (todos los disponibles) y `quick` (sugerencias ordenadas).
  */
-export function quickExSuggestions(state: State, day: DayName | 'Libre', currentNames: string[], limit = 6) {
+export function quickExSuggestions(state: State, day: DayName | 'Libre', currentNames: string[], limit = 6, preferredExName?: string) {
   const inUse = new Set(currentNames.map((n) => norm(n)));
   const avail = allExerciseNames(state).filter((n) => !inUse.has(norm(n)));
-  const dayMuscles = new Set(
-    day === 'Libre'
-      ? []
-      : (state.settings.routines[day] ?? []).map((r) => musclesOf(r.name, state.settings)?.p).filter((m): m is string => Boolean(m)),
-  );
+  const muscleFreq = new Map<string, number>();
+  if (day !== 'Libre') {
+    (state.settings.routines[day] ?? []).forEach((r) => {
+      const p = musclesOf(r.name, state.settings)?.p;
+      if (p) muscleFreq.set(p, (muscleFreq.get(p) ?? 0) + 1);
+    });
+  }
+  const prefMuscle = preferredExName ? musclesOf(preferredExName, state.settings)?.p : undefined;
+  const nonAbRoutine = [...muscleFreq.keys()].some((m) => m !== 'Abdomen');
+  const score = (n: string) => {
+    const m = musclesOf(n, state.settings);
+    const prefMatch = prefMuscle && m ? (m.p === prefMuscle ? 2 : m.s.includes(prefMuscle) ? 1 : 0) : 0;
+    const abPriority = m?.p === 'Abdomen' && prefMuscle !== 'Abdomen' && nonAbRoutine ? 0 : 1;
+    return [prefMatch, abPriority, m ? (muscleFreq.get(m.p) ?? 0) : 0, state.analysis.exercises.get(n)?.n ?? 0];
+  };
   const quick = avail
     .filter((n) => {
       if (day === 'Libre') return true;
       const m = musclesOf(n, state.settings);
-      if (!m) return false;
-      return dayMuscles.size ? dayMuscles.has(m.p) : MUSCLE_DAY[m.p] === day;
+      return m ? (muscleFreq.size ? muscleFreq.has(m.p) : MUSCLE_DAY[m.p] === day) : false;
     })
-    .sort((a, b) => (state.analysis.exercises.get(b)?.n ?? 0) - (state.analysis.exercises.get(a)?.n ?? 0))
+    .sort((a, b) => {
+      const sa = score(a);
+      const sb = score(b);
+      for (let i = 0; i < sa.length; i++) if (sb[i] !== sa[i]) return sb[i] - sa[i];
+      return a.localeCompare(b, 'es');
+    })
     .slice(0, limit);
   return { avail, quick };
 }

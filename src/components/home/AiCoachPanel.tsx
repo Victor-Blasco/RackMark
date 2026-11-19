@@ -47,7 +47,7 @@ export function AiCoachPanel({
           <AiToneToggle tone={tone} onChange={onToneChange} />
         </div>
         <AiJobStatusBanner job={state.aiJob} onRetry={onRetry} onDismiss={onDismiss} />
-        <button type="button" class="btn-primary w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
+        <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
           <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
         </button>
       </section>
@@ -107,14 +107,14 @@ export function AiCoachPanel({
           <div class={`grid grid-cols-1 gap-4 ${current.highlights.length ? 'lg:grid-cols-12 lg:items-start' : ''}`}>
             <div class={`space-y-2 ${current.highlights.length ? 'lg:col-span-5' : ''}`}>
               {current.overallStatus && <p class="text-sm sm:text-[15px] font-semibold text-emerald-400">{current.overallStatus}</p>}
-              {current.summary && <p class="text-sm sm:text-[15px] text-gray-100 leading-relaxed">{current.summary}</p>}
+              {current.summary && <p class="max-w-prose text-sm sm:text-[15px] text-gray-100 leading-relaxed">{current.summary}</p>}
             </div>
             {current.highlights.length > 0 && (
               <ul class="border-t border-white/10 pt-3 space-y-2 lg:col-span-7 lg:border-t-0 lg:border-l lg:border-white/10 lg:pt-0 lg:pl-6">
                 {current.highlights.map((h, i) => (
                   <li key={i} class="flex items-start gap-2.5 text-xs sm:text-sm text-gray-300 leading-relaxed">
                     <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-electricBlue" aria-hidden="true" />
-                    <span>{h}</span>
+                    <span class="max-w-prose">{h}</span>
                   </li>
                 ))}
               </ul>
@@ -123,7 +123,7 @@ export function AiCoachPanel({
         ) : (
           <>
             <h3 class={`text-base sm:text-lg font-bold ${current.titleColor}`}>{current.title}</h3>
-            <p class="text-[15px] sm:text-base text-gray-200 leading-7">{current.text}</p>
+            <p class="max-w-prose text-[15px] sm:text-base text-gray-200 leading-7">{current.text}</p>
           </>
         )}
       </div>

@@ -25,7 +25,7 @@ interface SetRowProps {
   onRestChange: (raw: string) => void;
 }
 
-const STEP_BTN = 'flex h-12 sm:h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95';
+const STEP_BTN = 'flex min-h-[48px] sm:min-h-[44px] w-11 max-[380px]:w-9 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Fila interactiva de una serie individual en `En vivo` con peso, reps, RIR y descanso.
@@ -53,12 +53,13 @@ export function SetRow({
         <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
           <span title="Repeticiones en reserva">RIR</span>
           <input
-            class="w-12 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none"
+            class="w-12 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
             type="number"
             step="1"
             min="0"
             max="10"
             inputMode="numeric"
+            enterKeyHint="done"
             value={s.rir ?? ''}
             placeholder="—"
             aria-label={`RIR de serie ${n}`}
@@ -68,12 +69,13 @@ export function SetRow({
         <label class="inline-flex min-h-[44px] sm:min-h-0 items-center gap-1.5 text-gray-400">
           <span title="Descanso real en esta serie (se rellena solo al usar el reloj)">Desc. real</span>
           <input
-            class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus:outline-none"
+            class="w-16 min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
             type="number"
             step="5"
             min="0"
             max="1800"
             inputMode="numeric"
+            enterKeyHint="done"
             value={s.restSec ?? ''}
             placeholder={String(targetRestSec)}
             aria-label={`Descanso en segundos serie ${n}`}
@@ -83,7 +85,7 @@ export function SetRow({
         </label>
       </div>
 
-      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-2">
+      <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-1.5 sm:gap-2">
         <StepperInput
           label="Peso (kg)"
           wrapClass="min-w-0"
@@ -95,7 +97,7 @@ export function SetRow({
           decAria={`Restar 2,5 kg serie ${n}`}
           incAria={`Sumar 2,5 kg serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]"
           onStep={onStepWeight}
           onInputValue={(raw) => onWeightChange(raw, false)}
           onBlurValue={(raw) => onWeightChange(raw, true)}
@@ -111,7 +113,7 @@ export function SetRow({
           decAria={`Restar 1 repetición serie ${n}`}
           incAria={`Sumar 1 repetición serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]"
           onStep={onStepReps}
           onInputValue={(raw) => onRepsChange(raw, false)}
           onBlurValue={(raw) => onRepsChange(raw, true)}
@@ -120,7 +122,7 @@ export function SetRow({
           type="button"
           aria-pressed={s.done ? 'true' : 'false'}
           aria-label={`${s.done ? 'Desmarcar' : 'Marcar'} serie ${n}`}
-          class={`flex h-12 w-12 sm:h-11 sm:w-20 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
+          class={`flex min-h-[48px] min-w-[48px] sm:min-h-[44px] sm:min-w-[80px] sm:px-2.5 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
           style={{ touchAction: 'manipulation' }}
           onClick={onToggleDone}
         >

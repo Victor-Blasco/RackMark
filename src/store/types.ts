@@ -24,6 +24,12 @@ export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
   { key: 'Custom', label: 'Fechas' },
 ];
 
+/** Acción opcional embebida dentro de un toast (p. ej. `Deshacer`). */
+export interface ToastAction {
+  label: string;
+  onAction: () => void;
+}
+
 /** Opciones de diálogo de confirmación modal. */
 export interface ConfirmModalOpts {
   title: string;
@@ -72,6 +78,33 @@ export interface UiState {
   busy?: string;
   aiJob?: AiJob;
   toast?: string;
+  toastAction?: ToastAction;
+}
+
+const ERROR_PATTERNS: [RegExp, string][] = [
+  [/permission-denied|insufficient permissions/i, 'Sin permisos en la nube. Cierra sesión y vuelve a entrar con tu cuenta verificada.'],
+  [/offline|network-request-failed|unavailable|failed to fetch|load failed/i, 'Sin conexión estable. Tus datos están a salvo en el dispositivo y se sincronizarán al volver la red.'],
+  [/popup-closed-by-user|cancelled-popup-request/i, 'Se cerró la ventana antes de completar el inicio de sesión.'],
+  [/popup-blocked/i, 'El navegador bloqueó la ventana emergente. Permite popups e inténtalo de nuevo.'],
+  [/quota-exceeded|resource-exhausted|\b429\b/i, 'Límite temporal de peticiones alcanzado. Espera unos minutos y vuelve a intentarlo.'],
+  [/unauthenticated|auth\/|user-token-expired|requires-recent-login/i, 'Tu sesión ha caducado. Vuelve a iniciar sesión con Google.'],
+  [/invalid zip|corrupt|unexpected eof/i, 'El archivo ZIP está dañado o incompleto. Vuelve a exportarlo desde Samsung Health.'],
+];
+
+/**
+ * Traduce errores técnicos internos (Firebase, red, ZIP/CSV) a mensajes claros y accionables en español.
+ *
+ * @param err - Excepción o mensaje técnico original.
+ * @param fallback - Texto seguro si el error viene vacío o en jerga de SDK.
+ * @returns Mensaje comprensible para el usuario final.
+ */
+export function humanizeError(err: unknown, fallback = 'No se pudo completar la operación.'): string {
+  const msg = (typeof err === 'string' ? err : err instanceof Error ? err.message : '').trim();
+  for (const [pattern, label] of ERROR_PATTERNS) {
+    if (pattern.test(msg)) return label;
+  }
+  if (!msg || /FirebaseError|firestore\/|indexedDB/i.test(msg)) return fallback;
+  return msg;
 }
 
 /**

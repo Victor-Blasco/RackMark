@@ -62,8 +62,8 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
         <button type="button" class="btn min-h-[44px]" onClick={() => void actions.resetDraft()}>
           <Icon name="reset" className="h-4 w-4" /> Reiniciar borrador
         </button>
-        <button type="button" class="btn-primary min-h-[44px] px-5 py-2.5" onClick={() => void actions.saveSession()}>
-          <Icon name="save" className="h-4 w-4" /> Guardar sesión ({vm.doneSetsCount} series)
+        <button type="button" class="btn-primary min-h-[44px] px-5 py-2.5 tabular-nums" onClick={() => void actions.saveSession()}>
+          <Icon name="save" className="h-4 w-4" /> Guardar sesión ({vm.doneSetsCount} {vm.doneSetsCount === 1 ? 'serie' : 'series'})
         </button>
       </div>
 

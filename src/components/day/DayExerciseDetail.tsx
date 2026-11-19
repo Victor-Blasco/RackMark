@@ -55,11 +55,11 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
           {!embedded && <h3 class="text-lg font-extrabold text-white">{e.name}</h3>}
           <div class={`flex flex-wrap items-center gap-x-3 gap-y-1 ${embedded ? '' : 'mt-1'}`}>
             <StatusInline stats={e} aiStatus={aiAdvice?.status} />
-            <span class="text-xs text-gray-400 tabular-nums">Objetivo {e.target ? `${e.target.sets}×${e.target.reps}` : '—'} · {e.n} sesiones</span>
+            <span class="text-xs text-gray-400 tabular-nums">Objetivo {e.target ? `${e.target.sets}×${e.target.reps}` : '—'} · {e.n} {e.n === 1 ? 'sesión' : 'sesiones'}</span>
           </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="btn-primary-sm" onClick={onStartWorkout}>Entrenar hoy</button>
+          <button type="button" class="btn-sm btn-accent" onClick={onStartWorkout}>Entrenar hoy</button>
           <button type="button" class="btn-sm" onClick={onEditNote}><Icon name="edit" className="h-3.5 w-3.5" /> Nota</button>
         </div>
       </div>

@@ -58,6 +58,7 @@ export function HomeChartsSection({
               <input
                 class="inp min-w-[180px] max-w-full sm:max-w-[220px]"
                 type="search"
+                enterKeyHint="search"
                 value={query}
                 placeholder="Buscar ejercicio"
                 aria-label="Buscar ejercicio para gráfica"
@@ -75,7 +76,7 @@ export function HomeChartsSection({
               ))}
             </select>
             {exCount > 12 && !options.length && (
-              <p class="w-full text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
+              <p aria-live="polite" class="w-full text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
             )}
           </div>
         </div>

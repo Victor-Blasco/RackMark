@@ -64,6 +64,8 @@ export function AthleteProfileSection({
           <input
             class="inp tabular-nums font-medium"
             type="number"
+            inputMode="numeric"
+            enterKeyHint="done"
             min="12"
             max="110"
             value={profile.age}
@@ -75,6 +77,8 @@ export function AthleteProfileSection({
           <input
             class="inp tabular-nums font-medium"
             type="number"
+            inputMode="numeric"
+            enterKeyHint="done"
             min="100"
             max="250"
             value={profile.height}

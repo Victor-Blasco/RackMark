@@ -31,7 +31,7 @@ interface BodyChartsSectionProps {
   onChangePerimeter: (perim: string) => void;
 }
 
-const MODE_BTN_BASE = 'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors';
+const MODE_BTN_BASE = 'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Gráficas de composición corporal y perímetros con cinta en `Cuerpo y medidas`.
@@ -55,12 +55,12 @@ export function BodyChartsSection({
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
       <div class="min-w-0 space-y-2">
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 class="font-bold text-white">Composición corporal ({compCount} registros)</h3>
+          <h3 class="font-bold text-white tabular-nums">Composición corporal ({compCount} registros)</h3>
           {hasCompWeight && hasCompMuscle && (
             <div
               role="group"
               aria-label="Métrica principal de composición"
-              class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-0.5 text-[11px]"
+              class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]"
             >
               <button
                 type="button"

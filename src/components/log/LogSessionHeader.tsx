@@ -53,10 +53,10 @@ export function LogSessionHeader({
     <div class="space-y-3 pb-4 border-b border-white/10">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 class="text-lg font-extrabold text-white">Registrar entreno ya hecho</h2>
+          <h1 class="text-lg font-extrabold text-white">Registrar entreno ya hecho</h1>
           <p class="text-xs text-gray-400">Añade o edita una sesión completada con sus cargas, reps y tiempo de descanso exacto.</p>
           <p id="logCountSummary" class="mt-0.5 text-xs sm:text-sm text-gray-300 tabular-nums">
-            {doneExCount}/{exerciseCount} ejercicios · {doneSetsCount}/{totalSetsCount} series marcadas ✓
+            {doneExCount}/{exerciseCount} {exerciseCount === 1 ? 'ejercicio' : 'ejercicios'} · {doneSetsCount}/{totalSetsCount} {totalSetsCount === 1 ? 'serie marcada' : 'series marcadas'} ✓
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
@@ -67,7 +67,7 @@ export function LogSessionHeader({
           <button type="button" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm" onClick={onReset}>
             <Icon name="reset" className="h-3.5 w-3.5" /> Reiniciar
           </button>
-          <button type="button" class="btn-primary min-h-[44px] py-1.5" onClick={onSave}>
+          <button type="button" class="btn-primary min-h-[44px] py-1.5 tabular-nums" onClick={onSave}>
             <Icon name="save" className="h-4 w-4" /> Guardar ({doneSetsCount})
           </button>
         </div>

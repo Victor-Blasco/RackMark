@@ -1,20 +1,33 @@
+import type { ToastAction } from '../../store/types';
+
 interface ToastBannerProps {
   /** Mensaje breve mostrado al usuario (o vacío si no hay aviso). */
   message?: string;
+  /** Botón de acción opcional (p. ej. `Deshacer`). */
+  action?: ToastAction;
 }
 
 /**
  * Aviso flotante no intrusivo en la esquina inferior para confirmaciones y alertas.
  */
-export function ToastBanner({ message }: ToastBannerProps) {
+export function ToastBanner({ message, action }: ToastBannerProps) {
   if (!message) return null;
   return (
     <div
       role="status"
       aria-live="polite"
-      class="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64"
+      class="fixed inset-x-3 bottom-20 z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64"
     >
-      {message}
+      <span class="min-w-0 flex-1">{message}</span>
+      {action && (
+        <button
+          type="button"
+          class="min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border border-electricBlue/50 bg-electricBlue/20 px-3 text-xs font-bold text-blue-200 hover:bg-electricBlue/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+          onClick={action.onAction}
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }

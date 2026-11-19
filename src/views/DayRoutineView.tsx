@@ -42,18 +42,18 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
           <div class="space-y-0.5">
             <div class="flex items-center gap-2">
               <span class="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: vm.dayColor }} aria-hidden="true" />
-              <h2 class="text-lg font-extrabold text-white">Rutina {day}</h2>
-              <span class="text-xs text-gray-400">· {vm.sess.length} sesiones{vm.hasFilter ? ` (${vm.rangeLabel})` : ''}</span>
+              <h1 class="text-lg font-extrabold text-white">Rutina {day}</h1>
+              <span class="text-xs text-gray-400 tabular-nums">· {vm.sess.length} {vm.sess.length === 1 ? 'sesión' : 'sesiones'}{vm.hasFilter ? ` (${vm.rangeLabel})` : ''}</span>
             </div>
             <p class="text-xs sm:text-sm text-gray-400 tabular-nums">
               {vm.lastS
-                ? `Última: ${fmtDate(vm.lastS.date)} · ${vm.lastS.sets} series${vm.lastS.durMin ? ` · ${Math.round(vm.lastS.durMin)} min` : ''}${vm.lastS.avgHr ? ` · Pulso ${vm.lastS.avgHr}${vm.lastS.maxHr ? `/${vm.lastS.maxHr}` : ''} lpm` : ''}${vm.lastS.kcal ? ` · ${vm.lastS.kcal} kcal` : ''}`
+                ? `Última: ${fmtDate(vm.lastS.date)} · ${vm.lastS.sets} ${vm.lastS.sets === 1 ? 'serie' : 'series'}${vm.lastS.durMin ? ` · ${Math.round(vm.lastS.durMin)} min` : ''}${vm.lastS.avgHr ? ` · Pulso ${vm.lastS.avgHr}${vm.lastS.maxHr ? `/${vm.lastS.maxHr}` : ''} lpm` : ''}${vm.lastS.kcal ? ` · ${vm.lastS.kcal} kcal` : ''}`
                 : `Sin sesiones en ${vm.rangeLabel}`}
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {state.analysis.unmapped.length > 0 && (
-              <button type="button" class="btn-sm border-amberGold/40 text-amberGold" onClick={plan.openUnmapped}>
+              <button type="button" class="btn-sm border-amberGold/40 text-amberGold tabular-nums" onClick={plan.openUnmapped}>
                 {state.analysis.unmapped.length} sin nombre
               </button>
             )}
@@ -70,10 +70,10 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
           {vm.extraAll.length > 0 && vm.primary.length > 0 ? (
             <div role="tablist" aria-label="Filtro de ejercicios" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-              <button type="button" role="tab" aria-selected={!vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${!vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'routine')}>
+              <button type="button" role="tab" aria-selected={!vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'routine')}>
                 En rutina ({vm.primary.length})
               </button>
-              <button type="button" role="tab" aria-selected={vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'extra')}>
+              <button type="button" role="tab" aria-selected={vm.showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${vm.showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => plan.setDayScope(day, 'extra')}>
                 Anteriores ({vm.extraAll.length})
               </button>
             </div>

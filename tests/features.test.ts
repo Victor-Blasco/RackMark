@@ -3,11 +3,13 @@ import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPrompt } from '../src/lib/ai';
-import { analyze, judge, weeklyVolume } from '../src/lib/analysis';
+import { analyze, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
+import { AiInsightBanner } from '../src/components/common/AiInsightBanner';
+import { ToastBanner } from '../src/components/common/ToastBanner';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
@@ -19,9 +21,10 @@ import { RangePicker } from '../src/components/common/RangePicker';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
 import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';
-import { allExerciseNames, extractTargetWeight, manualSessionId } from '../src/store/exerciseCatalog';
+import { allExerciseNames, extractTargetWeight, manualSessionId, quickExSuggestions } from '../src/store/exerciseCatalog';
 import { buildBodyHomeChartConfig, buildHomeExChartConfig } from '../src/store/homeChartConfigs';
 import { initLogDraft } from '../src/store/logSelectors';
+import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
 import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
 import {
@@ -31,12 +34,15 @@ import {
   goalPhaseName,
   recommendTemplate,
 } from '../src/store/wizardSelectors';
+import { createLiveWorkoutActions } from '../src/store/workoutActions';
 import { initLiveWorkout } from '../src/store/workoutSelectors';
+import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
 import { moveItem } from '../src/ui/reorder';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
   DAY_COLOR,
+  humanizeError,
   inRange,
   isAiFreshForEx,
   movingAverage7d,
@@ -533,7 +539,8 @@ describe('calculadora nutricional', () => {
     expect(html).toContain('role="radio"');
     expect(html).toContain('whitespace-nowrap');
     expect(html).toContain('items-end gap-3');
-    expect(html).toContain('lbl min-h-8 leading-4');
+    expect(html).toContain('flex flex-col justify-end');
+    expect(html).toContain('lbl leading-4');
   });
 });
 
@@ -690,7 +697,8 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(modalHtml).not.toContain('backdrop-blur');
 
     const homeHtml = renderToString(h(HomeView, { state }));
-    expect(homeHtml).toContain('role="button"');
+    expect(homeHtml).not.toContain('role="button"');
+    expect(homeHtml).toContain('Control de cargas del bloque');
     expect(homeHtml).toContain('Torso');
     expect(homeHtml).toContain('Press Banca X');
 
@@ -1514,7 +1522,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(singleHtml).not.toContain('aria-labelledby="ai-tab-');
 
     const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: base }));
-    expect(dayHtml).toContain('role="listbox" aria-orientation="vertical"');
+    expect(dayHtml).toContain('role="listbox" tabindex="0" aria-orientation="vertical"');
     expect(dayHtml).toContain('id="day-opt-0" role="option" tabindex="0"');
     expect(dayHtml).toContain('id="day-opt-1" role="option" tabindex="-1"');
   });
@@ -1539,20 +1547,25 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
     expect(liveHtml).not.toContain('text-coralRed/90');
-    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base h-12 sm:h-11');
-    expect(liveHtml).toContain('h-12 w-12');
+    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]');
+    expect(liveHtml).toContain('min-h-[48px] min-w-[48px]');
     expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') } }));
     expect(logHtml).toContain('inp-stepper min-w-[44px]');
     expect(logHtml).toContain('btn btn-accent');
+    expect(logHtml).toContain('<h1');
     expect(logHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
 
     const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
     const planExHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
     const bodyHtml = renderToString(h(BodyView, { state: { ...state, tab: 'body' } }));
     const pickerHtml = renderToString(h(RangePicker, { scope: 'home', active: 'Custom', custom: {} }));
+    expect(planHtml).toContain('<h1');
+    expect(bodyHtml).toContain('<h1');
+    expect(bodyHtml).toContain('table-fixed');
+    expect(pickerHtml).toContain('min-h-[44px] min-w-[44px]');
     for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
       expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     }
@@ -1582,5 +1595,210 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(colors.length).toBe(4);
     expect(colors).not.toContain('#F43F5E');
     expect(colors).not.toContain('#EC4899');
+  });
+
+  it('humaniza errores, soporta Deshacer en toast/acciones y acota párrafos IA con max-w-prose y sticky en Rutina', () => {
+    expect(humanizeError(new Error('Missing or insufficient permissions.'))).toContain('Sin permisos en la nube');
+    expect(humanizeError(new Error('Failed to get document because the client is offline.'))).toContain('Sin conexión estable');
+    expect(humanizeError(new Error('invalid zip data'))).toContain('ZIP está dañado');
+
+    let lastAction: { label: string; onAction: () => void } | undefined;
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'log',
+      strength: [],
+      cardio: [],
+      measures: [{ date: '2026-11-15', weight: 75 }],
+      wellbeing: [],
+      settings: {
+        ...settings,
+        ai: {
+          date: '2026-11-15',
+          tone: 'technical',
+          overview: {
+            overallStatus: 'Progreso sólido',
+            highlights: ['Buen ritmo'],
+            sections: [{ title: 'Composición corporal', verdict: 'good', text: 'Peso estable y tendencia limpia.' }],
+          },
+          byExercise: {},
+        },
+      },
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: {},
+      aiTab: 1,
+    };
+
+    let draft = initLogDraft(state, 'Push', '2026-11-15');
+    const initialCount = draft.exercises.length;
+    const firstExName = draft.exercises[0].name;
+    const logSetActions = createLogSetActions(
+      () => draft,
+      (next) => { if (next) draft = next; },
+      (_msg, action) => { lastAction = action; },
+    );
+    logSetActions.removeExercise(0);
+    expect(draft.exercises.length).toBe(initialCount - 1);
+    expect(lastAction?.label).toBe('Deshacer');
+    lastAction?.onAction();
+    expect(draft.exercises.length).toBe(initialCount);
+    expect(draft.exercises[0].name).toBe(firstExName);
+
+    let live = initLiveWorkout(state, 'Push');
+    const initialSets = live.exercises[0].sets.length;
+    const workoutSetActions = createWorkoutSetActions(
+      () => live,
+      (next) => { if (next) live = next; },
+      (next) => { if (next) live = next; },
+      (_msg, action) => { lastAction = action; },
+    );
+    workoutSetActions.delSet(0, 1);
+    expect(live.exercises[0].sets.length).toBe(initialSets - 1);
+    lastAction?.onAction();
+    expect(live.exercises[0].sets.length).toBe(initialSets);
+
+    const toastHtml = renderToString(h(ToastBanner, { message: 'Serie eliminada.', action: { label: 'Deshacer', onAction: () => {} } }));
+    expect(toastHtml).toContain('Deshacer');
+
+    const coachHtml = renderToString(h(AiCoachPanel, { state, tone: 'technical' }));
+    expect(coachHtml).toContain('max-w-prose');
+
+    const bannerHtml = renderToString(h(AiInsightBanner, { state, pattern: /composici/i }));
+    expect(bannerHtml).toContain('<section');
+    expect(bannerHtml).not.toContain('<aside');
+    expect(bannerHtml).toContain('max-w-prose');
+
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
+    expect(dayHtml).toContain('lg:sticky lg:top-6');
+    expect(dayHtml).toContain('<h1');
+  });
+
+  it('cumple prioridades 6-10: sugerencias musculares, menú live, CTA único, Wizard sin doble omitir y pulido final', async () => {
+    const settings = sanitizeSettings({
+      onboardingCompleted: true,
+      routines: {
+        ...DEFAULT_SETTINGS.routines,
+        Push: [
+          { name: 'Press de banca', sets: 3, reps: 8 },
+          { name: 'Press militar', sets: 3, reps: 10 },
+          { name: 'Abdominales en máquina', sets: 3, reps: 15 },
+        ],
+      },
+      muscles: {
+        ...DEFAULT_MUSCLES,
+        'Press de banca': { p: 'Pecho', s: ['Hombro', 'Tríceps'] },
+        'Press militar': { p: 'Hombro', s: ['Tríceps'] },
+        'Abdominales en máquina': { p: 'Abdomen', s: [] },
+        'Abdominales (crunches)': { p: 'Abdomen', s: [] },
+        'Press inclinado con mancuernas': { p: 'Pecho', s: ['Hombro', 'Tríceps'] },
+      },
+    });
+    const state: State = {
+      tab: 'home',
+      strength: [
+        { id: 'r1', sessionId: 's1', ts: 1700000000000, date: '2026-11-10', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }] },
+      ],
+      cardio: [],
+      measures: [{ date: '2026-11-10', weight: 76 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze(
+        [{ id: 'r1', sessionId: 's1', ts: 1700000000000, date: '2026-11-10', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }] }],
+        settings,
+      ),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: {},
+    };
+
+    // Prioridad 6: quickExSuggestions no queda secuestrado por Abdominales y en swap prioriza el músculo sustituido
+    const pushSugg = quickExSuggestions(state, 'Push', ['Press de banca', 'Press militar', 'Abdominales en máquina'], 6);
+    expect(pushSugg.quick.length).toBeGreaterThan(0);
+    expect(pushSugg.quick.every((n) => musclesOf(n, settings)?.p !== 'Abdomen')).toBe(true);
+    const swapSugg = quickExSuggestions(state, 'Push', ['Press de banca', 'Press militar', 'Abdominales en máquina'], 6, 'Press de banca');
+    expect(swapSugg.quick.length).toBeGreaterThan(0);
+    expect(swapSugg.quick.every((n) => musclesOf(n, settings)?.p === 'Pecho')).toBe(true);
+
+    // Prioridad 6: save() parcial pide confirmación en askConfirm y aborta si cancela
+    let live = initLiveWorkout(state, 'Push');
+    live = {
+      ...live,
+      exercises: [
+        { name: 'Press de banca', note: '', done: false, sets: [{ w: 80, r: 8, done: true }, { w: 80, r: 8, done: false }] },
+      ],
+    };
+    const confirmCalls: string[] = [];
+    const workoutActions = createLiveWorkoutActions({
+      getState: () => ({ ...state, liveWorkout: live }),
+      saveLiveOnly: (next) => { live = next ?? live; },
+      commitLive: (next) => { if (next) live = next; },
+      reload: async () => {},
+      setTab: () => {},
+      queueSync: () => {},
+      toast: () => {},
+      askConfirm: async (opts) => {
+        confirmCalls.push(opts.title);
+        return false;
+      },
+      openNoteModal: () => {},
+      showSummary: () => {},
+    });
+    await workoutActions.save();
+    expect(confirmCalls).toEqual(['Terminar entrenamiento']);
+    expect(live.exercises[0].sets[0].done).toBe(true);
+
+    // Prioridad 6 & 9: Descartar dentro de LiveExerciseMenu y sin doble btn-primary cuando allDone o picker activo
+    const liveWithPickerHtml = renderToString(
+      h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: { ...live, pickerMode: 'swap' } } }),
+    );
+    expect(liveWithPickerHtml).toContain('Descartar entrenamiento');
+    expect(liveWithPickerHtml).toContain('id="livePickerSearch"');
+    const allDoneLive = {
+      ...live,
+      exercises: [{ name: 'Press de banca', note: '', done: true, sets: [{ w: 80, r: 8, done: true }] }],
+    };
+    const allDoneHtml = renderToString(h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: allDoneLive } }));
+    expect((allDoneHtml.match(/class="btn-primary(?:-sm)?\b/g) ?? []).length).toBe(1);
+
+    // Prioridad 7 & 9: WizardModal sin doble "Omitir" en Paso 1 y con pie fijo fuera del área scrollable
+    const wizardStep1Html = renderToString(h(WizardModal, { draft: createWizardDraft(state), onPatch: () => {}, onBack: () => {}, onSubmitStep: () => {}, onSkip: () => {} }));
+    expect(wizardStep1Html).not.toContain('Omitir por ahora');
+    expect(wizardStep1Html).toContain('flex-1 overflow-y-auto');
+
+    // Prioridad 9: máximo 1 btn-primary en HomeView y DayRoutineView, y MobileHeader con estado antes que stats
+    const homeHtml = renderToString(h(HomeView, { state }));
+    expect((homeHtml.match(/class="btn-primary(?:-sm)?\b/g) ?? []).length).toBe(1);
+    expect(homeHtml).not.toContain('role="button"');
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
+    expect((dayHtml.match(/class="btn-primary(?:-sm)?\b/g) ?? []).length).toBe(1);
+    expect(dayHtml).toContain('sr-only');
+
+    const mobHtml = renderToString(
+      h(MobileHeader, {
+        state,
+        statsText: '18 sesiones · 12 medidas',
+        unsynced: false,
+        onSelectTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(mobHtml.indexOf('Solo local')).toBeLessThan(mobHtml.indexOf('18 ses.'));
+
+    // Prioridad 7 & 8 & 10: Log RIR cabecera desktop, singular "1 serie", DataView inputs estilizados y aria-live en Plan
+    const logDraft = initLogDraft(state, 'Push', '2026-11-15');
+    logDraft.exercises = [{ name: 'Press de banca', note: '', done: true, sets: [{ w: 80, r: 8, done: true }] }];
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft } }));
+    expect(logHtml).toContain('<span class="w-14 shrink-0 text-center">RIR</span>');
+    expect(logHtml).toContain('Guardar sesión (1 serie)');
+
+    const dataHtml = renderToString(h(DataView, { state: { ...state, tab: 'data' } }));
+    expect((dataHtml.match(/class="sr-only" type="file"/g) ?? []).length).toBe(3);
+
+    const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
+    expect(planHtml).toContain('id="planCatalogCount" aria-live="polite"');
+    expect(planHtml).toContain('volumen óptimo');
   });
 });

@@ -109,7 +109,7 @@ export function MacroCalculator({
                 type="button"
                 role="radio"
                 aria-checked={active ? 'true' : 'false'}
-                class={`min-h-[44px] rounded-lg px-4 text-sm font-bold transition-colors ${active ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+                class={`min-h-[44px] min-w-[44px] rounded-lg px-4 text-sm font-bold transition-colors ${active ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
                 onClick={() => onUpdateField('meals', String(meals))}
               >
                 {meals}

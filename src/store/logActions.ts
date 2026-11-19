@@ -6,7 +6,7 @@ import { createLogHistoryActions } from './logHistoryActions';
 import { createLogInputActions } from './logInputActions';
 import { initLogDraft } from './logSelectors';
 import { createLogSetActions } from './logSetActions';
-import type { ConfirmModalOpts } from './types';
+import type { ConfirmModalOpts, ToastAction } from './types';
 
 /** Dependencias necesarias para ejecutar acciones en `Registrar hecho`. */
 export interface LogActionDeps {
@@ -16,7 +16,7 @@ export interface LogActionDeps {
   reload: () => Promise<void>;
   setTab: (tab: string) => void;
   queueSync: () => void;
-  toast: (msg: string) => void;
+  toast: (msg: string, action?: ToastAction) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   openNoteModal: (exName: string) => void;
   onSearchChange: (q: string) => void;

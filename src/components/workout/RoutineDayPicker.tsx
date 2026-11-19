@@ -19,7 +19,7 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
   return (
     <div class="mx-auto max-w-xl space-y-5 py-1">
       <div class="space-y-1">
-        <h2 class="text-xl font-extrabold text-white">Iniciar entrenamiento</h2>
+        <h1 class="text-xl font-extrabold text-white">Iniciar entrenamiento</h1>
         <p class="text-sm text-gray-400">Elige qué toca hoy. Verás un ejercicio cada vez con peso, reps y descanso.</p>
       </div>
 
@@ -28,7 +28,7 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
           <button
             key={item.day}
             type="button"
-            class={`flex min-h-[68px] w-full items-center justify-between gap-3 py-3.5 px-1 text-left transition-colors active:bg-white/5 ${item.isSuggested ? 'bg-electricBlue/[0.06]' : 'hover:bg-white/[0.03]'}`}
+            class={`flex min-h-[68px] w-full items-center justify-between gap-3 rounded-xl py-3.5 px-1 text-left transition-colors active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${item.isSuggested ? 'bg-electricBlue/[0.06]' : 'hover:bg-white/[0.03]'}`}
             onClick={() => onStartWorkout(item.day)}
           >
             <div class="min-w-0 flex-1 space-y-0.5">
@@ -39,7 +39,7 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
                 {item.isSuggested && <span class="rounded-full bg-electricBlue px-2 py-0.5 text-[10px] font-bold text-white">Toca hoy</span>}
               </div>
               <p class="text-xs text-gray-400 tabular-nums">
-                {item.exerciseCount} ejercicios · {item.totalSets} series{item.lastDate ? ` · Última ${fmtDate(item.lastDate)}` : ''}
+                {item.exerciseCount} {item.exerciseCount === 1 ? 'ejercicio' : 'ejercicios'} · {item.totalSets} {item.totalSets === 1 ? 'serie' : 'series'}{item.lastDate ? ` · Última ${fmtDate(item.lastDate)}` : ''}
               </p>
             </div>
             <Icon name="play" className={`h-4 w-4 shrink-0 ${item.isSuggested ? 'text-blue-300' : 'text-gray-400'}`} />
@@ -48,7 +48,7 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
 
         <button
           type="button"
-          class="flex min-h-[64px] w-full items-center justify-between gap-3 py-3.5 px-1 text-left transition-colors hover:bg-white/[0.03] active:bg-white/5"
+          class="flex min-h-[64px] w-full items-center justify-between gap-3 rounded-xl py-3.5 px-1 text-left transition-colors hover:bg-white/[0.03] active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
           onClick={() => onStartWorkout('Libre')}
         >
           <div class="space-y-0.5">
@@ -62,7 +62,7 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
       <div class="pt-1 text-center">
         <button
           type="button"
-          class="inline-flex min-h-[44px] items-center gap-1.5 px-3 text-xs font-semibold text-gray-300 hover:text-white"
+          class="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-gray-300 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
           onClick={onGoToLog}
         >
           <Icon name="edit" className="h-3.5 w-3.5" /> ¿Ya terminaste? Registrar un entreno ya hecho

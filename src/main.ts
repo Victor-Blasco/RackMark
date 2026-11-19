@@ -12,7 +12,7 @@ import { createDataSyncActions } from './store/dataSyncActions';
 import { createLogWorkoutActions } from './store/logActions';
 import { ANALYTICS_IDS, FIXED_TAB_IDS, isRoutineTab, isValidTab } from './store/navigation';
 import { createPlanActions } from './store/planActions';
-import type { ConfirmModalOpts } from './store/types';
+import type { ConfirmModalOpts, ToastAction } from './store/types';
 import { createWizardActions } from './store/wizardActions';
 import { createLiveWorkoutActions } from './store/workoutActions';
 import { createWorkoutLaunchActions } from './store/workoutLaunchActions';
@@ -86,16 +86,29 @@ async function reload() {
 }
 
 let toastTimer: number | undefined;
-function toast(msg: string) {
+function toast(msg: string, action?: ToastAction) {
   S.toast = msg;
+  S.toastAction = action
+    ? {
+        label: action.label,
+        onAction: () => {
+          clearTimeout(toastTimer);
+          S.toast = undefined;
+          S.toastAction = undefined;
+          renderChrome();
+          action.onAction();
+        },
+      }
+    : undefined;
   renderChrome();
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => {
     if (S.toast === msg) {
       S.toast = undefined;
+      S.toastAction = undefined;
       renderChrome();
     }
-  }, 5000);
+  }, action ? 6000 : 5000);
 }
 
 function renderChrome() {

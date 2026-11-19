@@ -40,10 +40,12 @@ export function PlanSidebarWidgets({
       <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
         <div class="flex items-baseline justify-between gap-2">
           <h3 class="text-sm font-bold text-white">Simulador de volumen semanal</h3>
-          <span class="tabular-nums text-xs font-semibold text-gray-400">{totalPlannedSets} series</span>
+          <span class="tabular-nums text-xs font-semibold text-gray-400">
+            {totalPlannedSets} {totalPlannedSets === 1 ? 'serie' : 'series'}
+          </span>
         </div>
         <p class="text-[11px] text-gray-400">
-          Principal = 1, secundario = 0,5 · <span class="text-coralRed">&lt;8</span> · <span class="text-emeraldGreen">8–20</span> · <span class="text-amberGold">&gt;20</span>
+          Principal = 1, secundario = 0,5 · <span class="text-coralRed">↓ &lt;8</span> · <span class="text-emeraldGreen">✓ 8–20</span> · <span class="text-amberGold">↑ &gt;20</span>
         </p>
         <div class="space-y-1.5">
           {MUSCLES.map((m) => {
@@ -51,14 +53,18 @@ export function PlanSidebarWidgets({
             const labelV = v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ',');
             const textCol = v === 0 ? 'text-gray-400' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold';
             const barCol = v === 0 ? 'bg-white/10' : v < 8 ? 'bg-coralRed' : v <= 20 ? 'bg-emeraldGreen' : 'bg-amberGold';
+            const cue = v === 0 ? '' : v < 8 ? '↓ ' : v <= 20 ? '✓ ' : '↑ ';
+            const srLabel = v === 0 ? ' sin series' : v < 8 ? ' volumen bajo' : v <= 20 ? ' volumen óptimo' : ' volumen alto';
             const pct = Math.min(100, Math.round((v / 22) * 100));
             return (
-              <div key={m} class="grid grid-cols-[96px_1fr_40px] items-center gap-2 text-xs">
+              <div key={m} class="grid grid-cols-[96px_1fr_54px] items-center gap-2 text-xs">
                 <span class="truncate text-gray-200">{m}</span>
                 <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
                   <div class={`h-full rounded-full ${barCol}`} style={{ width: `${pct}%` }} />
                 </div>
-                <span class={`text-right tabular-nums font-bold ${textCol}`}>{labelV}</span>
+                <span class={`text-right tabular-nums font-bold ${textCol}`}>
+                  {cue}{labelV}<span class="sr-only">{srLabel}</span>
+                </span>
               </div>
             );
           })}
@@ -68,7 +74,7 @@ export function PlanSidebarWidgets({
       <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
         <div class="flex items-baseline justify-between gap-2">
           <h3 class="text-sm font-bold text-white">Catálogo rápido</h3>
-          <span id="planCatalogCount" class="tabular-nums text-xs text-gray-400">{catalog.countText}</span>
+          <span id="planCatalogCount" aria-live="polite" class="tabular-nums text-xs text-gray-400">{catalog.countText}</span>
         </div>
         <label class="block">
           <span class="lbl">Rutina destino</span>
@@ -78,7 +84,7 @@ export function PlanSidebarWidgets({
         </label>
         <label class="block">
           <span class="lbl">Buscar ejercicio o músculo</span>
-          <input id="planExSearch" type="search" class="inp" value={state.planSearch ?? ''} placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo" onInput={(e) => onSearchChange(e.currentTarget.value)} />
+          <input id="planExSearch" type="search" enterKeyHint="search" class="inp" value={state.planSearch ?? ''} placeholder="Ej. Press, Espalda, Bíceps…" aria-label="Buscar ejercicio o músculo" onInput={(e) => onSearchChange(e.currentTarget.value)} />
         </label>
         <div id="planCatalogList" class="max-h-72 overflow-y-auto divide-y divide-white/[0.06]">
           <PlanCatalogList

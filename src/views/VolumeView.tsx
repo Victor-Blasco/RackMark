@@ -95,7 +95,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
     <div class="space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
-          <h2 class="text-lg font-extrabold text-white">Volumen semanal</h2>
+          <h1 class="text-lg font-extrabold text-white">Volumen semanal</h1>
           <p class="text-xs text-gray-400">
             Series efectivas por grupo muscular · últimas {vm.weeks.length} semanas ({vm.bounds.label}).
           </p>

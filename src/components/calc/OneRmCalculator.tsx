@@ -73,17 +73,17 @@ export function OneRmCalculator({
       )}
 
       <div class="grid grid-cols-3 items-end gap-3">
-        <label class="flex h-16 flex-col">
-          <span class="lbl min-h-8 leading-4">Peso (kg)</span>
-          <input id="calcW" class="inp mt-auto tabular-nums font-medium" type="number" step="0.5" value={cW} onInput={(e) => onUpdateField('w', e.currentTarget.value)} />
+        <label class="flex flex-col justify-end">
+          <span class="lbl leading-4">Peso (kg)</span>
+          <input id="calcW" class="inp mt-auto tabular-nums font-medium" type="number" step="0.5" inputMode="decimal" enterKeyHint="next" value={cW} onInput={(e) => onUpdateField('w', e.currentTarget.value)} />
         </label>
-        <label class="flex h-16 flex-col">
-          <span class="lbl min-h-8 leading-4">Reps</span>
-          <input id="calcR" class="inp mt-auto tabular-nums font-medium" type="number" min="1" max="30" value={cR} onInput={(e) => onUpdateField('r', e.currentTarget.value)} />
+        <label class="flex flex-col justify-end">
+          <span class="lbl leading-4">Reps</span>
+          <input id="calcR" class="inp mt-auto tabular-nums font-medium" type="number" min="1" max="30" inputMode="numeric" enterKeyHint="next" value={cR} onInput={(e) => onUpdateField('r', e.currentTarget.value)} />
         </label>
-        <label class="flex h-16 flex-col">
-          <span class="lbl min-h-8 leading-4">Reps en reserva (RIR 0-5)</span>
-          <input id="calcRir" class="inp mt-auto tabular-nums font-medium" type="number" min="0" max="5" value={cRir} onInput={(e) => onUpdateField('rir', e.currentTarget.value)} />
+        <label class="flex flex-col justify-end">
+          <span class="lbl leading-4">Reps en reserva (RIR 0-5)</span>
+          <input id="calcRir" class="inp mt-auto tabular-nums font-medium" type="number" min="0" max="5" inputMode="numeric" enterKeyHint="done" value={cRir} onInput={(e) => onUpdateField('rir', e.currentTarget.value)} />
         </label>
       </div>
 

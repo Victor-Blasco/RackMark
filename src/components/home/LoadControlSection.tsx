@@ -24,29 +24,20 @@ interface LoadControlSectionProps {
  * Sección inferior de `Resumen` con tabla de escritorio y listado móvil de progresión.
  */
 export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlSectionProps) {
-  const onRowKeyDown = (e: KeyboardEvent, day: DayName, name: string) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onOpenDetail(day, name);
-    }
-  };
-
   return (
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
-        <button type="button" class="btn-primary-sm sm:text-sm" onClick={onGoLog}>+ Registrar entreno</button>
+        <button type="button" class="btn-sm btn-accent sm:text-sm" onClick={onGoLog}>+ Registrar entreno</button>
       </div>
 
       <div class="md:hidden divide-y divide-white/10">
         {rows.map(({ d, c, e, aiStatus }) => (
-          <div
+          <button
             key={`${d}|${e.name}`}
-            role="button"
-            tabIndex={0}
-            class="py-3 space-y-1.5 cursor-pointer rounded-xl px-1 -mx-1 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+            type="button"
+            class="w-full text-left py-3 space-y-1.5 rounded-xl px-1 -mx-1 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
             onClick={() => onOpenDetail(d, e.name)}
-            onKeyDown={(ev) => onRowKeyDown(ev, d, e.name)}
           >
             <div class="flex items-center justify-between gap-2">
               <div class="flex min-w-0 items-center gap-2">
@@ -61,7 +52,7 @@ export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlS
               {e.last ? `${short(e.last.date)} · ${e.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}` : 'Sin registros'}
             </div>
             <div class="pl-1 pt-0.5 truncate"><StatusInline stats={e} aiStatus={aiStatus} /></div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -83,14 +74,23 @@ export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlS
               return (
                 <tr
                   key={`${d}|${e.name}`}
-                  role="button"
-                  tabIndex={0}
-                  class="cursor-pointer hover:bg-white/[0.03] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+                  class="cursor-pointer hover:bg-white/[0.03] transition-colors"
                   onClick={() => onOpenDetail(d, e.name)}
-                  onKeyDown={(ev) => onRowKeyDown(ev, d, e.name)}
                 >
                   <td class="py-3 pr-3 truncate"><span style={{ color: c }} class="font-bold">{d}</span></td>
-                  <td class="py-3 pr-3 font-medium text-white truncate" title={e.name}>{e.name}</td>
+                  <td class="py-3 pr-3">
+                    <button
+                      type="button"
+                      class="block w-full truncate text-left font-medium text-white hover:text-blue-300 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+                      title={e.name}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        onOpenDetail(d, e.name);
+                      }}
+                    >
+                      {e.name}
+                    </button>
+                  </td>
                   <td class="py-3 pr-3 text-right tabular-nums text-sm font-medium text-gray-300">{e.target ? `${e.target.sets}×${e.target.reps}` : '—'}</td>
                   <td class="py-3 pr-3 text-right tabular-nums text-sm text-gray-300">{e.last ? short(e.last.date) : '—'}</td>
                   <td class="py-3 pr-3 tabular-nums text-sm font-medium text-gray-100 truncate" title={setsTxt}>{setsTxt || '—'}</td>

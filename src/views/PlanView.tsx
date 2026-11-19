@@ -24,7 +24,7 @@ export function PlanView({ state: propState }: PlanViewProps) {
     <div class="space-y-5">
       <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
-          <h2 class="text-lg font-extrabold text-white">Planificación y catálogo</h2>
+          <h1 class="text-lg font-extrabold text-white">Planificación y catálogo</h1>
           <p class="text-xs text-gray-400">Crea tus propias rutinas o usa una plantilla, define fases del bloque y gestiona los ejercicios.</p>
         </div>
         <div role="tablist" aria-label="Secciones de planificación" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">

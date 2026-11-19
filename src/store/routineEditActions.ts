@@ -2,7 +2,7 @@ import { ROUTINE_TEMPLATES } from '../lib/seed';
 import type { DayName, RoutineEx } from '../types';
 import { moveItem } from '../ui/reorder';
 import { routineNames, type State } from '../ui/shared';
-import type { ConfirmModalOpts } from './types';
+import type { ConfirmModalOpts, ToastAction } from './types';
 import { applyRoutineTemplateToState } from './routineTemplate';
 
 /** Dependencias para editar días de rutina, ejercicios de cada día y plantillas. */
@@ -14,7 +14,7 @@ export interface RoutineEditDeps {
   render: () => void;
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
-  toast: (msg: string) => void;
+  toast: (msg: string, action?: ToastAction) => void;
 }
 
 /**
@@ -95,8 +95,18 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
     },
 
     async deleteRoutineRow(day: string, idx: number) {
-      if (!state().settings.routines[day]) return;
+      const removed = state().settings.routines[day]?.[idx];
+      if (!removed) return;
       await updateRoutineRows(day, (list) => list.filter((_, i) => i !== idx));
+      deps.toast(`Eliminado «${removed.name || 'fila vacía'}» de ${day}.`, {
+        label: 'Deshacer',
+        onAction: () => {
+          const cur = state().settings.routines[day];
+          if (!cur) return;
+          const pos = Math.min(idx, cur.length);
+          void updateRoutineRows(day, (list) => [...list.slice(0, pos), removed, ...list.slice(pos)]);
+        },
+      });
     },
 
     async moveRoutineRow(day: string, idx: number, dir: number) {

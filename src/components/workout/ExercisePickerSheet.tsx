@@ -1,4 +1,4 @@
-import { useRef } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { filterSelectionOptions } from '../../ui/selection';
 
 interface ExercisePickerSheetProps {
@@ -33,17 +33,34 @@ export function ExercisePickerSheet({
   onPick,
   onClose,
 }: ExercisePickerSheetProps) {
+  const searchRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
   const options = filterSelectionOptions(available.map((name) => ({ id: name, label: name })), query);
   const title = mode === 'swap' && currentExName ? `Cambiar "${currentExName}" por otro` : 'Añadir ejercicio a este entreno';
+
+  useEffect(() => {
+    const prevFocused = document.activeElement as HTMLElement | null;
+    (searchRef.current ?? selectRef.current ?? customRef.current)?.focus({ preventScroll: true });
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && currentExName) {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      if (prevFocused?.isConnected && prevFocused !== document.body) prevFocused.focus({ preventScroll: true });
+    };
+  }, [currentExName, onClose]);
 
   return (
     <section aria-label={title} class="rounded-2xl border border-electricBlue/40 bg-floatDark p-3.5 shadow-xl shadow-black/40 space-y-3">
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-extrabold text-white">{title}</h3>
         {currentExName && (
-          <button type="button" class="min-h-[44px] sm:min-h-[34px] px-2.5 text-xs font-semibold text-gray-400 hover:text-white" onClick={onClose}>
+          <button type="button" class="min-h-[44px] sm:min-h-[34px] rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onClose}>
             Cancelar
           </button>
         )}
@@ -62,31 +79,42 @@ export function ExercisePickerSheet({
         </div>
       )}
 
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div class="flex gap-2">
-          {available.length > 12 && (
+      <div class="space-y-2">
+        {available.length > 12 && (
+          <div class="space-y-1">
             <input
               id="livePickerSearch"
-              class="inp min-h-[44px] flex-1"
+              ref={searchRef}
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              class="inp w-full min-h-[44px]"
               value={query}
               placeholder="Buscar ejercicio…"
               aria-label="Buscar ejercicio"
               onInput={(e) => onQueryChange(e.currentTarget.value)}
             />
-          )}
-          <select id="livePickerSelect" ref={selectRef} class="inp min-h-[44px] flex-1" aria-label="Elegir ejercicio de la lista">
-            <option value="">{query.trim() ? `Resultados (${options.length})…` : `Todos los ejercicios (${available.length})…`}</option>
-            {options.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
-          </select>
-          <button type="button" class="btn-primary min-h-[44px] shrink-0" onClick={() => onPick(selectRef.current?.value ?? '')}>
-            Elegir
-          </button>
-        </div>
-        <div class="flex gap-2">
-          <input id="livePickerCustom" ref={customRef} class="inp min-h-[44px] flex-1" placeholder="O escribe uno nuevo…" aria-label="Nombre de ejercicio personalizado" />
-          <button type="button" class="btn min-h-[44px] shrink-0" onClick={() => onPick(customRef.current?.value ?? '')}>
-            Usar
-          </button>
+            {!options.length && (
+              <p aria-live="polite" class="text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
+            )}
+          </div>
+        )}
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div class="flex gap-2">
+            <select id="livePickerSelect" ref={selectRef} class="inp min-h-[44px] min-w-0 flex-1" aria-label="Elegir ejercicio de la lista">
+              <option value="">{query.trim() ? `Resultados (${options.length})…` : `Todos los ejercicios (${available.length})…`}</option>
+              {options.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+            </select>
+            <button type="button" class="btn btn-accent min-h-[44px] shrink-0" onClick={() => onPick(selectRef.current?.value ?? '')}>
+              Elegir
+            </button>
+          </div>
+          <div class="flex gap-2">
+            <input id="livePickerCustom" ref={customRef} enterKeyHint="done" class="inp min-h-[44px] min-w-0 flex-1" placeholder="O escribe uno nuevo…" aria-label="Nombre de ejercicio personalizado" />
+            <button type="button" class="btn min-h-[44px] shrink-0" onClick={() => onPick(customRef.current?.value ?? '')}>
+              Usar
+            </button>
+          </div>
         </div>
       </div>
     </section>

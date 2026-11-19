@@ -42,11 +42,11 @@ export function WizardStep1({ draft, onPatch }: WizardStepProps) {
       <div class="grid grid-cols-2 gap-3">
         <label class="block">
           <span class="lbl">Edad (años)</span>
-          <input id="wizAge" class="inp tabular-nums font-semibold" type="number" name="age" min="12" max="110" value={draft.age} required onInput={(e) => onPatch({ age: e.currentTarget.value })} />
+          <input id="wizAge" class="inp tabular-nums font-semibold" type="number" inputMode="numeric" enterKeyHint="next" name="age" min="12" max="110" value={draft.age} required onInput={(e) => onPatch({ age: e.currentTarget.value })} />
         </label>
         <label class="block">
           <span class="lbl">Altura (cm)</span>
-          <input id="wizHeight" class="inp tabular-nums font-semibold" type="number" name="height" min="100" max="250" value={draft.height} required onInput={(e) => onPatch({ height: e.currentTarget.value })} />
+          <input id="wizHeight" class="inp tabular-nums font-semibold" type="number" inputMode="numeric" enterKeyHint="next" name="height" min="100" max="250" value={draft.height} required onInput={(e) => onPatch({ height: e.currentTarget.value })} />
         </label>
       </div>
 
@@ -58,15 +58,15 @@ export function WizardStep1({ draft, onPatch }: WizardStepProps) {
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="block">
             <span class="lbl">Peso actual (kg)</span>
-            <input id="wizWeight" class="inp tabular-nums font-semibold" type="number" name="weight" step="0.1" min="25" max="300" value={draft.weight} placeholder="Ej. 72.5" onInput={(e) => onPatch({ weight: e.currentTarget.value })} />
+            <input id="wizWeight" class="inp tabular-nums font-semibold" type="number" inputMode="decimal" enterKeyHint="next" name="weight" step="0.1" min="25" max="300" value={draft.weight} placeholder="Ej. 72.5" onInput={(e) => onPatch({ weight: e.currentTarget.value })} />
           </label>
           <label class="block">
             <span class="lbl">% Grasa (opcional)</span>
-            <input id="wizBf" class="inp tabular-nums font-medium" type="number" name="bf" step="0.1" min="3" max="60" value={draft.bf} placeholder="Ej. 15" onInput={(e) => onPatch({ bf: e.currentTarget.value })} />
+            <input id="wizBf" class="inp tabular-nums font-medium" type="number" inputMode="decimal" enterKeyHint="next" name="bf" step="0.1" min="3" max="60" value={draft.bf} placeholder="Ej. 15" onInput={(e) => onPatch({ bf: e.currentTarget.value })} />
           </label>
           <label class="block">
             <span class="lbl">Cintura cm (opc.)</span>
-            <input id="wizWaist" class="inp tabular-nums font-medium" type="number" name="waist" step="0.1" min="40" max="200" value={draft.waist} placeholder="Ej. 80" onInput={(e) => onPatch({ waist: e.currentTarget.value })} />
+            <input id="wizWaist" class="inp tabular-nums font-medium" type="number" inputMode="decimal" enterKeyHint="done" name="waist" step="0.1" min="40" max="200" value={draft.waist} placeholder="Ej. 80" onInput={(e) => onPatch({ waist: e.currentTarget.value })} />
           </label>
         </div>
       </div>

@@ -32,7 +32,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
             </div>
             <div>
               <h3 id="workoutSummaryTitle" class="text-lg font-extrabold text-white">¡Entreno completado!</h3>
-              <p class="text-xs text-gray-400">{summary.day === 'Libre' ? 'Entreno libre' : summary.day} · {summary.durationMin} min</p>
+              <p class="text-xs text-gray-400 tabular-nums">{summary.day === 'Libre' ? 'Entreno libre' : summary.day} · {summary.durationMin} min</p>
             </div>
           </div>
           <button type="button" aria-label="Cerrar resumen" class="icon-btn" onClick={onClose}>
@@ -57,7 +57,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
 
         {summary.prNames.length > 0 ? (
           <div class="rounded-xl border border-emeraldGreen/30 bg-emeraldGreen/10 p-3 space-y-1">
-            <p class="text-xs font-bold text-emerald-300">Nuevas marcas personales ({summary.prNames.length})</p>
+            <p class="text-xs font-bold text-emerald-300 tabular-nums">Nuevas marcas personales ({summary.prNames.length})</p>
             <p class="text-xs text-gray-200">
               {summary.prNames.slice(0, 4).join(' · ')}
               {summary.prNames.length > 4 ? ` y ${summary.prNames.length - 4} más` : ''}

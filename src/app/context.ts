@@ -1,4 +1,4 @@
-import type { ConfirmModalOpts } from '../store/types';
+import type { ConfirmModalOpts, ToastAction } from '../store/types';
 import { createWizardDraft } from '../store/wizardSelectors';
 import type { DayName, LiveWorkout, LogDraft } from '../types';
 import type { State } from '../ui/shared';
@@ -11,7 +11,7 @@ export interface AppContext {
   render: () => void;
   reload: () => Promise<void>;
   persist: () => Promise<void>;
-  toast: (msg: string) => void;
+  toast: (msg: string, action?: ToastAction) => void;
   setTab: (tab: string) => void;
   getLastRoutine: () => DayName;
   setLastRoutine: (day: DayName) => void;

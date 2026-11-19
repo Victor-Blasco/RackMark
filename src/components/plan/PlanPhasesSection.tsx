@@ -43,7 +43,7 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
           void onAddPhase(phaseNameRef.current?.value ?? '', phaseStartRef.current?.value ?? '');
         }}
       >
-        <input ref={phaseNameRef} class="inp w-44" name="name" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
+        <input ref={phaseNameRef} class="inp w-44" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
         <input ref={phaseStartRef} class="inp w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
         <button class="btn" type="submit">Añadir fase</button>
       </form>

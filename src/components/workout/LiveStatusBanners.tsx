@@ -19,13 +19,13 @@ export function PrevCompletedBanner({ prevName, onGoBack, onAddExtraSet, onDismi
     <div class="flex flex-wrap items-center justify-between gap-2 border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl text-xs">
       <span class="font-semibold text-emerald-200">{prevName} completado · siguiente</span>
       <div class="flex flex-wrap items-center gap-1.5">
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10" onClick={onGoBack}>
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onGoBack}>
           Volver
         </button>
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200" onClick={onAddExtraSet}>
+        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onAddExtraSet}>
           + Serie extra en {prevName}
         </button>
-        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10" aria-label="Cerrar aviso" onClick={onDismiss}>
+        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Cerrar aviso" onClick={onDismiss}>
           <Icon name="close" className="h-4 w-4" />
         </button>
       </div>
@@ -52,7 +52,9 @@ export function AllDoneBanner({ doneExCount, doneSetsCount, elapsedLabel, onSave
     <div class="border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-3 rounded-r-xl space-y-2.5">
       <div>
         <h3 class="text-sm font-extrabold text-emerald-200">¡Todos los ejercicios completados!</h3>
-        <p class="text-xs text-gray-300 tabular-nums">{doneExCount} ejercicios · {doneSetsCount} series · {elapsedLabel}</p>
+        <p class="text-xs text-gray-300 tabular-nums">
+          {doneExCount} {doneExCount === 1 ? 'ejercicio' : 'ejercicios'} · {doneSetsCount} {doneSetsCount === 1 ? 'serie' : 'series'} · {elapsedLabel}
+        </p>
       </div>
       <div class="flex flex-wrap gap-2">
         <button type="button" class="btn-primary min-h-[44px] flex-1 sm:flex-initial" onClick={onSave}>

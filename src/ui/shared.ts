@@ -16,9 +16,9 @@ import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
 import { ROUTINE_COLORS, todayIso } from '../lib/seed';
 import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
-import { RANGES, type ActiveModal, type RangeKey } from '../store/types';
+import { humanizeError, RANGES, type ActiveModal, type RangeKey, type ToastAction } from '../store/types';
 
-export { RANGES, todayIso, type RangeKey };
+export { humanizeError, RANGES, todayIso, type RangeKey, type ToastAction };
 
 Chart.register(
   LineController,
@@ -102,6 +102,7 @@ export interface State {
   busy?: string;
   aiJob?: AiJob;
   toast?: string;
+  toastAction?: ToastAction;
 }
 
 const safeDateSlice = (d: string, a: number, b: number) => d.replace(/[<>&"']/g, '').slice(a, b);

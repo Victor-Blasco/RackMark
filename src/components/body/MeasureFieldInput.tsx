@@ -21,6 +21,7 @@ export function MeasureFieldInput({ field, value, placeholder, onUpdateDraft }: 
       <input
         class="inp tabular-nums font-medium"
         inputMode="decimal"
+        enterKeyHint="next"
         name={field.key}
         value={value}
         placeholder={placeholder}

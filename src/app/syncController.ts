@@ -9,6 +9,7 @@ import {
   syncWithCloud,
 } from '../lib/sync';
 import { maybeOpenInitialWizard, type AppContext } from './context';
+import { humanizeError } from '../store/types';
 import type { AiJob, SyncJob } from '../types';
 
 const AI_COOLDOWN_MS = 15_000;
@@ -70,7 +71,7 @@ export function createSyncController(ctx: AppContext): SyncController {
     try {
       await saveAiJob(running);
     } catch (e) {
-      ctx.toast(`No se pudo guardar el estado del informe: ${(e as Error).message}`);
+      ctx.toast(`No se pudo guardar el estado del informe: ${humanizeError(e)}`);
       return;
     }
     S.aiJob = running;
@@ -93,13 +94,13 @@ export function createSyncController(ctx: AppContext): SyncController {
       queueSync();
       ctx.toast('Análisis generado.');
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'No se pudo generar el análisis.';
+      const message = humanizeError(e, 'No se pudo generar el análisis.');
       const failed: AiJob = { ...running, status: 'error', error: message, updatedAt: Date.now() };
       try {
         await saveAiJob(failed);
         S.aiJob = failed;
       } catch (persistError) {
-        ctx.toast(`Error de IA: ${message}. Además, no se pudo guardar el estado del error: ${(persistError as Error).message}`);
+        ctx.toast(`Error de IA: ${message}. Además, no se pudo guardar el estado del error: ${humanizeError(persistError)}`);
       }
       ctx.toast(`Error de IA: ${message}`);
     } finally {
@@ -192,7 +193,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.syncing = false;
       syncInFlight = false;
       ctx.render();
-      if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${(e as Error).message}`);
+      if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${humanizeError(e)}`);
       return;
     }
     const runningJob: SyncJob = {
@@ -210,7 +211,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.syncing = false;
       syncInFlight = false;
       ctx.render();
-      if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${(e as Error).message}`);
+      if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${humanizeError(e)}`);
       return;
     }
     try {
@@ -246,7 +247,7 @@ export function createSyncController(ctx: AppContext): SyncController {
         ctx.toast(msg);
       }
     } catch (e) {
-      const error = e instanceof Error ? e.message : 'Error de sincronización.';
+      const error = humanizeError(e, 'Error de sincronización.');
       const nextAttemptAt = Date.now() + Math.min(
         SYNC_RETRY_MAX_MS,
         SYNC_RETRY_BASE_MS * (2 ** Math.max(0, runningJob.attempts - 1)),
@@ -261,7 +262,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       await saveSyncJob(failedJob);
       S.syncJob = failedJob;
       scheduleSyncRetry(nextAttemptAt);
-      if (showToast) ctx.toast(`Error de sincronización: ${(e as Error).message}`);
+      if (showToast) ctx.toast(`Error de sincronización: ${error}`);
     } finally {
       S.syncing = false;
       syncInFlight = false;
@@ -329,8 +330,8 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.user = user;
       if (changed || !wasReady) ctx.render();
       if (user && changed && isOnline()) void runSync(false);
-      if (user) void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${(e as Error).message}`));
-      if (user) void resumeAiJob().catch((e) => ctx.toast(`No se pudo recuperar el informe IA: ${(e as Error).message}`));
+      if (user) void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${humanizeError(e)}`));
+      if (user) void resumeAiJob().catch((e) => ctx.toast(`No se pudo recuperar el informe IA: ${humanizeError(e)}`));
     });
   }
 
@@ -365,7 +366,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       await saveAiJob(job);
     } catch (e) {
       S.aiJob = undefined;
-      ctx.toast(`No se pudo guardar el estado del informe: ${(e as Error).message}`);
+      ctx.toast(`No se pudo guardar el estado del informe: ${humanizeError(e)}`);
       return;
     }
     await runAiJob(job);
@@ -377,7 +378,7 @@ export function createSyncController(ctx: AppContext): SyncController {
     try {
       await retryAiJob();
     } catch (e) {
-      ctx.toast(`No se pudo reintentar el informe IA: ${(e as Error).message}`);
+      ctx.toast(`No se pudo reintentar el informe IA: ${humanizeError(e)}`);
     }
   };
 
@@ -389,7 +390,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.aiJob = undefined;
       ctx.render();
     } catch (e) {
-      ctx.toast(`No se pudo descartar el estado del informe: ${(e as Error).message}`);
+      ctx.toast(`No se pudo descartar el estado del informe: ${humanizeError(e)}`);
     }
   };
 
@@ -398,7 +399,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       await signInGoogle();
     } catch (e) {
       const code = (e as { code?: string })?.code;
-      if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${(e as Error).message}`);
+      if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${humanizeError(e)}`);
     }
   };
 
@@ -420,15 +421,19 @@ export function createSyncController(ctx: AppContext): SyncController {
     ) {
       return;
     }
-    await signOutGoogle();
-    await wipeAll();
-    clearSyncMeta();
-    ctx.clearActiveWorkouts();
-    S.user = null;
-    S.lastSync = undefined;
-    await ctx.reload();
-    ctx.render();
-    ctx.toast('Sesión cerrada en este dispositivo.');
+    try {
+      await signOutGoogle();
+      await wipeAll();
+      clearSyncMeta();
+      ctx.clearActiveWorkouts();
+      S.user = null;
+      S.lastSync = undefined;
+      await ctx.reload();
+      ctx.render();
+      ctx.toast('Sesión cerrada en este dispositivo.');
+    } catch (e) {
+      ctx.toast(`No se pudo cerrar la sesión: ${humanizeError(e)}`);
+    }
   };
 
   const wipe = async (): Promise<void> => {
@@ -446,14 +451,18 @@ export function createSyncController(ctx: AppContext): SyncController {
     ) {
       return;
     }
-    await wipeAll();
-    markWipePending();
-    S.measureDraft = undefined;
-    ctx.clearActiveWorkouts();
-    await ctx.reload();
-    ctx.render();
-    queueSync();
-    ctx.toast('Datos borrados.');
+    try {
+      await wipeAll();
+      markWipePending();
+      S.measureDraft = undefined;
+      ctx.clearActiveWorkouts();
+      await ctx.reload();
+      ctx.render();
+      queueSync();
+      ctx.toast('Datos borrados.');
+    } catch (e) {
+      ctx.toast(`No se pudieron borrar los datos: ${humanizeError(e)}`);
+    }
   };
 
   return { runAi, retryAi, dismissAi, cloudLogin, cloudSync, cloudLogout, wipe, runSync, queueSync, initAuth, getLastSyncAt };

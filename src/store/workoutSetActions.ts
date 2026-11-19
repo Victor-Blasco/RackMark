@@ -1,4 +1,5 @@
 import type { LiveWorkout } from '../types';
+import type { ToastAction } from './types';
 import { createWorkoutSetInputs, mapExercise } from './workoutSetInputs';
 import { applyToggleLiveSet } from './workoutSetToggle';
 
@@ -8,14 +9,14 @@ import { applyToggleLiveSet } from './workoutSetToggle';
  * @param getLive - Obtiene la sesión en vivo actual.
  * @param saveOnly - Persiste en `localStorage` sin forzar re-render.
  * @param commit - Persiste en `localStorage` y notifica a Preact.
- * @param toast - Muestra avisos al usuario ante validaciones.
+ * @param toast - Muestra avisos al usuario ante validaciones (con acción opcional `Deshacer`).
  * @returns Acciones tipadas para manipular series del ejercicio activo.
  */
 export function createWorkoutSetActions(
   getLive: () => LiveWorkout | undefined,
   saveOnly: (live?: LiveWorkout) => void,
   commit: (live?: LiveWorkout) => void,
-  toast: (msg: string) => void,
+  toast: (msg: string, action?: ToastAction) => void,
 ) {
   return {
     ...createWorkoutSetInputs(getLive, saveOnly, commit),
@@ -31,7 +32,8 @@ export function createWorkoutSetActions(
     delSet(ei: number, si: number) {
       const live = getLive();
       const ex = live?.exercises[ei];
-      if (!live || !ex || ex.sets.length <= 1 || si < 0 || si >= ex.sets.length) return;
+      const removedSet = ex?.sets[si];
+      if (!live || !ex || !removedSet || ex.sets.length <= 1 || si < 0 || si >= ex.sets.length) return;
       const nextExercises = live.exercises.map((item, i) => {
         if (i !== ei) return item;
         const sets = item.sets.filter((_, j) => j !== si);
@@ -43,6 +45,18 @@ export function createWorkoutSetActions(
         else if (nextRestRef.si > si) nextRestRef = { ...nextRestRef, si: nextRestRef.si - 1 };
       }
       commit({ ...live, exercises: nextExercises, restRef: nextRestRef });
+      toast(`Serie ${si + 1} eliminada.`, {
+        label: 'Deshacer',
+        onAction: () => {
+          const cur = getLive();
+          if (!cur?.exercises[ei]) return;
+          commit(mapExercise(cur, ei, (item) => {
+            const idx = Math.min(si, item.sets.length);
+            const sets = [...item.sets.slice(0, idx), removedSet, ...item.sets.slice(idx)];
+            return { ...item, sets, done: sets.some((x) => Boolean(x.done && x.r > 0)) };
+          }));
+        },
+      });
     },
 
     addExtraSetPrev() {

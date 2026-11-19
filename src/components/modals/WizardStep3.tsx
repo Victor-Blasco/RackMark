@@ -16,7 +16,7 @@ export function WizardStep3({ draft, showKeep = true, onPatch }: WizardStep3Prop
   const selectedTpl = draft.templateKey !== 'keep' ? ROUTINE_TEMPLATES[draft.templateKey] : undefined;
 
   return (
-    <div class="space-y-4">
+    <div class="space-y-3">
       <div class="space-y-2">
         <span class="lbl">Distribución de rutina recomendada</span>
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2" role="group" aria-label="Plantilla de rutina">
@@ -28,12 +28,12 @@ export function WizardStep3({ draft, showKeep = true, onPatch }: WizardStep3Prop
                 key={k}
                 type="button"
                 aria-pressed={active ? 'true' : 'false'}
-                class={`min-h-[44px] rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}
+                class={`min-h-[44px] rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}
                 onClick={() => onPatch({ templateKey: k })}
               >
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-sm font-bold text-white">{tpl.label}</span>
-                  {isRec && <span class="rounded-full bg-emeraldGreen/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">Recomendada</span>}
+                  {isRec && <span class="shrink-0 whitespace-nowrap rounded-full bg-emeraldGreen/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">Recomendada</span>}
                 </div>
                 <p class="mt-0.5 text-[11px] text-gray-400">{tpl.desc}</p>
               </button>
@@ -53,11 +53,11 @@ export function WizardStep3({ draft, showKeep = true, onPatch }: WizardStep3Prop
       </div>
 
       {selectedTpl && (
-        <div class="rounded-xl border border-white/10 bg-gray-900/60 p-3 space-y-1.5">
+        <div class="border-t border-white/10 pt-2.5 space-y-1.5">
           <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Vista previa · {selectedTpl.label}</span>
-          <div class="flex flex-wrap gap-2 text-xs">
+          <div class="flex flex-wrap gap-1.5 text-xs">
             {Object.entries(selectedTpl.routines).map(([day, exs]) => (
-              <span key={day} class="rounded-lg border border-white/10 bg-cardDark px-2.5 py-1 text-gray-200">
+              <span key={day} class="rounded-md bg-white/[0.05] px-2 py-0.5 text-gray-200 tabular-nums">
                 <b class="text-white">{day}</b> · {exs.length} ej.
               </span>
             ))}
@@ -75,7 +75,7 @@ export function WizardStep3({ draft, showKeep = true, onPatch }: WizardStep3Prop
                 key={t.id}
                 type="button"
                 aria-pressed={active ? 'true' : 'false'}
-                class={`min-h-[44px] rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}
+                class={`min-h-[44px] rounded-xl border p-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/15' : 'border-white/10 bg-white/[0.03] hover:border-white/25'}`}
                 onClick={() => onPatch({ aiTone: t.id })}
               >
                 <div class="text-sm font-bold text-white">{t.label}</div>

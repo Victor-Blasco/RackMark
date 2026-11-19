@@ -56,6 +56,7 @@ export function DayMasterList(props: DayMasterListProps) {
   const onOptionKeyDown = (e: KeyboardEvent, idx: number) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) || !exercises.length) return;
     e.preventDefault();
+    e.stopPropagation();
     const nextIdx = e.key === 'ArrowDown'
       ? (idx + 1) % exercises.length
       : e.key === 'ArrowUp'
@@ -74,7 +75,14 @@ export function DayMasterList(props: DayMasterListProps) {
       <DayMobileAccordion {...props} />
 
       <div class="hidden lg:grid lg:grid-cols-12 lg:gap-5 xl:gap-6 lg:items-start">
-        <div class="lg:col-span-5 xl:col-span-4 space-y-2" role="listbox" aria-orientation="vertical" aria-label={`Ejercicios de ${day}`}>
+        <div
+          class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded-2xl"
+          role="listbox"
+          tabIndex={0}
+          aria-orientation="vertical"
+          aria-label={`Ejercicios de ${day}`}
+          onKeyDown={(ev) => onOptionKeyDown(ev, Math.max(0, exercises.findIndex((x) => x.name === desktopCur)))}
+        >
           {exercises.map((x, idx) => {
             const sel = x.name === desktopCur;
             const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
@@ -94,7 +102,11 @@ export function DayMasterList(props: DayMasterListProps) {
               >
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-sm font-bold text-white truncate">{x.name}</span>
-                  <span class={`h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}`} title={advice?.status ?? x.status} />
+                  <span class={`inline-flex shrink-0 items-center gap-1 text-[11px] font-bold ${st.text}`} title={advice?.status ?? x.status}>
+                    <span class={`h-2 w-2 rounded-full ${st.dot}`} aria-hidden="true" />
+                    <span aria-hidden="true">{st.glyph}</span>
+                    <span class="sr-only">{advice?.status ?? x.status}</span>
+                  </span>
                 </div>
                 <div class="mt-1 flex items-center justify-between gap-2 text-[13px] text-gray-300">
                   <span class="font-medium tabular-nums truncate">{lastSummary(x, rangeLabel)}</span>

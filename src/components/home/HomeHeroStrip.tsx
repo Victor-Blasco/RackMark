@@ -43,13 +43,13 @@ export function HomeHeroStrip({
             {lastBadge}
           </div>
           <div class="min-w-0">
-            <div class="flex items-center gap-2 text-xs text-gray-400">
+            <div class="flex items-center gap-2 text-xs text-gray-400 tabular-nums">
               <span class="font-semibold uppercase tracking-wider">Último entreno</span>
               <span>· {lastS ? fmtDate(lastS.date) : `Sin sesiones${hasFilter ? ` (${bounds.label})` : ''}`}</span>
             </div>
             <p class="text-lg sm:text-xl font-extrabold text-white truncate">
               {lastS ? (lastS.day ?? 'Sesión') : '—'}
-              <span class="text-xs sm:text-sm font-normal text-gray-400">
+              <span class="text-xs sm:text-sm font-normal text-gray-400 tabular-nums">
                 {' '}· {activeDays} días activos ({r1(activeDays / weeks)}/sem){phase ? ` · ${phase.name}` : ''}{lastS?.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}{lastS?.avgHr ? ` · ${lastS.avgHr} lpm` : ''}
               </span>
             </p>
