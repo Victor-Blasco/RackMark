@@ -1,6 +1,6 @@
-import { isValidIsoDate, norm } from '../lib/seed';
+import { isValidIsoDate } from '../lib/seed';
 import type { DayName } from '../types';
-import { todayIso, type RangeKey, type State } from '../ui/shared';
+import { todayIso, type PlanTab, type RangeKey, type State } from '../ui/shared';
 
 /**
  * Crea acciones de filtrado, rangos temporales, selección y navegación ligera para `Home`, `Rutina` y `Plan`.
@@ -71,8 +71,20 @@ export function createPlanFilterActions(
       render();
     },
 
-    setPlanTab: (tab: 'routines' | 'exercises') => {
+    setPlanTab: (tab: PlanTab) => {
       state().planTab = tab;
+      render();
+    },
+
+    openPlanTab: (tab: PlanTab) => {
+      state().planTab = tab;
+      navigateTab('plan');
+    },
+
+    setPlanRoutine: (day: string) => {
+      const S = state();
+      S.planRoutine = day;
+      S.planTargetRoutine = day;
       render();
     },
 
@@ -113,17 +125,13 @@ export function createPlanFilterActions(
     },
 
     openRoutineInPlan: (day?: DayName) => {
-      state().planTab = 'routines';
-      navigateTab('plan');
-      if (day && typeof document !== 'undefined') {
-        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        window.requestAnimationFrame?.(() => {
-          document.getElementById(`plan-routine-${norm(day)}`)?.scrollIntoView?.({
-            behavior: reduced ? 'auto' : 'smooth',
-            block: 'start',
-          });
-        });
+      const S = state();
+      S.planTab = 'routines';
+      if (day) {
+        S.planRoutine = day;
+        S.planTargetRoutine = day;
       }
+      navigateTab('plan');
     },
   };
 }

@@ -41,10 +41,7 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       const S = state();
       const names = routineNames(S.settings);
       if (!name || !S.settings.routines[name]) return;
-      if (names.length <= 1) {
-        deps.toast('Debes mantener al menos una rutina activa.');
-        return;
-      }
+      if (names.length <= 1) { deps.toast('Debes mantener al menos una rutina activa.'); return; }
       const count = S.settings.routines[name].length;
       if (count > 0) {
         const confirmed = await deps.askConfirm({
@@ -60,10 +57,9 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       S.settings = { ...S.settings, routines, routineMeta };
       const remaining = routineNames(S.settings);
       if (deps.getLastRoutine() === name) deps.setLastRoutine(remaining[0] ?? 'Push');
-      if (S.sel.home === name) {
-        const { home: _home, ...restSel } = S.sel;
-        S.sel = restSel;
-      }
+      if (S.planRoutine === name) S.planRoutine = remaining[0];
+      if (S.planTargetRoutine === name) S.planTargetRoutine = remaining[0];
+      if (S.sel.home === name) { const { home: _home, ...restSel } = S.sel; S.sel = restSel; }
       deps.syncWorkoutRoutineNames();
       await deps.persist();
       deps.toast(`Rutina "${name}" eliminada.`);

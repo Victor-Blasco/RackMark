@@ -1,6 +1,6 @@
 import { norm } from '../lib/seed';
 import type { IconName } from '../ui/icons';
-import type { State } from '../ui/shared';
+import type { PlanTab, State } from '../ui/shared';
 
 export const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'body', label: 'Cuerpo', icon: 'body' },
@@ -19,11 +19,17 @@ export const TRAIN_TABS = [
   { id: 'log', label: 'Registrar hecho' },
 ];
 
+export const PLAN_TABS: { id: PlanTab; label: string; shortLabel: string; icon: IconName }[] = [
+  { id: 'routines', label: 'Editor de rutinas', shortLabel: 'Rutinas', icon: 'edit' },
+  { id: 'exercises', label: 'Ejercicios y músculos', shortLabel: 'Ejercicios', icon: 'barbell' },
+  { id: 'phases', label: 'Fases del bloque', shortLabel: 'Fases', icon: 'calendar' },
+];
+
 export const TAB_TITLES: Record<string, string> = {
   home: 'Resumen',
   workout: 'Iniciar entrenamiento',
   log: 'Registrar entreno',
-  plan: 'Plan y rutinas',
+  plan: 'Planificación',
   body: 'Cuerpo',
   volume: 'Volumen',
   adherence: 'Adherencia',

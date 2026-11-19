@@ -16,18 +16,24 @@ interface PlanPhasesSectionProps {
 export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPhasesSectionProps) {
   const phaseNameRef = useRef<HTMLInputElement>(null);
   const phaseStartRef = useRef<HTMLInputElement>(null);
+  const sorted = [...phases].sort((a, b) => a.start.localeCompare(b.start));
 
   return (
-    <div class="pt-5 border-t border-white/10 space-y-3">
+    <div class="max-w-2xl space-y-5">
       <div>
-        <h3 class="font-bold text-white">Fases nutricionales y de entrenamiento</h3>
+        <h2 class="text-base font-bold text-white">Fases nutricionales y de entrenamiento</h2>
         <p class="text-xs text-gray-400">Permite contextualizar la evolución del peso y el informe de IA según la etapa (definición, mantenimiento, volumen…).</p>
       </div>
-      {phases.length > 0 && (
-        <div class="space-y-1.5">
-          {[...phases].sort((a, b) => a.start.localeCompare(b.start)).map((p, i) => (
-            <div key={`${p.name}-${p.start}`} class="flex items-center gap-2 text-sm">
-              <b>{p.name}</b> <span class="tabular-nums text-gray-400">desde {fmtDate(p.start)}</span>
+      {sorted.length === 0 ? (
+        <p class="text-xs text-gray-400">Todavía no hay fases configuradas. Añade una etapa para etiquetar tu progreso por bloque.</p>
+      ) : (
+        <div class="divide-y divide-white/10 border-y border-white/10">
+          {sorted.map((p, i) => (
+            <div key={`${p.name}-${p.start}`} class="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <div class="min-w-0">
+                <b class="text-white">{p.name}</b>{' '}
+                <span class="tabular-nums text-gray-400">desde {fmtDate(p.start)}</span>
+              </div>
               <button type="button" class="icon-btn text-coralRed hover:bg-coralRed/10" aria-label={`Borrar fase ${p.name}`} onClick={() => void onDeletePhase(i)}>
                 <Icon name="close" className="h-3.5 w-3.5" />
               </button>
@@ -37,15 +43,18 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
       )}
       <form
         id="f-phase"
-        class="flex flex-wrap gap-2"
+        class="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void onAddPhase(phaseNameRef.current?.value ?? '', phaseStartRef.current?.value ?? '');
+          const name = phaseNameRef.current?.value ?? '';
+          const start = phaseStartRef.current?.value ?? '';
+          void onAddPhase(name, start);
+          if (name.trim() && start.trim()) e.currentTarget.reset();
         }}
       >
-        <input ref={phaseNameRef} class="inp w-44" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
-        <input ref={phaseStartRef} class="inp w-40" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
-        <button class="btn" type="submit">Añadir fase</button>
+        <input ref={phaseNameRef} class="inp w-full sm:w-56" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
+        <input ref={phaseStartRef} class="inp w-full sm:w-44" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
+        <button class="btn-primary-sm" type="submit">Añadir fase</button>
       </form>
     </div>
   );

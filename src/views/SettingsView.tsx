@@ -55,7 +55,7 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn-sm" onClick={() => setTab('plan')}>
-            Plan y rutinas
+            Planificación
           </button>
           <button type="button" class="btn-sm" onClick={() => setTab('data')}>
             Datos y copias

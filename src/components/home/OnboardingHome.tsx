@@ -80,7 +80,7 @@ export function OnboardingHome({
             <p class="text-xs text-gray-400">Cambia la distribución en un toque o edita los ejercicios a tu gusto.</p>
           </div>
           <button type="button" class="btn-sm" onClick={() => onNavigateTab('plan')}>
-            Personalizar en Plan y rutinas
+            Personalizar en Plan
           </button>
         </div>
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

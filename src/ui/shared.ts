@@ -50,6 +50,9 @@ export interface WorkoutSummary {
   prNames: string[];
 }
 
+/** Subpestañas disponibles dentro de `Planificación`. */
+export type PlanTab = 'routines' | 'exercises' | 'phases';
+
 /** Estado global de la aplicación en memoria. */
 export interface State {
   tab: string;
@@ -67,7 +70,7 @@ export interface State {
   logDraft?: LogDraft;
   liveWorkout?: LiveWorkout;
   logFilter?: string;
-  planTab?: 'routines' | 'exercises';
+  planTab?: PlanTab;
   aiTab?: number;
   dayExtra?: Record<string, boolean>;
   ranges?: Record<string, RangeKey>;
@@ -92,6 +95,7 @@ export interface State {
   exerciseMapSearch?: string;
   exerciseMapMuscle?: string;
   showAllExerciseMap?: boolean;
+  planRoutine?: string;
   planTargetRoutine?: string;
   authReady?: boolean;
   user?: CloudUser | null;

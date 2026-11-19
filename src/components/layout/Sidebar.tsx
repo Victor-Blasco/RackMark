@@ -1,6 +1,6 @@
 import { fmtMMSS } from '../../hooks/useRestTimer';
-import { ANALYTICS_TABS } from '../../store/navigation';
-import { routineColor, routineNames, type State } from '../../ui/shared';
+import { ANALYTICS_TABS, PLAN_TABS } from '../../store/navigation';
+import { routineColor, routineNames, type PlanTab, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { SidebarAccountFooter } from './SidebarAccountFooter';
 
@@ -19,24 +19,18 @@ interface SidebarProps {
   restRemSec?: number;
   /** Callback al pulsar cualquier pestaña o rutina de navegación. */
   onSelectTab: (tab: string) => void;
+  /** Navega a una subpestaña concreta dentro de `Planificación`. */
+  onSelectPlanTab?: (tab: PlanTab) => void;
   /** Callback para iniciar sesión con Google desde la barra lateral. */
   onCloudLogin: () => void;
 }
 
-/**
- * Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, análisis y cuenta.
- */
+/** Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, planificación, análisis y cuenta. */
 export function Sidebar({
-  state,
-  statsText,
-  liveCount,
-  draftCount,
-  unsynced,
-  restRemSec = 0,
-  onSelectTab,
-  onCloudLogin,
+  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, onSelectTab, onSelectPlanTab, onCloudLogin,
 }: SidebarProps) {
   const unmappedCount = state.analysis.unmapped.length;
+  const activePlanTab = state.planTab ?? 'routines';
 
   return (
     <aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-borderDark/80 bg-navDark">
@@ -99,11 +93,22 @@ export function Sidebar({
                 </button>
               );
             })}
-            <button type="button" aria-current={state.tab === 'plan' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('plan')}>
-              <Icon name="edit" className="h-4 w-4" />
-              <span class="flex-1 text-left">Plan y rutinas</span>
-              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
-            </button>
+          </div>
+        </div>
+
+        <div>
+          <p class="nav-sec-lbl">Planificación</p>
+          <div class="space-y-1">
+            {PLAN_TABS.map((p) => {
+              const active = state.tab === 'plan' && activePlanTab === p.id;
+              return (
+                <button key={p.id} type="button" aria-current={active ? 'page' : undefined} class={`nav-item ${active ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab(p.id) : onSelectTab('plan'))}>
+                  <Icon name={p.icon} className="h-4 w-4" />
+                  <span class="flex-1 truncate text-left">{p.label}</span>
+                  {p.id === 'exercises' && unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 

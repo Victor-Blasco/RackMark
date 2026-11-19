@@ -50,10 +50,8 @@ export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
  */
 export function getPlanCatalogData(state: State): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
   const routines = routineNames(state.settings);
-  const targetRoutine =
-    state.planTargetRoutine && routines.includes(state.planTargetRoutine)
-      ? state.planTargetRoutine
-      : (routines[0] ?? '');
+  const preferred = state.planTargetRoutine || state.planRoutine;
+  const targetRoutine = preferred && routines.includes(preferred) ? preferred : (routines[0] ?? '');
   const names = allExerciseNames(state);
   const q = (state.planSearch ?? '').trim().toLowerCase();
   const matches = names.filter((n) => {

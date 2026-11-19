@@ -29,7 +29,10 @@ import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
+import { createPlanModalActions } from '../src/store/planModalActions';
 import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
+import { createRoutineEditActions } from '../src/store/routineEditActions';
+import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -1919,5 +1922,180 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const cleanDayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: baseState }));
     expect(cleanDayHtml).not.toContain('e1RM');
     expect(cleanDayHtml).toContain('Tonelaje máx');
+  });
+
+  it('separa Rutinas de Plan, centra Entrenar en 5 pestañas móviles y edita 1 rutina a la vez', async () => {
+    const settings = sanitizeSettings({});
+    const baseState: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. MobileBottomNav: 5 pestañas en orden Resumen -> Rutinas -> Entrenar -> Plan -> Análisis, etiqueta fija "Rutinas"
+    const navRoutineHtml = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'Leg' },
+        liveCount: 0,
+        draftCount: 0,
+        lastRoutine: 'Leg',
+        lastAnalytics: 'body',
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navRoutineHtml).toContain('grid-cols-5');
+    expect(navRoutineHtml).not.toContain('Rutinas · Plan');
+    expect(navRoutineHtml).toContain('<span>Rutinas</span>');
+    const idxResumen = navRoutineHtml.indexOf('<span>Resumen</span>');
+    const idxRutinas = navRoutineHtml.indexOf('<span>Rutinas</span>');
+    const idxEntrenar = navRoutineHtml.indexOf('>Entrenar</span>');
+    const idxPlan = navRoutineHtml.indexOf('<span>Plan</span>');
+    const idxAnalisis = navRoutineHtml.indexOf('<span>Análisis</span>');
+    expect(idxResumen).toBeLessThan(idxRutinas);
+    expect(idxRutinas).toBeLessThan(idxEntrenar);
+    expect(idxEntrenar).toBeLessThan(idxPlan);
+    expect(idxPlan).toBeLessThan(idxAnalisis);
+    expect(navRoutineHtml).toMatch(/aria-current="page"[^>]*bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
+
+    const navPlanHtml = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'plan' },
+        liveCount: 0,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navPlanHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Plan<\/span>/s);
+    expect(navPlanHtml).not.toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
+
+    // 2. MobileHeader: solo rutinas en Push (sin botón Plan) y 3 subpestañas en Plan
+    const headPush = renderToString(
+      h(MobileHeader, {
+        state: { ...baseState, tab: 'Push' },
+        statsText: 'sin datos',
+        unsynced: false,
+        onSelectTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(headPush).toContain('aria-label="Rutinas"');
+    expect(headPush).not.toContain('>Plan</button>');
+
+    const headPlan = renderToString(
+      h(MobileHeader, {
+        state: { ...baseState, tab: 'plan', planTab: 'phases' },
+        statsText: 'sin datos',
+        unsynced: false,
+        onSelectTab: () => {},
+        onSelectPlanTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(headPlan).toContain('aria-label="Secciones de planificación"');
+    expect(headPlan).toContain('Rutinas');
+    expect(headPlan).toContain('Ejercicios');
+    expect(headPlan).toContain('Fases');
+    expect(headPlan).toContain('grid-cols-3');
+
+    // 3. Sidebar: sección Planificación separada de Rutinas sin "Plan y rutinas"
+    const sideHtml = renderToString(
+      h(Sidebar, {
+        state: { ...baseState, tab: 'plan', planTab: 'phases' },
+        statsText: 'sin datos',
+        liveCount: 0,
+        draftCount: 0,
+        unsynced: false,
+        onSelectTab: () => {},
+        onSelectPlanTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(sideHtml).toContain('Planificación');
+    expect(sideHtml).not.toContain('Plan y rutinas');
+    expect(sideHtml).toContain('Editor de rutinas');
+    expect(sideHtml).toContain('Ejercicios y músculos');
+    expect(sideHtml).toContain('Fases del bloque');
+    expect(sideHtml).toMatch(/aria-current="page"[^>]*>.*?Fases del bloque/s);
+
+    // 4. PlanView: muestra solo la rutina activa en routines, Plantillas desplegable y fases en planTab: 'phases'
+    const planPush = renderToString(h(PlanView, { state: { ...baseState, tab: 'plan', planTab: 'routines', planRoutine: 'Push' } }));
+    expect(planPush).toContain('aria-label="Rutina a editar"');
+    expect(planPush).toContain('aria-controls="plan-templates-panel"');
+    expect(planPush).toContain('id="plan-routine-push"');
+    expect(planPush).not.toContain('id="plan-routine-pull"');
+    expect(planPush).not.toContain('id="f-phase"');
+
+    const planPull = renderToString(h(PlanView, { state: { ...baseState, tab: 'plan', planTab: 'routines', planRoutine: 'Pull' } }));
+    expect(planPull).toContain('id="plan-routine-pull"');
+    expect(planPull).not.toContain('id="plan-routine-push"');
+
+    const planPhases = renderToString(h(PlanView, { state: { ...baseState, tab: 'plan', planTab: 'phases' } }));
+    expect(planPhases).toContain('id="f-phase"');
+    expect(planPhases).toContain('Fases nutricionales y de entrenamiento');
+
+    // 5. Acciones del store: setPlanRoutine, openPlanTab, openRoutineInPlan y consistencia tras plantilla/creación/borrado
+    let navTab = 'home';
+    let lastRoutine = 'Push';
+    const filter = createPlanFilterActions(() => baseState, () => {}, (t) => { navTab = t; });
+    filter.setPlanRoutine('Leg');
+    expect(baseState.planRoutine).toBe('Leg');
+    expect(baseState.planTargetRoutine).toBe('Leg');
+
+    filter.openPlanTab('phases');
+    expect(navTab).toBe('plan');
+    expect(baseState.planTab).toBe('phases');
+
+    filter.openRoutineInPlan('Pull');
+    expect(navTab).toBe('plan');
+    expect(baseState.planTab).toBe('routines');
+    expect(baseState.planRoutine).toBe('Pull');
+    expect(baseState.planTargetRoutine).toBe('Pull');
+
+    applyRoutineTemplateToState(baseState, 'upperLower', () => lastRoutine, (d) => { lastRoutine = d; }, () => {});
+    expect(baseState.planRoutine).toBe('Torso A');
+    expect(baseState.planTargetRoutine).toBe('Torso A');
+
+    const modal = createPlanModalActions({
+      getState: () => baseState,
+      getLastRoutine: () => lastRoutine,
+      setLastRoutine: (d) => { lastRoutine = d; },
+      setTab: (t) => { navTab = t; },
+      persist: async () => {},
+      syncWorkoutRoutineNames: () => {},
+      addExToDraft: () => {},
+      toast: () => {},
+    });
+    baseState.activeModal = { type: 'routine', mode: 'create', name: '', sub: '', color: '#3B82F6' };
+    await modal.saveRoutineModal({ name: 'Full Body', sub: 'Extra', color: '#3B82F6' });
+    expect(baseState.planRoutine).toBe('Full Body');
+    expect(baseState.planTargetRoutine).toBe('Full Body');
+
+    baseState.activeModal = { type: 'routine', mode: 'edit', oldName: 'Full Body', name: 'Full Body', sub: '', color: '#3B82F6' };
+    await modal.saveRoutineModal({ name: 'Brazos', sub: '', color: '#3B82F6' });
+    expect(baseState.planRoutine).toBe('Brazos');
+    expect(baseState.planTargetRoutine).toBe('Brazos');
+
+    const edits = createRoutineEditActions({
+      getState: () => baseState,
+      getLastRoutine: () => lastRoutine,
+      setLastRoutine: (d) => { lastRoutine = d; },
+      persist: async () => {},
+      render: () => {},
+      syncWorkoutRoutineNames: () => {},
+      askConfirm: async () => true,
+      toast: () => {},
+    });
+    await edits.removeRoutineDay('Brazos');
+    expect(baseState.planRoutine).toBe('Torso A');
+    expect(baseState.planTargetRoutine).toBe('Torso A');
   });
 });

@@ -59,6 +59,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         unsynced={store.unsynced}
         restRemSec={rest.remSec}
         onSelectTab={store.setTab}
+        onSelectPlanTab={store.plan.openPlanTab}
         onCloudLogin={store.cloudLogin}
       />
       <MobileHeader
@@ -66,6 +67,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         statsText={statsText}
         unsynced={store.unsynced}
         onSelectTab={store.setTab}
+        onSelectPlanTab={store.plan.openPlanTab}
         onCloudLogin={store.cloudLogin}
       />
       <div class="lg:pl-64">
