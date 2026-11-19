@@ -50,26 +50,31 @@ export function Sidebar({
         </div>
       </div>
 
-      <div class="p-3 space-y-2">
-        <button type="button" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${state.tab === 'workout' ? 'bg-electricBlue ring-2 ring-blue-300/60' : 'bg-electricBlue hover:bg-blue-500'}`} onClick={() => onSelectTab('workout')}>
-          <Icon name="play" className="h-4 w-4" />
-          <span>Iniciar entreno</span>
-          <span class={`ml-auto rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white ${restRemSec > 0 ? '' : 'hidden'}`}>{restRemSec > 0 ? fmtMMSS(restRemSec) : ''}</span>
-          {liveCount > 0 && (
-            <span class={`${restRemSec > 0 ? '' : 'ml-auto '}inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-200`}>
-              <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />
-              {liveCount}
-            </span>
-          )}
-        </button>
-        <button type="button" aria-current={state.tab === 'log' ? 'page' : undefined} class={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${state.tab === 'log' ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}`} onClick={() => onSelectTab('log')}>
-          <Icon name="edit" className="h-3.5 w-3.5" />
-          <span>Registrar ya hecho</span>
-          {draftCount > 0 && <span class="ml-auto rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-gray-200 tabular-nums">{draftCount}</span>}
-        </button>
-      </div>
+      <nav class="flex-1 space-y-3.5 overflow-y-auto px-3 py-3">
+        <div>
+          <p class="nav-sec-lbl">Entrenar</p>
+          <div class="space-y-1">
+            <button type="button" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`nav-item ${state.tab === 'workout' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('workout')}>
+              <Icon name="play" className="h-4 w-4" />
+              <span class="flex-1 text-left">Iniciar entreno</span>
+              {restRemSec > 0 && (
+                <span class="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">{fmtMMSS(restRemSec)}</span>
+              )}
+              {liveCount > 0 && (
+                <span class="inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-200">
+                  <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />
+                  {liveCount}
+                </span>
+              )}
+            </button>
+            <button type="button" aria-current={state.tab === 'log' ? 'page' : undefined} class={`nav-item ${state.tab === 'log' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('log')}>
+              <Icon name="edit" className="h-4 w-4" />
+              <span class="flex-1 text-left">Registrar hecho</span>
+              {draftCount > 0 && <span class="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-gray-200 tabular-nums">{draftCount}</span>}
+            </button>
+          </div>
+        </div>
 
-      <nav class="flex-1 space-y-3.5 overflow-y-auto px-3 py-1">
         <div>
           <p class="nav-sec-lbl">General</p>
           <button type="button" aria-current={state.tab === 'home' ? 'page' : undefined} class={`nav-item ${state.tab === 'home' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('home')}>

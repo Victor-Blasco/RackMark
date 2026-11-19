@@ -72,11 +72,10 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
       </div>
 
       <AdherenceCalendar
-        cols={vm.cols}
-        mobCols={vm.mobCols}
+        calendar={vm.calendar}
+        bounds={vm.bounds}
         routines={vm.routines}
         settings={state.settings}
-        buildCell={vm.buildCell}
       />
 
       {(vm.sleepChartCfg || vm.stepsChartCfg) && (

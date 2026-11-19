@@ -1,11 +1,12 @@
 import type { ChartConfiguration } from 'chart.js';
 import { isoWeekStart } from '../lib/analysis';
 import type { DayName } from '../types';
-import { fmtDate, inRange, resolveRange, routineColor, routineNames, routineShort, short, type DateBounds, type State } from '../ui/shared';
+import { inRange, resolveRange, routineNames, short, type DateBounds, type State } from '../ui/shared';
+import { buildAdherenceCalendarData } from './adherenceCalendar';
 import { weeksForBounds } from './volumeSelectors';
 
 /**
- * Construye los KPIs, calendario heatmap, gráficas de bienestar y cardio para `<AdherenceView />`.
+ * Construye los KPIs, calendario mensual interactivo, gráficas de bienestar y cardio para `<AdherenceView />`.
  *
  * @param state - Estado global de la aplicación.
  * @returns Modelo derivado de constancia semanal, cardio, sueño y pasos.
@@ -13,7 +14,7 @@ import { weeksForBounds } from './volumeSelectors';
 export function buildAdherenceViewModel(state: State) {
   const isEmpty = !state.strength.length && !state.cardio.length && !state.wellbeing.length;
   const hasStrength = state.strength.length > 0;
-  const bounds = resolveRange(state, 'adherence', '3M');
+  const bounds = resolveRange(state, 'adherence', '1M');
   const routines = routineNames(state.settings);
   const byDate = new Map<string, DayName | null>();
   state.analysis.sessions.forEach((s) => {
@@ -26,7 +27,6 @@ export function buildAdherenceViewModel(state: State) {
     ...state.wellbeing.map((w) => w.date),
   ];
   const cols = weeksForBounds(bounds, allDates, 12, 4, 26);
-  const mobCols = cols.slice(-8);
 
   const perWeek = new Map<string, number>();
   byDate.forEach((_, d) => {
@@ -94,28 +94,14 @@ export function buildAdherenceViewModel(state: State) {
       }
     : null;
 
-  const buildCell = (weekIso: string, dayIdx: number) => {
-    const d = new Date(`${weekIso}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + dayIdx);
-    const iso = d.toISOString().slice(0, 10);
-    if (!byDate.has(iso)) {
-      return { iso, bg: 'rgba(255,255,255,0.05)', label: `${fmtDate(iso)}: Sin sesión`, code: '' };
-    }
-    const day = byDate.get(iso);
-    if (!day) {
-      return { iso, bg: '#6B7280', label: `${fmtDate(iso)}: Otro entrenamiento`, code: '·' };
-    }
-    const rIdx = Math.max(0, routines.indexOf(day));
-    return { iso, bg: routineColor(day, state.settings, rIdx), label: `${fmtDate(iso)}: ${day}`, code: routineShort(day) };
-  };
+  const calendar = buildAdherenceCalendarData(state, bounds, allDates);
 
   return {
     isEmpty,
     hasStrength,
     bounds,
     routines,
-    cols,
-    mobCols,
+    calendar,
     avg,
     streak,
     counts,
@@ -125,6 +111,5 @@ export function buildAdherenceViewModel(state: State) {
     recentCardio,
     sleepChartCfg,
     stepsChartCfg,
-    buildCell,
   };
 }

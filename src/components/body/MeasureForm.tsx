@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { Measure } from '../../types';
 import { fmtDate } from '../../ui/shared';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { MeasureFieldInput, MeasurePerimGroups, type MeasureFieldDef } from './MeasureFieldInput';
 
@@ -94,7 +95,9 @@ export function MeasureForm(props: MeasureFormProps) {
         </button>
       </div>
 
-      {perimOpen && <MeasurePerimGroups groups={perimGroups} getFieldInputMeta={getFieldInputMeta} onUpdateDraft={onUpdateDraft} />}
+      <Collapsible open={perimOpen} keepMounted>
+        <MeasurePerimGroups groups={perimGroups} getFieldInputMeta={getFieldInputMeta} onUpdateDraft={onUpdateDraft} />
+      </Collapsible>
 
       <div class="flex flex-wrap items-center gap-2">
         <button class="btn-primary" type="submit">

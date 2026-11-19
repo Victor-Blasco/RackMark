@@ -1,3 +1,5 @@
+import { useRef } from 'preact/hooks';
+import { useCollapsible } from '../hooks/useCollapsible';
 import { ExerciseCard } from '../components/workout/ExerciseCard';
 import { ExercisePickerSheet } from '../components/workout/ExercisePickerSheet';
 import { LiveExerciseMenu } from '../components/workout/LiveExerciseMenu';
@@ -23,6 +25,11 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
   const state = propState ?? storeState;
   const live = state.liveWorkout;
 
+  const lastModeRef = useRef<'add' | 'swap'>('add');
+  if (live?.pickerMode) lastModeRef.current = live.pickerMode;
+  const pickerOpen = Boolean(live?.pickerMode);
+  const { mounted: pickerMounted, expanded: pickerExpanded } = useCollapsible(pickerOpen);
+
   if (!live) {
     return (
       <RoutineDayPicker
@@ -34,16 +41,11 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
   }
 
   const vm = buildLiveWorkoutViewModel(state, live);
-  const pickerData = live.pickerMode
-    ? quickExSuggestions(
-      state,
-      live.day,
-      live.exercises.map((e) => e.name),
-      8,
-      live.pickerMode === 'swap' ? vm.currentEx?.name : undefined,
-    )
+  const pickerMode = live.pickerMode ?? lastModeRef.current;
+  const pickerData = pickerMounted
+    ? quickExSuggestions(state, live.day, live.exercises.map((e) => e.name), 8, pickerMode === 'swap' ? vm.currentEx?.name : undefined)
     : null;
-  const secondarySave = vm.allDone || (!vm.currentEx && !live.pickerMode);
+  const secondarySave = vm.allDone || (!vm.currentEx && !pickerOpen);
 
   return (
     <div class="mx-auto max-w-xl space-y-3">
@@ -101,20 +103,15 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
         onSelectPreset={actions.setRestPreset}
       />
 
-      {live.pickerMode && pickerData && (
-        <ExercisePickerSheet
-          mode={live.pickerMode}
-          currentExName={vm.currentEx?.name}
-          available={pickerData.avail}
-          quickSuggestions={pickerData.quick}
-          query={live.pickerQuery ?? ''}
-          onQueryChange={actions.setPickerQuery}
-          onPick={actions.pickExercise}
-          onClose={actions.closePicker}
-        />
+      {pickerMounted && pickerData && (
+        <div class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${pickerExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
+          <div class="overflow-hidden" inert={!pickerOpen}>
+            <ExercisePickerSheet mode={pickerMode} currentExName={vm.currentEx?.name} available={pickerData.avail} quickSuggestions={pickerData.quick} query={live.pickerQuery ?? ''} onQueryChange={actions.setPickerQuery} onPick={actions.pickExercise} onClose={actions.closePicker} />
+          </div>
+        </div>
       )}
 
-      {!vm.currentEx && !live.pickerMode && (
+      {!vm.currentEx && !pickerOpen && (
         <div class="rounded-2xl border border-white/10 bg-cardDark p-5 text-center space-y-3">
           <p class="text-sm text-gray-300">Esta rutina todavía no tiene ejercicios añadidos.</p>
           <button type="button" class="btn-primary min-h-[44px]" onClick={() => actions.openPicker('add')}>

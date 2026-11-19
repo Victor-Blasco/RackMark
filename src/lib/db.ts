@@ -5,6 +5,7 @@ import type {
 import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+const LEGACY_CORAL_COLORS = new Set(['#F43F5E', '#EC4899']);
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 const MAX_AUX_MAP_ENTRIES = 500;
@@ -229,7 +230,10 @@ export function sanitizeSettings(raw: unknown): Settings {
       if (!day || day.length > 40 || UNSAFE_KEYS.has(day) || !isObj(val)) continue;
       if (Object.keys(cleanMeta).length >= 20) break;
       const meta: RoutineMeta = {};
-      if (typeof val.color === 'string' && HEX_COLOR_RE.test(val.color)) meta.color = val.color;
+      if (typeof val.color === 'string' && HEX_COLOR_RE.test(val.color)) {
+        const up = val.color.toUpperCase();
+        meta.color = LEGACY_CORAL_COLORS.has(up) ? '#A855F7' : val.color;
+      }
       if (typeof val.sub === 'string' && val.sub.trim()) meta.sub = val.sub.trim().slice(0, 40);
       if (meta.color || meta.sub) cleanMeta[day] = meta;
     }

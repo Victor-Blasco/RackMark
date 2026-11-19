@@ -1,5 +1,7 @@
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { norm } from '../../lib/seed';
 import { filterSelectionOptions } from '../../ui/selection';
+import { Icon } from '../common/Icon';
 
 interface ExercisePickerSheetProps {
   /** Modo de apertura: añadir ejercicio adicional o sustituir el actual. */
@@ -8,7 +10,7 @@ interface ExercisePickerSheetProps {
   currentExName?: string;
   /** Ejercicios disponibles no presentes todavía en la sesión. */
   available: string[];
-  /** Sugerencias principales afines a los grupos musculares del día. */
+  /** Sugerencias principales afines al grupo muscular del día o del ejercicio sustituido. */
   quickSuggestions: string[];
   /** Término actual del campo de búsqueda. */
   query: string;
@@ -20,28 +22,24 @@ interface ExercisePickerSheetProps {
   onClose: () => void;
 }
 
-/**
- * Panel transitorio para añadir o intercambiar un ejercicio sobre la marcha en `En vivo`.
- */
+/** Panel transitorio de 1 toque para buscar, crear o intercambiar ejercicio en `En vivo`. */
 export function ExercisePickerSheet({
-  mode,
-  currentExName,
-  available,
-  quickSuggestions,
-  query,
-  onQueryChange,
-  onPick,
-  onClose,
+  mode, currentExName, available, quickSuggestions, query, onQueryChange, onPick, onClose,
 }: ExercisePickerSheetProps) {
   const searchRef = useRef<HTMLInputElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
-  const customRef = useRef<HTMLInputElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const trimmed = query.trim();
   const options = filterSelectionOptions(available.map((name) => ({ id: name, label: name })), query);
+  const canCreate = Boolean(trimmed) && !available.some((n) => norm(n) === norm(trimmed));
   const title = mode === 'swap' && currentExName ? `Cambiar "${currentExName}" por otro` : 'Añadir ejercicio a este entreno';
 
   useEffect(() => {
+    setActiveIdx(0);
+  }, [query, mode]);
+
+  useEffect(() => {
     const prevFocused = document.activeElement as HTMLElement | null;
-    (searchRef.current ?? selectRef.current ?? customRef.current)?.focus({ preventScroll: true });
+    searchRef.current?.focus({ preventScroll: true });
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && currentExName) {
         e.preventDefault();
@@ -55,6 +53,19 @@ export function ExercisePickerSheet({
     };
   }, [currentExName, onClose]);
 
+  const onSearchKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowDown' && options.length) {
+      e.preventDefault();
+      setActiveIdx((i) => Math.min(options.length - 1, i + 1));
+    } else if (e.key === 'ArrowUp' && options.length) {
+      e.preventDefault();
+      setActiveIdx((i) => Math.max(0, i - 1));
+    } else if (e.key === 'Enter') {
+      const target = options[activeIdx]?.id ?? (canCreate ? trimmed : '');
+      if (target) { e.preventDefault(); onPick(target); }
+    }
+  };
+
   return (
     <section aria-label={title} class="rounded-2xl border border-electricBlue/40 bg-floatDark p-3.5 shadow-xl shadow-black/40 space-y-3">
       <div class="flex items-center justify-between gap-2">
@@ -66,56 +77,46 @@ export function ExercisePickerSheet({
         )}
       </div>
 
-      {quickSuggestions.length > 0 && (
+      {!trimmed && quickSuggestions.length > 0 && (
         <div class="space-y-1.5">
           <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Sugeridos</p>
           <div class="flex flex-wrap gap-1.5">
             {quickSuggestions.map((n) => (
-              <button key={n} type="button" class="btn-sm rounded-full font-medium text-gray-100" onClick={() => onPick(n)}>
-                {n}
-              </button>
+              <button key={n} type="button" class="btn-sm rounded-full font-medium text-gray-100" onClick={() => onPick(n)}>{n}</button>
             ))}
           </div>
         </div>
       )}
 
       <div class="space-y-2">
-        {available.length > 12 && (
-          <div class="space-y-1">
-            <input
-              id="livePickerSearch"
-              ref={searchRef}
-              type="search"
-              inputMode="search"
-              enterKeyHint="search"
-              class="inp w-full min-h-[44px]"
-              value={query}
-              placeholder="Buscar ejercicio…"
-              aria-label="Buscar ejercicio"
-              onInput={(e) => onQueryChange(e.currentTarget.value)}
-            />
-            {!options.length && (
-              <p aria-live="polite" class="text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>
-            )}
-          </div>
-        )}
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <div class="flex gap-2">
-            <select id="livePickerSelect" ref={selectRef} class="inp min-h-[44px] min-w-0 flex-1" aria-label="Elegir ejercicio de la lista">
-              <option value="">{query.trim() ? `Resultados (${options.length})…` : `Todos los ejercicios (${available.length})…`}</option>
-              {options.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
-            </select>
-            <button type="button" class="btn btn-accent min-h-[44px] shrink-0" onClick={() => onPick(selectRef.current?.value ?? '')}>
-              Elegir
+        <div class="relative">
+          <input id="livePickerSearch" ref={searchRef} type="search" inputMode="search" enterKeyHint="search" aria-controls="livePickerList" class="inp w-full min-h-[44px] pr-10" value={query} placeholder="Buscar o crear ejercicio…" aria-label="Buscar o crear ejercicio" onInput={(e) => onQueryChange(e.currentTarget.value)} onKeyDown={onSearchKeyDown} />
+          {query && (
+            <button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" aria-label="Limpiar búsqueda" onClick={() => onQueryChange('')}>
+              <Icon name="close" className="h-4 w-4" />
             </button>
-          </div>
-          <div class="flex gap-2">
-            <input id="livePickerCustom" ref={customRef} enterKeyHint="done" class="inp min-h-[44px] min-w-0 flex-1" placeholder="O escribe uno nuevo…" aria-label="Nombre de ejercicio personalizado" />
-            <button type="button" class="btn min-h-[44px] shrink-0" onClick={() => onPick(customRef.current?.value ?? '')}>
-              Usar
-            </button>
-          </div>
+          )}
         </div>
+
+        <div class="flex items-center justify-between text-[11px] text-gray-400">
+          <span aria-live="polite" class="tabular-nums">{trimmed ? `Resultados (${options.length})` : `Todos los ejercicios (${available.length})`}</span>
+          {options.length > 0 && <span>Toca un ejercicio para seleccionarlo</span>}
+        </div>
+
+        <div id="livePickerList" role="listbox" aria-label="Ejercicios disponibles" class="max-h-56 overflow-y-auto divide-y divide-white/5 rounded-xl border border-white/10 bg-gray-900/70">
+          {options.length > 0 ? options.map((opt, idx) => (
+            <button key={opt.id} type="button" role="option" aria-selected={idx === activeIdx ? 'true' : 'false'} class={`flex min-h-[44px] w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${idx === activeIdx && trimmed ? 'bg-electricBlue/15 text-white' : 'text-gray-100 hover:bg-white/[0.06]'}`} onClick={() => onPick(opt.id)}>
+              <span class="font-medium">{opt.label}</span>
+              <Icon name="plus" className="h-4 w-4 shrink-0 text-blue-300" />
+            </button>
+          )) : <p class="px-3 py-3 text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>}
+        </div>
+
+        {canCreate && (
+          <button id="livePickerCreate" type="button" class="btn btn-accent min-h-[44px] w-full justify-start" onClick={() => onPick(trimmed)}>
+            <Icon name="plus" className="h-4 w-4" /> Crear y usar «{trimmed}»
+          </button>
+        )}
       </div>
     </section>
   );

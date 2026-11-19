@@ -17,7 +17,7 @@ interface DayRoutineViewProps {
  * Vista de detalle por rutina con estado, gráfica de progresión y maestro-detalle por ejercicio.
  */
 export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
-  const { state: storeState, plan, setTab, openFixedNote } = useAppStore();
+  const { state: storeState, plan, openFixedNote } = useAppStore();
   const state = propState ?? storeState;
   const vm = buildDayRoutineViewModel(state, day);
 
@@ -26,7 +26,7 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
       <div class="card flex flex-wrap items-center justify-between gap-3 text-sm text-gray-300">
         <p>Esta rutina aún no tiene ejercicios asignados.</p>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-sm" onClick={() => setTab('plan')}>Configurar rutina en Plan</button>
+          <button type="button" class="btn-sm" onClick={() => plan.openRoutineInPlan(day)}>Configurar rutina en Plan</button>
           <button type="button" class="btn-primary-sm" onClick={() => plan.startWorkout(day)}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {day}
           </button>
@@ -57,7 +57,7 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
                 {state.analysis.unmapped.length} sin nombre
               </button>
             )}
-            <button type="button" class="btn-sm sm:text-sm" onClick={() => setTab('plan')}>
+            <button type="button" class="btn-sm sm:text-sm" onClick={() => plan.openRoutineInPlan(day)}>
               <Icon name="edit" className="h-3.5 w-3.5" /> Editar rutina
             </button>
             <button type="button" class="btn-sm sm:text-sm" onClick={() => plan.openLog(day)}>Registrar hecho</button>
@@ -98,14 +98,12 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         desktopChartCfg={vm.desktopChartCfg}
         mobileChartCfg={vm.mobileChartCfg}
         rangeLabel={vm.rangeLabel}
-        metric={vm.metric}
         aiDate={state.settings.ai?.date}
         userNotes={state.settings.notes}
         aiFor={vm.aiFor}
         onSelectEx={(name) => plan.selectDayEx(day, name)}
         onStartWorkout={() => plan.startWorkout(day)}
         onEditNote={openFixedNote}
-        onChangeMetric={plan.setExMetric}
       />
     </div>
   );

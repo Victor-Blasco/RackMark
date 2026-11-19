@@ -1,7 +1,5 @@
 import type { ChartConfiguration } from 'chart.js';
-import type { ExMetric } from '../../store/homeSelectors';
 import { ChartCanvas } from '../common/ChartCanvas';
-import { ExMetricToggle } from '../common/StatusBadge';
 
 interface HomeChartsSectionProps {
   /** Total de ejercicios disponibles para mostrar buscador si supera 12. */
@@ -12,16 +10,12 @@ interface HomeChartsSectionProps {
   options: { id: string; label: string }[];
   /** Término actual del buscador de ejercicio. */
   query: string;
-  /** Métrica activa en la gráfica de fuerza. */
-  metric: ExMetric;
   /** Etiqueta legible del rango temporal activo. */
   rangeLabel: string;
   /** Configuración Chart.js de progresión del ejercicio (o `null`). */
   exChartCfg: ChartConfiguration | null;
   /** Configuración Chart.js de peso y % grasa (o `null`). */
   bodyChartCfg: ChartConfiguration | null;
-  /** Cambia la métrica (`top`, `e1rm` o `volume`). */
-  onChangeMetric: (m: ExMetric) => void;
   /** Actualiza la búsqueda de ejercicios. */
   onSearchChange: (q: string) => void;
   /** Selecciona el ejercicio para graficar. */
@@ -36,11 +30,9 @@ export function HomeChartsSection({
   selectedEx,
   options,
   query,
-  metric,
   rangeLabel,
   exChartCfg,
   bodyChartCfg,
-  onChangeMetric,
   onSearchChange,
   onSelectEx,
 }: HomeChartsSectionProps) {
@@ -50,10 +42,9 @@ export function HomeChartsSection({
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-bold text-white">Evolución de cargas</h2>
-            <p class="text-xs text-gray-400">Toca un punto para ver repes, e1RM y tonelaje</p>
+            <p class="text-xs text-gray-400">Toca un punto para ver las series · pulsa la leyenda para mostrar u ocultar</p>
           </div>
           <div class="flex flex-wrap items-center gap-2 max-w-full">
-            <ExMetricToggle active={metric} onChange={onChangeMetric} />
             {exCount > 12 && (
               <input
                 class="inp min-w-[180px] max-w-full sm:max-w-[220px]"

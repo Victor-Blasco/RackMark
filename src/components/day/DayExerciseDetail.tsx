@@ -1,11 +1,10 @@
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
-import type { ExMetric } from '../../store/homeSelectors';
 import type { AiEntry } from '../../types';
-import { fmtDate, r1, short } from '../../ui/shared';
+import { fmtDate, short } from '../../ui/shared';
 import { ChartCanvas } from '../common/ChartCanvas';
 import { Icon } from '../common/Icon';
-import { ExMetricToggle, StatusInline } from '../common/StatusBadge';
+import { StatusInline } from '../common/StatusBadge';
 
 interface DayExerciseDetailProps {
   /** Estadísticas del ejercicio seleccionado. */
@@ -22,8 +21,6 @@ interface DayExerciseDetailProps {
   historyLimit: number;
   /** Etiqueta del periodo temporal activo. */
   rangeLabel: string;
-  /** Métrica de gráfica activa (`top`, `e1rm` o `volume`). */
-  metric: ExMetric;
   /** Configuración Chart.js ya construida para este ejercicio. */
   chartConfig: ChartConfiguration | null;
   /** Indica si se muestra embebido dentro del acordeón móvil (`true`) o en tarjeta derecha (`false`). */
@@ -32,19 +29,18 @@ interface DayExerciseDetailProps {
   onStartWorkout: () => void;
   /** Abre el modal de nota permanente para este ejercicio. */
   onEditNote: () => void;
-  /** Cambia la métrica visualizada en la gráfica. */
-  onChangeMetric: (metric: ExMetric) => void;
 }
 
 /** Panel maestro-detalle de un ejercicio concreto dentro de una rutina. */
 export function DayExerciseDetail(props: DayExerciseDetailProps) {
-  const { exercise: e, aiAdvice, userNote, aiDate, canvasId, historyLimit, rangeLabel, metric, chartConfig, embedded = false, onStartWorkout, onEditNote, onChangeMetric } = props;
+  const { exercise: e, aiAdvice, userNote, aiDate, canvasId, historyLimit, rangeLabel, chartConfig, embedded = false, onStartWorkout, onEditNote } = props;
   const aiBiomech = aiAdvice?.biomech?.trim() ?? '';
   const recent = [...e.sessions].reverse().slice(0, historyLimit);
   const prescLabel = aiAdvice?.prescription && aiDate ? `Próxima sesión · IA (${short(aiDate)})` : 'Próxima sesión';
+  const maxVol = e.n ? Math.round(Math.max(...e.sessions.map((s) => s.volume))) : 0;
   const kpis = [
     { lbl: 'Peso máx', val: e.n ? `${e.maxWeight} kg` : '—', cls: 'text-white' },
-    { lbl: 'e1RM pico', val: e.n ? `${r1(e.maxE1rm)} kg` : '—', cls: 'text-white' },
+    { lbl: 'Tonelaje máx', val: e.n ? `${maxVol} kg` : '—', cls: 'text-white' },
     { lbl: 'FC media', val: e.avgHr ? `${e.avgHr} lpm` : '—', cls: 'text-cyan-300' },
   ];
 
@@ -79,10 +75,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
       </div>
 
       <div class="space-y-2">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-xs font-semibold text-gray-400">Progresión · toca un punto para ver repes, e1RM y pulso</p>
-          <ExMetricToggle active={metric} onChange={onChangeMetric} />
-        </div>
+        <p class="text-xs font-semibold text-gray-400">Progresión · toca un punto para ver las series</p>
         {chartConfig
           ? <div class="chart-box"><ChartCanvas id={canvasId} config={chartConfig} /></div>
           : <p class="py-8 text-center text-sm text-gray-400">Sin registros para este ejercicio en {rangeLabel}.</p>}

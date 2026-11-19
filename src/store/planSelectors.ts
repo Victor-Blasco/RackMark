@@ -16,6 +16,7 @@ export interface PlanCatalogItem {
 export interface ExerciseMapItem {
   name: string;
   primary: string;
+  secondary: string[];
   secondaryText: string;
 }
 
@@ -47,11 +48,7 @@ export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
  * @param state - Estado global con consulta `planSearch` y rutina destino.
  * @returns Rutina destino, texto contador y hasta 12 coincidencias.
  */
-export function getPlanCatalogData(state: State): {
-  targetRoutine: string;
-  countText: string;
-  items: PlanCatalogItem[];
-} {
+export function getPlanCatalogData(state: State): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
   const routines = routineNames(state.settings);
   const targetRoutine =
     state.planTargetRoutine && routines.includes(state.planTargetRoutine)
@@ -140,7 +137,8 @@ export function getExerciseMapData(state: State): { countText: string; items: Ex
 
   const items: ExerciseMapItem[] = matches.slice(0, 60).map((name) => {
     const m = musclesOf(name, state.settings);
-    return { name, primary: m?.p ?? '', secondaryText: m?.s.join(', ') ?? '' };
+    const secondary = m?.s ?? [];
+    return { name, primary: m?.p ?? '', secondary, secondaryText: secondary.join(', ') };
   });
   return {
     countText: `${Math.min(matches.length, 60)}/${matches.length} visibles · ${names.length} totales`,

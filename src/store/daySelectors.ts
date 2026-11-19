@@ -2,7 +2,7 @@ import type { ExStats } from '../lib/analysis';
 import { norm } from '../lib/seed';
 import type { DayName } from '../types';
 import { inRange, isAiFreshForEx, resolveRange, routineColor, routineNames, type State } from '../ui/shared';
-import { exerciseChartConfig, filterExByRange, type ExMetric } from './homeSelectors';
+import { exerciseChartConfig, filterExByRange } from './homeSelectors';
 
 /**
  * Calcula los datos maestros y de detalle de una rutina concreta (`Push`, `Pull`, personalizada…).
@@ -57,14 +57,13 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
     : undefined;
   const mobileCur = rawSel === '__closed__' ? undefined : desktopCur;
 
-  const metric: ExMetric = state.exMetric ?? 'top';
   const desktopEx = desktopCur ? allPool.find((x) => x.name === desktopCur) : undefined;
   const desktopChartCfg =
-    desktopEx && desktopEx.sessions.length ? exerciseChartConfig(desktopEx.sessions, dayColor, metric) : null;
+    desktopEx && desktopEx.sessions.length ? exerciseChartConfig(desktopEx.sessions, dayColor) : null;
 
   const mobileEx = mobileCur ? allPool.find((x) => x.name === mobileCur) : undefined;
   const mobileChartCfg =
-    mobileEx && mobileEx.sessions.length ? exerciseChartConfig(mobileEx.sessions, dayColor, metric) : null;
+    mobileEx && mobileEx.sessions.length ? exerciseChartConfig(mobileEx.sessions, dayColor) : null;
 
   const sessAll = state.analysis.sessions.filter((x) => x.day === day);
   const sess = hasFilter ? sessAll.filter((x) => inRange(x.date, bounds)) : sessAll;
@@ -94,7 +93,6 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
     mobileChartCfg,
     sess,
     lastS,
-    metric,
     aiFor,
   };
 }

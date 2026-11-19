@@ -70,11 +70,9 @@ export function HomeView({ state: propState }: HomeViewProps) {
         selectedEx={vm.cur}
         options={vm.filteredHomeOptions}
         query={state.homeExQuery ?? ''}
-        metric={vm.metric}
         rangeLabel={vm.bounds.label}
         exChartCfg={vm.homeExCfg}
         bodyChartCfg={vm.bodyHomeCfg}
-        onChangeMetric={plan.setExMetric}
         onSearchChange={plan.setHomeExQuery}
         onSelectEx={plan.selectHomeEx}
       />

@@ -1,4 +1,4 @@
-import { STATUS_STYLE, type ExMetric } from '../../store/homeSelectors';
+import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { ExStats } from '../../lib/analysis';
 import type { AiTone } from '../../types';
 
@@ -18,38 +18,6 @@ export function StatusInline({ stats, aiStatus }: StatusInlineProps) {
       <span class={`h-2.5 w-2.5 shrink-0 rounded-full ${st.dot}`} aria-hidden="true" />
       <span class="truncate">{text}</span>
     </span>
-  );
-}
-
-interface ExMetricToggleProps {
-  /** Métrica de gráfica actualmente activa (`top`, `e1rm` o `volume`). */
-  active: ExMetric;
-  /** Callback al seleccionar otra métrica. */
-  onChange: (metric: ExMetric) => void;
-}
-
-const METRIC_OPTS: [ExMetric, string][] = [
-  ['top', 'Peso máx'],
-  ['e1rm', 'e1RM'],
-  ['volume', 'Tonelaje'],
-];
-
-/** Selector segmentado entre Peso máximo, e1RM estimado y Tonelaje. */
-export function ExMetricToggle({ active, onChange }: ExMetricToggleProps) {
-  return (
-    <div role="group" aria-label="Métrica de progresión" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]">
-      {METRIC_OPTS.map(([key, label]) => (
-        <button
-          key={key}
-          type="button"
-          aria-pressed={active === key ? 'true' : 'false'}
-          class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active === key ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-          onClick={() => onChange(key)}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
   );
 }
 

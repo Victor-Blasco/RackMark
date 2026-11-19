@@ -3,7 +3,7 @@ import type { PlanActions } from '../../store/planActions';
 import { getExerciseMapData, getExerciseMapFacets } from '../../store/planSelectors';
 import { fmtDate, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
-import { PlanExerciseMapList } from './PlanCatalogList';
+import { PlanExerciseMapList } from './PlanExerciseMapList';
 
 interface PlanExercisesTabProps {
   /** Estado global con ejercicios, alias y mapa muscular. */
@@ -72,19 +72,21 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
       </div>
 
       <div class="min-w-0 space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="space-y-2">
           <div>
             <h3 class="font-bold text-white tabular-nums">Músculos por ejercicio ({allNames.length})</h3>
-            <p class="text-xs text-gray-400">Músculo principal = 1 serie efectiva; secundarios (separados por coma) = 0,5 series.</p>
+            <p class="text-xs text-gray-400">Toca un ejercicio para elegir su músculo principal (1 serie) y secundarios (0,5 series c/u).</p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <span id="exercise-map-count" aria-live="polite" class="text-xs text-gray-400 tabular-nums">{mapRes.countText}</span>
-            <button type="button" class="btn-sm" onClick={actions.toggleExerciseMapAll}>
-              {state.showAllExerciseMap ? 'Mostrar solo relevantes' : 'Mostrar catálogo completo'}
-            </button>
-            <button type="button" class="btn-sm btn-accent" onClick={() => actions.openExerciseModal()}>
-              + Nuevo ejercicio
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" class="btn-sm" onClick={actions.toggleExerciseMapAll}>
+                {state.showAllExerciseMap ? 'Solo en uso' : 'Ver catálogo completo'}
+              </button>
+              <button type="button" class="btn-sm btn-accent" onClick={() => actions.openExerciseModal()}>
+                + Nuevo ejercicio
+              </button>
+            </div>
           </div>
         </div>
 
@@ -101,12 +103,12 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
             </label>
           </div>
           {facets.length > 0 && (
-            <div class="flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filtrar por músculo">
-              <button type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(undefined)}>
+            <div class="flex gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-1" role="group" aria-label="Filtrar por músculo">
+              <button type="button" class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(undefined)}>
                 Todos
               </button>
               {facets.map((f) => (
-                <button key={f.name} type="button" class={`min-h-[44px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(f.name)}>
+                <button key={f.name} type="button" class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(f.name)}>
                   {f.name} <span class="tabular-nums text-[11px]">{f.count}</span>
                 </button>
               ))}
@@ -114,11 +116,11 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           )}
         </div>
 
-        <div id="exercise-map-results" class="grid grid-cols-1 gap-2.5 xl:grid-cols-2 xl:gap-x-6">
+        <div id="exercise-map-results">
           <PlanExerciseMapList
             items={mapRes.items}
             onChangePrimary={(ex, p) => void actions.changePrimaryMuscle(ex, p)}
-            onChangeSecondary={(ex, sec) => void actions.changeSecondaryMuscles(ex, sec)}
+            onToggleSecondary={(ex, sec) => void actions.toggleSecondaryMuscle(ex, sec)}
           />
         </div>
       </div>

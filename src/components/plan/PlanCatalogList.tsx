@@ -1,5 +1,6 @@
-import type { ExerciseMapItem, PlanCatalogItem } from '../../store/planSelectors';
-import { MUSCLES } from '../../lib/seed';
+import type { PlanCatalogItem } from '../../store/planSelectors';
+
+export { PlanExerciseMapList } from './PlanExerciseMapList';
 
 interface PlanCatalogListProps {
   /** Lista filtrada (máximo 12) del catálogo rápido. */
@@ -37,47 +38,6 @@ export function PlanCatalogList({ items, targetRoutine, searchQuery, onQuickAdd 
           >
             + Añadir
           </button>
-        </div>
-      ))}
-    </>
-  );
-}
-
-interface PlanExerciseMapListProps {
-  /** Ejercicios visibles en el editor de mapa muscular. */
-  items: ExerciseMapItem[];
-  /** Cambia el músculo principal de un ejercicio. */
-  onChangePrimary?: (exName: string, primary: string) => void;
-  /** Cambia la lista de músculos secundarios separados por coma. */
-  onChangeSecondary?: (exName: string, rawSecondary: string) => void;
-}
-
-/** Filas editables de músculo principal y secundarios en la pestaña `Ejercicios y músculos`. */
-export function PlanExerciseMapList({ items, onChangePrimary, onChangeSecondary }: PlanExerciseMapListProps) {
-  if (!items.length) {
-    return <p class="py-4 text-center text-xs text-gray-400">Sin ejercicios que coincidan con la búsqueda.</p>;
-  }
-  return (
-    <>
-      {items.map((item) => (
-        <div key={item.name} class="flex min-w-0 items-center gap-2 text-sm">
-          <span class="w-36 shrink-0 truncate xl:w-40 2xl:w-44" title={item.name}>{item.name}</span>
-          <select
-            class="inp w-28 shrink-0 sm:w-32"
-            aria-label={`Músculo principal de ${item.name}`}
-            value={item.primary}
-            onChange={(e) => onChangePrimary?.(item.name, e.currentTarget.value)}
-          >
-            <option value="" selected={!item.primary}>—</option>
-            {MUSCLES.map((m) => <option key={m} value={m} selected={m === item.primary}>{m}</option>)}
-          </select>
-          <input
-            class="inp min-w-0 flex-1"
-            placeholder="Ej. Tríceps, Hombros…"
-            value={item.secondaryText}
-            aria-label={`Músculos secundarios de ${item.name}`}
-            onChange={(e) => onChangeSecondary?.(item.name, e.currentTarget.value)}
-          />
         </div>
       ))}
     </>

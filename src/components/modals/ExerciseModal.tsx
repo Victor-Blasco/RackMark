@@ -62,7 +62,17 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="block sm:col-span-1">
             <span class="lbl">Músculo principal</span>
-            <select class="inp" name="primary" value={primary} required onChange={(e) => setPrimary(e.currentTarget.value)}>
+            <select
+              class="inp"
+              name="primary"
+              value={primary}
+              required
+              onChange={(e) => {
+                const next = e.currentTarget.value;
+                setPrimary(next);
+                setSecondary((prev) => prev.filter((x) => x !== next));
+              }}
+            >
               {MUSCLES.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
@@ -79,12 +89,15 @@ export function ExerciseModal({ routines, defaultRoutine = '', fromLog, onSave, 
         <fieldset class="space-y-1.5">
           <legend class="lbl">Músculos secundarios (opcional)</legend>
           <div class="flex flex-wrap gap-1.5">
-            {MUSCLES.map((m) => (
-              <label key={m} class="cursor-pointer select-none">
-                <input type="checkbox" name="secondary" value={m} checked={secondary.includes(m)} class="sr-only peer" onChange={() => toggleSec(m)} />
-                <span class="inline-block rounded-lg border border-white/10 bg-gray-900/70 px-2.5 py-1 text-xs font-semibold text-gray-300 transition-colors peer-checked:border-electricBlue peer-checked:bg-electricBlue/20 peer-checked:text-blue-200 hover:border-white/25">{m}</span>
-              </label>
-            ))}
+            {MUSCLES.map((m) => {
+              const isPrim = m === primary;
+              return (
+                <label key={m} class={`select-none ${isPrim ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <input type="checkbox" name="secondary" value={m} disabled={isPrim} checked={!isPrim && secondary.includes(m)} class="sr-only peer" onChange={() => toggleSec(m)} />
+                  <span class="inline-flex min-h-[40px] sm:min-h-[32px] items-center rounded-lg border border-white/10 bg-gray-900/70 px-2.5 py-1 text-xs font-semibold text-gray-300 transition-colors peer-checked:border-electricBlue peer-checked:bg-electricBlue/20 peer-checked:text-blue-200 peer-focus-visible:ring-2 peer-focus-visible:ring-electricBlue hover:border-white/25">{m}</span>
+                </label>
+              );
+            })}
           </div>
         </fieldset>
 

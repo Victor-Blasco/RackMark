@@ -69,7 +69,6 @@ export interface State {
   logFilter?: string;
   planTab?: 'routines' | 'exercises';
   aiTab?: number;
-  exMetric?: 'top' | 'e1rm' | 'volume';
   dayExtra?: Record<string, boolean>;
   ranges?: Record<string, RangeKey>;
   customRanges?: Record<string, { from?: string; to?: string }>;
@@ -207,6 +206,7 @@ export function findAiSection(S: State, pattern: RegExp): AiSection | undefined 
 export const r1 = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
 
 export const DAY_COLOR: Record<string, string> = { Push: '#A855F7', Pull: '#3B82F6', Leg: '#10B981' };
+const LEGACY_ROUTINE_COLORS = new Set(['#F43F5E', '#EC4899']);
 
 /** Devuelve la lista ordenada de rutinas definidas en los ajustes (o PPL por defecto). */
 export function routineNames(s: Settings): string[] {
@@ -216,7 +216,9 @@ export function routineNames(s: Settings): string[] {
 
 /** Devuelve el color hex asignado a una rutina, con fallback por defecto o por índice. */
 export function routineColor(name: string, s?: Settings, idx = 0): string {
-  return s?.routineMeta?.[name]?.color ?? DAY_COLOR[name] ?? ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
+  const raw = s?.routineMeta?.[name]?.color;
+  if (raw && !LEGACY_ROUTINE_COLORS.has(raw.toUpperCase())) return raw;
+  return DAY_COLOR[name] ?? ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
 }
 
 /** Devuelve una abreviatura corta y distintiva para badges compactos de calendario y adherencia. */

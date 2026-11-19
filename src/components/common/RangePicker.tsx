@@ -1,4 +1,5 @@
 import { RANGES, type RangeKey } from '../../store/types';
+import { Collapsible } from './Collapsible';
 
 interface RangePickerProps {
   /** Identificador de ámbito para filtros temporales (`home`, `body`, nombre de rutina…). */
@@ -44,7 +45,7 @@ export function RangePicker({
         })}
       </div>
 
-      {active === 'Custom' && (
+      <Collapsible open={active === 'Custom'}>
         <div class="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-gray-900/70 px-2.5 py-1.5 text-xs">
           <label class="inline-flex items-center gap-1.5 text-gray-400">
             <span>Desde</span>
@@ -67,7 +68,7 @@ export function RangePicker({
             />
           </label>
         </div>
-      )}
+      </Collapsible>
     </div>
   );
 }

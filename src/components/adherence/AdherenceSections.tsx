@@ -1,84 +1,65 @@
-import type { CardioRow, Settings } from '../../types';
-import { fmtDate, r1, routineColor, routineShort } from '../../ui/shared';
+import {
+  CARDIO_CALENDAR_COLOR,
+  formatDayHeading,
+  type CalendarDayActivity,
+} from '../../store/adherenceCalendar';
+import type { CardioRow } from '../../types';
+import { fmtDate, r1 } from '../../ui/shared';
 
-interface AdherenceCell {
-  iso: string;
-  bg: string;
-  label: string;
-  code: string;
+export { AdherenceCalendar } from './AdherenceCalendar';
+
+interface AdherenceDayDetailProps {
+  /** Fecha ISO seleccionada actualmente en el calendario. */
+  selectedIso: string;
+  /** Actividad agrupada de fuerza y cardio para esa fecha (o `undefined`). */
+  dayAct?: CalendarDayActivity;
 }
 
-interface AdherenceCalendarProps {
-  /** Semanas ISO completas visibles en escritorio. */
-  cols: string[];
-  /** Últimas 8 semanas visibles en móvil. */
-  mobCols: string[];
-  /** Rutinas activas para la leyenda de color. */
-  routines: string[];
-  /** Ajustes con metadatos de color de rutinas. */
-  settings: Settings;
-  /** Genera los datos de celda para una semana e índice de día (0–6). */
-  buildCell: (weekIso: string, dayIdx: number) => AdherenceCell;
-}
-
-const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-
-/**
- * Matriz heatmap semanal de entrenamientos con leyenda por rutina.
- */
-export function AdherenceCalendar({ cols, mobCols, routines, settings, buildCell }: AdherenceCalendarProps) {
-  const renderColumns = (list: string[]) => (
-    <>
-      <div class="flex flex-col gap-1.5 pr-1 text-[10px] text-gray-400">
-        {WEEKDAYS.map((d) => <div key={d} class="flex h-5 items-center">{d}</div>)}
-      </div>
-      {list.map((w) => (
-        <div key={w} class="flex flex-col gap-1.5">
-          {[0, 1, 2, 3, 4, 5, 6].map((i) => {
-            const c = buildCell(w, i);
-            return (
-              <div
-                key={c.iso}
-                role="img"
-                aria-label={c.label}
-                title={c.label}
-                class="flex h-5 min-w-[20px] px-0.5 items-center justify-center rounded-[4px] text-[9px] font-extrabold text-white/95"
-                style={{ background: c.bg }}
-              >
-                {c.code}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </>
-  );
-
+/** Panel lateral/inferior con el desglose de sesiones de fuerza y cardio del día seleccionado. */
+export function AdherenceDayDetail({ selectedIso, dayAct }: AdherenceDayDetailProps) {
   return (
-    <div class="pb-5 border-b border-white/10 space-y-2">
-      <h3 class="mb-2 font-bold text-white">
-        Calendario (<span class="hidden md:inline">últimas {cols.length}</span>
-        <span class="md:hidden">últimas {mobCols.length}</span> semanas)
-      </h3>
-      <div class="hidden md:flex gap-1.5 overflow-x-auto">{renderColumns(cols)}</div>
-      <div class="flex md:hidden gap-1.5">{renderColumns(mobCols)}</div>
-      <div class="mt-3 flex flex-wrap gap-3 text-xs text-gray-400">
-        {routines.map((d, idx) => (
-          <span key={d} class="inline-flex items-center gap-1">
-            <span
-              class="inline-flex h-4 min-w-[16px] px-0.5 items-center justify-center rounded text-[9px] font-extrabold text-white"
-              style={{ background: routineColor(d, settings, idx) }}
-            >
-              {routineShort(d)}
-            </span>
-            {d}
-          </span>
-        ))}
-        <span class="inline-flex items-center gap-1">
-          <span class="inline-flex h-4 w-4 items-center justify-center rounded bg-gray-500 text-[9px] font-extrabold text-white">·</span>
-          Otro
-        </span>
-      </div>
+    <div class="lg:col-span-5 border-t border-white/10 pt-3 lg:border-t-0 lg:border-l lg:border-white/10 lg:pl-5 lg:pt-0 space-y-2.5">
+      <h4 class="text-sm font-bold text-white capitalize">{formatDayHeading(selectedIso)}</h4>
+      {dayAct ? (
+        <div class="divide-y divide-white/10">
+          {dayAct.strength.map((s, idx) => (
+            <div key={`${s.day}-${idx}`} class="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <span class="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden="true" />
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-white">{s.day}</p>
+                  <p class="text-xs text-gray-400 tabular-nums">
+                    {s.sets} {s.sets === 1 ? 'serie' : 'series'}{s.avgHr ? ` · ${Math.round(s.avgHr)} lpm` : ''}
+                  </p>
+                </div>
+              </div>
+              <div class="shrink-0 text-right tabular-nums text-xs text-gray-300">
+                {s.durMin ? <p class="font-semibold">{Math.round(s.durMin)} min</p> : null}
+                {s.kcal ? <p class="text-gray-400">{Math.round(s.kcal)} kcal</p> : null}
+              </div>
+            </div>
+          ))}
+          {dayAct.cardio.map((c, idx) => (
+            <div key={`cardio-${idx}`} class="flex items-center justify-between gap-3 py-2.5 text-sm">
+              <div class="flex min-w-0 items-center gap-2.5">
+                <span class="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: CARDIO_CALENDAR_COLOR }} aria-hidden="true" />
+                <div class="min-w-0">
+                  <p class="font-semibold text-white">Cardio</p>
+                  <p class="text-xs text-gray-400 tabular-nums">
+                    {r1(c.distKm)} km{c.avgHr ? ` · ${Math.round(c.avgHr)} lpm` : ''}
+                  </p>
+                </div>
+              </div>
+              <div class="shrink-0 text-right tabular-nums text-xs text-gray-300">
+                <p class="font-semibold">{Math.round(c.durMin)} min</p>
+                {c.kcal ? <p class="text-gray-400">{Math.round(c.kcal)} kcal</p> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p class="py-3 text-xs text-gray-400">Sin entrenamientos registrados este día.</p>
+      )}
     </div>
   );
 }
@@ -98,7 +79,7 @@ export function CardioSessionsTable({ totalCount, recentCardio }: CardioSessions
 
   return (
     <div class="space-y-2 overflow-x-auto">
-      <h3 class="mb-2 font-bold text-white">Sesiones de cardio ({totalCount})</h3>
+      <h3 class="mb-2 font-bold text-white tabular-nums">Sesiones de cardio ({totalCount})</h3>
       <table class="w-full text-left text-sm">
         <thead class="text-xs uppercase text-gray-400">
           <tr>

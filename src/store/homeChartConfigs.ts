@@ -11,8 +11,6 @@ import {
   type State,
 } from '../ui/shared';
 
-export type ExMetric = 'top' | 'e1rm' | 'volume';
-
 export const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string; glyph: string }> = {
   emeraldGreen: { dot: 'bg-emeraldGreen', text: 'text-emerald-300', glyph: '↑' },
   electricBlue: { dot: 'bg-electricBlue', text: 'text-blue-300', glyph: '★' },
@@ -61,22 +59,24 @@ export function lastMetric(ms: Measure[], hasFilter: boolean, key: keyof Measure
   };
 }
 
-/** Configura la gráfica de carga (`Peso máx`, `e1RM` o `Tonelaje`) en un único eje Y. */
-export function exerciseChartConfig(
-  sessions: ExSession[],
-  color: string,
-  metric: ExMetric = 'top',
-): ChartConfiguration<'line'> {
-  const label = metric === 'e1rm' ? 'e1RM est. (kg)' : metric === 'volume' ? 'Tonelaje (kg)' : 'Peso máx (kg)';
-  const data = sessions.map((x) =>
-    metric === 'e1rm' ? Math.round(x.e1rm * 10) / 10 : metric === 'volume' ? Math.round(x.volume) : x.top,
-  );
+/** Configura la gráfica de carga con Peso máx y Tonelaje activables desde la leyenda. */
+export function exerciseChartConfig(sessions: ExSession[], color: string): ChartConfiguration<'line'> {
   return {
     type: 'line',
-    data: { labels: sessions.map((x) => short(x.date)), datasets: [{ label, data, borderColor: color, backgroundColor: color, tension: 0.25, yAxisID: 'y' }] },
+    data: {
+      labels: sessions.map((x) => short(x.date)),
+      datasets: [
+        { label: 'Peso máx (kg)', data: sessions.map((x) => x.top), borderColor: color, backgroundColor: color, borderWidth: 2.5, tension: 0.25, yAxisID: 'y' },
+        { label: 'Tonelaje (kg)', data: sessions.map((x) => Math.round(x.volume)), borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
+      ],
+    },
     options: {
       animation: { duration: 320, easing: 'easeOutCubic' },
       interaction: { mode: 'index', intersect: false },
+      scales: {
+        y: { position: 'left', display: 'auto' },
+        y1: { position: 'right', display: 'auto', grid: { drawOnChartArea: false } },
+      },
       plugins: {
         tooltip: {
           callbacks: {
@@ -86,14 +86,12 @@ export function exerciseChartConfig(
             },
             label: (ctx) => {
               const s = sessions[ctx.dataIndex];
-              return s ? `Peso máx: ${r1(s.top)} kg × ${s.repsAtTop} · e1RM: ${r1(s.e1rm)} kg · Tonelaje: ${Math.round(s.volume)} kg` : '';
+              if (!s) return '';
+              return ctx.datasetIndex === 0 ? `Peso máx: ${r1(s.top)} kg` : `Tonelaje: ${Math.round(s.volume)} kg`;
             },
             afterBody: (items) => {
               const s = items[0] ? sessions[items[0].dataIndex] : undefined;
-              if (!s) return [];
-              const lines = [`Series: ${s.sets.map((x) => `${x.w}×${x.r}`).join(' · ')}`];
-              if (s.avgHr != null) lines.push(`FC media: ${Math.round(s.avgHr)} lpm${s.maxHr ? ` (máx ${Math.round(s.maxHr)})` : ''}`);
-              return lines;
+              return s ? [`Series: ${s.sets.map((x) => `${r1(x.w)}×${x.r}`).join(' · ')}`] : [];
             },
           },
         },
@@ -138,5 +136,5 @@ export function buildHomeExChartConfig(state: State): ChartConfiguration<'line'>
   const ex = homeExercises(state);
   const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(state.analysis.exercises.get(cur)!, bounds) : undefined;
-  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, '#3B82F6', state.exMetric ?? 'top') : null;
+  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, '#3B82F6') : null;
 }

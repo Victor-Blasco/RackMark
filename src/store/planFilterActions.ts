@@ -1,4 +1,4 @@
-import { isValidIsoDate } from '../lib/seed';
+import { isValidIsoDate, norm } from '../lib/seed';
 import type { DayName } from '../types';
 import { todayIso, type RangeKey, type State } from '../ui/shared';
 
@@ -36,11 +36,6 @@ export function createPlanFilterActions(
       if (val && !isValidIsoDate(val)) return;
       const cur = S.customRanges?.[scope] ?? {};
       S.customRanges = { ...S.customRanges, [scope]: { ...cur, [edge]: val || undefined } };
-      render();
-    },
-
-    setExMetric: (metric: 'top' | 'e1rm' | 'volume') => {
-      state().exMetric = metric;
       render();
     },
 
@@ -115,6 +110,20 @@ export function createPlanFilterActions(
     openUnmapped: () => {
       state().planTab = 'exercises';
       navigateTab('plan');
+    },
+
+    openRoutineInPlan: (day?: DayName) => {
+      state().planTab = 'routines';
+      navigateTab('plan');
+      if (day && typeof document !== 'undefined') {
+        const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        window.requestAnimationFrame?.(() => {
+          document.getElementById(`plan-routine-${norm(day)}`)?.scrollIntoView?.({
+            behavior: reduced ? 'auto' : 'smooth',
+            block: 'start',
+          });
+        });
+      }
     },
   };
 }

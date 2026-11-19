@@ -1,6 +1,6 @@
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
-import { STATUS_STYLE, type ExMetric } from '../../store/homeSelectors';
+import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { AiEntry } from '../../types';
 import { short } from '../../ui/shared';
 import { DayExerciseDetail } from './DayExerciseDetail';
@@ -23,8 +23,6 @@ interface DayMasterListProps {
   mobileChartCfg: ChartConfiguration | null;
   /** Etiqueta del filtro temporal activo. */
   rangeLabel: string;
-  /** Métrica de progresión seleccionada. */
-  metric: ExMetric;
   /** Fecha de informe IA vigente. */
   aiDate?: string;
   /** Notas fijas del usuario por nombre de ejercicio. */
@@ -37,8 +35,6 @@ interface DayMasterListProps {
   onStartWorkout: () => void;
   /** Abre el modal de nota permanente. */
   onEditNote: (exName: string) => void;
-  /** Cambia la métrica visualizada. */
-  onChangeMetric: (m: ExMetric) => void;
 }
 
 const lastSummary = (x: ExStats, rangeLabel: string) => {
@@ -51,7 +47,7 @@ const lastSummary = (x: ExStats, rangeLabel: string) => {
  * Maestro-detalle adaptable: acordeón vertical en móvil y `role="listbox"` + panel fijo en escritorio.
  */
 export function DayMasterList(props: DayMasterListProps) {
-  const { day, exercises, desktopCur, desktopEx, desktopChartCfg, rangeLabel, metric, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote, onChangeMetric } = props;
+  const { day, exercises, desktopCur, desktopEx, desktopChartCfg, rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote } = props;
 
   const onOptionKeyDown = (e: KeyboardEvent, idx: number) => {
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) || !exercises.length) return;
@@ -126,11 +122,9 @@ export function DayMasterList(props: DayMasterListProps) {
               canvasId="c-day"
               historyLimit={20}
               rangeLabel={rangeLabel}
-              metric={metric}
               chartConfig={desktopChartCfg}
               onStartWorkout={onStartWorkout}
               onEditNote={() => onEditNote(desktopEx.name)}
-              onChangeMetric={onChangeMetric}
             />
           )}
         </div>

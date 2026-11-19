@@ -1,8 +1,10 @@
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
-import { STATUS_STYLE, type ExMetric } from '../../store/homeSelectors';
+import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { AiEntry } from '../../types';
 import { short } from '../../ui/shared';
+import { Collapsible } from '../common/Collapsible';
+import { Icon } from '../common/Icon';
 import { DayExerciseDetail } from './DayExerciseDetail';
 
 interface DayMobileAccordionProps {
@@ -12,8 +14,6 @@ interface DayMobileAccordionProps {
   mobileCur?: string;
   /** Etiqueta del rango temporal activo. */
   rangeLabel: string;
-  /** Métrica seleccionada para la gráfica. */
-  metric: ExMetric;
   /** Fecha del informe IA vigente. */
   aiDate?: string;
   /** Notas biomecánicas por ejercicio. */
@@ -28,8 +28,6 @@ interface DayMobileAccordionProps {
   onStartWorkout: () => void;
   /** Abre el modal de nota fija. */
   onEditNote: (exName: string) => void;
-  /** Cambia la métrica visualizada. */
-  onChangeMetric: (m: ExMetric) => void;
 }
 
 /** Acordeón móvil de ejercicios para pantallas pequeñas (`< lg`). */
@@ -37,7 +35,6 @@ export function DayMobileAccordion({
   exercises,
   mobileCur,
   rangeLabel,
-  metric,
   aiDate,
   userNotes,
   mobileChartCfg,
@@ -45,7 +42,6 @@ export function DayMobileAccordion({
   onSelectEx,
   onStartWorkout,
   onEditNote,
-  onChangeMetric,
 }: DayMobileAccordionProps) {
   return (
     <div class="lg:hidden space-y-3">
@@ -76,10 +72,13 @@ export function DayMobileAccordion({
                   <span aria-hidden="true">{st.glyph}</span>
                   <span class="sr-only">{advice?.status ?? x.status}</span>
                 </span>
-                <span class="text-xs text-gray-400" aria-hidden="true">{open ? '▲' : '▼'}</span>
+                <Icon
+                  name="caretDown"
+                  className={`h-4 w-4 text-gray-400 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180 text-white' : ''}`}
+                />
               </div>
             </button>
-            {open && (
+            <Collapsible open={open}>
               <DayExerciseDetail
                 exercise={x}
                 aiAdvice={advice}
@@ -88,14 +87,12 @@ export function DayMobileAccordion({
                 canvasId="c-day-mob"
                 historyLimit={8}
                 rangeLabel={rangeLabel}
-                metric={metric}
                 chartConfig={mobileChartCfg}
                 embedded
                 onStartWorkout={onStartWorkout}
                 onEditNote={() => onEditNote(x.name)}
-                onChangeMetric={onChangeMetric}
               />
-            )}
+            </Collapsible>
           </div>
         );
       })}

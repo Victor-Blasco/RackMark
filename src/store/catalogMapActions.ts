@@ -1,3 +1,4 @@
+import { musclesOf } from '../lib/analysis';
 import { isValidIsoDate, norm } from '../lib/seed';
 import type { State } from '../ui/shared';
 import type { ConfirmModalOpts } from './types';
@@ -34,23 +35,28 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
     async changePrimaryMuscle(exName: string, primary: string) {
       const S = state();
       const key = norm(exName);
-      const cur = S.settings.muscles[key] ?? { p: '', s: [] };
-      S.settings = {
-        ...S.settings,
-        muscles: { ...S.settings.muscles, [key]: { ...cur, p: primary } },
-      };
+      const cur = musclesOf(exName, S.settings) ?? { p: '', s: [] };
+      const s = cur.s.filter((m) => m !== primary);
+      S.settings = { ...S.settings, muscles: { ...S.settings.muscles, [key]: { p: primary, s } } };
+      await deps.persist();
+    },
+
+    async toggleSecondaryMuscle(exName: string, muscle: string) {
+      const S = state();
+      const key = norm(exName);
+      const cur = musclesOf(exName, S.settings) ?? { p: '', s: [] };
+      if (!muscle || muscle === cur.p) return;
+      const s = cur.s.includes(muscle) ? cur.s.filter((m) => m !== muscle) : [...cur.s, muscle];
+      S.settings = { ...S.settings, muscles: { ...S.settings.muscles, [key]: { p: cur.p, s } } };
       await deps.persist();
     },
 
     async changeSecondaryMuscles(exName: string, rawSec: string) {
       const S = state();
       const key = norm(exName);
-      const cur = S.settings.muscles[key] ?? { p: '', s: [] };
-      const s = rawSec.split(',').map((x) => x.trim()).filter(Boolean);
-      S.settings = {
-        ...S.settings,
-        muscles: { ...S.settings.muscles, [key]: { ...cur, s } },
-      };
+      const cur = musclesOf(exName, S.settings) ?? { p: '', s: [] };
+      const s = rawSec.split(',').map((x) => x.trim()).filter((m) => m && m !== cur.p);
+      S.settings = { ...S.settings, muscles: { ...S.settings.muscles, [key]: { ...cur, s } } };
       await deps.persist();
     },
 

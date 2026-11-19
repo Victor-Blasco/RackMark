@@ -25,12 +25,12 @@ export function AiInsightBanner({ state, pattern }: AiInsightBannerProps) {
   const styles = VERDICT_STYLES[sec.verdict];
 
   return (
-    <section aria-label={sec.title} class={`rounded-xl border border-white/10 border-l-2 ${styles.border} bg-cardDark px-4 py-3 space-y-1`}>
-      <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+    <section aria-label={sec.title} class={`border-l-2 ${styles.border} pl-4 py-1 space-y-1 max-w-prose`}>
+      <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
         <span class={`font-bold ${styles.title}`}>{sec.title}</span>
-        <span class="text-gray-400 tabular-nums">Análisis IA ({short(aiDate)})</span>
+        <span class="text-gray-400 tabular-nums">· Análisis IA ({short(aiDate)})</span>
       </div>
-      <p class="max-w-prose text-xs sm:text-sm text-gray-300 leading-relaxed">{sec.text}</p>
+      <p class="text-xs sm:text-sm text-gray-200 leading-relaxed">{sec.text}</p>
     </section>
   );
 }

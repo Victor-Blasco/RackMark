@@ -20,12 +20,15 @@ import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
 import { RangePicker } from '../src/components/common/RangePicker';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
+import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
 import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';
+import { createCatalogMapActions } from '../src/store/catalogMapActions';
 import { allExerciseNames, extractTargetWeight, manualSessionId, quickExSuggestions } from '../src/store/exerciseCatalog';
-import { buildBodyHomeChartConfig, buildHomeExChartConfig } from '../src/store/homeChartConfigs';
+import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig } from '../src/store/homeChartConfigs';
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
+import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
 import {
   createWizardDraft,
@@ -48,6 +51,7 @@ import {
   movingAverage7d,
   normalizeChartConfig,
   resolveRange,
+  routineColor,
   routineShort,
   todayIso,
   weightDeltaColor,
@@ -707,8 +711,9 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(volHtml).toContain('md:hidden');
 
     const adhHtml = renderToString(h(AdherenceView, { state }));
-    expect(adhHtml).toContain('hidden md:flex');
-    expect(adhHtml).toContain('flex md:hidden');
+    expect(adhHtml).toContain('aria-label="Mes anterior"');
+    expect(adhHtml).toContain('aria-label="Mes siguiente"');
+    expect(adhHtml).toContain('grid-cols-7');
 
     const calcHtml = renderToString(h(CalcView, { state }));
     expect(calcHtml).toContain('divide-white/10');
@@ -1030,13 +1035,14 @@ describe('live workout & manual rest separation', () => {
       h(LiveWorkoutView, {
         state: {
           ...state,
-          liveWorkout: { ...live, pickerMode: 'swap' },
+          liveWorkout: { ...live, pickerMode: 'swap', pickerQuery: 'Ejercicio Nuevo XYZ' },
         },
       }),
     );
     expect(swapHtml).toContain('Cambiar &quot;');
-    expect(swapHtml).toContain('id="livePickerSelect"');
-    expect(swapHtml).toContain('id="livePickerCustom"');
+    expect(swapHtml).toContain('id="livePickerSearch"');
+    expect(swapHtml).toContain('id="livePickerList"');
+    expect(swapHtml).toContain('id="livePickerCreate"');
 
     const libreLive = initLiveWorkout(state, 'Libre');
     const libreHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: libreLive } }));
@@ -1800,5 +1806,118 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
     expect(planHtml).toContain('id="planCatalogCount" aria-live="polite"');
     expect(planHtml).toContain('volumen óptimo');
+  });
+
+  it('corrige captura-review: calendario mensual, Sidebar sin doble CTA, AiInsightBanner plano, migración coral, picker 1 toque, chips musculares, animaciones y Editar rutina', async () => {
+    // 1. Migración de #F43F5E / #EC4899 en sanitizeSettings y routineColor
+    const migrated = sanitizeSettings({ routineMeta: { Push: { color: '#F43F5E', sub: 'Empuje' }, Custom: { color: '#ec4899' } } });
+    expect(migrated.routineMeta?.Push?.color).toBe('#A855F7');
+    expect(migrated.routineMeta?.Custom?.color).toBe('#A855F7');
+    const legacySettings = { ...migrated, routineMeta: { Push: { color: '#F43F5E', sub: 'Empuje' } } };
+    expect(routineColor('Push', legacySettings, 0)).toBe('#A855F7');
+
+    // 2. Sidebar sin bg-electricBlue / btn-primary y con copy unificado "Registrar hecho"
+    const baseState: State = {
+      tab: 'home',
+      strength: [{ id: 's1', sessionId: 's1', ts: Date.parse('2026-11-14T12:00:00Z'), date: '2026-11-14', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }] }],
+      cardio: [{ id: 'c1', ts: Date.parse('2026-11-14T14:00:00Z'), date: '2026-11-14', type: 1, distKm: 3.3, durMin: 20, avgHr: 142, kcal: 190 }],
+      measures: [{ date: '2026-11-14', weight: 70.5 }],
+      wellbeing: [],
+      settings: {
+        ...migrated,
+        ai: {
+          date: '2026-11-18',
+          tone: 'technical',
+          overview: { overallStatus: 'Bien', highlights: [], sections: [{ title: 'Composición Corporal', verdict: 'good', text: 'Progreso limpio.' }] },
+          byExercise: {},
+        },
+      },
+      analysis: analyze(
+        [{ id: 's1', sessionId: 's1', ts: Date.parse('2026-11-14T12:00:00Z'), date: '2026-11-14', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }] }],
+        migrated,
+      ),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: {},
+    };
+    const sidebarHtml = renderToString(
+      h(Sidebar, { state: baseState, statsText: '1 ses.', liveCount: 0, draftCount: 0, unsynced: false, onSelectTab: () => {}, onCloudLogin: () => {} }),
+    );
+    expect(sidebarHtml).not.toContain('btn-primary');
+    expect(sidebarHtml).not.toContain('px-3.5 py-2.5 text-sm font-bold text-white');
+    expect(sidebarHtml).toContain('Registrar hecho');
+    expect(sidebarHtml).not.toContain('Registrar ya hecho');
+
+    // 3. AiInsightBanner plano sin bg-cardDark de caja vacía a la derecha
+    const aiHtml = renderToString(h(AiInsightBanner, { state: baseState, pattern: /composici/i }));
+    expect(aiHtml).toContain('border-l-2');
+    expect(aiHtml).toContain('max-w-prose');
+    expect(aiHtml).not.toContain('bg-cardDark');
+
+    // 4. Calendario mensual de adherencia: default 1M, meses acotados y agrupación fuerza + cardio
+    const adhHtml = renderToString(h(AdherenceView, { state: baseState }));
+    expect(adhHtml).toContain('Mes anterior');
+    expect(adhHtml).toContain('Mes siguiente');
+    const cal3M = buildAdherenceCalendarData(baseState, { key: '3M', label: '3M', from: '2026-08-20', to: '2026-11-19' }, ['2026-11-14']);
+    expect(cal3M.months).toEqual(['2026-08', '2026-09', '2026-10', '2026-11']);
+    expect(cal3M.byDate['2026-11-14']?.multi).toBe(true);
+    expect(cal3M.byDate['2026-11-14']?.primaryColor).toBe('#A855F7');
+    const novGrid = buildMonthGrid('2026-11', '2026-11-19', { key: '3M', label: '3M', from: '2026-08-20', to: '2026-11-19' }, cal3M.byDate);
+    expect(novGrid.some((c) => c.iso === '2026-11-14' && c.inMonth)).toBe(true);
+
+    // 5. Músculos por ejercicio: chips táctiles sin comas, sin scrollbar gris, preservando secundarios heredados
+    const mapActions = createCatalogMapActions({
+      getState: () => baseState,
+      persist: async () => {},
+      askConfirm: async () => true,
+      toast: () => {},
+    });
+    await mapActions.toggleSecondaryMuscle('Press de banca', 'Bíceps');
+    expect(baseState.settings.muscles[norm('Press de banca')]).toEqual({ p: 'Pecho', s: ['Tríceps', 'Hombros', 'Bíceps'] });
+    await mapActions.changePrimaryMuscle('Press de banca', 'Hombros');
+    expect(baseState.settings.muscles[norm('Press de banca')]).toEqual({ p: 'Hombros', s: ['Tríceps', 'Bíceps'] });
+
+    const exTabHtml = renderToString(h(PlanView, { state: { ...baseState, tab: 'plan', planTab: 'exercises' } }));
+    expect(exTabHtml).toContain('no-scrollbar');
+    expect(exTabHtml).not.toContain('Ej. Tríceps, Hombros…');
+
+    // 6. Bug "Editar rutina" desde Rutina -> siempre abre 'routines' aunque planTab estuviera en 'exercises'
+    let currentTab = 'Pull';
+    const filterActions = createPlanFilterActions(
+      () => baseState,
+      () => {},
+      (t) => { currentTab = t; },
+    );
+    baseState.planTab = 'exercises';
+    filterActions.openRoutineInPlan('Pull');
+    expect(currentTab).toBe('plan');
+    expect(baseState.planTab).toBe('routines');
+
+    // 7. Animaciones colapsables presentes en MeasureForm y DayRoutineView
+    const bodyHtml = renderToString(h(BodyView, { state: baseState }));
+    expect(bodyHtml).toContain('grid-rows-[0fr]');
+
+    // 8. Gráfica de cargas sin e1RM ni switch, con leyenda Peso máx + Tonelaje y tooltip mínimo
+    const chartCfg = exerciseChartConfig(
+      [{ date: '2026-10-21', sets: [{ w: 25, r: 12 }, { w: 27.5, r: 6 }], top: 27.5, repsAtTop: 6, volume: 465, e1rm: 33, avgHr: 132, maxHr: 159 }],
+      '#3B82F6',
+    );
+    expect(chartCfg.data.datasets.map((d) => d.label)).toEqual(['Peso máx (kg)', 'Tonelaje (kg)']);
+    expect(chartCfg.data.datasets.map((d) => (d as { yAxisID?: string }).yAxisID)).toEqual(['y', 'y1']);
+    const tipCb = (chartCfg.options?.plugins?.tooltip as { callbacks?: { label?: (c: { dataIndex: number; datasetIndex: number }) => string; afterBody?: (items: { dataIndex: number }[]) => string[] } })?.callbacks;
+    expect(tipCb?.label?.({ dataIndex: 0, datasetIndex: 0 })).toBe('Peso máx: 27,5 kg');
+    expect(tipCb?.label?.({ dataIndex: 0, datasetIndex: 1 })).toBe('Tonelaje: 465 kg');
+    const tipExtra = tipCb?.afterBody?.([{ dataIndex: 0 }]) ?? [];
+    expect(tipExtra).toEqual(['Series: 25×12 · 27,5×6']);
+    expect(tipExtra.join(' ')).not.toContain('e1RM');
+    expect(tipExtra.join(' ')).not.toContain('FC media');
+
+    const cleanHomeHtml = renderToString(h(HomeView, { state: baseState }));
+    expect(cleanHomeHtml).not.toContain('e1RM');
+    expect(cleanHomeHtml).not.toContain('Métrica de progresión');
+    const cleanDayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: baseState }));
+    expect(cleanDayHtml).not.toContain('e1RM');
+    expect(cleanDayHtml).toContain('Tonelaje máx');
   });
 });

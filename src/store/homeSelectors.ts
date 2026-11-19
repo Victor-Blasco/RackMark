@@ -25,7 +25,6 @@ import {
   filterExByRange,
   homeExercises,
   lastMetric,
-  type ExMetric,
 } from './homeChartConfigs';
 
 export {
@@ -38,7 +37,6 @@ export {
   filterExByRange,
   homeExercises,
   lastMetric,
-  type ExMetric,
 };
 
 const delta = (a?: number, b?: number, u = '') => (a != null && b != null ? `${a - b >= 0 ? '+' : ''}${r1(a - b)}${u}` : '');
@@ -125,7 +123,6 @@ export function buildHomeViewModel(state: State) {
     homeExCfg: buildHomeExChartConfig(state),
     bodyHomeCfg: buildBodyHomeChartConfig(ms),
     rows,
-    metric: (state.exMetric ?? 'top') as ExMetric,
     tone: (state.settings.aiTone === 'simple' ? 'simple' : 'technical') as AiTone,
   };
 }

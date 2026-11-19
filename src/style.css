@@ -119,6 +119,13 @@ body {
   .chart-box {
     @apply relative h-[240px] w-full sm:h-[280px] lg:h-[340px];
   }
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes wizardModalIn {
