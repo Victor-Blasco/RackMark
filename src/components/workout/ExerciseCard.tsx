@@ -106,7 +106,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
           </div>
         </div>
         <input
-          class="w-full rounded-sm border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+          class="w-full min-h-[44px] rounded-sm border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
           enterKeyHint="done"
           value={ex.note}
           placeholder="Nota de hoy (sensaciones, ajustes)…"

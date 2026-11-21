@@ -27,7 +27,7 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         <p>Esta rutina aún no tiene ejercicios asignados.</p>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="btn-sm" onClick={() => plan.openRoutineInPlan(day)}>Configurar rutina en Plan</button>
-          <button type="button" class="btn-primary-sm" onClick={() => plan.startWorkout(day)}>
+          <button type="button" class="btn-primary-sm whitespace-nowrap" onClick={() => plan.startWorkout(day)}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {day}
           </button>
         </div>
@@ -61,7 +61,7 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
               <Icon name="edit" className="h-3.5 w-3.5" /> Editar rutina
             </button>
             <button type="button" class="btn-sm sm:text-sm" onClick={() => plan.openLog(day)}>Registrar hecho</button>
-            <button type="button" class="btn-primary-sm flex-1 sm:flex-initial sm:text-sm" onClick={() => plan.startWorkout(day)}>
+            <button type="button" class="btn-primary-sm flex-1 sm:flex-initial sm:text-sm whitespace-nowrap" onClick={() => plan.startWorkout(day)}>
               <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {day}
             </button>
           </div>

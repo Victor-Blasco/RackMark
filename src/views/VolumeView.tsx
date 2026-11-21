@@ -119,7 +119,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
           <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.
         </p>
         <div class="hidden md:block overflow-x-auto">{renderVolumeTable(vm.weeks, 'w-full min-w-[640px] text-center text-sm')}</div>
-        <div class="md:hidden">{renderVolumeTable(vm.mobWeeks, 'w-full text-center text-xs')}</div>
+        <div class="md:hidden overflow-x-auto">{renderVolumeTable(vm.mobWeeks, 'w-full min-w-[340px] text-center text-xs')}</div>
       </div>
 
       <div class="space-y-2">

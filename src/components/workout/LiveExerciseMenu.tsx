@@ -47,7 +47,7 @@ export function LiveExerciseMenu({
       id="live-ex-menu-wrap"
       data-open={String(open)}
       aria-hidden={open ? 'false' : 'true'}
-      class={`grid transition-[grid-template-rows,opacity,transform,margin] duration-200 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100 translate-y-0' : 'grid-rows-[0fr] opacity-0 -translate-y-1 pointer-events-none !mt-0'}`}
+      class={`grid transition-[grid-template-rows,opacity,transform,margin] duration-200 ease-out motion-reduce:transition-none ${open ? 'mt-3 grid-rows-[1fr] opacity-100 translate-y-0' : 'mt-0 grid-rows-[0fr] opacity-0 -translate-y-1 pointer-events-none'}`}
     >
       <div class="overflow-hidden">
         <nav id="live-ex-menu" inert={!open} aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-floatDark p-2.5 shadow-2xl shadow-black/45 space-y-2">

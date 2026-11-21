@@ -50,7 +50,7 @@ export function AthleteProfileSection({
         </button>
       </div>
 
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label class="block">
           <span class="lbl">Sexo</span>
           <select class="inp" value={profile.sex} onChange={(e) => onChangeSex(e.currentTarget.value)}>

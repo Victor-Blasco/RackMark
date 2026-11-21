@@ -77,7 +77,7 @@ export function AddRoutineExerciseModal({
               <button
                 type="button"
                 aria-label="Limpiar búsqueda"
-                class="icon-btn absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9"
+                class="icon-btn absolute right-1 top-1/2 -translate-y-1/2 sm:h-9 sm:w-9"
                 onClick={() => setQuery('')}
               >
                 <Icon name="close" className="h-3.5 w-3.5" />
@@ -89,7 +89,7 @@ export function AddRoutineExerciseModal({
             <button
               type="button"
               aria-pressed={selectedMuscles.length === 0}
-              class={`min-h-[40px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${selectedMuscles.length === 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-400 hover:text-white'}`}
+              class={`min-h-[44px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${selectedMuscles.length === 0 ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-400 hover:text-white'}`}
               onClick={() => setSelectedMuscles([])}
             >
               Todos
@@ -101,7 +101,7 @@ export function AddRoutineExerciseModal({
                   key={m}
                   type="button"
                   aria-pressed={active}
-                  class={`min-h-[40px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25'}`}
+                  class={`min-h-[44px] sm:min-h-[32px] shrink-0 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-blue-200' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25'}`}
                   onClick={() => toggleMuscle(m)}
                 >
                   {m}

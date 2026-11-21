@@ -79,7 +79,7 @@ export function DataView({ state: propState }: DataViewProps) {
           </div>
           <button
             type="button"
-            class="btn border-coralRed/50 text-coralRed hover:border-coralRed"
+            class="btn btn-danger"
             onClick={dataSync.wipeAllData}
           >
             <Icon name="trash" className="h-4 w-4" /> Borrar todos los datos

@@ -106,7 +106,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
               return (
                 <label key={m} class={`select-none ${isPrim ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
                   <input type="checkbox" name="secondary" value={m} disabled={isPrim} checked={!isPrim && secondary.includes(m)} class="sr-only peer" onChange={() => toggleSec(m)} />
-                  <span class="inline-flex min-h-[40px] sm:min-h-[32px] items-center rounded-lg border border-white/10 bg-gray-900/70 px-2.5 py-1 text-xs font-semibold text-gray-300 transition-colors peer-checked:border-electricBlue peer-checked:bg-electricBlue/20 peer-checked:text-blue-200 peer-focus-visible:ring-2 peer-focus-visible:ring-electricBlue hover:border-white/25">{m}</span>
+                  <span class="inline-flex min-h-[44px] sm:min-h-[32px] items-center rounded-lg border border-white/10 bg-gray-900/70 px-2.5 py-1 text-xs font-semibold text-gray-300 transition-colors peer-checked:border-electricBlue peer-checked:bg-electricBlue/20 peer-checked:text-blue-200 peer-focus-visible:ring-2 peer-focus-visible:ring-electricBlue hover:border-white/25">{m}</span>
                 </label>
               );
             })}

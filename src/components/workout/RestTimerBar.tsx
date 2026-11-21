@@ -56,9 +56,9 @@ export function RestTimerBar({
             <span class="h-2.5 w-2.5 rounded-full bg-emeraldGreen" aria-hidden="true" />
             <span class="text-sm font-bold text-emerald-300">¡Descanso listo!</span>
           </div>
-          <div class="flex items-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5">
             {REST_PRESETS.map((p) => (
-              <button key={p} type="button" class="btn min-h-[44px] px-2.5 text-xs tabular-nums" onClick={() => onStart?.(p)}>{p}s</button>
+              <button key={p} type="button" class="btn min-h-[44px] min-w-[44px] px-2.5 text-xs tabular-nums" onClick={() => onStart?.(p)}>{p}s</button>
             ))}
             <button type="button" class="btn min-h-[44px] px-3 text-xs" onClick={() => onStop?.()}>Cerrar</button>
           </div>
@@ -75,7 +75,7 @@ export function RestTimerBar({
           <button
             key={p}
             type="button"
-            class={`min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
+            class={`min-h-[44px] min-w-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
             onClick={() => onSelectPreset?.(p)}
           >
             {p}s

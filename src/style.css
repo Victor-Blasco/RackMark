@@ -28,6 +28,16 @@ body {
   overflow-x: hidden;
 }
 
+@layer base {
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='option'],
+  [role='radio'] {
+    touch-action: manipulation;
+  }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-borderDark bg-cardDark p-4 sm:p-5;
@@ -42,19 +52,22 @@ body {
     @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-semibold text-gray-200 transition-colors hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl bg-electricBlue px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-sm {
     @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-100 transition-colors hover:border-electricBlue hover:bg-gray-800 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-primary-sm {
-    @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-electricBlue bg-electricBlue px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-500 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-500 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-danger {
     @apply border-coralRed/50 bg-coralRed/10 text-rose-300 hover:border-coralRed hover:bg-coralRed/20;
   }
   .btn-danger-solid {
-    @apply border-coralRed/60 bg-coralRed text-white hover:border-coralRed hover:bg-coralRed/90;
+    @apply border-rose-500/60 bg-rose-600 text-white hover:border-rose-500 hover:bg-rose-500;
+  }
+  .is-dragging {
+    @apply bg-dragDark opacity-100;
   }
   .btn-accent {
     @apply border-electricBlue/40 text-blue-300 hover:border-electricBlue;

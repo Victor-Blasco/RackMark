@@ -59,7 +59,7 @@ export function buildCalcViewModel(state: State) {
   const numRir = parseInt(cRir, 10) || 0;
   const oneRm = epley(numW, numR);
   const oneRmRir = numW * (1 + (numR + numRir) / 30);
-  const ratio = (oneRm / (w || 70)).toFixed(2);
+  const ratio = (oneRm / (w || 70)).toFixed(2).replace('.', ',');
   const zones = (
     [
       [0.85, '5–6 reps'],

@@ -303,9 +303,9 @@ export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguratio
     ...cfg,
     data: { ...cfg.data, datasets: nextDatasets },
     options: {
-      animation: reducedMotion ? false : opts.animation ?? false,
       interaction: { mode: 'index', intersect: false },
       ...opts,
+      animation: reducedMotion ? false : (opts.animation ?? false),
       plugins: { ...rawPlugins, legend },
       scales,
     },

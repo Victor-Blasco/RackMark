@@ -58,7 +58,7 @@ export function WizardStep1({ draft, onPatch }: WizardStepProps) {
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="block">
             <span class="lbl">Peso actual (kg)</span>
-            <input id="wizWeight" class="inp tabular-nums font-semibold" type="number" inputMode="decimal" enterKeyHint="next" name="weight" step="0.1" min="25" max="300" value={draft.weight} placeholder="Ej. 72.5" onInput={(e) => onPatch({ weight: e.currentTarget.value })} />
+            <input id="wizWeight" class="inp tabular-nums font-semibold" type="number" inputMode="decimal" enterKeyHint="next" name="weight" step="0.1" min="25" max="300" value={draft.weight} placeholder="Ej. 72,5" onInput={(e) => onPatch({ weight: e.currentTarget.value })} />
           </label>
           <label class="block">
             <span class="lbl">% Grasa (opcional)</span>

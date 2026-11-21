@@ -13,7 +13,7 @@ interface PlanExerciseMapListProps {
   onToggleSecondary?: (exName: string, muscle: string) => void;
 }
 
-const CHIP_BASE = 'inline-flex min-h-[40px] sm:min-h-[32px] items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const CHIP_BASE = 'inline-flex min-h-[44px] sm:min-h-[32px] items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /** Lista desplegable táctil por ejercicio para asignar músculo principal y secundarios mediante chips. */
 export function PlanExerciseMapList({ items, onChangePrimary, onToggleSecondary }: PlanExerciseMapListProps) {
@@ -98,7 +98,7 @@ export function PlanExerciseMapList({ items, onChangePrimary, onToggleSecondary 
                           type="button"
                           disabled={isPrim}
                           aria-pressed={active ? 'true' : 'false'}
-                          class={`${CHIP_BASE} ${isPrim ? 'border-white/5 bg-white/[0.02] text-gray-500 opacity-40 cursor-not-allowed' : active ? 'border-emeraldGreen/50 bg-emeraldGreen/15 text-emerald-200' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}`}
+                          class={`${CHIP_BASE} ${isPrim ? 'border-white/5 bg-white/[0.02] text-gray-400 opacity-40 cursor-not-allowed' : active ? 'border-emeraldGreen/50 bg-emeraldGreen/15 text-emerald-200' : 'border-white/10 bg-gray-900/70 text-gray-300 hover:border-white/25 hover:text-white'}`}
                           onClick={() => onToggleSecondary?.(item.name, m)}
                         >
                           {m}

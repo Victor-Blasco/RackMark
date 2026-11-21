@@ -50,7 +50,7 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onSelect
   const subLabel = inAnalytics ? 'Vistas de análisis' : inTrain ? 'Modo de entrenamiento' : 'Cuenta y datos';
 
   return (
-    <header class="sticky top-0 z-30 border-b border-borderDark bg-bgDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
+    <header class="sticky top-0 z-30 border-b border-borderDark bg-navDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-2.5">
         <div class="flex min-w-0 items-center gap-2.5">
           <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">

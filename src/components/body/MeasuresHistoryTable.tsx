@@ -58,7 +58,7 @@ export function MeasuresHistoryTable({
                   {SHORT_COL_LABELS[f.key] ?? f.label}
                 </th>
               ))}
-              <th class="w-16 pl-1" />
+              <th class="w-24 sm:w-20 pl-1"><span class="sr-only">Acciones</span></th>
             </tr>
           </thead>
           <tbody>

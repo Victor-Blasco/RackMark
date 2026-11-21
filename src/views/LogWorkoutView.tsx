@@ -40,7 +40,7 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
       />
 
       {vm.draft.exercises.length > 0 ? (
-        <div data-sort-list="log" class="grid grid-cols-1 gap-3 xl:grid-cols-2 items-start">
+        <div data-sort-list="log" class="grid grid-cols-1 gap-3 2xl:grid-cols-2 items-start">
           {vm.draft.exercises.map((ex, ei) => (
             <LogExerciseCard
               key={`${ei}-${ex.name}`}

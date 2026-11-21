@@ -12,7 +12,7 @@ export function moveItem<T>(arr: T[], from: number, to: number): boolean {
 }
 
 const FLIP_TRANSITION = 'transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)';
-const DRAG_ACTIVE_CLASSES = ['relative', 'z-30', 'shadow-2xl', 'ring-2', 'ring-electricBlue/80', '!bg-dragDark', '!opacity-100'];
+const DRAG_ACTIVE_CLASSES = ['relative', 'z-30', 'shadow-2xl', 'ring-2', 'ring-electricBlue/80', 'is-dragging'];
 
 /**
  * Activa delegación de arrastre con animación FLIP sobre `root` para cualquier

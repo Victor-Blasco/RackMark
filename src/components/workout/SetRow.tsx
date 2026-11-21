@@ -25,7 +25,7 @@ interface SetRowProps {
   onRestChange: (raw: string) => void;
 }
 
-const STEP_BTN = 'flex min-h-[48px] sm:min-h-[44px] w-11 max-[380px]:w-9 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const STEP_BTN = 'flex min-h-[48px] sm:min-h-[44px] w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Fila interactiva de una serie individual en `En vivo` con peso, reps, RIR y descanso.
@@ -46,7 +46,7 @@ export function SetRow({
 
   return (
     <div class={`py-3 space-y-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`}>
-      <div class="flex items-center justify-between gap-2 text-xs">
+      <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span class={`font-bold tabular-nums ${s.done ? 'text-emerald-300' : 'text-gray-300'}`}>
           Serie {n}{s.done ? ' · Hecha' : ''}
         </span>
@@ -97,7 +97,7 @@ export function SetRow({
           decAria={`Restar 2,5 kg serie ${n}`}
           incAria={`Sumar 2,5 kg serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px]"
           onStep={onStepWeight}
           onInputValue={(raw) => onWeightChange(raw, false)}
           onBlurValue={(raw) => onWeightChange(raw, true)}
@@ -113,7 +113,7 @@ export function SetRow({
           decAria={`Restar 1 repetición serie ${n}`}
           incAria={`Sumar 1 repetición serie ${n}`}
           btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px]"
           onStep={onStepReps}
           onInputValue={(raw) => onRepsChange(raw, false)}
           onBlurValue={(raw) => onRepsChange(raw, true)}

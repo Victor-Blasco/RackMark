@@ -49,30 +49,32 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
 
   return (
     <div class="mx-auto max-w-xl space-y-3">
-      <LiveHeader
-        day={live.day}
-        dayColor={vm.dayColor}
-        curIdx={vm.curIdx}
-        total={vm.total}
-        doneSetsCount={vm.doneSetsCount}
-        totalSetsCount={vm.totalSetsCount}
-        elapsedLabel={vm.elapsedLabel}
-        menuOpen={Boolean(live.exMenuOpen)}
-        secondarySave={secondarySave}
-        onToggleMenu={actions.toggleMenu}
-        onSave={() => void actions.save()}
-      />
+      <div>
+        <LiveHeader
+          day={live.day}
+          dayColor={vm.dayColor}
+          curIdx={vm.curIdx}
+          total={vm.total}
+          doneSetsCount={vm.doneSetsCount}
+          totalSetsCount={vm.totalSetsCount}
+          elapsedLabel={vm.elapsedLabel}
+          menuOpen={Boolean(live.exMenuOpen)}
+          secondarySave={secondarySave}
+          onToggleMenu={actions.toggleMenu}
+          onSave={() => void actions.save()}
+        />
 
-      <LiveExerciseMenu
-        open={Boolean(live.exMenuOpen)}
-        curIdx={vm.curIdx}
-        doneExCount={vm.doneExCount}
-        items={vm.menuItems}
-        onToggleMenu={actions.toggleMenu}
-        onSelectExercise={actions.selectExercise}
-        onOpenAddPicker={() => actions.openPicker('add')}
-        onDiscard={() => void actions.discard()}
-      />
+        <LiveExerciseMenu
+          open={Boolean(live.exMenuOpen)}
+          curIdx={vm.curIdx}
+          doneExCount={vm.doneExCount}
+          items={vm.menuItems}
+          onToggleMenu={actions.toggleMenu}
+          onSelectExercise={actions.selectExercise}
+          onOpenAddPicker={() => actions.openPicker('add')}
+          onDiscard={() => void actions.discard()}
+        />
+      </div>
 
       {vm.prevBannerEx && live.lastCompletedExIdx != null && (
         <PrevCompletedBanner

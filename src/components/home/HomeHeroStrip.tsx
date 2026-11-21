@@ -47,10 +47,10 @@ export function HomeHeroStrip({
               <span class="font-semibold uppercase tracking-wider">Último entreno</span>
               <span>· {lastS ? fmtDate(lastS.date) : `Sin sesiones${hasFilter ? ` (${bounds.label})` : ''}`}</span>
             </div>
-            <p class="text-lg sm:text-xl font-extrabold text-white truncate">
-              {lastS ? (lastS.day ?? 'Sesión') : '—'}
+            <p class="flex flex-wrap items-baseline gap-x-1.5 text-lg sm:text-xl font-extrabold text-white">
+              <span>{lastS ? (lastS.day ?? 'Sesión') : '—'}</span>
               <span class="text-xs sm:text-sm font-normal text-gray-400 tabular-nums">
-                {' '}· {activeDays} días activos ({r1(activeDays / weeks)}/sem){phase ? ` · ${phase.name}` : ''}{lastS?.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}{lastS?.avgHr ? ` · ${lastS.avgHr} lpm` : ''}
+                · {activeDays} días activos ({r1(activeDays / weeks)}/sem){phase ? ` · ${phase.name}` : ''}{lastS?.durMin ? ` · ${Math.round(lastS.durMin)} min` : ''}{lastS?.avgHr ? ` · ${lastS.avgHr} lpm` : ''}
               </span>
             </p>
           </div>

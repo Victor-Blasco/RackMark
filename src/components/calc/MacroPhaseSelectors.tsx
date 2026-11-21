@@ -49,7 +49,7 @@ export function MacroPhaseSelectors({ cAct, cGoal, recommendedAct, onUpdateField
                     </span>
                   )}
                 </span>
-                <span class="mt-0.5 block text-[11px] text-gray-400">{option.subtitle} · ×{option.factor.toFixed(2)}</span>
+                <span class="mt-0.5 block text-[11px] text-gray-400">{option.subtitle} · ×{option.factor.toFixed(2).replace('.', ',')}</span>
               </button>
             );
           })}

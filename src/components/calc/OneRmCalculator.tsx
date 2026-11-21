@@ -72,16 +72,16 @@ export function OneRmCalculator({
         </label>
       )}
 
-      <div class="grid grid-cols-3 items-end gap-3">
-        <label class="flex flex-col justify-end">
+      <div class="grid grid-cols-3 items-stretch gap-3">
+        <label class="flex h-full flex-col">
           <span class="lbl leading-4">Peso (kg)</span>
           <input id="calcW" class="inp mt-auto tabular-nums font-medium" type="number" step="0.5" inputMode="decimal" enterKeyHint="next" value={cW} onInput={(e) => onUpdateField('w', e.currentTarget.value)} />
         </label>
-        <label class="flex flex-col justify-end">
+        <label class="flex h-full flex-col">
           <span class="lbl leading-4">Reps</span>
           <input id="calcR" class="inp mt-auto tabular-nums font-medium" type="number" min="1" max="30" inputMode="numeric" enterKeyHint="next" value={cR} onInput={(e) => onUpdateField('r', e.currentTarget.value)} />
         </label>
-        <label class="flex flex-col justify-end">
+        <label class="flex h-full flex-col">
           <span class="lbl leading-4">Reps en reserva (RIR 0-5)</span>
           <input id="calcRir" class="inp mt-auto tabular-nums font-medium" type="number" min="0" max="5" inputMode="numeric" enterKeyHint="done" value={cRir} onInput={(e) => onUpdateField('rir', e.currentTarget.value)} />
         </label>

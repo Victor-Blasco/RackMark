@@ -547,8 +547,8 @@ describe('calculadora nutricional', () => {
     expect(html).toContain('id="nuMeals"');
     expect(html).toContain('role="radio"');
     expect(html).toContain('whitespace-nowrap');
-    expect(html).toContain('items-end gap-3');
-    expect(html).toContain('flex flex-col justify-end');
+    expect(html).toContain('items-stretch gap-3');
+    expect(html).toContain('flex h-full flex-col');
     expect(html).toContain('lbl leading-4');
   });
 });
@@ -1568,10 +1568,10 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
     expect(liveHtml).not.toContain('text-coralRed/90');
-    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[52px]');
+    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px]');
     expect(liveHtml).toContain('min-h-[48px] min-w-[48px]');
     expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
-    expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toEqual(['!mt-0']);
+    expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toBeNull();
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') } }));
     expect(logHtml).toContain('inp-stepper min-w-[44px]');
@@ -2353,5 +2353,114 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     state.activeModal = { type: 'exercise', routine: 'Leg' };
     const exErr = await modal.saveExerciseModal({ name: 'Press de banca', primary: 'Pecho', secondary: [], sets: 3, reps: 10, routine: 'Leg' });
     expect(exErr).toContain('Ya existe');
+  });
+
+  it('corrige Bloque 2: reduced-motion, contraste AA, overflow responsive, tactilidad y decimales en español', () => {
+    // 1. normalizeChartConfig prioriza prefers-reduced-motion sobre opts.animation explícita
+    const prevWindow = (globalThis as { window?: unknown }).window;
+    try {
+      (globalThis as { window?: unknown }).window = { matchMedia: () => ({ matches: true }) };
+      const reduced = normalizeChartConfig({
+        type: 'line',
+        data: { labels: ['01/11'], datasets: [{ label: 'Peso', data: [75] }] },
+        options: { animation: { duration: 150 } },
+      });
+      expect((reduced.options as Record<string, unknown>).animation).toBe(false);
+    } finally {
+      if (prevWindow === undefined) delete (globalThis as { window?: unknown }).window;
+      else (globalThis as { window?: unknown }).window = prevWindow;
+    }
+
+    const settings = sanitizeSettings({
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8 }],
+      },
+      profile: { sex: 'hombre', age: 29, height: 178 },
+    });
+    const sessionDay = todayIso();
+    const strength = [
+      { id: 's1', sessionId: `${sessionDay}_Push`, ts: 1763720000000, ref: 'name:Press de banca', date: sessionDay, day: 'Push', ex: 'Press de banca', sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const measures = [{ date: sessionDay, weight: 76 }];
+    const base: State = {
+      tab: 'adherence',
+      strength,
+      cardio: [{ id: 'c1', ts: 1763720000000, date: sessionDay, type: 1, distKm: 5.2, durMin: 30, avgHr: 145, kcal: 320, vo2: 49 }],
+      measures,
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: { home: 'Todo', body: 'Todo', volume: 'Todo', adherence: 'Todo' },
+    };
+
+    // 2. Adherencia con relleno tintado + borde AA, lista móvil cardio y sin text-gray-500
+    const adhHtml = renderToString(h(AdherenceView, { state: base }));
+    expect(adhHtml).not.toContain('text-gray-500');
+    expect(adhHtml).toContain('border-2 text-white font-extrabold');
+    expect(adhHtml).toContain('2b;border-color:');
+    expect(adhHtml).toContain('md:hidden divide-y divide-white/10');
+    expect(adhHtml).toContain('hidden md:block overflow-x-auto');
+
+    // 3. Plan → Ejercicios: sin text-gray-500, selects con max-w-full, filtros lg:sticky y chips >= 44px
+    const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises' } }));
+    expect(planExHtml).not.toContain('text-gray-500');
+    expect(planExHtml).toContain('inp w-full sm:w-auto max-w-full');
+    expect(planExHtml).toContain('lg:sticky lg:top-0 lg:z-10');
+    expect(planExHtml).toContain('min-h-[44px] sm:min-h-[34px]');
+
+    const pickerHtml = renderToString(h(ModalHost, { state: { ...base, activeModal: { type: 'routineExercisePicker', routine: 'Push' } } }));
+    expect(pickerHtml).toContain('min-h-[44px] sm:min-h-[32px]');
+    const exModalHtml = renderToString(h(ModalHost, { state: { ...base, activeModal: { type: 'exercise', routine: 'Push' } } }));
+    expect(exModalHtml).toContain('min-h-[44px] sm:min-h-[32px]');
+
+    // 4. Overflow responsive: Cuerpo (w-24), Volumen móvil (overflow-x-auto), Registrar hecho (2xl:grid-cols-2)
+    const bodyHtml = renderToString(h(BodyView, { state: { ...base, tab: 'body' } }));
+    expect(bodyHtml).toContain('w-24 sm:w-20 pl-1"><span class="sr-only">Acciones</span>');
+
+    const volHtml = renderToString(h(VolumeView, { state: { ...base, tab: 'volume' } }));
+    expect(volHtml).toContain('md:hidden overflow-x-auto');
+
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: initLogDraft(base, 'Push', sessionDay) } }));
+    expect(logHtml).toContain('2xl:grid-cols-2');
+
+    // 5. En vivo: botones de 44px reales (sin max-[380px]:w-9), note min-h-[44px], presets min-w-[44px]
+    const live = initLiveWorkout(base, 'Push');
+    const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...base, tab: 'workout', liveWorkout: live } }));
+    expect(liveHtml).not.toContain('max-[380px]:w-9');
+    expect(liveHtml).toContain('w-full min-h-[44px] rounded-sm border-b');
+    expect(liveHtml).toContain('min-h-[44px] min-w-[44px]');
+
+    // 6. Calculadoras con comas españolas y inputs alineados
+    const calcHtml = renderToString(h(CalcView, { state: { ...base, tab: 'calc' } }));
+    expect(calcHtml).toContain('grid-cols-3 items-stretch gap-3');
+    expect(calcHtml).toContain('×1,55');
+    expect(calcHtml).toMatch(/\d+,\d{2}×/);
+
+    // 7. Estado vacío accionable en LoadControlSection, HomeHeroStrip sin truncate, DayRoutine whitespace-nowrap, Profile responsive, Data btn-danger, MobileHeader navDark, icono login Phosphor relleno
+    const emptyAnalysis = analyze([], { ...settings, routines: {} });
+    const homeEmptyHtml = renderToString(h(HomeView, { state: { ...base, tab: 'home', strength: [], analysis: emptyAnalysis, settings: { ...settings, routines: {} } } }));
+    expect(homeEmptyHtml).toContain('+ Registrar primer entreno');
+
+    const homeHtml = renderToString(h(HomeView, { state: { ...base, tab: 'home' } }));
+    expect(homeHtml).toContain('flex flex-wrap items-baseline gap-x-1.5 text-lg sm:text-xl font-extrabold text-white');
+
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: { ...base, tab: 'Push' } }));
+    expect(dayHtml).toContain('whitespace-nowrap');
+
+    const settingsHtml = renderToString(h(SettingsView, { state: { ...base, tab: 'settings' } }));
+    expect(settingsHtml).not.toContain('<div class="grid grid-cols-3 gap-3">');
+
+    const dataHtml = renderToString(h(DataView, { state: { ...base, tab: 'data' } }));
+    expect(dataHtml).toContain('class="btn btn-danger"');
+
+    const headerHtml = renderToString(h(MobileHeader, { state: { ...base, tab: 'home', authReady: true }, statsText: '1 sesion', unsynced: false, onSelectTab: () => {}, onCloudLogin: () => {} }));
+    expect(headerHtml).toContain('bg-navDark');
+    expect(ICON_PATHS.login).not.toContain('stroke=');
+
+    const wizHtml = renderToString(h(WizardModal, { draft: createWizardDraft(base), onPatch: () => {}, onBack: () => {}, onSubmitStep: () => {}, onSkip: () => {} }));
+    expect(wizHtml).toContain('placeholder="Ej. 72,5"');
   });
 });

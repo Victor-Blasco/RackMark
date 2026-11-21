@@ -87,12 +87,12 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
               const inWindow = Boolean(act?.primaryColor) && c.inMonth && c.inBounds;
               const faded = Boolean(act?.primaryColor) && (!c.inMonth || !c.inBounds);
               const circleCls = inWindow
-                ? 'text-white font-extrabold'
+                ? 'border-2 text-white font-extrabold'
                 : faded
-                  ? 'text-white/75 opacity-40 font-bold'
+                  ? 'border text-white/80 opacity-45 font-bold'
                   : c.inMonth
                     ? 'text-gray-200 hover:bg-white/[0.06]'
-                    : 'text-gray-500/60';
+                    : 'text-gray-400/60';
               return (
                 <button
                   key={c.iso}
@@ -104,7 +104,7 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
                 >
                   <span
                     class={`flex h-9 w-9 items-center justify-center rounded-full text-xs sm:text-sm tabular-nums transition-transform ${circleCls} ${c.isToday && !isSelected ? 'ring-1 ring-white/40' : ''} ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-bgDark' : ''}`}
-                    style={act?.primaryColor ? { backgroundColor: act.primaryColor } : undefined}
+                    style={act?.primaryColor ? { backgroundColor: `${act.primaryColor}2b`, borderColor: act.primaryColor } : undefined}
                   >
                     {c.dayNum}
                   </span>

@@ -48,12 +48,12 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
         <h3 class="font-bold text-white">Unificar ejercicios duplicados</h3>
         <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
         <div class="flex flex-wrap items-center gap-2">
-          <select id="mergeFrom" ref={mergeFromRef} class="inp w-auto" aria-label="Ejercicio origen a fusionar">
+          <select id="mergeFrom" ref={mergeFromRef} class="inp w-full sm:w-auto max-w-full" aria-label="Ejercicio origen a fusionar">
             <option value="">—</option>
             {knownNames.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
           <span aria-hidden="true">→</span>
-          <select id="mergeTo" ref={mergeToRef} class="inp w-auto" aria-label="Ejercicio destino">
+          <select id="mergeTo" ref={mergeToRef} class="inp w-full sm:w-auto max-w-full" aria-label="Ejercicio destino">
             <option value="">—</option>
             {knownNames.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
@@ -90,7 +90,7 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           </div>
         </div>
 
-        <div class="sticky top-0 z-10 -mx-1 space-y-2 bg-bgDark px-1 pb-2">
+        <div class="lg:sticky lg:top-0 lg:z-10 -mx-1 space-y-2 bg-bgDark px-1 pb-2">
           <div class="flex items-center gap-2">
             <label class="relative min-w-0 flex-1">
               <span class="sr-only">Buscar ejercicio o músculo</span>
