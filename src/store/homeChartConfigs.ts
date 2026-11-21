@@ -1,9 +1,9 @@
 import type { ChartConfiguration } from 'chart.js';
-import type { ExSession, ExStats } from '../lib/analysis';
+import { judge, type ExSession, type ExStats } from '../lib/analysis';
 import type { Measure } from '../types';
 import {
   inRange,
-  movingAverage7d,
+  movingAverage7dFor,
   r1,
   resolveRange,
   short,
@@ -35,6 +35,7 @@ export function filterExByRange(e: ExStats, bounds: DateBounds): ExStats {
   if (sessions.length === e.sessions.length) return e;
   const hrs = sessions.map((s) => s.avgHr).filter((h): h is number => h != null);
   const maxHrs = sessions.map((s) => s.maxHr).filter((h): h is number => h != null);
+  const verdict = sessions.length ? judge(e.name, sessions, e.target) : { status: 'Sin datos', statusColor: 'gray' as const, prescription: 'Sin registros en este periodo.' };
   return {
     ...e,
     sessions,
@@ -44,6 +45,7 @@ export function filterExByRange(e: ExStats, bounds: DateBounds): ExStats {
     maxE1rm: sessions.length ? Math.max(...sessions.map((s) => s.e1rm)) : 0,
     avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : undefined,
     maxHr: maxHrs.length ? Math.max(...maxHrs) : undefined,
+    ...verdict,
   };
 }
 
@@ -59,15 +61,16 @@ export function lastMetric(ms: Measure[], hasFilter: boolean, key: keyof Measure
   };
 }
 
-/** Configura la gráfica de carga con Peso máx y Tonelaje activables desde la leyenda. */
+/** Configura la gráfica de carga (o repeticiones si es de peso corporal `0 kg`). */
 export function exerciseChartConfig(sessions: ExSession[], color: string): ChartConfiguration<'line'> {
+  const allBw = sessions.length > 0 && sessions.every((x) => x.top === 0);
   return {
     type: 'line',
     data: {
       labels: sessions.map((x) => short(x.date)),
       datasets: [
-        { label: 'Peso máx (kg)', data: sessions.map((x) => x.top), borderColor: color, backgroundColor: color, borderWidth: 2.5, tension: 0.25, yAxisID: 'y' },
-        { label: 'Tonelaje (kg)', data: sessions.map((x) => Math.round(x.volume)), borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
+        { label: allBw ? 'Reps máx' : 'Peso máx (kg)', data: sessions.map((x) => (allBw ? x.repsAtTop : x.top)), borderColor: color, backgroundColor: color, borderWidth: 2.5, tension: 0.25, yAxisID: 'y' },
+        { label: allBw ? 'Reps totales' : 'Tonelaje (kg)', data: sessions.map((x) => (allBw ? x.sets.reduce((a, s) => a + s.r, 0) : Math.round(x.volume))), borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
       ],
     },
     options: {
@@ -87,6 +90,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
             label: (ctx) => {
               const s = sessions[ctx.dataIndex];
               if (!s) return '';
+              if (allBw) return ctx.datasetIndex === 0 ? `Reps máx: ${s.repsAtTop}` : `Reps totales: ${s.sets.reduce((a, x) => a + x.r, 0)}`;
               return ctx.datasetIndex === 0 ? `Peso máx: ${r1(s.top)} kg` : `Tonelaje: ${Math.round(s.volume)} kg`;
             },
             afterBody: (items) => {
@@ -101,7 +105,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
 }
 
 /** Construye la configuración de composición corporal para Resumen evitando crear eje `y1` si falta dato. */
-export function buildBodyHomeChartConfig(ms: Measure[]): ChartConfiguration<'line'> | null {
+export function buildBodyHomeChartConfig(ms: Measure[], allMeasures?: Measure[]): ChartConfiguration<'line'> | null {
   const mm = ms.filter((m) => m.weight != null || m.bf != null);
   if (!mm.length) return null;
   const hasWeight = mm.some((m) => m.weight != null);
@@ -109,7 +113,7 @@ export function buildBodyHomeChartConfig(ms: Measure[]): ChartConfiguration<'lin
   const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];
   if (hasWeight) {
     datasets.push(
-      { label: 'Tendencia 7d (kg)', data: movingAverage7d(mm), borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
+      { label: 'Tendencia 7d (kg)', data: movingAverage7dFor(mm, allMeasures), borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
       { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
     );
   }

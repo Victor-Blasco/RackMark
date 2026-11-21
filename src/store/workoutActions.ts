@@ -4,7 +4,7 @@ import { manualSessionId } from './exerciseCatalog';
 import { buildWorkoutSummary, persistCompletedSession } from './sessionPersistence';
 import type { ConfirmModalOpts, ToastAction } from './types';
 import { createWorkoutPickerActions } from './workoutPickerActions';
-import { createWorkoutRestActions } from './workoutRestActions';
+import { createWorkoutRestActions, finalizePendingRest } from './workoutRestActions';
 import { initLiveWorkout } from './workoutSelectors';
 import { createWorkoutSetActions } from './workoutSetActions';
 
@@ -92,34 +92,35 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
         if (!confirmed) return;
       }
 
-      const validEx = live.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
-      const totalDurMin = Math.max(1, Math.round((Date.now() - live.startedAt) / 60000));
+      const curLive = finalizePendingRest(deps.getState().liveWorkout ?? live);
+      const validEx = curLive.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
+      const totalDurMin = Math.max(1, Math.round((Date.now() - curLive.startedAt) / 60000));
       const perExDur = validEx.length > 0 ? Math.max(0.2, Math.round((totalDurMin / validEx.length) * 10) / 10) : undefined;
-      const baseSid = manualSessionId(live.date, live.day);
+      const baseSid = manualSessionId(curLive.date, curLive.day);
       const hasCollision = state.strength.some((r) => r.sessionId === baseSid);
       const sessionId = hasCollision
-        ? `${baseSid}-${Math.floor(live.startedAt / 1000).toString(36)}`
+        ? `${baseSid}-${Math.floor(curLive.startedAt / 1000).toString(36)}`
         : baseSid;
 
       const saved = await persistCompletedSession(
         state,
         {
           sessionId,
-          day: live.day,
-          date: live.date,
-          exercises: live.exercises,
+          day: curLive.day,
+          date: curLive.date,
+          exercises: curLive.exercises,
           defaultDurPerEx: perExDur,
-          tsBase: live.startedAt,
+          tsBase: curLive.startedAt,
         },
         deps.toast,
       );
       if (!saved) return;
 
-      const summary = buildWorkoutSummary(state, live, saved);
+      const summary = buildWorkoutSummary(state, curLive, saved);
       deps.commitLive(undefined);
       await deps.reload();
-      if (live.day !== 'Libre') {
-        deps.setTab(live.day);
+      if (curLive.day !== 'Libre') {
+        deps.setTab(curLive.day);
       }
       deps.showSummary(summary);
       deps.queueSync();

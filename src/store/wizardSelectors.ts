@@ -70,8 +70,8 @@ export function goalCalorieDelta(goal: TrainingGoal): string {
 
 /** Devuelve el factor de actividad física estimado para la calculadora nutricional según días/semana. */
 export function daysActivityFactor(daysPerWeek: number): string {
-  if (daysPerWeek <= 4) return '1.55';
-  if (daysPerWeek === 5) return '1.65';
+  if (daysPerWeek <= 3) return '1.55';
+  if (daysPerWeek <= 5) return '1.65';
   return '1.75';
 }
 

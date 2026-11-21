@@ -64,8 +64,9 @@ export function createLogHistoryActions(
 
     async deleteHistorySession(sessionId: string, date: string) {
       const state = deps.getState();
-      const byId = state.strength.filter((r) => r.sessionId === sessionId);
-      const toDel = byId.length ? byId : state.strength.filter((r) => r.date === date);
+      const toDel = sessionId
+        ? state.strength.filter((r) => r.sessionId === sessionId)
+        : state.strength.filter((r) => r.date === date);
       if (!toDel.length) return;
       const confirmed = await deps.askConfirm({
         title: `Borrar sesión del ${date}`,
@@ -77,7 +78,9 @@ export function createLogHistoryActions(
       for (const r of toDel) await deleteKey('strength', r.id);
       markBucketDeletes('strength', toDel.map((r) => ({ key: r.id, date: r.date })));
       await deps.reload();
-      deps.commitDraft(state.logDraft);
+      const curDraft = deps.getState().logDraft;
+      const editingDeleted = curDraft && (sessionId ? curDraft.sessionId === sessionId : curDraft.date === date);
+      deps.commitDraft(editingDeleted ? undefined : curDraft);
       deps.queueSync();
       deps.toast('Sesión borrada.');
     },

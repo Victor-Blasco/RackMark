@@ -1,5 +1,6 @@
 import { epley } from '../lib/analysis';
 import { calculateNutrition, recommendActivityFactor } from '../lib/nutrition';
+import { norm } from '../lib/seed';
 import { r1, routineNames, todayIso, type State } from '../ui/shared';
 import { daysActivityFactor, goalCalorieDelta } from './wizardSelectors';
 
@@ -23,11 +24,14 @@ export function buildCalcViewModel(state: State) {
   const bf = latestBf ?? 15;
   const ffm = w * (1 - bf / 100);
 
+  const seenPresets = new Set<string>();
   const presets = routineNames(state.settings)
     .flatMap((d) => state.analysis.byDay[d] ?? [])
     .flatMap((e) => {
+      const k = norm(e.name);
       const last = e.last;
-      if (!last || !last.sets.length) return [];
+      if (!last || !last.sets.length || seenPresets.has(k)) return [];
+      seenPresets.add(k);
       const best = last.sets.filter((s) => s.w === last.top).sort((a, b) => b.r - a.r)[0] ?? last.sets[0];
       return best ? [{ n: e.name, w: best.w, r: best.r }] : [];
     });
@@ -54,11 +58,12 @@ export function buildCalcViewModel(state: State) {
     : 0;
   const recommendedAct = recommendActivityFactor(strengthSessions7d, avgSteps7d);
 
-  const numW = parseFloat(cW) || 0;
-  const numR = parseInt(cR, 10) || 1;
-  const numRir = parseInt(cRir, 10) || 0;
+  const parseDec = (v: string) => parseFloat(v.replace(',', '.'));
+  const numW = Math.max(0, parseDec(cW) || 0);
+  const numR = Math.max(1, Math.min(30, parseInt(cR, 10) || 1));
+  const numRir = Math.max(0, Math.min(10, parseInt(cRir, 10) || 0));
   const oneRm = epley(numW, numR);
-  const oneRmRir = numW * (1 + (numR + numRir) / 30);
+  const oneRmRir = epley(numW, numR + numRir);
   const ratio = (oneRm / (w || 70)).toFixed(2).replace('.', ',');
   const zones = (
     [

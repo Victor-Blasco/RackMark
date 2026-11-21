@@ -49,10 +49,11 @@ export function createWorkoutRestActions(
     startRest(sec: number) {
       const live = getLive();
       if (!live) return;
+      const base = finalizePendingRest(live);
       const targetRestSec = Math.max(15, sec || 90);
       const restStartedAt = Date.now();
       commit({
-        ...live,
+        ...base,
         targetRestSec,
         restStartedAt,
         restUntil: restStartedAt + targetRestSec * 1000,

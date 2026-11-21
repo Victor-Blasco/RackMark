@@ -8,7 +8,11 @@ export function resolveName(ref: string, s: Settings): string {
   let n = ref.startsWith('name:')
     ? ref.slice(5)
     : (s.refNames[ref] ?? s.customNames[ref] ?? BUILTIN_REF_NAMES[ref] ?? `Samsung ${ref.replace('type:', '#')}`);
-  for (let i = 0; i < 5 && s.aliases[n]; i++) n = s.aliases[n];
+  const seen = new Set<string>();
+  while (s.aliases[n] && !seen.has(n) && seen.size < 10) {
+    seen.add(n);
+    n = s.aliases[n];
+  }
   return n;
 }
 
@@ -64,21 +68,51 @@ function targetOf(name: string, s: Settings): { day: DayName; t: RoutineEx } | n
 export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<ExStats, 'status' | 'statusColor' | 'prescription'> {
   const last = sessions[sessions.length - 1];
   if (!last) return { status: 'Sin datos', statusColor: 'gray', prescription: 'Importa tus sesiones para ver recomendaciones.' };
-  const cmp = sessions.filter((x) => x.top >= last.top * 0.6 && x.top <= last.top * 1.6);
-  const prev = cmp[cmp.length - 2];
   const minReps = t?.reps ?? 10;
   const nSets = t?.sets ?? 2;
   const atTop = last.sets.filter((x) => x.w === last.top);
   const hit = atTop.length >= nSets && atTop.slice(0, nSets).every((x) => x.r >= minReps);
+  const missing = Math.max(0, nSets * minReps - atTop.slice(0, nSets).reduce((a, b) => a + b.r, 0));
+
+  if (last.top === 0) {
+    if (hit) {
+      return { status: 'Añadir lastre o reps', statusColor: 'emeraldGreen',
+        prescription: `Completaste ${nSets}×${minReps} con peso corporal. Añade lastre (+2,5 kg) o busca ${minReps + 2} reps.` };
+    }
+    const bwCmp = sessions.filter((x) => x.top === 0);
+    const bwPrev = bwCmp[bwCmp.length - 2];
+    const bwMaxReps = Math.max(...bwCmp.map((x) => x.repsAtTop));
+    if (bwCmp.length > 1 && last.repsAtTop >= bwMaxReps && last.repsAtTop > (bwPrev?.repsAtTop ?? 0)) {
+      return { status: 'Récord personal (reps)', statusColor: 'electricBlue',
+        prescription: `Nuevo máximo con peso corporal (${last.repsAtTop} reps). Sigue hasta ${nSets}×${minReps}.` };
+    }
+    if (bwPrev && last.repsAtTop > bwPrev.repsAtTop) {
+      return { status: `Progresando (+${last.repsAtTop - bwPrev.repsAtTop} reps)`, statusColor: 'emeraldGreen',
+        prescription: `Buen avance con peso corporal (${last.repsAtTop} reps). Faltan ${missing} reps para ${nSets}×${minReps}.` };
+    }
+    const bwRecent = bwCmp.slice(-4);
+    if (bwRecent.length === 4 && bwRecent[3].repsAtTop <= bwRecent[0].repsAtTop) {
+      return { status: 'Estancado', statusColor: 'coralRed',
+        prescription: '4 sesiones sin subir repeticiones con peso corporal. Alarga el descanso a 3 min o cambia el tempo.' };
+    }
+    return { status: 'Consolidando', statusColor: 'amberGold',
+      prescription: `Mantén peso corporal buscando ${nSets}×${minReps} (faltan ${missing} reps).` };
+  }
+
+  const cmp = sessions.filter((x) => x.top >= last.top * 0.6 && x.top <= last.top * 1.6);
+  const prev = cmp[cmp.length - 2];
   const inc = last.top >= 40 ? 5 : 2.5;
   const maxE = Math.max(...cmp.map((x) => x.e1rm));
-  const missing = Math.max(0, nSets * minReps - atTop.slice(0, nSets).reduce((a, b) => a + b.r, 0));
 
   if (hit) {
     return { status: 'Subir carga', statusColor: 'emeraldGreen',
       prescription: `Completaste ${nSets}×${minReps} con ${last.top} kg. Sube a ${last.top + inc} kg y busca ${nSets}×${minReps}.` };
   }
   if (!prev && sessions.length > 1) {
+    if (sessions.slice(0, -1).every((x) => x.top === 0)) {
+      return { status: `Progresando (+${round(last.top)} kg)`, statusColor: 'emeraldGreen',
+        prescription: `Primer registro con lastre (${last.top} kg). Mantén esta carga buscando ${nSets}×${minReps}.` };
+    }
     return { status: 'Cambio de carga', statusColor: 'amberGold',
       prescription: `Carga muy distinta a las sesiones previas (${last.top} kg). ¿Cambio de máquina o unidad? Revisa los datos antes de decidir.` };
   }
@@ -126,11 +160,21 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
   const unm = new Map<string, { n: number; last: string }>();
   const sessMap = new Map<string, { date: string; day?: DayName; names: Set<string>; sets: number; phys: PhysioAcc }>();
   const manualDays = new Map<string, DayName>();
+  const canonicalByNorm = new Map<string, string>();
+  for (const d of Object.keys(s.routines)) {
+    for (const r of s.routines[d] ?? []) {
+      const t = r.name.trim();
+      if (t && !canonicalByNorm.has(norm(t))) canonicalByNorm.set(norm(t), t);
+    }
+  }
 
   for (const row of rows) {
     const validSets = row.sets.filter((x) => Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0);
     if (!validSets.length || !isValidIsoDate(row.date)) continue;
-    const name = resolveName(row.ref, s);
+    const rawName = resolveName(row.ref, s);
+    const k = norm(rawName);
+    const name = canonicalByNorm.get(k) ?? rawName;
+    if (!canonicalByNorm.has(k)) canonicalByNorm.set(k, name);
     if (name.startsWith('Samsung #')) {
       const u = unm.get(row.ref) ?? { n: 0, last: '' };
       u.n++; if (row.date > u.last) u.last = row.date;

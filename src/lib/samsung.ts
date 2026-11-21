@@ -47,8 +47,10 @@ export function parseExerciseCsv(text: string): { strength: StrengthRow[]; cardi
     const type = Number(r['com.samsung.health.exercise.exercise_type'] || 0);
 
     if (r.subset_data) {
-      let raw: { reps?: number; weight?: number }[] = [];
-      try { raw = JSON.parse(r.subset_data); } catch { continue; }
+      let parsed: unknown;
+      try { parsed = JSON.parse(r.subset_data); } catch { continue; }
+      if (!Array.isArray(parsed)) continue;
+      const raw = parsed as { reps?: number; weight?: number }[];
       const sets: SetRec[] = raw
         .map((s) => ({ w: Number(s.weight) || 0, r: Number(s.reps) || 0 }))
         .filter((s) => s.r > 0);
@@ -74,7 +76,7 @@ export function parseExerciseCsv(text: string): { strength: StrengthRow[]; cardi
         distKm: Math.round(Number(r['com.samsung.health.exercise.distance'] || 0)) / 1000,
         avgHr: Number(r['com.samsung.health.exercise.mean_heart_rate'] || 0),
         kcal: Math.round(Number(r['com.samsung.health.exercise.calorie'] || 0)),
-        vo2: r['com.samsung.health.exercise.vo2_max'] ? Number(r['com.samsung.health.exercise.vo2_max']) : undefined,
+        vo2: pos(r['com.samsung.health.exercise.vo2_max'], 1),
       });
     }
   }
@@ -123,12 +125,19 @@ export function parseSleepCsv(text: string): Map<string, DailyWellbeing> {
   return out;
 }
 
+const parseDayTime = (raw: string | undefined, offStr?: string): string | null => {
+  const s = (raw ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (/^\d{10,14}$/.test(s)) return localDate(Number(s), offsetMin(offStr));
+  return null;
+};
+
 /** Parsea pasos diarios (`pedometer_day_summary` o `step_daily_trend`), tomando el mayor total combinado por día. */
 export function parseStepsCsv(text: string): Map<string, DailyWellbeing> {
   const out = new Map<string, DailyWellbeing>();
   for (const r of parseSamsungCsv(text)) {
-    const date = (r.day_time ?? '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const date = parseDayTime(r.day_time, r.time_offset);
+    if (!date) continue;
     const steps = pos(r.step_count ?? r.count);
     if (!steps) continue;
     const prev = out.get(date);
@@ -150,8 +159,8 @@ export function parseStepsCsv(text: string): Map<string, DailyWellbeing> {
 export function parseVitalityCsv(text: string): Map<string, DailyWellbeing> {
   const out = new Map<string, DailyWellbeing>();
   for (const r of parseSamsungCsv(text)) {
-    const date = (r.day_time ?? '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const date = parseDayTime(r.day_time, r.time_offset);
+    if (!date) continue;
     const energyScore = pos(r.total_score);
     const rhr = pos(r.shr_value);
     const hrv = pos(r.shrv_value);
@@ -176,11 +185,21 @@ const isVitality = (n: string) => /shealth\.vitality_score\.\d+\.csv$/i.test(n);
 const MAX_IMPORT_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_ZIP_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 
+const MAX_WELLBEING_KEYS = ['steps', 'stepKm', 'activeMin', 'stepKcal', 'sleepMin'] as const;
+
 /** Acepta archivos CSV sueltos y/o ZIP de la exportación de Samsung Health. */
 export async function importSamsungFiles(files: File[]): Promise<SamsungImport> {
   const wellMap = new Map<string, DailyWellbeing>();
   const mergeMap = (m: Map<string, DailyWellbeing>) => {
-    for (const [d, v] of m) wellMap.set(d, { ...(wellMap.get(d) ?? {}), ...v });
+    for (const [d, v] of m) {
+      const prev = wellMap.get(d);
+      if (!prev) { wellMap.set(d, v); continue; }
+      const merged: DailyWellbeing = { ...prev, ...v };
+      for (const k of MAX_WELLBEING_KEYS) {
+        if (prev[k] != null && v[k] != null) merged[k] = Math.max(prev[k], v[k]);
+      }
+      wellMap.set(d, merged);
+    }
   };
   const res: SamsungImport = { strength: [], cardio: [], customNames: {}, wellbeing: [] };
   const handle = (name: string, text: string) => {

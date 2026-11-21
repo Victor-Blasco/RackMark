@@ -2,8 +2,8 @@ import { h } from 'preact';
 import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
-import { buildPrompt } from '../src/lib/ai';
-import { analyze, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
+import { buildPayload, buildPrompt } from '../src/lib/ai';
+import { analyze, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
@@ -21,10 +21,14 @@ import { RangePicker } from '../src/components/common/RangePicker';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
 import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
+import { buildAdherenceViewModel } from '../src/store/adherenceSelectors';
 import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';
+import { buildCalcViewModel } from '../src/store/calcSelectors';
 import { createCatalogMapActions } from '../src/store/catalogMapActions';
 import { allExerciseNames, extractTargetWeight, manualSessionId, quickExSuggestions } from '../src/store/exerciseCatalog';
-import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig } from '../src/store/homeChartConfigs';
+import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig, filterExByRange } from '../src/store/homeChartConfigs';
+import { buildHomeViewModel } from '../src/store/homeSelectors';
+import { createLogHistoryActions } from '../src/store/logHistoryActions';
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, isValidTab, syncStatusInfo } from '../src/store/navigation';
@@ -32,8 +36,11 @@ import { createPlanActions } from '../src/store/planActions';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { createPlanModalActions } from '../src/store/planModalActions';
 import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
+import { createProfileActions } from '../src/store/profileActions';
 import { createRoutineEditActions } from '../src/store/routineEditActions';
 import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
+import { buildWorkoutSummary } from '../src/store/sessionPersistence';
+import { weeksForBounds } from '../src/store/volumeSelectors';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -43,6 +50,8 @@ import {
 } from '../src/store/wizardSelectors';
 import { createLiveWorkoutActions } from '../src/store/workoutActions';
 import { createWorkoutLaunchActions } from '../src/store/workoutLaunchActions';
+import { createWorkoutPickerActions } from '../src/store/workoutPickerActions';
+import { createWorkoutRestActions } from '../src/store/workoutRestActions';
 import { initLiveWorkout } from '../src/store/workoutSelectors';
 import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
@@ -50,10 +59,12 @@ import { moveItem } from '../src/ui/reorder';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
   DAY_COLOR,
+  findAiExercise,
   humanizeError,
   inRange,
   isAiFreshForEx,
   movingAverage7d,
+  movingAverage7dFor,
   normalizeChartConfig,
   resolveRange,
   routineColor,
@@ -2462,5 +2473,280 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
 
     const wizHtml = renderToString(h(WizardModal, { draft: createWizardDraft(base), onPatch: () => {}, onBack: () => {}, onSubmitStep: () => {}, onSkip: () => {} }));
     expect(wizHtml).toContain('placeholder="Ej. 72,5"');
+  });
+});
+
+describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
+  it('protege mergeExercises contra ciclos, migra rutinas/notas/borradores y resuelve alias en allExerciseNames', async () => {
+    const settings = sanitizeSettings({
+      routines: { Push: [{ name: 'Press máquina viejo', sets: 3, reps: 10 }, { name: 'Fondos', sets: 3, reps: 12 }] },
+      notes: { 'Press máquina viejo': 'Asiento nivel 4' },
+    });
+    const toasts: string[] = [];
+    const state: State = {
+      tab: 'plan',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      liveWorkout: {
+        date: '2026-11-20',
+        day: 'Push',
+        startedAt: 1000,
+        curIdx: 0,
+        targetRestSec: 90,
+        exercises: [{ name: 'Press máquina viejo', done: false, sets: [{ w: 50, r: 10, done: false }], note: '' }],
+      },
+      logDraft: {
+        date: '2026-11-20',
+        day: 'Push',
+        exercises: [{ name: 'Press máquina viejo', done: false, sets: [{ w: 50, r: 10, done: false }], note: '' }],
+      },
+    };
+    const catActions = createCatalogMapActions({
+      getState: () => state,
+      persist: async () => {},
+      askConfirm: async () => true,
+      toast: (m) => { toasts.push(m); },
+    });
+
+    await catActions.mergeExercises('Press máquina viejo', 'Press de banca');
+    expect(state.settings.aliases['Press máquina viejo']).toBe('Press de banca');
+    expect(state.settings.routines.Push.map((r) => r.name)).toEqual(['Press de banca', 'Fondos']);
+    expect(state.settings.notes['Press de banca']).toBe('Asiento nivel 4');
+    expect(state.settings.notes['Press máquina viejo']).toBeUndefined();
+    expect(state.liveWorkout?.exercises[0].name).toBe('Press de banca');
+    expect(state.logDraft?.exercises[0].name).toBe('Press de banca');
+    expect(allExerciseNames(state)).not.toContain('Press máquina viejo');
+
+    // Rechaza ciclo B -> A cuando A -> B existe
+    await catActions.mergeExercises('Press de banca', 'Press máquina viejo');
+    expect(state.settings.aliases['Press de banca']).toBeUndefined();
+    expect(toasts.some((t) => /ciclo/i.test(t))).toBe(true);
+  });
+
+  it('soporta ejercicios de peso corporal (0 kg) en judge, summary y gráficas, y evita alertas falsas al lastrar', () => {
+    const bwSessions = [
+      { date: '2026-11-01', sets: [{ w: 0, r: 10 }], top: 0, repsAtTop: 10, volume: 0, e1rm: 0 },
+      { date: '2026-11-08', sets: [{ w: 0, r: 12 }], top: 0, repsAtTop: 12, volume: 0, e1rm: 0 },
+    ];
+    const bwVerdict = judge('Dominadas', bwSessions, { name: 'Dominadas', sets: 3, reps: 15 });
+    expect(bwVerdict.status).toBe('Récord personal (reps)');
+    expect(bwVerdict.prescription).not.toContain('0 kg');
+
+    const bwHit = judge('Dominadas', bwSessions, { name: 'Dominadas', sets: 1, reps: 12 });
+    expect(bwHit.status).toBe('Añadir lastre o reps');
+
+    const weightedTransition = judge('Dominadas', [
+      ...bwSessions,
+      { date: '2026-11-15', sets: [{ w: 10, r: 8 }], top: 10, repsAtTop: 8, volume: 80, e1rm: 12.7 },
+    ], { name: 'Dominadas', sets: 3, reps: 10 });
+    expect(weightedTransition.status).toBe('Progresando (+10 kg)');
+
+    const bwChart = exerciseChartConfig(bwSessions, '#10B981');
+    expect(bwChart.data.datasets[0].label).toBe('Reps máx');
+    expect(bwChart.data.datasets[0].data).toEqual([10, 12]);
+    expect(bwChart.data.datasets[1].label).toBe('Reps totales');
+
+    const settings = sanitizeSettings({ routines: { Pull: [{ name: 'Dominadas', sets: 2, reps: 12 }] } });
+    const rows = [{
+      id: 'bw-1', sessionId: 's1', ts: 1000, date: '2026-11-01', ref: 'name:Dominadas', day: 'Pull',
+      sets: [{ w: 0, r: 10, done: true }],
+    }];
+    const state: State = {
+      tab: 'workout', strength: rows, cardio: [], measures: [], wellbeing: [],
+      settings, analysis: analyze(rows, settings), sel: {}, perimeter: 'arms', muscleSel: 'Espalda',
+    };
+    const summary = buildWorkoutSummary(state, {
+      date: '2026-11-08', day: 'Pull', startedAt: Date.now() - 600000, curIdx: 0, targetRestSec: 90,
+      exercises: [{ name: 'Dominadas', done: true, note: '', sets: [{ w: 0, r: 13, done: true }] }],
+    }, 1);
+    expect(summary.prNames).toContain('Dominadas');
+  });
+
+  it('corrige 1RM (RIR 0, comas, presets), nutrición (suelo 1000 kcal), daysActivityFactor y override de perfil', async () => {
+    const settings = sanitizeSettings({
+      routines: { Push: [{ name: 'Press banca', sets: 3, reps: 10 }], EmpujeB: [{ name: 'press banca', sets: 3, reps: 8 }] },
+      profile: { sex: 'hombre', age: 28, height: 176, goal: 'bulk', daysPerWeek: 4 },
+    });
+    const strength = [
+      { id: 'r1', sessionId: 's1', ts: 1000, date: '2026-11-15', ref: 'name:Press banca', day: 'Push', sets: [{ w: 100, r: 1, done: true }] },
+      { id: 'r2', sessionId: 's2', ts: 2000, date: '2026-11-16', ref: 'name:press banca', day: 'EmpujeB', sets: [{ w: 100, r: 1, done: true }] },
+    ];
+    const analysis = analyze(strength, settings);
+    // Canonicaliza mayúsculas bajo 'Press banca'
+    expect([...analysis.exercises.keys()]).toEqual(['Press banca']);
+
+    const state: State = {
+      tab: 'calc', strength, cardio: [], measures: [{ date: '2026-11-15', weight: 70, bf: 15 }], wellbeing: [],
+      settings, analysis, sel: {}, perimeter: 'arms', muscleSel: 'Pecho',
+      calcDraft: { w: '72,5', r: '1', rir: '0', goal: '0', act: '1.55' },
+    };
+    const vm = buildCalcViewModel(state);
+    expect(vm.presets.filter((p) => p.n.toLowerCase() === 'press banca')).toHaveLength(1);
+    expect(vm.oneRm).toBeCloseTo(72.5, 5);
+    expect(vm.oneRmRir).toBeCloseTo(72.5, 5);
+    expect(daysActivityFactor(4)).toBe('1.65');
+
+    // Proyección semanal respeta suelo 1000 kcal
+    const lowCal = calculateNutrition(45, 25, 1.55, -2000);
+    expect(lowCal.target).toBe(1000);
+    expect(lowCal.weeklyProjectionKg).toBeGreaterThan(-((lowCal.tdee - 1000) / 7700 * 7) - 0.01);
+
+    // profileActions limpia override goal/act de calcDraft
+    const profileActions = createProfileActions({ getState: () => state, persist: async () => {}, render: () => {}, toast: () => {} });
+    await profileActions.updateProfileGoal('cut');
+    await profileActions.updateProfileDays('5');
+    expect(state.calcDraft?.goal).toBeUndefined();
+    expect(state.calcDraft?.act).toBeUndefined();
+  });
+
+  it('calcula media móvil 7d sin perder 6 días previos, amplía 1A/Todo y racha completa en Adherencia', () => {
+    const today = todayIso();
+    const daysAgo = (n: number) => todayIso(new Date(Date.now() - n * 864e5));
+    const measures = [
+      { date: daysAgo(35), weight: 80 },
+      { date: daysAgo(33), weight: 78 },
+      { date: daysAgo(29), weight: 78 },
+    ];
+    const visible = measures.slice(1);
+    const avgs = movingAverage7dFor(visible, measures);
+    // El día -33 debe incluir también el registro -35 (dentro de 6 días): (80+78)/2 = 79
+    expect(avgs[0]).toBe(79);
+    const bodyHomeCfg = buildBodyHomeChartConfig(visible, measures)!;
+    expect(bodyHomeCfg.data.datasets[0].data[0]).toBe(79);
+    const compCfg = buildCompChartConfig(visible, 'weight', measures)!;
+    expect(compCfg.data.datasets[0].data[0]).toBe(79);
+
+    const wYear = weeksForBounds({ key: '1A', from: daysAgo(365), to: null, label: '1A', days: 365 }, [daysAgo(365)], 12, 4, 104);
+    expect(wYear.length).toBeGreaterThan(26);
+
+    // Racha de 6 semanas en historial aunque el filtro activo sea 1M (4 semanas)
+    const settings = sanitizeSettings({});
+    const curWkMs = Date.parse(`${isoWeekStart(today)}T00:00:00Z`);
+    const streakRows = [];
+    for (let w = 1; w <= 6; w++) {
+      for (let d = 0; d < 3; d++) {
+        const dt = new Date(curWkMs - w * 7 * 864e5 + d * 864e5).toISOString().slice(0, 10);
+        streakRows.push({
+          id: `st-${w}-${d}`, sessionId: `sess-${w}-${d}`, ts: Date.parse(`${dt}T10:00:00Z`),
+          date: dt, ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, done: true }],
+        });
+      }
+    }
+    const adhVm = buildAdherenceViewModel({
+      tab: 'adherence', strength: streakRows, cardio: [], wellbeing: [], measures: [],
+      settings, analysis: analyze(streakRows, settings), sel: {}, perimeter: 'arms', muscleSel: 'Pecho',
+      ranges: { adherence: '1M' },
+    });
+    expect(adhVm.streak).toBe(6);
+
+    const homeVm = buildHomeViewModel({
+      tab: 'home', strength: streakRows, cardio: [],
+      wellbeing: [{ date: today, steps: 9500 }], measures: [],
+      settings, analysis: analyze(streakRows, settings), sel: {}, perimeter: 'arms', muscleSel: 'Pecho',
+      ranges: { home: 'Todo' },
+    });
+    expect(homeVm.fourthMetric.lbl).toBe('Sueño / Pasos (7d)');
+
+    // filterExByRange recalcula el veredicto del rango
+    const ex = analyze(streakRows, settings).exercises.get('Press de banca')!;
+    const filteredEx = filterExByRange(ex, { key: 'Custom', from: daysAgo(1), to: daysAgo(1), label: 'Custom' });
+    expect(filteredEx.status).toBe('Sin datos');
+  });
+
+  it('protege restRef al reordenar/iniciar descansos, Deshacer y borrado de sesión, e incluye Libre e IA normalizada', async () => {
+    const settings = sanitizeSettings({
+      routines: { Push: [{ name: 'Press de banca', sets: 2, reps: 10 }] },
+      ai: { date: '2026-11-20', summary: 'Ok', byExercise: { 'press de banca': { status: 'Subiendo' } } },
+    });
+    expect(findAiExercise(settings.ai, 'Press de banca')?.status).toBe('Subiendo');
+
+    const rows = [
+      { id: 'f1', sessionId: 's-libre', ts: 1000, date: todayIso(), ref: 'name:Paseo del granjero', sets: [{ w: 20, r: 15, done: true }] },
+      { id: 'f2', sessionId: 's-otro', ts: 2000, date: todayIso(), ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const analysis = analyze(rows, settings);
+    const payload = buildPayload(analysis, [], settings, [], []);
+    expect((payload.ejercicios as Record<string, { dia?: string }>)['Paseo del granjero'].dia).toBe('Libre');
+
+    const state: State = {
+      tab: 'workout', strength: rows, cardio: [], measures: [], wellbeing: [],
+      settings, analysis, sel: {}, perimeter: 'arms', muscleSel: 'Pecho',
+      liveWorkout: {
+        date: todayIso(), day: 'Push', startedAt: 12345, curIdx: 0, targetRestSec: 90,
+        restStartedAt: Date.now() - 45000, restUntil: Date.now() + 45000, restRef: { ei: 0, si: 0 },
+        pickerMode: 'add',
+        exercises: [
+          { name: 'Press de banca', done: true, note: '', sets: [{ w: 80, r: 10, done: true }, { w: 80, r: 10, done: false }] },
+        ],
+      },
+    };
+    const restActions = createWorkoutRestActions(() => state.liveWorkout, (l) => { state.liveWorkout = l; });
+    restActions.startRest(60);
+    // startRest sella primero el descanso previo de la serie 0
+    expect(state.liveWorkout?.exercises[0].sets[0].restSec).toBeGreaterThanOrEqual(40);
+
+    // Deshacer tras cambiar de sesión ya no inserta en otra sesión
+    let undoFn: (() => void) | undefined;
+    const setActions = createWorkoutSetActions(
+      () => state.liveWorkout,
+      () => {},
+      (l) => { state.liveWorkout = l; },
+      (_m, act) => { undoFn = act?.onAction; },
+    );
+    setActions.delSet(0, 1);
+    expect(state.liveWorkout?.exercises[0].sets).toHaveLength(1);
+    state.liveWorkout = { ...state.liveWorkout!, startedAt: 99999 };
+    undoFn?.();
+    expect(state.liveWorkout?.exercises[0].sets).toHaveLength(1);
+
+    // Picker desplaza restRef al insertar por delante y canonicaliza
+    state.liveWorkout = {
+      ...state.liveWorkout!,
+      curIdx: 0, pickerMode: 'add', restRef: { ei: 0, si: 0 },
+      exercises: [{ name: 'Press de banca', done: false, note: '', sets: [{ w: 80, r: 10, done: false }] }],
+    };
+    const picker = createWorkoutPickerActions(() => state, () => state.liveWorkout, (l) => { state.liveWorkout = l; }, () => {});
+    picker.pickExercise('  aperturas en máquina  ');
+    expect(state.liveWorkout?.exercises[1].name).toBe('Aperturas En Máquina');
+    expect(state.liveWorkout?.restRef).toEqual({ ei: 0, si: 0 });
+    state.liveWorkout = { ...state.liveWorkout!, curIdx: 0, pickerMode: 'swap', restRef: { ei: 0, si: 0 } };
+    picker.pickExercise('Fondos en paralelas');
+    expect(state.liveWorkout?.restRef).toBeUndefined();
+
+    // logSetActions.delSet Deshacer ignora si cambió de sesión
+    let logDraftState = initLogDraft(state, 'Push', todayIso(), 's-otro');
+    let logUndo: (() => void) | undefined;
+    const logSet = createLogSetActions(() => logDraftState, (d) => { if (d) logDraftState = d; }, (_m, a) => { logUndo = a?.onAction; });
+    logSet.delSet(0, 0);
+    // Forzamos cambio de borrador antes de Deshacer
+    logDraftState = { ...logDraftState, date: '2026-10-01', sessionId: 'otra' };
+    const lenAfterSwitch = logDraftState.exercises[0]?.sets.length ?? 0;
+    logUndo?.();
+    expect(logDraftState.exercises[0]?.sets.length ?? 0).toBe(lenAfterSwitch);
+
+    // deleteHistorySession no borra filas de otra sesión de la misma fecha cuando sessionId no tiene match
+    let deletedCalled = false;
+    const histActions = createLogHistoryActions(
+      {
+        getState: () => state,
+        commitDraft: (d) => { state.logDraft = d; },
+        reload: async () => {},
+        setTab: () => {},
+        queueSync: () => {},
+        toast: () => {},
+        askConfirm: async () => { deletedCalled = true; return true; },
+      },
+      () => logDraftState,
+      async () => true,
+    );
+    await histActions.deleteHistorySession('sid-inexistente', todayIso());
+    expect(deletedCalled).toBe(false);
   });
 });

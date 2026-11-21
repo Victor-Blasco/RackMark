@@ -22,7 +22,7 @@ export function BodyView({ state: propState }: BodyViewProps) {
   const vm = buildBodyViewModel(state);
 
   const compCfg = useMemo(
-    () => buildCompChartConfig(vm.msInRange, vm.activeCompMode),
+    () => buildCompChartConfig(vm.msInRange, vm.activeCompMode, state.measures),
     [state.measures, vm.bounds.from, vm.bounds.to, vm.activeCompMode],
   );
   const perimCfg = useMemo(

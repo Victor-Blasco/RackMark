@@ -72,7 +72,7 @@ export function calculateNutrition(
     proteinPct: target ? Math.round(proteinKcal / target * 100) : 0,
     fatPct: target ? Math.round(fatKcal / target * 100) : 0,
     carbsPct: target ? Math.max(0, 100 - Math.round(proteinKcal / target * 100) - Math.round(fatKcal / target * 100)) : 0,
-    weeklyProjectionKg: calorieDelta / 7700 * 7,
+    weeklyProjectionKg: ((target - tdee) / 7700) * 7,
     perMeal: {
       proteinG: Math.round(proteinG / mealCount),
       fatG: Math.round(fatG / mealCount),

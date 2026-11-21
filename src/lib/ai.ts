@@ -104,6 +104,28 @@ export function buildPayload(
       };
     }
   }
+  for (const e of a.exercises.values()) {
+    if (exercises[e.name] || e.name.startsWith('Samsung #')) continue;
+    const recent = e.sessions.filter((x) => x.date >= since56);
+    if (!recent.length) continue;
+    exercises[e.name] = {
+      dia: e.day ?? 'Libre',
+      estado_reglas: e.status,
+      ...(e.avgHr ? { fc_media_historica: e.avgHr } : {}),
+      ...(e.maxHr ? { fc_max_historica: e.maxHr } : {}),
+      ...(s.notes[e.name] ? { nota_fija: s.notes[e.name] } : {}),
+      sesiones: recent.map((x) => ({
+        fecha: x.date,
+        series: x.sets.map((y) => `${y.w}kg x${y.r}${y.rir != null ? ` · RIR ${y.rir}` : ''}`),
+        e1rm: x.e1rm,
+        ...(x.avgHr ? { fc_media: x.avgHr } : {}),
+        ...(x.maxHr ? { fc_max: x.maxHr } : {}),
+        ...(x.durMin ? { dur_min: x.durMin } : {}),
+        ...(x.kcal ? { kcal: x.kcal } : {}),
+        ...(x.note ? { nota: x.note } : {}),
+      })),
+    };
+  }
 
   const cardio56 = cardio.filter((c) => c.date >= since56);
   const lastVo2 = [...cardio].reverse().find((c) => c.vo2 && c.vo2 > 0)?.vo2;

@@ -14,8 +14,8 @@ import {
 } from 'chart.js';
 import type { Analysis, ExStats } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
-import { ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiJob, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
+import { norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
+import type { AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
 import { humanizeError, RANGES, type ActiveModal, type RangeKey, type ToastAction } from '../store/types';
 
 export { humanizeError, RANGES, todayIso, type RangeKey, type ToastAction };
@@ -165,6 +165,29 @@ export function isAiFreshForEx(S: State, e?: ExStats): boolean {
   if (!aiDate) return false;
   const lastDate = e?.last?.date;
   return !lastDate || aiDate >= lastDate;
+}
+
+/** Busca un consejo del Coach IA por nombre exacto o normalizado (sin distinción de mayúsculas/tildes). */
+export function findAiExercise(ai: AiResult | undefined, exName: string): AiEntry | undefined {
+  const byEx = ai?.byExercise;
+  if (!byEx) return undefined;
+  if (byEx[exName]) return byEx[exName];
+  const target = norm(exName);
+  const hit = Object.entries(byEx).find(([k]) => norm(k) === target);
+  return hit?.[1];
+}
+
+/** Calcula la media móvil de 7 días naturales conservando los 6 días previos de `fullHistory` si está disponible. */
+export function movingAverage7dFor(
+  items: { date: string; weight?: number }[],
+  fullHistory?: { date: string; weight?: number }[],
+): (number | null)[] {
+  if (!fullHistory || fullHistory.length <= items.length) return movingAverage7d(items);
+  const sorted = [...fullHistory].sort((a, b) => a.date.localeCompare(b.date));
+  const avgs = movingAverage7d(sorted);
+  const byDate = new Map<string, number | null>();
+  sorted.forEach((m, i) => byDate.set(m.date, avgs[i]));
+  return items.map((m) => (byDate.has(m.date) ? byDate.get(m.date)! : null));
 }
 
 /** Calcula la media móvil de 7 días naturales para una serie ordenada de mediciones con peso. */

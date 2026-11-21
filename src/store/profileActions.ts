@@ -28,6 +28,14 @@ export function createProfileActions(deps: ProfileActionDeps) {
     await deps.persist();
   };
 
+  const clearCalcOverride = (key: 'goal' | 'act') => {
+    const S = state();
+    if (S.calcDraft?.[key] != null) {
+      const { [key]: _removed, ...rest } = S.calcDraft;
+      S.calcDraft = rest;
+    }
+  };
+
   return {
     async updateProfileSex(sex: string) {
       await patchProfile((cur) => ({ ...cur, sex }));
@@ -54,6 +62,7 @@ export function createProfileActions(deps: ProfileActionDeps) {
     },
 
     async updateProfileGoal(val: string) {
+      clearCalcOverride('goal');
       await patchProfile((cur) => {
         if (val === 'bulk' || val === 'cut' || val === 'recomp' || val === 'strength') {
           return { ...cur, goal: val };
@@ -74,6 +83,7 @@ export function createProfileActions(deps: ProfileActionDeps) {
     },
 
     async updateProfileDays(raw: string) {
+      clearCalcOverride('act');
       const n = Number(raw);
       await patchProfile((cur) => {
         if (Number.isFinite(n) && n >= 1 && n <= 7) {

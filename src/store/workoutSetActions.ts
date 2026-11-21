@@ -45,12 +45,16 @@ export function createWorkoutSetActions(
         else if (nextRestRef.si > si) nextRestRef = { ...nextRestRef, si: nextRestRef.si - 1 };
       }
       commit({ ...live, exercises: nextExercises, restRef: nextRestRef });
+      const exName = ex.name;
+      const startedAt = live.startedAt;
       toast(`Serie ${si + 1} eliminada.`, {
         label: 'Deshacer',
         onAction: () => {
           const cur = getLive();
-          if (!cur?.exercises[ei]) return;
-          commit(mapExercise(cur, ei, (item) => {
+          if (!cur || cur.startedAt !== startedAt) return;
+          const targetEi = cur.exercises[ei]?.name === exName ? ei : cur.exercises.findIndex((x) => x.name === exName);
+          if (targetEi < 0) return;
+          commit(mapExercise(cur, targetEi, (item) => {
             const idx = Math.min(si, item.sets.length);
             const sets = [...item.sets.slice(0, idx), removedSet, ...item.sets.slice(idx)];
             return { ...item, sets, done: sets.some((x) => Boolean(x.done && x.r > 0)) };

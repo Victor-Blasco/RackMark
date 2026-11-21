@@ -82,6 +82,8 @@ export function createLogSetActions(
       const ex = draft.exercises[ei];
       const removedSet = ex?.sets[si];
       if (!ex || !removedSet || ex.sets.length <= 1) return;
+      const draftKey = `${draft.date}|${draft.day}|${draft.sessionId ?? ''}`;
+      const exName = ex.name;
       commitDraft(mapDraftEx(draft, ei, (item) => {
         const sets = item.sets.filter((_, j) => j !== si);
         return { ...item, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
@@ -90,9 +92,12 @@ export function createLogSetActions(
         label: 'Deshacer',
         onAction: () => {
           const cur = ensureDraft();
-          if (!cur.exercises[ei]) return;
-          commitDraft(mapDraftEx(cur, ei, (item) => {
-            const sets = [...item.sets.slice(0, si), removedSet, ...item.sets.slice(si)];
+          if (`${cur.date}|${cur.day}|${cur.sessionId ?? ''}` !== draftKey) return;
+          const targetEi = cur.exercises[ei]?.name === exName ? ei : cur.exercises.findIndex((x) => x.name === exName);
+          if (targetEi < 0) return;
+          commitDraft(mapDraftEx(cur, targetEi, (item) => {
+            const idx = Math.min(si, item.sets.length);
+            const sets = [...item.sets.slice(0, idx), removedSet, ...item.sets.slice(idx)];
             return { ...item, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
           }));
         },
@@ -103,11 +108,13 @@ export function createLogSetActions(
       const draft = ensureDraft();
       const removed = draft.exercises[ei];
       if (!removed) return;
+      const draftKey = `${draft.date}|${draft.day}|${draft.sessionId ?? ''}`;
       commitDraft({ ...draft, dirty: true, exercises: draft.exercises.filter((_, i) => i !== ei) });
       toast(`Eliminado «${removed.name}».`, {
         label: 'Deshacer',
         onAction: () => {
           const cur = ensureDraft();
+          if (`${cur.date}|${cur.day}|${cur.sessionId ?? ''}` !== draftKey) return;
           const list = cur.exercises;
           if (list.some((e) => e.name === removed.name)) return;
           const idx = Math.min(ei, list.length);

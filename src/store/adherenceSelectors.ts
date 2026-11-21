@@ -1,7 +1,7 @@
 import type { ChartConfiguration } from 'chart.js';
 import { isoWeekStart } from '../lib/analysis';
 import type { DayName } from '../types';
-import { inRange, resolveRange, routineNames, short, type DateBounds, type State } from '../ui/shared';
+import { inRange, resolveRange, routineNames, short, todayIso, type DateBounds, type State } from '../ui/shared';
 import { buildAdherenceCalendarData } from './adherenceCalendar';
 import { weeksForBounds } from './volumeSelectors';
 
@@ -26,19 +26,25 @@ export function buildAdherenceViewModel(state: State) {
     ...state.cardio.map((c) => c.date),
     ...state.wellbeing.map((w) => w.date),
   ];
-  const cols = weeksForBounds(bounds, allDates, 12, 4, 26);
+  const cols = weeksForBounds(bounds, allDates, 12, 4, 104);
 
   const perWeek = new Map<string, number>();
   byDate.forEach((_, d) => {
     const w = isoWeekStart(d);
     perWeek.set(w, (perWeek.get(w) ?? 0) + 1);
   });
-  const completedCols = cols.length > 1 ? cols.slice(0, -1) : cols;
+  const curWeek = isoWeekStart(todayIso());
+  const completedCols = cols.length > 1 && cols[cols.length - 1] === curWeek ? cols.slice(0, -1) : cols;
   const avg = completedCols.reduce((a, w) => a + (perWeek.get(w) ?? 0), 0) / completedCols.length;
   let streak = 0;
-  for (let i = cols.length - 2; i >= 0 && (perWeek.get(cols[i]) ?? 0) >= 3; i--) streak++;
+  const curMs = Date.parse(`${curWeek}T00:00:00Z`);
+  for (let i = 1; i <= 520; i++) {
+    const wk = new Date(curMs - i * 7 * 864e5).toISOString().slice(0, 10);
+    if ((perWeek.get(wk) ?? 0) < 3) break;
+    streak++;
+  }
 
-  const effBounds: DateBounds = { ...bounds, from: bounds.from ?? cols[0] };
+  const effBounds: DateBounds = bounds;
   const counts: Record<string, number> = Object.fromEntries(routines.map((r) => [r, 0]));
   byDate.forEach((t, d) => {
     if (t && inRange(d, effBounds)) counts[t] = (counts[t] ?? 0) + 1;

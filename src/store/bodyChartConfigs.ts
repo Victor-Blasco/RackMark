@@ -1,6 +1,6 @@
 import type { ChartConfiguration } from 'chart.js';
 import { MEASURE_FIELDS, type Measure } from '../types';
-import { inRange, movingAverage7d, resolveRange, short, type State } from '../ui/shared';
+import { inRange, movingAverage7dFor, resolveRange, short, type State } from '../ui/shared';
 
 export const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
   arms: { label: 'Brazos', keys: ['armL', 'armR'] },
@@ -22,6 +22,7 @@ const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#A78BFA', '#22D3EE', '#6366F1'];
 export function buildCompChartConfig(
   msInRange: Measure[],
   mode: 'weight' | 'muscle' = 'weight',
+  allMeasures?: Measure[],
 ): ChartConfiguration<'line'> | null {
   const comp = msInRange.filter((m) => m.weight != null || m.bf != null || m.muscle != null);
   if (!comp.length) return null;
@@ -45,7 +46,7 @@ export function buildCompChartConfig(
     datasets.push(
       {
         label: 'Tendencia 7d (kg)',
-        data: movingAverage7d(comp),
+        data: movingAverage7dFor(comp, allMeasures),
         borderColor: '#3B82F6',
         backgroundColor: '#3B82F6',
         borderWidth: 2.5,

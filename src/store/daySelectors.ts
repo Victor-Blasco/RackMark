@@ -1,7 +1,7 @@
 import type { ExStats } from '../lib/analysis';
 import { norm } from '../lib/seed';
 import type { DayName } from '../types';
-import { inRange, isAiFreshForEx, resolveRange, routineColor, routineNames, type State } from '../ui/shared';
+import { findAiExercise, inRange, isAiFreshForEx, resolveRange, routineColor, routineNames, type State } from '../ui/shared';
 import { exerciseChartConfig, filterExByRange } from './homeSelectors';
 
 /**
@@ -72,7 +72,7 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
   const aiFor = (ex: ExStats) => {
     if (hasFilter) return undefined;
     return isAiFreshForEx(state, state.analysis.exercises.get(ex.name) ?? ex)
-      ? state.settings.ai?.byExercise[ex.name]
+      ? findAiExercise(state.settings.ai, ex.name)
       : undefined;
   };
 

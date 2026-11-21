@@ -9,7 +9,7 @@ export function weeksForBounds(
   dates: string[],
   defaultWeeks: number,
   minW = 4,
-  maxW = 26,
+  maxW = 104,
 ): string[] {
   const today = todayIso();
   const endIso = bounds.to ?? today;
@@ -43,7 +43,7 @@ export function buildVolumeViewModel(state: State) {
   const hasStrength = state.strength.length > 0;
   const bounds = resolveRange(state, 'volume', '3M');
   const vol = weeklyVolume(state.strength, state.settings, bounds.from, bounds.to);
-  const weeks = weeksForBounds(bounds, state.strength.map((s) => s.date), 12, 4, 26);
+  const weeks = weeksForBounds(bounds, state.strength.map((s) => s.date), 12, 4, 104);
   const mobWeeks = weeks.slice(-6);
   const sel = state.muscleSel || 'Pecho';
   const volChartCfg: ChartConfiguration<'bar'> = {

@@ -112,7 +112,12 @@ export function buildWorkoutSummary(state: State, live: LiveWorkout, savedExerci
     if (prev && prev.n > 0) {
       const bestW = Math.max(...doneSets.map((s) => s.w));
       const bestE1rm = Math.max(...doneSets.map((s) => epley(s.w, s.r)));
-      if (bestW > prev.maxWeight + 0.05 || bestE1rm > prev.maxE1rm + 0.05) prNames.push(ex.name);
+      if (bestW === 0 && prev.maxWeight === 0) {
+        const prevMaxReps = Math.max(0, ...prev.sessions.map((s) => s.repsAtTop));
+        if (Math.max(...doneSets.map((s) => s.r)) > prevMaxReps) prNames.push(ex.name);
+      } else if (bestW > prev.maxWeight + 0.05 || bestE1rm > prev.maxE1rm + 0.05) {
+        prNames.push(ex.name);
+      }
     }
   }
   return { day: live.day, durationMin, exercises: savedExercises, sets, tonnageKg: Math.round(tonnageKg), prNames };

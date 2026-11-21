@@ -1,7 +1,7 @@
 import { musclesOf } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
 import type { DayName, LogExDraft, SetRec } from '../types';
-import { isAiFreshForEx, routineNames, short, type State } from '../ui/shared';
+import { findAiExercise, isAiFreshForEx, routineNames, short, type State } from '../ui/shared';
 
 /**
  * Devuelve la lista ordenada y deduplicada de todos los nombres de ejercicios conocidos.
@@ -11,8 +11,10 @@ import { isAiFreshForEx, routineNames, short, type State } from '../ui/shared';
  */
 export function allExerciseNames(state: State): string[] {
   const byNorm = new Map<string, string>();
+  const aliases = state.settings.aliases;
   const add = (n: string) => {
-    const t = n.trim();
+    let t = n.trim();
+    for (let seen = new Set<string>(); aliases[t] && !seen.has(t) && seen.size < 10; t = aliases[t]) seen.add(t);
     if (!t || t.startsWith('Samsung #')) return;
     const k = norm(t);
     if (!byNorm.has(k)) byNorm.set(k, t);
@@ -90,7 +92,7 @@ export function exerciseContext(state: State, day: DayName | 'Libre', ex: LogExD
   const lastRef = hist?.last
     ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}`
     : 'Sin historial previo';
-  const freshAi = isAiFreshForEx(state, hist) ? state.settings.ai?.byExercise[ex.name] : undefined;
+  const freshAi = isAiFreshForEx(state, hist) ? findAiExercise(state.settings.ai, ex.name) : undefined;
   const prescription = freshAi?.prescription ?? hist?.prescription ?? '';
   const targetW = prescription ? extractTargetWeight(prescription) : null;
   const fixedNote = state.settings.notes[ex.name]?.trim() ?? '';

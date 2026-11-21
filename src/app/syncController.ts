@@ -158,7 +158,11 @@ export function createSyncController(ctx: AppContext): SyncController {
       return;
     }
     if (job.status === 'error' || job.attempts >= 2) {
-      ctx.state.aiJob = job;
+      const failed = job.status === 'error'
+        ? job
+        : { ...job, status: 'error' as const, error: 'La generación se interrumpió tras varios intentos. Pulsa reintentar.', updatedAt: Date.now() };
+      if (failed !== job) await saveAiJob(failed);
+      ctx.state.aiJob = failed;
       ctx.render();
       return;
     }

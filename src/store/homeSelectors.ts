@@ -2,6 +2,7 @@ import { currentPhase } from '../lib/analysis';
 import type { AiTone, DayName, Measure } from '../types';
 import { filterSelectionOptions } from '../ui/selection';
 import {
+  findAiExercise,
   inRange,
   isAiFreshForEx,
   r1,
@@ -55,17 +56,18 @@ function resolveFourthMetric(state: State, ms: Measure[], rangeLabel: string, ha
   if (!(state.wellbeing.length > 0 || wBaseline.length > 0 || hrForce != null)) {
     return { lbl: `Medidas (${rangeLabel})`, val: String(ms.length), sub: ms[ms.length - 1] ? ` · última ${short(ms[ms.length - 1].date)}` : '', cls: 'text-blue-300' };
   }
+  const scopeLbl = hasFilter ? rangeLabel : '7d';
   const sleepMain = mean(wScope.map((w) => (w.sleepMin != null ? w.sleepMin / 60 : undefined)));
   const stepsMain = mean(wScope.map((w) => w.steps));
   if (sleepMain != null || stepsMain != null) {
     const stepsText = stepsMain != null ? ` · ${stepsMain >= 1000 ? `${r1(stepsMain / 1000)}k` : Math.round(stepsMain)}` : '';
-    return { lbl: `Sueño / Pasos (${rangeLabel})`, val: sleepMain != null ? `${r1(sleepMain)} h` : '—', sub: stepsText, cls: 'text-blue-300' };
+    return { lbl: `Sueño / Pasos (${scopeLbl})`, val: sleepMain != null ? `${r1(sleepMain)} h` : '—', sub: stepsText, cls: 'text-blue-300' };
   }
   const rhrMain = mean(wScope.map((w) => w.rhr));
   const hrvMain = mean(wScope.map((w) => w.hrv));
   const val = rhrMain != null ? `${Math.round(rhrMain)} lpm` : hrForce != null ? `${Math.round(hrForce)} lpm` : '—';
   const sub = hrvMain != null ? ` · HRV ${Math.round(hrvMain)}` : hrForce != null && rhrMain != null ? ` · fuerza ${Math.round(hrForce)}` : '';
-  return { lbl: `Pulso (${rangeLabel})`, val, sub, cls: 'text-cyan-300' };
+  return { lbl: `Pulso (${scopeLbl})`, val, sub, cls: 'text-cyan-300' };
 }
 
 /** Construye todos los KPIs, series de gráficas y tabla de cargas para `<HomeView />`. */
@@ -83,7 +85,9 @@ export function buildHomeViewModel(state: State) {
   const lastS = sess[sess.length - 1];
   const since28 = todayIso(new Date(Date.now() - 28 * 864e5));
   const activeDays = new Set((hasFilter ? sess : sess.filter((x) => x.date >= since28)).map((x) => x.date)).size;
-  const weeks = bounds.days ? Math.max(1, bounds.days / 7) : 4;
+  const rangeEnd = bounds.to ?? todayIso();
+  const diffDays = bounds.days ?? (hasFilter && bounds.from ? Math.max(7, Math.round((Date.parse(`${rangeEnd}T00:00:00Z`) - Date.parse(`${bounds.from}T00:00:00Z`)) / 864e5) + 1) : 28);
+  const weeks = Math.max(1, diffDays / 7);
   const phase = currentPhase(state.settings);
   const fourthMetric = resolveFourthMetric(state, ms, bounds.label, hasFilter, bounds);
   const ex = homeExercises(state);
@@ -94,7 +98,7 @@ export function buildHomeViewModel(state: State) {
   const rows = routines.flatMap((d, idx) =>
     (state.analysis.byDay[d] ?? []).map((e) => {
       const filtered = filterExByRange(e, bounds);
-      const aiStatus = !hasFilter && isAiFreshForEx(state, state.analysis.exercises.get(filtered.name) ?? filtered) ? state.settings.ai?.byExercise[filtered.name]?.status : undefined;
+      const aiStatus = !hasFilter && isAiFreshForEx(state, state.analysis.exercises.get(filtered.name) ?? filtered) ? findAiExercise(state.settings.ai, filtered.name)?.status : undefined;
       return { d: d as DayName, c: routineColor(d, state.settings, idx), e: filtered, aiStatus };
     }),
   );
@@ -121,7 +125,7 @@ export function buildHomeViewModel(state: State) {
     cur,
     filteredHomeOptions,
     homeExCfg: buildHomeExChartConfig(state),
-    bodyHomeCfg: buildBodyHomeChartConfig(ms),
+    bodyHomeCfg: buildBodyHomeChartConfig(ms, state.measures),
     rows,
     tone: (state.settings.aiTone === 'simple' ? 'simple' : 'technical') as AiTone,
   };

@@ -1,7 +1,7 @@
 import { norm } from '../lib/seed';
 import type { LiveWorkout, LogExDraft } from '../types';
 import type { State } from '../ui/shared';
-import { defaultSetsForEx } from './exerciseCatalog';
+import { allExerciseNames, defaultSetsForEx } from './exerciseCatalog';
 
 /**
  * Crea las acciones inmutables del menú hamburguesa y selector de ejercicios en `En vivo`.
@@ -63,12 +63,13 @@ export function createWorkoutPickerActions(
     pickExercise(rawName: string) {
       const state = getState();
       const live = state.liveWorkout;
-      const name = rawName.trim();
+      const trimmed = rawName.trim();
       if (!live || !live.pickerMode) return;
-      if (!name) {
+      if (!trimmed) {
         toast('Elige o escribe un ejercicio.');
         return;
       }
+      const name = allExerciseNames(state).find((x) => norm(x) === norm(trimmed)) ?? trimmed;
 
       const planned = live.day !== 'Libre'
         ? state.settings.routines[live.day]?.find((x) => norm(x.name) === norm(name))
@@ -82,8 +83,10 @@ export function createWorkoutPickerActions(
 
       let nextExercises: LogExDraft[];
       let nextIdx = live.curIdx;
+      let nextRestRef = live.restRef;
       if (live.pickerMode === 'swap' && live.exercises[live.curIdx]) {
         nextExercises = live.exercises.map((ex, i) => (i === live.curIdx ? exDraft : ex));
+        if (nextRestRef?.ei === live.curIdx) nextRestRef = undefined;
         toast(`Cambiado a ${name}.`);
       } else {
         nextIdx = live.exercises.length ? Math.min(live.curIdx + 1, live.exercises.length) : 0;
@@ -92,6 +95,7 @@ export function createWorkoutPickerActions(
           exDraft,
           ...live.exercises.slice(nextIdx),
         ];
+        if (nextRestRef && nextRestRef.ei >= nextIdx) nextRestRef = { ...nextRestRef, ei: nextRestRef.ei + 1 };
         toast(`${name} añadido al entreno.`);
       }
 
@@ -99,6 +103,7 @@ export function createWorkoutPickerActions(
         ...live,
         exercises: nextExercises,
         curIdx: nextIdx,
+        restRef: nextRestRef,
         lastCompletedExIdx: undefined,
         pickerMode: undefined,
         pickerQuery: undefined,

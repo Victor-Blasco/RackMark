@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseExerciseCsv, parseCustomExerciseCsv, parseSleepCsv, parseStepsCsv, parseVitalityCsv } from '../src/lib/samsung';
+import { importSamsungFiles, parseExerciseCsv, parseCustomExerciseCsv, parseSleepCsv, parseStepsCsv, parseVitalityCsv } from '../src/lib/samsung';
 import { parseMeasuresCsv } from '../src/lib/measures';
 import { analyze } from '../src/lib/analysis';
 import { buildPayload } from '../src/lib/ai';
@@ -159,5 +159,49 @@ describe('frecuencia cardiaca, sueño, pasos, vitalidad e IA', () => {
     expect(payload.sesiones_fuerza_recientes[0]).toMatchObject({ fc_media: 128, fc_max: 149, dur_min: 10, kcal: 96 });
     expect(payload.cardio_reciente.resumen_8_sem).toMatchObject({ sesiones: 1, km_totales: 4.2, vo2_max_reciente: 48 });
     expect(payload.recuperacion_y_actividad.ultimos_7_dias).toMatchObject({ pasos_media: 9117, fc_reposo_media: 55, hrv_media_ms: 100 });
+  });
+
+  it('tolera subset_data no-array, vo2_max inválido, day_time epoch ms y conserva máximos en mergeMap', async () => {
+    const exCsv = [
+      'com.samsung.shealth.exercise,7013005,12',
+      'com.samsung.health.exercise.datauuid,com.samsung.health.exercise.start_time,com.samsung.health.exercise.time_offset,com.samsung.health.exercise.exercise_type,com.samsung.health.exercise.duration,com.samsung.health.exercise.distance,com.samsung.health.exercise.mean_heart_rate,com.samsung.health.exercise.calorie,com.samsung.health.exercise.vo2_max,routine_datauuid,custom_id,subset_data',
+      'ex-bad-1,2026-11-11 10:00:00.000,UTC+0100,10001,600000,0,120,80,,r1,,"{}"',
+      'ex-bad-2,2026-11-11 10:15:00.000,UTC+0100,10001,600000,0,120,80,,r1,,"null"',
+      'ex-card-vo2,2026-11-11 11:00:00.000,UTC+0100,1001,1200000,3000,145,200,-1,,,""',
+    ].join('\n');
+    const parsedEx = parseExerciseCsv(exCsv);
+    expect(parsedEx.strength).toHaveLength(0);
+    expect(parsedEx.cardio).toHaveLength(1);
+    expect(parsedEx.cardio[0].vo2).toBeUndefined();
+
+    const epochMs = String(Date.parse('2026-11-11T00:00:00Z'));
+    const vitEpochCsv = [
+      'com.samsung.shealth.vitality_score,7013005,4',
+      'day_time,total_score,shr_value,shrv_value',
+      `${epochMs},82.4,54,78`,
+    ].join('\n');
+    expect(parseVitalityCsv(vitEpochCsv).get('2026-11-11')).toMatchObject({ energyScore: 82, rhr: 54, hrv: 78 });
+
+    const f1 = {
+      name: 'com.samsung.shealth.tracker.pedometer_day_summary.1.csv',
+      size: 200,
+      text: async () => [
+        'com.samsung.shealth.tracker.pedometer_day_summary,7013005,5',
+        'day_time,step_count,distance,active_time,calorie',
+        `${epochMs},11500,8200,3600000,410`,
+      ].join('\n'),
+    } as File;
+    const f2 = {
+      name: 'com.samsung.shealth.step_daily_trend.2.csv',
+      size: 200,
+      text: async () => [
+        'com.samsung.shealth.step_daily_trend,7013005,4',
+        'day_time,count,distance,calorie',
+        '2026-11-11 00:00:00.000,4200,3100,150',
+      ].join('\n'),
+    } as File;
+    const merged = await importSamsungFiles([f1, f2]);
+    expect(merged.wellbeing).toHaveLength(1);
+    expect(merged.wellbeing[0]).toMatchObject({ date: '2026-11-11', steps: 11500, stepKm: 8.2, stepKcal: 410 });
   });
 });

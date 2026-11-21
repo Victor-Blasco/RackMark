@@ -60,14 +60,43 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
       await deps.persist();
     },
 
-    async mergeExercises(from: string, to: string) {
-      if (!from || !to || from === to) return;
+    async mergeExercises(rawFrom: string, rawTo: string) {
+      const from = rawFrom.trim();
+      const to = rawTo.trim();
+      if (!from || !to || norm(from) === norm(to)) return;
       const S = state();
-      S.settings = {
-        ...S.settings,
-        aliases: { ...S.settings.aliases, [from]: to },
-      };
+      let target = to;
+      for (let seen = new Set<string>([norm(target)]); S.settings.aliases[target]; seen.add(norm(target))) {
+        target = S.settings.aliases[target];
+        if (norm(target) === norm(from) || seen.has(norm(target))) {
+          deps.toast('No se puede crear un ciclo al unificar ejercicios.');
+          return;
+        }
+      }
+      const nextAliases: Record<string, string> = {};
+      for (const [k, v] of Object.entries(S.settings.aliases)) nextAliases[k] = norm(v) === norm(from) ? target : v;
+      nextAliases[from] = target;
+      delete nextAliases[target];
+
+      const nextRoutines: typeof S.settings.routines = {};
+      for (const [day, list] of Object.entries(S.settings.routines)) {
+        const used = new Set<string>();
+        nextRoutines[day] = list
+          .map((r) => (norm(r.name) === norm(from) ? { ...r, name: target } : r))
+          .filter((r) => !used.has(norm(r.name)) && Boolean(used.add(norm(r.name))));
+      }
+      const nextNotes = { ...S.settings.notes };
+      if (nextNotes[from]) {
+        if (!nextNotes[target]) nextNotes[target] = nextNotes[from];
+        delete nextNotes[from];
+      }
+      const rename = <T extends { exercises: { name: string }[] }>(b?: T): T | undefined =>
+        b && { ...b, exercises: b.exercises.map((e) => (norm(e.name) === norm(from) ? { ...e, name: target } : e)) };
+      S.settings = { ...S.settings, aliases: nextAliases, routines: nextRoutines, notes: nextNotes };
+      S.liveWorkout = rename(S.liveWorkout);
+      S.logDraft = rename(S.logDraft);
       await deps.persist();
+      deps.toast(`«${from}» unificado con «${target}».`);
     },
 
     async unmergeExercise(alias: string) {
