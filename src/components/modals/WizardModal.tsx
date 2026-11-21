@@ -80,6 +80,11 @@ export function WizardModal({
         </div>
 
         <div class="flex-1 overflow-y-auto overflow-x-clip px-4 py-3.5 sm:px-6 sm:py-4">
+          {draft.error && (
+            <p role="alert" class="mb-3 rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
+              {draft.error}
+            </p>
+          )}
           <div class={stepAnim}>
             {draft.step === 1 && <WizardStep1 draft={draft} onPatch={onPatch} />}
             {draft.step === 2 && <WizardStep2 draft={draft} onPatch={onPatch} />}

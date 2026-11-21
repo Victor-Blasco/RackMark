@@ -9,7 +9,7 @@ import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivi
 import { importSamsungInWorker } from '../src/lib/samsung';
 import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
 import { AiInsightBanner } from '../src/components/common/AiInsightBanner';
-import { ToastBanner } from '../src/components/common/ToastBanner';
+import { ToastBanner, SwUpdateBanner } from '../src/components/common/ToastBanner';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
@@ -27,7 +27,7 @@ import { allExerciseNames, extractTargetWeight, manualSessionId, quickExSuggesti
 import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig } from '../src/store/homeChartConfigs';
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
-import { activeTabTitle, syncStatusInfo } from '../src/store/navigation';
+import { activeTabTitle, isValidTab, syncStatusInfo } from '../src/store/navigation';
 import { createPlanActions } from '../src/store/planActions';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { createPlanModalActions } from '../src/store/planModalActions';
@@ -42,6 +42,7 @@ import {
   recommendTemplate,
 } from '../src/store/wizardSelectors';
 import { createLiveWorkoutActions } from '../src/store/workoutActions';
+import { createWorkoutLaunchActions } from '../src/store/workoutLaunchActions';
 import { initLiveWorkout } from '../src/store/workoutSelectors';
 import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
@@ -2159,7 +2160,8 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(pickerHtml).toContain('id="planExSearch"');
     expect(pickerHtml).toContain('id="planCatalogCount" aria-live="polite"');
     expect(pickerHtml).toContain('aria-label="Filtrar por grupos musculares"');
-    expect(pickerHtml).toContain('En rutina');
+    expect(pickerHtml).toContain('Añadido');
+    expect(pickerHtml).toContain('Quitar');
     expect(pickerHtml).toContain('¿No encuentras el ejercicio?');
     expect(pickerHtml).toContain('+ Crear ejercicio');
     expect(pickerHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
@@ -2196,5 +2198,160 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(state.activeModal).toEqual({ type: 'routineExercisePicker', routine: 'Pull' });
     actions.openExerciseModal({ routine: 'Pull', initialName: 'Remo Gironda' });
     expect(state.activeModal).toEqual({ type: 'exercise', routine: 'Pull', initialName: 'Remo Gironda' });
+  });
+
+  it('bloque 1: preserva RIR, evita duplicados, valida modales inline, avisa en borrado activo y eleva ToastBanner', async () => {
+    // 1. ToastBanner z-[60] y SwUpdateBanner z-[55]
+    const toastHtml = renderToString(h(ToastBanner, { message: 'Ok' }));
+    const swHtml = renderToString(h(SwUpdateBanner, { visible: true, onDismiss: () => {}, onReload: () => {} }));
+    expect(toastHtml).toContain('z-[60]');
+    expect(swHtml).toContain('z-[55]');
+
+    // 2. WizardModal muestra error inline role="alert" cuando draft.error está presente
+    const settings = sanitizeSettings({});
+    const dupSettings = sanitizeSettings({
+      routines: {
+        ...settings.routines,
+        Push: [
+          { name: 'Press de banca', sets: 3, reps: 10 },
+          { name: 'Press de banca', sets: 3, reps: 10 },
+        ],
+      },
+    });
+    const state: State = {
+      tab: 'Push',
+      strength: [
+        {
+          id: 's-rir',
+          sessionId: 'manual:2026-11-20:Push',
+          ts: Date.parse('2026-11-20T18:00:00Z'),
+          date: '2026-11-20',
+          ref: 'name:Press de banca',
+          day: 'Push',
+          sets: [{ w: 80, r: 8, rir: 2, restSec: 120 }],
+        },
+      ],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: dupSettings,
+      analysis: analyze(
+        [{ id: 's-rir', sessionId: 'manual:2026-11-20:Push', ts: 1, date: '2026-11-20', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, rir: 2 }] }],
+        dupSettings,
+      ),
+      sel: { Push: 'Press de banca' },
+      dayExtra: { Push: true },
+      ranges: { Push: '3M' },
+      customRanges: { Push: { from: '2026-10-01' } },
+      perimeter: 'waist',
+      muscleSel: 'Pecho',
+    };
+
+    // initLogDraft conserva s.rir y no duplica ejercicios repetidos en rutina
+    const draft = initLogDraft(state, 'Push', '2026-11-20');
+    expect(draft.exercises.filter((e) => norm(e.name) === norm('Press de banca'))).toHaveLength(1);
+    expect(draft.exercises[0]?.sets[0]?.rir).toBe(2);
+    expect(state.analysis.byDay.Push?.filter((e) => norm(e.name) === norm('Press de banca'))).toHaveLength(1);
+
+    const wizErrHtml = renderToString(
+      h(WizardModal, {
+        draft: { ...createWizardDraft(state), error: 'Introduce una edad válida (12–110 años).' },
+        onPatch: () => {},
+        onBack: () => {},
+        onSubmitStep: () => {},
+        onSkip: () => {},
+      }),
+    );
+    expect(wizErrHtml).toContain('role="alert"');
+    expect(wizErrHtml).toContain('Introduce una edad válida');
+
+    // 3. RoutineEdit: impedir duplicados + quitar por nombre + aviso en confirmación si hay entreno activo
+    const toasts: string[] = [];
+    const confirms: { title: string; message: string }[] = [];
+    state.liveWorkout = initLiveWorkout(state, 'Push');
+    state.logDraft = initLogDraft(state, 'Push', '2026-11-21');
+    const launch = createWorkoutLaunchActions({
+      getState: () => state,
+      setTab: (t) => { state.tab = t; },
+      render: () => {},
+      saveDraft: (d) => { state.logDraft = d; },
+      saveLive: (l) => { state.liveWorkout = l; },
+      askConfirm: async () => true,
+    });
+    const edits = createRoutineEditActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      persist: async () => {},
+      render: () => {},
+      syncWorkoutRoutineNames: launch.syncWorkoutRoutineNames,
+      askConfirm: async (opts) => {
+        confirms.push({ title: opts.title, message: opts.message });
+        return false;
+      },
+      toast: (m) => { toasts.push(m); },
+    });
+
+    await edits.quickAddToRoutine('Push', 'Press de banca');
+    expect(toasts.at(-1)).toContain('ya está en Push');
+    await edits.removeRoutineExByName('Push', 'Press de banca');
+    expect(state.settings.routines.Push).toHaveLength(0);
+    await edits.quickAddToRoutine('Push', 'Press de banca');
+    await edits.quickAddToRoutine('Push', 'Fondos');
+    await edits.changeRoutineExName('Push', 1, 'Press de banca');
+    expect(state.settings.routines.Push[1]?.name).toBe('Fondos');
+    expect(toasts.at(-1)).toContain('ya está en Push');
+
+    // Aviso en confirmación al borrar rutina o aplicar plantilla con entreno activo
+    await edits.removeRoutineDay('Push');
+    expect(confirms.at(-1)?.message).toContain('Tienes un entreno o borrador activo de "Push"');
+    await edits.applyTemplate('upperLower');
+    expect(confirms.at(-1)?.message).toContain('pasará a modo «Libre»');
+
+    // syncWorkoutRoutineNames() sin args pasa tanto liveWorkout como logDraft huérfanos a 'Libre'
+    const { Push: _removed, ...restRoutines } = state.settings.routines;
+    state.settings = { ...state.settings, routines: restRoutines };
+    launch.syncWorkoutRoutineNames();
+    expect(state.liveWorkout?.day).toBe('Libre');
+    expect(state.logDraft?.day).toBe('Libre');
+
+    // 4. saveRoutineModal / saveExerciseModal validan inline y renombra settings ANTES de setTab
+    let validDuringSetTab = false;
+    const modal = createPlanModalActions({
+      getState: () => state,
+      getLastRoutine: () => 'Pull',
+      setLastRoutine: () => {},
+      setTab: (t) => {
+        validDuringSetTab = isValidTab(state, t);
+        state.tab = t;
+      },
+      persist: async () => {},
+      syncWorkoutRoutineNames: launch.syncWorkoutRoutineNames,
+      addExToDraft: () => {},
+      toast: (m) => { toasts.push(m); },
+    });
+    state.tab = 'Pull';
+    state.sel.Pull = 'Jalones al pecho';
+    state.dayExtra = { Pull: true };
+    state.ranges = { Pull: '6M' };
+    state.customRanges = { Pull: { from: '2026-06-01' } };
+    state.activeModal = { type: 'routine', mode: 'edit', oldName: 'Pull', name: 'Pull', sub: '', color: '#3B82F6' };
+
+    const dupErr = await modal.saveRoutineModal({ name: 'Leg', sub: '', color: '#3B82F6' });
+    expect(dupErr).toContain('Ya existe');
+    const resErr = await modal.saveRoutineModal({ name: 'plan', sub: '', color: '#3B82F6' });
+    expect(resErr).toContain('reservado');
+    const okErr = await modal.saveRoutineModal({ name: 'Tirón Pro', sub: 'Espalda', color: '#3B82F6' });
+    expect(okErr).toBeUndefined();
+    expect(validDuringSetTab).toBe(true);
+    expect(state.tab).toBe('Tirón Pro');
+    expect(state.sel['Tirón Pro']).toBe('Jalones al pecho');
+    expect(state.dayExtra?.['Tirón Pro']).toBe(true);
+    expect(state.ranges?.['Tirón Pro']).toBe('6M');
+    expect(state.customRanges?.['Tirón Pro']).toEqual({ from: '2026-06-01' });
+
+    state.activeModal = { type: 'exercise', routine: 'Leg' };
+    const exErr = await modal.saveExerciseModal({ name: 'Press de banca', primary: 'Pecho', secondary: [], sets: 3, reps: 10, routine: 'Leg' });
+    expect(exErr).toContain('Ya existe');
   });
 });

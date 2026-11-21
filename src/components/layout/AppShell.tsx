@@ -1,4 +1,3 @@
-import { useRestTimer } from '../../hooks/useRestTimer';
 import { useAppStore } from '../../store/appStore';
 import { activeTabTitle, buildShellCounters, isRoutineTab } from '../../store/navigation';
 import type { State } from '../../ui/shared';
@@ -16,6 +15,7 @@ import { VolumeView } from '../../views/VolumeView';
 import { SwUpdateBanner, ToastBanner } from '../common/ToastBanner';
 import { ModalHost } from '../modals/ModalHost';
 import { MobileBottomNav, MobileHeader } from './MobileNav';
+import { RestTimerWatcher } from './RestTimerPill';
 import { Sidebar } from './Sidebar';
 
 interface AppShellProps {
@@ -46,18 +46,21 @@ export function AppShell({ onRestExpire }: AppShellProps) {
   const store = useAppStore();
   const { state } = store;
 
-  const rest = useRestTimer(state.liveWorkout?.restUntil, state.liveWorkout?.targetRestSec, onRestExpire);
   const { statsText, liveCount, draftCount } = buildShellCounters(state);
+  const restUntil = state.liveWorkout?.restUntil;
+  const targetRestSec = state.liveWorkout?.targetRestSec;
 
   return (
     <>
+      <RestTimerWatcher restUntil={restUntil} onExpire={onRestExpire} />
       <Sidebar
         state={state}
         statsText={statsText}
         liveCount={liveCount}
         draftCount={draftCount}
         unsynced={store.unsynced}
-        restRemSec={rest.remSec}
+        restUntil={restUntil}
+        targetRestSec={targetRestSec}
         onSelectTab={store.setTab}
         onSelectPlanTab={store.plan.openPlanTab}
         onCloudLogin={store.cloudLogin}
@@ -84,7 +87,8 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         draftCount={draftCount}
         lastRoutine={store.lastRoutine}
         lastAnalytics={store.lastAnalytics}
-        restRemSec={rest.remSec}
+        restUntil={restUntil}
+        targetRestSec={targetRestSec}
         onSelectTab={store.setTab}
       />
       <ModalHost />

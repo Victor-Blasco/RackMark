@@ -56,6 +56,7 @@ export function initLogDraft(
         w: s.w,
         r: s.r,
         done: s.r > 0,
+        ...(s.rir != null ? { rir: s.rir } : {}),
         ...(s.restSec != null ? { restSec: s.restSec } : {}),
       })),
     );
@@ -69,23 +70,13 @@ export function initLogDraft(
   if (day !== 'Libre') {
     for (const r of state.settings.routines[day] ?? []) {
       const k = norm(r.name);
+      if (used.has(k)) continue;
       used.add(k);
       const saved = savedByNorm.get(k);
       if (saved) {
-        exercises.push({
-          name: r.name,
-          done: true,
-          sets: saved.sets,
-          note: [...new Set(saved.notes)].join(' · '),
-          ...(saved.meta ? { meta: saved.meta } : {}),
-        });
+        exercises.push({ name: r.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · '), ...(saved.meta ? { meta: saved.meta } : {}) });
       } else {
-        exercises.push({
-          name: r.name,
-          done: false,
-          sets: defaultSetsForEx(state, r.name, r.sets, r.reps, false),
-          note: '',
-        });
+        exercises.push({ name: r.name, done: false, sets: defaultSetsForEx(state, r.name, r.sets, r.reps, false), note: '' });
       }
     }
   }

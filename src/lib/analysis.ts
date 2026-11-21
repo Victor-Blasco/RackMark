@@ -195,6 +195,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
     byDay[d] = [];
     const added = new Set<string>();
     for (const r of s.routines[d]) {
+      if (added.has(norm(r.name))) continue;
       const base = [...exercises.values()].find((e) => norm(e.name) === norm(r.name));
       if (!base) continue;
       added.add(norm(base.name));

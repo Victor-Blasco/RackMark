@@ -35,25 +35,29 @@ export interface PlanModalDeps {
   toast: (msg: string) => void;
 }
 
+const renameKey = <T>(rec: Record<string, T> | undefined, from: string, to: string): Record<string, T> | undefined => {
+  if (!rec || !(from in rec)) return rec;
+  const { [from]: val, ...rest } = rec;
+  return { ...rest, [to]: val };
+};
+
 /**
  * Crea los guardados de formulario para `<ExerciseModal />` y `<RoutineModal />`.
  *
  * @param deps - Puentes al estado, persistencia, sincronización y avisos.
- * @returns Métodos `saveExerciseModal` y `saveRoutineModal`.
+ * @returns Métodos `saveExerciseModal` y `saveRoutineModal` (devuelven texto de error si falla la validación).
  */
 export function createPlanModalActions(deps: PlanModalDeps) {
   const state = () => deps.getState();
 
   return {
-    async saveExerciseModal(payload: SaveExercisePayload) {
+    async saveExerciseModal(payload: SaveExercisePayload): Promise<string | undefined> {
       const S = state();
       const rawName = payload.name.trim().slice(0, 80);
-      if (!rawName) return;
+      if (!rawName) return 'Introduce un nombre para el ejercicio.';
       const modal = S.activeModal?.type === 'exercise' ? S.activeModal : undefined;
       const existingName = allExerciseNames(S).find((n) => norm(n) === norm(rawName));
-      if (existingName && !modal?.fromLog && modal?.rowIdx == null) {
-        deps.toast(`Ya existe "${existingName}" en tu biblioteca.`); return;
-      }
+      if (existingName && !modal?.fromLog && modal?.rowIdx == null) return `Ya existe "${existingName}" en tu biblioteca.`;
       const finalName = existingName ?? rawName;
       const sec = payload.secondary.filter((m) => m && m !== payload.primary);
       const muscles = payload.primary
@@ -70,7 +74,7 @@ export function createPlanModalActions(deps: PlanModalDeps) {
         const list = [...S.settings.routines[targetRoutine]];
         if (modal?.rowIdx != null && modal.routine === targetRoutine && list[modal.rowIdx]) {
           list[modal.rowIdx] = { name: finalName, sets, reps };
-        } else list.push({ name: finalName, sets, reps });
+        } else if (!list.some((x) => norm(x.name) === norm(finalName))) list.push({ name: finalName, sets, reps });
         routines = { ...S.settings.routines, [targetRoutine]: list };
       }
       S.settings = { ...S.settings, muscles, customNames, routines };
@@ -78,52 +82,54 @@ export function createPlanModalActions(deps: PlanModalDeps) {
       await deps.persist();
       if (modal?.fromLog) deps.addExToDraft(finalName, sets, reps);
       deps.toast(existingName ? `Ejercicio "${finalName}" actualizado.` : `Ejercicio "${finalName}" creado.`);
+      return undefined;
     },
 
-    async saveRoutineModal(payload: SaveRoutinePayload) {
+    async saveRoutineModal(payload: SaveRoutinePayload): Promise<string | undefined> {
       const S = state();
       const rm = S.activeModal?.type === 'routine' ? S.activeModal : undefined;
-      if (!rm) return;
+      if (!rm) return undefined;
       const rawName = payload.name.replace(/\|/g, '/').trim().slice(0, 40);
-      if (!rawName) return;
+      if (!rawName) return 'Introduce un nombre para la rutina.';
       if (RESERVED_ROUTINE_NORMS.has(norm(rawName)) || ['__proto__', 'constructor', 'prototype'].includes(rawName)) {
-        deps.toast(`"${rawName}" es un nombre reservado. Elige otro nombre.`); return;
+        return `"${rawName}" es un nombre reservado. Elige otro nombre.`;
       }
       const existingKeys = routineNames(S.settings);
       const conflict = existingKeys.find((k) => norm(k) === norm(rawName) && (rm.mode === 'create' || k !== rm.oldName));
-      if (conflict) { deps.toast(`Ya existe una rutina llamada "${conflict}".`); return; }
+      if (conflict) return `Ya existe una rutina llamada "${conflict}".`;
       const sub = payload.sub.trim().slice(0, 40);
       const validColor = ROUTINE_COLORS.includes(payload.color) ? payload.color : rm.color;
       const entryMeta = { color: validColor, ...(sub ? { sub } : {}) };
 
       if (rm.mode === 'create') {
-        if (existingKeys.length >= 20) { deps.toast('Máximo 20 rutinas permitidas.'); return; }
-        S.settings = {
-          ...S.settings,
-          routines: { ...S.settings.routines, [rawName]: [] },
-          routineMeta: { ...(S.settings.routineMeta ?? {}), [rawName]: entryMeta },
-        };
+        if (existingKeys.length >= 20) return 'Máximo 20 rutinas permitidas.';
+        S.settings = { ...S.settings, routines: { ...S.settings.routines, [rawName]: [] }, routineMeta: { ...(S.settings.routineMeta ?? {}), [rawName]: entryMeta } };
         S.planRoutine = rawName;
         S.planTargetRoutine = rawName;
         S.activeModal = null;
         await deps.persist();
         deps.toast(`Rutina "${rawName}" creada.`);
-        return;
+        return undefined;
       }
 
       if (rm.oldName && S.settings.routines[rm.oldName]) {
         const oldName = rm.oldName;
         let nextRoutines = S.settings.routines;
         const { [oldName]: _removedMeta, ...restMeta } = S.settings.routineMeta ?? {};
-        if (rawName !== oldName) {
+        const renamed = rawName !== oldName;
+        if (renamed) {
           const rebuilt: Record<string, RoutineEx[]> = {};
-          for (const [k, v] of Object.entries(S.settings.routines)) {
-            rebuilt[k === oldName ? rawName : k] = v;
-          }
+          for (const [k, v] of Object.entries(S.settings.routines)) rebuilt[k === oldName ? rawName : k] = v;
           nextRoutines = rebuilt;
+        }
+        S.settings = { ...S.settings, routines: nextRoutines, routineMeta: { ...restMeta, [rawName]: entryMeta } };
+        if (renamed) {
           if (deps.getLastRoutine() === oldName) deps.setLastRoutine(rawName);
           if (S.tab === oldName) deps.setTab(rawName);
-          if (S.sel.home === oldName) S.sel = { ...S.sel, home: rawName };
+          if (oldName in S.sel) S.sel = renameKey(S.sel, oldName, rawName) ?? S.sel;
+          S.dayExtra = renameKey(S.dayExtra, oldName, rawName);
+          S.ranges = renameKey(S.ranges, oldName, rawName);
+          S.customRanges = renameKey(S.customRanges, oldName, rawName);
           if (S.planRoutine === oldName) S.planRoutine = rawName;
           if (S.planTargetRoutine === oldName) S.planTargetRoutine = rawName;
           deps.syncWorkoutRoutineNames(oldName, rawName);
@@ -134,11 +140,11 @@ export function createPlanModalActions(deps: PlanModalDeps) {
             S.strength = S.strength.map((r) => (r.day === oldName ? { ...r, day: rawName } : r));
           }
         }
-        S.settings = { ...S.settings, routines: nextRoutines, routineMeta: { ...restMeta, [rawName]: entryMeta } };
         S.activeModal = null;
         await deps.persist();
         deps.toast(`Rutina "${rawName}" actualizada.`);
       }
+      return undefined;
     },
   };
 }

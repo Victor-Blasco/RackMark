@@ -13,8 +13,8 @@ interface RoutineModalProps {
   initialSub: string;
   /** Color hexadecimal identificativo seleccionado. */
   initialColor: string;
-  /** Persiste la creación o actualización de la rutina. */
-  onSave: (payload: SaveRoutinePayload) => void | Promise<void>;
+  /** Persiste la creación o actualización de la rutina; devuelve mensaje si hay error de validación. */
+  onSave: (payload: SaveRoutinePayload) => string | undefined | void | Promise<string | undefined | void>;
   /** Cierra el modal sin guardar cambios. */
   onClose: () => void;
 }
@@ -33,6 +33,7 @@ export function RoutineModal({
   const [name, setName] = useState(initialName);
   const [sub, setSub] = useState(initialSub);
   const [color, setColor] = useState(initialColor);
+  const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true, onClose);
 
@@ -40,6 +41,7 @@ export function RoutineModal({
     setName(initialName);
     setSub(initialSub);
     setColor(initialColor);
+    setError(null);
   }, [mode, initialName, initialSub, initialColor]);
 
   const isEdit = mode === 'edit';
@@ -52,7 +54,10 @@ export function RoutineModal({
         class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          void onSave({ name, sub, color });
+          setError(null);
+          void Promise.resolve(onSave({ name, sub, color })).then((err) => {
+            if (typeof err === 'string' && err) setError(err);
+          });
         }}
       >
         <div class="flex items-center justify-between gap-2">
@@ -67,9 +72,15 @@ export function RoutineModal({
           </button>
         </div>
 
+        {error && (
+          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
+            {error}
+          </p>
+        )}
+
         <label class="block">
           <span class="lbl">Nombre de la rutina</span>
-          <input id="rtModalName" class="inp" name="name" maxLength={40} value={name} placeholder="Ej. Torso A" required onInput={(e) => setName(e.currentTarget.value)} />
+          <input id="rtModalName" class="inp" name="name" maxLength={40} value={name} placeholder="Ej. Torso A" required onInput={(e) => { setName(e.currentTarget.value); setError(null); }} />
         </label>
 
         <label class="block">

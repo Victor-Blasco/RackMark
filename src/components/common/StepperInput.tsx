@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from 'preact/hooks';
+
 interface StepperInputProps {
   /** Etiqueta visible encima del control numérico. */
   label: string;
@@ -37,8 +39,19 @@ const DEFAULT_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border 
  * Control numérico táctil `− | valor | +` con etiqueta explícita y targets de 44 px.
  */
 export function StepperInput(props: StepperInputProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const focusedRef = useRef(false);
   const btn = props.btnClass ?? DEFAULT_BTN;
   const inp = props.inputClass ?? 'inp-stepper min-w-[44px]';
+
+  useEffect(() => {
+    if (!focusedRef.current) setDraft(null);
+  }, [props.value]);
+
+  const handleStep = (delta: number) => {
+    setDraft(null);
+    props.onStep?.(delta);
+  };
 
   return (
     <div class={props.wrapClass ?? 'flex-1 min-w-[132px]'}>
@@ -51,7 +64,7 @@ export function StepperInput(props: StepperInputProps) {
           class={`${btn} rounded-l-xl`}
           style={{ touchAction: 'manipulation' }}
           aria-label={props.decAria}
-          onClick={() => props.onStep?.(-props.delta)}
+          onClick={() => handleStep(-props.delta)}
         >
           −
         </button>
@@ -62,17 +75,28 @@ export function StepperInput(props: StepperInputProps) {
           min="0"
           inputMode={props.inputMode}
           enterKeyHint="done"
-          value={props.value}
+          value={draft ?? props.value}
           aria-label={props.inputAria}
-          onInput={(e) => props.onInputValue?.(e.currentTarget.value)}
-          onBlur={(e) => props.onBlurValue?.(e.currentTarget.value)}
+          onFocus={() => {
+            focusedRef.current = true;
+          }}
+          onInput={(e) => {
+            const raw = e.currentTarget.value;
+            setDraft(raw);
+            props.onInputValue?.(raw);
+          }}
+          onBlur={(e) => {
+            focusedRef.current = false;
+            setDraft(null);
+            props.onBlurValue?.(e.currentTarget.value);
+          }}
         />
         <button
           type="button"
           class={`${btn} rounded-r-xl`}
           style={{ touchAction: 'manipulation' }}
           aria-label={props.incAria}
-          onClick={() => props.onStep?.(props.delta)}
+          onClick={() => handleStep(props.delta)}
         >
           +
         </button>

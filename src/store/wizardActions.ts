@@ -62,13 +62,13 @@ export function createWizardActions(deps: WizardActionDeps) {
     back() {
       const w = getDraft();
       if (!w || w.step <= 1) return;
-      deps.openWizardModal({ ...w, step: (w.step - 1) as 1 | 2, anim: 'prev' });
+      deps.openWizardModal({ ...w, step: (w.step - 1) as 1 | 2, anim: 'prev', error: undefined });
     },
 
     updateDraft(patch: Partial<WizardDraft>) {
       const w = getDraft();
       if (!w) return;
-      deps.openWizardModal({ ...w, ...patch, anim: undefined });
+      deps.openWizardModal({ ...w, ...patch, anim: undefined, error: undefined });
     },
 
     async submitStep() {
@@ -79,15 +79,24 @@ export function createWizardActions(deps: WizardActionDeps) {
       if (w.step === 1) {
         const age = parseWizardNum(w.age);
         const height = parseWizardNum(w.height);
-        if (age == null || age < 12 || age > 110) return deps.toast('Introduce una edad válida (12–110 años).');
-        if (height == null || height < 100 || height > 250) return deps.toast('Introduce una altura válida (100–250 cm).');
+        if (age == null || age < 12 || age > 110) {
+          deps.openWizardModal({ ...w, error: 'Introduce una edad válida (12–110 años).' });
+          return;
+        }
+        if (height == null || height < 100 || height > 250) {
+          deps.openWizardModal({ ...w, error: 'Introduce una altura válida (100–250 cm).' });
+          return;
+        }
         const weight = w.weight.trim() ? parseWizardNum(w.weight) : undefined;
-        if (weight !== undefined && (weight < 25 || weight > 300)) return deps.toast('Introduce un peso válido (25–300 kg).');
-        deps.openWizardModal({ ...w, step: 2, anim: 'next' });
+        if (weight !== undefined && (weight < 25 || weight > 300)) {
+          deps.openWizardModal({ ...w, error: 'Introduce un peso válido (25–300 kg).' });
+          return;
+        }
+        deps.openWizardModal({ ...w, step: 2, anim: 'next', error: undefined });
         return;
       }
       if (w.step === 2) {
-        deps.openWizardModal({ ...w, step: 3, anim: 'next' });
+        deps.openWizardModal({ ...w, step: 3, anim: 'next', error: undefined });
         return;
       }
 

@@ -1,11 +1,86 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const fakeRemoteDocs = new Map<string, unknown>();
+const fakeIdb: Record<string, Map<string, unknown>> = {
+  strength: new Map(),
+  cardio: new Map(),
+  measures: new Map(),
+  wellbeing: new Map(),
+};
+let fakeSettings: unknown = null;
+let onRemoteReadHook: (() => void) | null = null;
+
+vi.mock('../src/lib/firebase', () => ({ fs: {} }));
+vi.mock('firebase/firestore', () => ({
+  doc: (_fs: unknown, ...segs: string[]) => segs.join('/'),
+  collection: (_fs: unknown, ...segs: string[]) => segs.join('/'),
+  getDoc: async (ref: string) => {
+    onRemoteReadHook?.();
+    const data = fakeRemoteDocs.get(ref);
+    return { exists: () => data !== undefined, data: () => data };
+  },
+  getDocs: async (colRef: string) => {
+    const prefix = `${colRef}/`;
+    const docs = [...fakeRemoteDocs.entries()]
+      .filter(([k]) => k.startsWith(prefix))
+      .map(([k, v]) => ({ id: k.slice(prefix.length), ref: k, data: () => v }));
+    return { docs, forEach: (cb: (d: { id: string; ref: string; data: () => unknown }) => void) => docs.forEach(cb) };
+  },
+  setDoc: async (ref: string, data: unknown) => {
+    fakeRemoteDocs.set(ref, structuredClone(data));
+  },
+  deleteDoc: async (ref: string) => {
+    fakeRemoteDocs.delete(ref);
+  },
+  writeBatch: () => {
+    const ops: (() => void)[] = [];
+    return {
+      set: (ref: string, data: unknown) => { ops.push(() => fakeRemoteDocs.set(ref, structuredClone(data))); },
+      delete: (ref: string) => { ops.push(() => fakeRemoteDocs.delete(ref)); },
+      commit: async () => { ops.forEach((op) => op()); },
+    };
+  },
+}));
+vi.mock('../src/lib/db', async () => {
+  const actual = await vi.importActual<typeof import('../src/lib/db')>('../src/lib/db');
+  return {
+    ...actual,
+    getAll: async (kind: string) => [...(fakeIdb[kind]?.values() ?? [])],
+    putMany: async (kind: string, items: Record<string, unknown>[]) => {
+      for (const it of items) {
+        const k = (it.id ?? it.date) as string;
+        fakeIdb[kind].set(k, structuredClone(it));
+      }
+    },
+    deleteKey: async (kind: string, key: string) => {
+      fakeIdb[kind].delete(key);
+    },
+    loadSettings: async () => structuredClone(fakeSettings ?? DEFAULT_SETTINGS),
+    saveSettings: async (s: Record<string, unknown>) => {
+      fakeSettings = structuredClone(s);
+    },
+    wipeAll: async () => {
+      Object.values(fakeIdb).forEach((m) => m.clear());
+      fakeSettings = null;
+    },
+  };
+});
+
 import {
   bucketIdFor,
+  clearSyncMeta,
   groupRecordsByBucket,
   hasCustomSettings,
+  hasUnsyncedChanges,
+  loadSyncMeta,
+  markBucketDeletes,
+  markBucketUpserts,
+  markSettingsDirty,
   mergeSyncSettings,
   mergeBucket,
+  saveSyncMeta,
   stripUndefined,
+  syncWithCloud,
   type RemoteBucket,
 } from '../src/lib/sync';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
@@ -249,5 +324,50 @@ describe('cloud sync helpers', () => {
       ...DEFAULT_SETTINGS,
       routines: { ...DEFAULT_SETTINGS.routines, Extra: [{ name: 'Dominadas', sets: 3, reps: 8 }] },
     })).toBe(true);
+  });
+
+  it('syncWithCloud conserva cambios concurrentes durante el vuelo y limpia deletes huérfanos', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, String(v)); },
+      removeItem: (k: string) => { store.delete(k); },
+    });
+    fakeRemoteDocs.clear();
+    Object.values(fakeIdb).forEach((m) => m.clear());
+    fakeSettings = structuredClone(DEFAULT_SETTINGS);
+    clearSyncMeta();
+
+    // Caso 1: añadir y borrar el único registro de un bucket que nunca existió en la nube no deja cambios pendientes tras sync
+    saveSyncMeta({ uid: 'u1', dirtyKeys: {}, deleted: {}, remoteUpdated: {} });
+    markBucketUpserts('measures', [{ date: '2026-11-21', weight: 74 }], 1000);
+    markBucketDeletes('measures', [{ key: '2026-11-21', date: '2026-11-21' }], 2000);
+    expect(hasUnsyncedChanges()).toBe(true);
+
+    onRemoteReadHook = null;
+    await syncWithCloud('u1');
+    expect(hasUnsyncedChanges()).toBe(false);
+    expect(fakeRemoteDocs.has('users/u1/buckets/measures_all')).toBe(false);
+
+    // Caso 2: edición concurrente y ajuste guardado durante el await remoto NO se pierden al cerrar syncWithCloud
+    const nowBeforeSync = Date.now();
+    markBucketUpserts('strength', [row('s1', '2026-11-21')], nowBeforeSync - 100);
+    fakeIdb.strength.set('s1', row('s1', '2026-11-21'));
+    let triggered = false;
+    onRemoteReadHook = () => {
+      if (triggered) return;
+      triggered = true;
+      const later = Date.now() + 50;
+      markBucketUpserts('strength', [row('s2', '2026-11-21', 'edición en vuelo')], later);
+      markSettingsDirty(later);
+    };
+
+    await syncWithCloud('u1');
+    onRemoteReadHook = null;
+    const postMeta = loadSyncMeta();
+    expect(postMeta.dirtyKeys.strength_2026?.s2).toBeDefined();
+    expect(postMeta.settingsDirtyAt).toBeDefined();
+    expect(hasUnsyncedChanges(postMeta)).toBe(true);
+    vi.unstubAllGlobals();
   });
 });

@@ -1,8 +1,8 @@
-import { fmtMMSS } from '../../hooks/useRestTimer';
 import { ANALYTICS_IDS, isRoutineTab } from '../../store/navigation';
 import type { DayName } from '../../types';
 import type { State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
+import { RestTimerBadge } from './RestTimerPill';
 
 export { MobileHeader } from './MobileHeader';
 
@@ -19,6 +19,10 @@ interface MobileBottomNavProps {
   lastAnalytics: string;
   /** Segundos restantes del descanso activo (0 si inactivo). */
   restRemSec?: number;
+  /** Marca temporal objetivo del descanso activo para reloj local sin re-renders globales. */
+  restUntil?: number;
+  /** Duración objetivo del descanso activo en segundos. */
+  targetRestSec?: number;
   /** Callback al seleccionar una pestaña en la barra inferior. */
   onSelectTab: (tab: string) => void;
 }
@@ -33,6 +37,8 @@ export function MobileBottomNav({
   lastRoutine,
   lastAnalytics,
   restRemSec = 0,
+  restUntil,
+  targetRestSec,
   onSelectTab,
 }: MobileBottomNavProps) {
   const inRoutine = isRoutineTab(state, state.tab);
@@ -55,9 +61,7 @@ export function MobileBottomNav({
         <button type="button" aria-current={inTrain ? 'page' : undefined} class="bnav-item" onClick={() => onSelectTab('workout')}>
           <span class={`relative inline-flex items-center justify-center rounded-full ${restRemSec > 0 ? 'px-2.5' : 'px-3.5'} py-1 text-white shadow-sm bg-electricBlue ${inTrain ? 'ring-2 ring-blue-300/60' : ''}`}>
             <Icon name="play" className="h-4 w-4" />
-            <span class={`ml-1 text-[10px] font-bold tabular-nums text-blue-100 ${restRemSec > 0 ? '' : 'hidden'}`}>
-              {restRemSec > 0 ? fmtMMSS(restRemSec) : ''}
-            </span>
+            <RestTimerBadge restUntil={restUntil} targetRestSec={targetRestSec} fallbackRemSec={restRemSec} className="ml-1 text-[10px] font-bold tabular-nums text-blue-100" />
             {(liveCount > 0 || state.liveWorkout != null || draftCount > 0) && (
               <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-navDark" />
             )}

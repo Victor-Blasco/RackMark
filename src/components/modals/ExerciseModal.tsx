@@ -13,8 +13,8 @@ interface ExerciseModalProps {
   initialName?: string;
   /** Indica si se abrió desde `Registrar hecho` (oculta asignación de rutina). */
   fromLog?: boolean;
-  /** Guarda el nuevo ejercicio en el catálogo y en la rutina destino. */
-  onSave: (payload: SaveExercisePayload) => void | Promise<void>;
+  /** Guarda el nuevo ejercicio en el catálogo y en la rutina destino; devuelve error de validación si falla. */
+  onSave: (payload: SaveExercisePayload) => string | undefined | void | Promise<string | undefined | void>;
   /** Cierra el modal sin guardar cambios. */
   onClose: () => void;
 }
@@ -29,6 +29,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
   const [reps, setReps] = useState(10);
   const [secondary, setSecondary] = useState<string[]>([]);
   const [routine, setRoutine] = useState(defaultRoutine);
+  const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, true, onClose);
 
@@ -43,7 +44,10 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
         class="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
         onSubmit={(e) => {
           e.preventDefault();
-          void onSave({ name, primary, secondary, sets, reps, routine });
+          setError(null);
+          void Promise.resolve(onSave({ name, primary, secondary, sets, reps, routine })).then((err) => {
+            if (typeof err === 'string' && err) setError(err);
+          });
         }}
       >
         <div class="flex items-center justify-between gap-2">
@@ -56,9 +60,15 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
           </button>
         </div>
 
+        {error && (
+          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
+            {error}
+          </p>
+        )}
+
         <label class="block">
           <span class="lbl">Nombre del ejercicio</span>
-          <input id="newExName" class="inp" name="name" maxLength={80} enterKeyHint="next" value={name} placeholder="Ej. Remo en polea gironda" required onInput={(e) => setName(e.currentTarget.value)} />
+          <input id="newExName" class="inp" name="name" maxLength={80} enterKeyHint="next" value={name} placeholder="Ej. Remo en polea gironda" required onInput={(e) => { setName(e.currentTarget.value); setError(null); }} />
         </label>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">

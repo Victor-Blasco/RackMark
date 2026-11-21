@@ -315,7 +315,44 @@ export function mergeSyncSettings(local: Settings, remote: Settings): Settings {
   });
 }
 
+function mergeConcurrentSyncMeta(baseMeta: SyncMeta, sinceTs: number): SyncMeta {
+  const latest = loadSyncMeta();
+  if (latest.uid && baseMeta.uid && latest.uid !== baseMeta.uid) return baseMeta;
+  const out: SyncMeta = {
+    ...baseMeta,
+    dirtyKeys: { ...baseMeta.dirtyKeys },
+    deleted: { ...baseMeta.deleted },
+  };
+  if ((latest.settingsDirtyAt ?? 0) > sinceTs) {
+    out.settingsDirtyAt = Math.max(out.settingsDirtyAt ?? 0, latest.settingsDirtyAt!);
+  }
+  if ((latest.pendingWipeAt ?? 0) > sinceTs) {
+    out.pendingWipeAt = Math.max(out.pendingWipeAt ?? 0, latest.pendingWipeAt!);
+  }
+  for (const [bId, keys] of Object.entries(latest.dirtyKeys)) {
+    for (const [k, ts] of Object.entries(keys)) {
+      if (ts > sinceTs) {
+        (out.dirtyKeys[bId] ??= {})[k] = ts;
+        if (out.deleted[bId]) delete out.deleted[bId][k];
+      }
+    }
+  }
+  for (const [bId, keys] of Object.entries(latest.deleted)) {
+    for (const [k, ts] of Object.entries(keys)) {
+      if (ts > sinceTs) {
+        (out.deleted[bId] ??= {})[k] = ts;
+        if (out.dirtyKeys[bId]) delete out.dirtyKeys[bId][k];
+      }
+    }
+  }
+  for (const bId of Object.keys(out.deleted)) {
+    if (Object.keys(out.deleted[bId]).length === 0) delete out.deleted[bId];
+  }
+  return out;
+}
+
 export async function syncWithCloud(uid: string): Promise<SyncReport> {
+  const syncStartedAt = Date.now();
   let meta = loadSyncMeta();
   let accountSwitched = false;
   if (meta.uid && meta.uid !== uid) {
@@ -356,7 +393,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     meta.deleted = {};
     meta.remoteUpdated = { settings: now };
     meta.lastSyncAt = now;
-    saveSyncMeta(meta);
+    saveSyncMeta(mergeConcurrentSyncMeta(meta, syncStartedAt));
     return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed', accountSwitched };
   }
 
@@ -430,7 +467,12 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   }
 
   const localBucketById = new Map(allLocalBuckets.map((b) => [b.id, b]));
-  const allBucketIds = new Set([...localBucketById.keys(), ...Object.keys(remoteMap)]);
+  const allBucketIds = new Set([
+    ...localBucketById.keys(),
+    ...Object.keys(remoteMap),
+    ...Object.keys(meta.dirtyKeys),
+    ...Object.keys(meta.deleted),
+  ]);
 
   let pushedBuckets = 0;
   let pulledItems = 0;
@@ -462,8 +504,13 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     }
 
     if (res.pushRemote) {
-      if (Object.keys(res.merged).length === 0 && Object.keys(res.deleted).length === 0) {
-        if (remoteEntry) await deleteDoc(doc(fs, 'users', uid, 'buckets', bId));
+      const hasMergedItems = Object.keys(res.merged).length > 0;
+      const hasMergedDeletes = Object.keys(res.deleted).length > 0;
+      if (!hasMergedItems && (!remoteEntry || !hasMergedDeletes)) {
+        if (remoteEntry) {
+          await deleteDoc(doc(fs, 'users', uid, 'buckets', bId));
+          pushedBuckets++;
+        }
       } else {
         const nextDoc: RemoteBucket = {
           kind,
@@ -473,14 +520,14 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
         };
         toWriteRemote.push({ id: bId, doc: nextDoc });
         meta.remoteUpdated[bId] = now;
+        pushedBuckets++;
       }
-      pushedBuckets++;
     } else if (remoteEntry) {
       meta.remoteUpdated[bId] = remoteEntry.updatedAt;
     }
 
     delete meta.dirtyKeys[bId];
-    meta.deleted[bId] = res.deleted;
+    delete meta.deleted[bId];
   }
 
   for (let i = 0; i < toWriteRemote.length; i += MAX_BATCH_OPS) {
@@ -492,7 +539,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   }
 
   meta.lastSyncAt = now;
-  saveSyncMeta(meta);
+  saveSyncMeta(mergeConcurrentSyncMeta(meta, syncStartedAt));
   return {
     pushedBuckets,
     pulledItems,

@@ -13,6 +13,8 @@ interface AddRoutineExerciseModalProps {
   routine: string;
   /** Añade un ejercicio existente a la rutina seleccionada. */
   onAdd: (routine: string, name: string) => void | Promise<void>;
+  /** Quita un ejercicio ya incluido en la rutina seleccionada. */
+  onRemove?: (routine: string, name: string) => void | Promise<void>;
   /** Abre el modal de creación de nuevo ejercicio con nombre y rutina preseleccionados. */
   onCreateExercise: (routine: string, initialName?: string) => void;
   /** Cierra el modal sin aplicar cambios adicionales. */
@@ -21,7 +23,7 @@ interface AddRoutineExerciseModalProps {
 
 /** Modal buscador multi-músculo para añadir ejercicios del catálogo o crear uno nuevo en la rutina activa. */
 export function AddRoutineExerciseModal({
-  state, routine, onAdd, onCreateExercise, onClose,
+  state, routine, onAdd, onRemove, onCreateExercise, onClose,
 }: AddRoutineExerciseModalProps) {
   const [query, setQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -119,6 +121,7 @@ export function AddRoutineExerciseModal({
             onClearFilters={() => { setQuery(''); setSelectedMuscles([]); }}
             onCreateExercise={() => onCreateExercise(routine, query.trim() || undefined)}
             onQuickAdd={(r, name) => void onAdd(r, name)}
+            onQuickRemove={onRemove ? (r, name) => void onRemove(r, name) : undefined}
           />
         </div>
 

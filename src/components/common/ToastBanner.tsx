@@ -16,7 +16,7 @@ export function ToastBanner({ message, action }: ToastBannerProps) {
     <div
       role="status"
       aria-live="polite"
-      class="fixed inset-x-3 bottom-20 z-40 mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64"
+      class="fixed inset-x-3 bottom-20 z-[60] mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl border border-electricBlue/40 bg-gray-900 p-3 text-sm text-gray-100 shadow-xl lg:bottom-6 lg:left-64"
     >
       <span class="min-w-0 flex-1">{message}</span>
       {action && (
@@ -50,7 +50,7 @@ export function SwUpdateBanner({ visible, onDismiss, onReload }: SwUpdateBannerP
     <div
       role="status"
       aria-live="polite"
-      class="fixed inset-x-3 bottom-20 z-50 mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-electricBlue/50 bg-floatDark p-3 text-sm text-gray-100 shadow-2xl lg:bottom-6 lg:left-64"
+      class="fixed inset-x-3 bottom-20 z-[55] mx-auto flex max-w-md flex-wrap items-center justify-between gap-2 rounded-xl border border-electricBlue/50 bg-floatDark p-3 text-sm text-gray-100 shadow-2xl lg:bottom-6 lg:left-64"
     >
       <span class="font-medium text-gray-200">Nueva versión disponible.</span>
       <div class="flex shrink-0 items-center gap-1.5">

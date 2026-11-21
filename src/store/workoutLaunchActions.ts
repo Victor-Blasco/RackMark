@@ -17,6 +17,14 @@ export interface WorkoutLaunchDeps {
 /** Tipo de retorno del lanzador de sesiones en vivo y registro manual. */
 export type WorkoutLaunchActions = ReturnType<typeof createWorkoutLaunchActions>;
 
+/** Devuelve un aviso contextual si alguna rutina afectada tiene un entreno o borrador activo. */
+export function activeWorkoutWarning(state: State, removedNames: string[]): string | undefined {
+  const removed = new Set(removedNames);
+  const activeDay = [state.liveWorkout?.day, state.logDraft?.day].find((d): d is string => Boolean(d && removed.has(d)));
+  if (!activeDay) return undefined;
+  return `Tienes un entreno o borrador activo de "${activeDay}"; si continúas, pasará a modo «Libre» conservando tus series.`;
+}
+
 /**
  * Gestiona la apertura y limpieza de sesiones (`En vivo` y `Registrar hecho`) sin depender de `workoutController`.
  *
@@ -62,8 +70,12 @@ export function createWorkoutLaunchActions(deps: WorkoutLaunchDeps) {
         }
         return;
       }
+      if (S.liveWorkout && S.liveWorkout.day !== 'Libre' && !S.settings.routines[S.liveWorkout.day]) {
+        S.liveWorkout = { ...S.liveWorkout, day: 'Libre' };
+        deps.saveLive(S.liveWorkout);
+      }
       if (S.logDraft && S.logDraft.day !== 'Libre' && !S.settings.routines[S.logDraft.day]) {
-        S.logDraft = { ...S.logDraft, day: routineNames(S.settings)[0] ?? 'Libre' };
+        S.logDraft = { ...S.logDraft, day: 'Libre' };
         deps.saveDraft(S.logDraft);
       }
     },

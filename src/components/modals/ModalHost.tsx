@@ -88,6 +88,7 @@ export function ModalHost({ state: propState }: ModalHostProps) {
           state={state}
           routine={modal.routine}
           onAdd={store.plan.quickAddToRoutine}
+          onRemove={store.plan.removeRoutineExByName}
           onCreateExercise={(r, initialName) => store.plan.openExerciseModal({ routine: r, initialName })}
           onClose={store.closeModal}
         />

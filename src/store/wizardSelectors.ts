@@ -16,6 +16,7 @@ export interface WizardDraft {
   templateKey: string;
   aiTone: AiTone;
   anim?: 'open' | 'next' | 'prev';
+  error?: string;
 }
 
 export const WIZARD_GOALS: { id: TrainingGoal; label: string; desc: string }[] = [

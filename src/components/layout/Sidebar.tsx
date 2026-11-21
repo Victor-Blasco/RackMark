@@ -1,7 +1,7 @@
-import { fmtMMSS } from '../../hooks/useRestTimer';
 import { ANALYTICS_TABS, PLAN_TABS } from '../../store/navigation';
 import { routineColor, routineNames, type PlanTab, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
+import { RestTimerBadge } from './RestTimerPill';
 import { SidebarAccountFooter } from './SidebarAccountFooter';
 
 interface SidebarProps {
@@ -17,6 +17,10 @@ interface SidebarProps {
   unsynced: boolean;
   /** Segundos restantes del descanso activo (`0` si inactivo). */
   restRemSec?: number;
+  /** Marca temporal objetivo del descanso activo para reloj local sin re-renders globales. */
+  restUntil?: number;
+  /** Duración objetivo del descanso activo en segundos. */
+  targetRestSec?: number;
   /** Callback al pulsar cualquier pestaña o rutina de navegación. */
   onSelectTab: (tab: string) => void;
   /** Navega a una subpestaña concreta dentro de `Planificación`. */
@@ -27,7 +31,7 @@ interface SidebarProps {
 
 /** Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, planificación, análisis y cuenta. */
 export function Sidebar({
-  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, onSelectTab, onSelectPlanTab, onCloudLogin,
+  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onCloudLogin,
 }: SidebarProps) {
   const unmappedCount = state.analysis.unmapped.length;
   const activePlanTab = state.planTab ?? 'routines';
@@ -51,9 +55,7 @@ export function Sidebar({
             <button type="button" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`nav-item ${state.tab === 'workout' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('workout')}>
               <Icon name="play" className="h-4 w-4" />
               <span class="flex-1 text-left">Iniciar entreno</span>
-              {restRemSec > 0 && (
-                <span class="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white">{fmtMMSS(restRemSec)}</span>
-              )}
+              <RestTimerBadge restUntil={restUntil} targetRestSec={targetRestSec} fallbackRemSec={restRemSec} className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white" />
               {liveCount > 0 && (
                 <span class="inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-200">
                   <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />

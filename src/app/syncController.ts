@@ -40,6 +40,37 @@ export function createSyncController(ctx: AppContext): SyncController {
   let syncRetryTimer: ReturnType<typeof setTimeout> | undefined;
   let syncInFlight = false;
   let syncPending = false;
+  let syncPromise: Promise<void> | null = null;
+
+  function clearSyncTimers(): void {
+    clearTimeout(syncTimer);
+    syncTimer = undefined;
+    if (syncRetryTimer) {
+      clearTimeout(syncRetryTimer);
+      syncRetryTimer = undefined;
+    }
+  }
+
+  function resetSessionUiState(S: AppContext['state']): void {
+    S.measureDraft = undefined;
+    S.calcDraft = undefined;
+    S.measureDate = undefined;
+    S.measurePerimOpen = undefined;
+    S.sel = {};
+    S.dayExtra = undefined;
+    S.ranges = undefined;
+    S.customRanges = undefined;
+    S.activeModal = null;
+    S.aiJob = undefined;
+    S.syncJob = undefined;
+    S.planRoutine = undefined;
+    S.planTab = undefined;
+    S.planSearch = undefined;
+    S.planTargetRoutine = undefined;
+    S.exerciseMapSearch = undefined;
+    S.exerciseMapMuscle = undefined;
+    S.showAllExerciseMap = undefined;
+  }
 
   function scheduleSyncRetry(at: number): void {
     if (syncRetryTimer) clearTimeout(syncRetryTimer);
@@ -160,117 +191,124 @@ export function createSyncController(ctx: AppContext): SyncController {
       syncPending = true;
       return;
     }
-    const storedJob = await loadSyncJob();
-    if (!showToast && storedJob?.status === 'error' && storedJob.nextAttemptAt && storedJob.nextAttemptAt > Date.now()) {
-      return;
-    }
-    const preMeta = loadSyncMeta();
-    if (preMeta.uid && preMeta.uid !== S.user.uid && hasUnsyncedChanges(preMeta)) {
-      syncInFlight = true;
-      const ok = await ctx.askConfirm({
-        title: 'Cambiar de cuenta con cambios pendientes',
-        message: 'Hay cambios locales sin subir de una cuenta anterior. Si cambias ahora se limpiarán de este dispositivo.',
-        confirmLabel: 'Continuar y reemplazar',
-        danger: true,
-      });
-      syncInFlight = false;
-      if (!ok) {
-        syncPending = false;
-        await signOutGoogle();
-        S.user = null;
-        ctx.render();
-        return;
-      }
-      if (!S.user) return;
-    }
     syncInFlight = true;
-    S.syncing = true;
-    ctx.render();
-    let previousJob: SyncJob | undefined;
-    try {
-      previousJob = await loadSyncJob();
-    } catch (e) {
-      S.syncing = false;
-      syncInFlight = false;
-      ctx.render();
-      if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${humanizeError(e)}`);
-      return;
-    }
-    const runningJob: SyncJob = {
-      id: 'cloud-sync',
-      status: 'running',
-      createdAt: previousJob?.createdAt ?? Date.now(),
-      updatedAt: Date.now(),
-      attempts: (previousJob?.attempts ?? 0) + 1,
-      error: undefined,
-    };
-    S.syncJob = runningJob;
-    try {
-      await saveSyncJob(runningJob);
-    } catch (e) {
-      S.syncing = false;
-      syncInFlight = false;
-      ctx.render();
-      if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${humanizeError(e)}`);
-      return;
-    }
-    try {
-      const res = await syncWithCloud(S.user.uid);
-      await clearSyncJob();
-      S.syncJob = undefined;
-      S.lastSync = Date.now();
-      if (res.accountSwitched || res.remoteWiped) {
-        ctx.clearActiveWorkouts();
-      }
-      const changed = Boolean(
-        res.accountSwitched || res.remoteWiped || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled',
-      );
-      if (changed) {
-        await ctx.reload();
-      }
-      const wizardDismissed = Boolean(
-        S.activeModal?.type === 'wizard' &&
-          (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
-      );
-      if (wizardDismissed) {
-        S.activeModal = null;
-      }
-      if (maybeOpenInitialWizard(S) || changed || wizardDismissed) {
+    const exec = (async () => {
+      let runningJob: SyncJob | undefined;
+      try {
+        const storedJob = await loadSyncJob();
+        if (!showToast && storedJob?.status === 'error' && storedJob.nextAttemptAt && storedJob.nextAttemptAt > Date.now()) {
+          return;
+        }
+        const preMeta = loadSyncMeta();
+        if (preMeta.uid && preMeta.uid !== S.user!.uid && hasUnsyncedChanges(preMeta)) {
+          const ok = await ctx.askConfirm({
+            title: 'Cambiar de cuenta con cambios pendientes',
+            message: 'Hay cambios locales sin subir de una cuenta anterior. Si cambias ahora se limpiarán de este dispositivo.',
+            confirmLabel: 'Continuar y reemplazar',
+            danger: true,
+          });
+          if (!ok) {
+            syncPending = false;
+            await signOutGoogle();
+            S.user = null;
+            return;
+          }
+          if (!S.user) return;
+        }
+        const activeUid = S.user?.uid;
+        if (!activeUid) return;
+        S.syncing = true;
+        ctx.render();
+        let previousJob: SyncJob | undefined;
+        try {
+          previousJob = await loadSyncJob();
+        } catch (e) {
+          if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${humanizeError(e)}`);
+          return;
+        }
+        runningJob = {
+          id: 'cloud-sync',
+          status: 'running',
+          createdAt: previousJob?.createdAt ?? Date.now(),
+          updatedAt: Date.now(),
+          attempts: (previousJob?.attempts ?? 0) + 1,
+          error: undefined,
+        };
+        S.syncJob = runningJob;
+        try {
+          await saveSyncJob(runningJob);
+        } catch (e) {
+          if (showToast) ctx.toast(`No se pudo guardar el estado de sincronización: ${humanizeError(e)}`);
+          return;
+        }
+        const res = await syncWithCloud(activeUid);
+        await clearSyncJob();
+        S.syncJob = undefined;
+        S.lastSync = Date.now();
+        if (res.accountSwitched || res.remoteWiped) {
+          ctx.clearActiveWorkouts();
+          resetSessionUiState(S);
+        }
+        const changed = Boolean(
+          res.accountSwitched || res.remoteWiped || res.pulledItems || res.deletedItems || res.settingsDirection === 'pulled',
+        );
+        if (changed) {
+          await ctx.reload();
+        }
+        const wizardDismissed = Boolean(
+          S.activeModal?.type === 'wizard' &&
+            (S.settings.onboardingCompleted || S.strength.length > 0 || S.measures.length > 0),
+        );
+        if (wizardDismissed) {
+          S.activeModal = null;
+        }
+        if (maybeOpenInitialWizard(S) || changed || wizardDismissed) {
+          ctx.render();
+        }
+        if (res.settingsConflict) {
+          ctx.toast('Se aplicaron ajustes más recientes de tu cuenta (tus nombres y notas locales se conservaron).');
+        } else if (showToast) {
+          const msg = res.pulledItems || res.pushedBuckets || res.deletedItems || res.settingsDirection !== 'none'
+            ? 'Datos sincronizados con tu cuenta.'
+            : 'Todo al día con la nube.';
+          ctx.toast(msg);
+        }
+      } catch (e) {
+        const error = humanizeError(e, 'Error de sincronización.');
+        const attempts = runningJob?.attempts ?? 1;
+        const nextAttemptAt = Date.now() + Math.min(
+          SYNC_RETRY_MAX_MS,
+          SYNC_RETRY_BASE_MS * (2 ** Math.max(0, attempts - 1)),
+        );
+        const failedJob: SyncJob = {
+          id: 'cloud-sync',
+          createdAt: runningJob?.createdAt ?? Date.now(),
+          attempts,
+          status: 'error',
+          updatedAt: Date.now(),
+          error,
+          nextAttemptAt,
+        };
+        try {
+          await saveSyncJob(failedJob);
+        } catch {
+          /* persiste al menos en memoria */
+        }
+        S.syncJob = failedJob;
+        scheduleSyncRetry(nextAttemptAt);
+        if (showToast) ctx.toast(`Error de sincronización: ${error}`);
+      } finally {
+        S.syncing = false;
+        syncInFlight = false;
+        syncPromise = null;
         ctx.render();
       }
-      if (res.settingsConflict) {
-        ctx.toast('Se aplicaron ajustes más recientes de tu cuenta (tus nombres y notas locales se conservaron).');
-      } else if (showToast) {
-        const msg = res.pulledItems || res.pushedBuckets || res.deletedItems || res.settingsDirection !== 'none'
-          ? 'Datos sincronizados con tu cuenta.'
-          : 'Todo al día con la nube.';
-        ctx.toast(msg);
-      }
-    } catch (e) {
-      const error = humanizeError(e, 'Error de sincronización.');
-      const nextAttemptAt = Date.now() + Math.min(
-        SYNC_RETRY_MAX_MS,
-        SYNC_RETRY_BASE_MS * (2 ** Math.max(0, runningJob.attempts - 1)),
-      );
-      const failedJob: SyncJob = {
-        ...runningJob,
-        status: 'error',
-        updatedAt: Date.now(),
-        error,
-        nextAttemptAt,
-      };
-      await saveSyncJob(failedJob);
-      S.syncJob = failedJob;
-      scheduleSyncRetry(nextAttemptAt);
-      if (showToast) ctx.toast(`Error de sincronización: ${error}`);
-    } finally {
-      S.syncing = false;
-      syncInFlight = false;
-      ctx.render();
-      if (syncPending) {
-        syncPending = false;
-        void runSync(false);
-      }
+    })();
+    syncPromise = exec;
+    await exec;
+    if (syncPending) {
+      syncPending = false;
+      if (ctx.state.user && isOnline()) void runSync(false);
     }
   }
 
@@ -329,8 +367,12 @@ export function createSyncController(ctx: AppContext): SyncController {
       S.authReady = true;
       S.user = user;
       if (changed || !wasReady) ctx.render();
-      if (user && changed && isOnline()) void runSync(false);
-      if (user) void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${humanizeError(e)}`));
+      if (user && changed && isOnline()) {
+        syncResumeAttempted = true;
+        void runSync(false);
+      } else if (user) {
+        void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${humanizeError(e)}`));
+      }
       if (user) void resumeAiJob().catch((e) => ctx.toast(`No se pudo recuperar el informe IA: ${humanizeError(e)}`));
     });
   }
@@ -409,6 +451,9 @@ export function createSyncController(ctx: AppContext): SyncController {
 
   const cloudLogout = async (): Promise<void> => {
     const S = ctx.state;
+    clearSyncTimers();
+    syncPending = false;
+    if (syncPromise) await syncPromise;
     if (S.user && isOnline() && hasUnsyncedChanges()) await runSync(false);
     if (
       hasUnsyncedChanges() &&
@@ -423,9 +468,13 @@ export function createSyncController(ctx: AppContext): SyncController {
     }
     try {
       await signOutGoogle();
+      if (syncPromise) await syncPromise;
       await wipeAll();
       clearSyncMeta();
+      aiResumeAttempted = false;
+      syncResumeAttempted = false;
       ctx.clearActiveWorkouts();
+      resetSessionUiState(S);
       S.user = null;
       S.lastSync = undefined;
       await ctx.reload();
@@ -452,10 +501,13 @@ export function createSyncController(ctx: AppContext): SyncController {
       return;
     }
     try {
+      clearSyncTimers();
+      syncPending = false;
+      if (syncPromise) await syncPromise;
       await wipeAll();
       markWipePending();
-      S.measureDraft = undefined;
       ctx.clearActiveWorkouts();
+      resetSessionUiState(S);
       await ctx.reload();
       ctx.render();
       queueSync();
