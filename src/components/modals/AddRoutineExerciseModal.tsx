@@ -50,9 +50,9 @@ export function AddRoutineExerciseModal({
   const hasFilters = Boolean(query.trim() || selectedMuscles.length);
 
   return (
-    <div id="add-routine-ex-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="addRoutineExTitle" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+    <div id="add-routine-ex-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="addRoutineExTitle" class="fixed inset-0 z-50 flex items-center justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-4">
       <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
-      <div class="relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[88dvh]">
+      <div class="relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[82dvh] sm:max-h-[85dvh]">
         <div class="shrink-0 space-y-3 border-b border-white/10 px-4 pt-4 pb-3 sm:px-5">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
@@ -134,9 +134,9 @@ export function AddRoutineExerciseModal({
           />
         </div>
 
-        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3 sm:px-5">
+        <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3.5 sm:px-5">
           <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs text-gray-400">¿No encuentras el ejercicio?</span>
+            <span class="hidden sm:inline text-xs text-gray-400">¿No encuentras el ejercicio?</span>
             <button type="button" class="btn-sm btn-accent" onClick={() => onCreateExercise(routine, query.trim() || undefined)}>
               + Crear ejercicio
             </button>

@@ -1,9 +1,9 @@
+import { useEffect, useState } from 'preact/hooks';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LogWorkoutActions } from '../../store/logActions';
 import type { LogExDraft } from '../../types';
-import { Icon } from '../common/Icon';
-import { StepperInput } from '../common/StepperInput';
 import { LogExerciseHeader } from './LogExerciseHeader';
+import { LogSetRow } from './LogSetRow';
 
 interface LogExerciseCardProps {
   /** Índice base 0 del ejercicio dentro del borrador. */
@@ -16,25 +16,38 @@ interface LogExerciseCardProps {
   ctx: ReturnType<typeof exerciseContext>;
   /** Acciones reactivas del borrador histórico. */
   actions: LogWorkoutActions;
+  /** Callback opcional de reordenamiento con animación FLIP. */
+  onMoveExercise?: (dir: number) => void;
 }
 
-const LOG_STEP_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const TOGGLE_PILL =
+  'min-h-[44px] sm:min-h-[34px] inline-flex items-center rounded-xl border px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
- * Bloque de ejercicio dentro de `Registrar hecho` con reordenamiento y edición por series.
+ * Bloque compacto de ejercicio dentro de `Registrar hecho` con cabecera única de series y controles bajo demanda.
  */
-export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions }: LogExerciseCardProps) {
+export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveExercise }: LogExerciseCardProps) {
+  const [showDetails, setShowDetails] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(() => Boolean(ex.note.trim()));
+
+  useEffect(() => {
+    if (ex.note.trim()) setNoteOpen(true);
+  }, [ex.note]);
+
+  const detailsCount = ex.sets.filter((s) => s.rir != null || s.restSec != null).length;
   const borderCls = ctx.allDoneInEx ? 'border-emeraldGreen/50' : ctx.doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10';
+  const hasNote = Boolean(ex.note.trim());
 
   return (
-    <div data-sort-item data-sort-idx={ei} class={`border-t pt-4 sm:rounded-2xl sm:border sm:bg-cardDark sm:p-4 space-y-3 transition-colors ${borderCls}`}>
+    <div data-sort-item data-sort-idx={ei} data-sort-key={ex.name} class={`border-t pt-4 sm:rounded-2xl sm:border sm:bg-cardDark sm:p-4 space-y-2.5 transition-colors ${borderCls}`}>
       <LogExerciseHeader
         ei={ei}
         total={total}
         exercise={ex}
         ctx={ctx}
         onToggleExercise={() => actions.toggleExercise(ei)}
-        onMoveExercise={(dir) => actions.moveExercise(ei, dir)}
+        onMoveExercise={onMoveExercise ?? ((dir) => actions.moveExercise(ei, dir))}
+        onOpenFixedNote={() => actions.openFixedNote(ex.name)}
         onRemoveExercise={() => actions.removeExercise(ei)}
       />
 
@@ -54,77 +67,61 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions }: LogEx
         </div>
       )}
 
-      <div class="divide-y divide-white/10">
-        <div class="hidden sm:flex items-center gap-1.5 px-1.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-          <span class="w-5 shrink-0" />
-          <span class="flex-1 text-center">Peso (kg · ±2,5)</span>
-          <span class="flex-1 text-center">Reps (±1)</span>
-          <span class="w-20 shrink-0 text-center">Desc (s)</span>
-          <span class="w-14 shrink-0 text-center">RIR</span>
+      <div>
+        <div class="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          <span class="w-5 shrink-0 text-center">#</span>
+          <span class="flex-1 text-center">Peso (kg)</span>
+          <span class="flex-1 text-center">Reps</span>
+          <span class="hidden sm:block w-16 shrink-0 text-center">Desc (s)</span>
+          <span class="hidden sm:block w-12 shrink-0 text-center">RIR</span>
           <span class="w-11 shrink-0 text-center">OK</span>
         </div>
 
-        {ex.sets.map((s, si) => (
-          <div key={si} class={`flex flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}`}>
-            <span class={`w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-400'}`}>
-              S{si + 1}{s.done && <span class="sr-only"> completada</span>}
-            </span>
-            <StepperInput
-              label="Peso (kg)"
-              labelClass="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400"
-              value={s.w}
-              step="0.5"
-              inputMode="decimal"
-              inputAria={`Peso en kg serie ${si + 1} de ${ex.name}`}
-              delta={2.5}
-              decAria={`Restar 2,5 kg a serie ${si + 1} de ${ex.name}`}
-              incAria={`Sumar 2,5 kg a serie ${si + 1} de ${ex.name}`}
-              btnClass={LOG_STEP_BTN}
-              onStep={(d) => actions.stepWeight(ei, si, d)}
-              onInputValue={(raw) => actions.updateWeight(ei, si, raw, false)}
-              onBlurValue={(raw) => actions.updateWeight(ei, si, raw, true)}
-            />
-            <StepperInput
-              label="Reps"
-              labelClass="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400"
-              value={s.r}
-              step="1"
-              inputMode="numeric"
-              inputAria={`Repeticiones serie ${si + 1} de ${ex.name}`}
-              delta={1}
-              decAria={`Restar 1 repetición a serie ${si + 1} de ${ex.name}`}
-              incAria={`Sumar 1 repetición a serie ${si + 1} de ${ex.name}`}
-              btnClass={LOG_STEP_BTN}
-              onStep={(d) => actions.stepReps(ei, si, d)}
-              onInputValue={(raw) => actions.updateReps(ei, si, raw, false)}
-              onBlurValue={(raw) => actions.updateReps(ei, si, raw, true)}
-            />
-            <div class="shrink-0">
-              <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">Desc (s)</span>
-              <input class="inp h-11 w-20 rounded-md px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="5" min="0" max="1800" inputMode="numeric" enterKeyHint="done" value={s.restSec ?? ''} placeholder="Desc (s)" aria-label={`Descanso en segundos serie ${si + 1} de ${ex.name}`} onInput={(e) => actions.updateRest(ei, si, e.currentTarget.value)} />
-            </div>
-            <div class="shrink-0">
-              <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">RIR</span>
-              <input class="inp h-11 w-14 rounded-md px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="1" min="0" max="10" inputMode="numeric" enterKeyHint="done" value={s.rir ?? ''} placeholder="RIR" aria-label={`RIR de serie ${si + 1} de ${ex.name}`} onInput={(e) => actions.updateRir(ei, si, e.currentTarget.value)} />
-            </div>
-            <button type="button" aria-pressed={s.done ? 'true' : 'false'} aria-label={`${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${ex.name}`} class={`ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition-colors active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}`} style={{ touchAction: 'manipulation' }} onClick={() => actions.toggleSet(ei, si)}>
-              {s.done ? <Icon name="check" className="h-5 w-5" /> : <span class="h-4 w-4 rounded-full border-2 border-current opacity-60" aria-hidden="true" />}
-            </button>
-          </div>
-        ))}
+        <div class="divide-y divide-white/[0.06]">
+          {ex.sets.map((s, si) => (
+            <LogSetRow key={si} ei={ei} si={si} exName={ex.name} set={s} showMobileDetails={showDetails} actions={actions} />
+          ))}
+        </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 pt-1">
-        <button type="button" class="btn min-h-[44px] px-3 text-xs sm:text-sm" onClick={() => actions.addSet(ei)}>+ Serie</button>
-        {ex.sets.length > 1 && (
-          <button type="button" class="btn min-h-[44px] px-3 text-xs sm:text-sm text-coralRed" aria-label={`Quitar última serie de ${ex.name}`} onClick={() => actions.delSet(ei, ex.sets.length - 1)}>
-            − Serie
-          </button>
-        )}
-        <input class="inp min-h-[44px] min-w-[160px] flex-1 py-1.5" enterKeyHint="done" value={ex.note} placeholder="Nota (RIR, sensaciones…)" aria-label={`Nota de sesión para ${ex.name}`} onInput={(e) => actions.updateNote(ei, e.currentTarget.value)} />
-        <button type="button" class="btn min-h-[44px] px-2.5 text-xs" aria-label={`Editar nota biomecánica fija de ${ex.name}`} onClick={() => actions.openFixedNote(ex.name)}>
-          <Icon name="edit" className="h-3.5 w-3.5" /> Fija
-        </button>
+      <div class="space-y-2 pt-1">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-1.5">
+            <button type="button" class="btn-sm min-h-[44px] sm:min-h-[34px]" onClick={() => actions.addSet(ei)}>+ Serie</button>
+            {ex.sets.length > 1 && (
+              <button type="button" class="min-h-[44px] sm:min-h-[34px] inline-flex items-center rounded-xl px-2.5 text-xs font-semibold text-gray-400 hover:text-coralRed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label={`Quitar última serie de ${ex.name}`} onClick={() => actions.delSet(ei, ex.sets.length - 1)}>
+                − Serie
+              </button>
+            )}
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <button
+              type="button"
+              aria-expanded={showDetails ? 'true' : 'false'}
+              class={`sm:hidden ${TOGGLE_PILL} tabular-nums ${showDetails ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`}
+              onClick={() => setShowDetails((v) => !v)}
+            >
+              RIR · Desc.{detailsCount > 0 ? ` · ${detailsCount}` : ''}
+            </button>
+            <button
+              type="button"
+              aria-expanded={noteOpen ? 'true' : 'false'}
+              class={`${TOGGLE_PILL} ${noteOpen || hasNote ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`}
+              onClick={() => setNoteOpen((v) => !v)}
+            >
+              {hasNote ? 'Nota' : '+ Nota'}
+            </button>
+          </div>
+        </div>
+
+        <div class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${noteOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div class="overflow-hidden" inert={!noteOpen} aria-hidden={noteOpen ? undefined : 'true'}>
+            <div class="pt-1">
+              <input class="inp min-h-[44px] py-1.5" enterKeyHint="done" value={ex.note} placeholder="Nota de la sesión (sensaciones, agarre…)" aria-label={`Nota de sesión para ${ex.name}`} onInput={(e) => actions.updateNote(ei, e.currentTarget.value)} />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

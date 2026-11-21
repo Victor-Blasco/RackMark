@@ -21,7 +21,6 @@ export interface LogActionDeps {
   openNoteModal: (exName: string) => void;
   onStartLiveTab: () => void;
   onOpenExercisePicker: () => void;
-  onOpenNewExerciseModal: () => void;
 }
 
 /** Tipo de retorno completo de las acciones de `Registrar hecho`. */
@@ -60,7 +59,6 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
     ...createLogHistoryActions(deps, ensureDraft, confirmSwitchDraft),
     openLiveWorkoutTab: () => deps.onStartLiveTab(),
     openExercisePicker: () => deps.onOpenExercisePicker(),
-    openNewExerciseModal: () => deps.onOpenNewExerciseModal(),
     openFixedNote: (exName: string) => deps.openNoteModal(exName),
 
     async changeDate(rawDate: string) {

@@ -3,6 +3,7 @@ import { isoWeekStart } from '../lib/analysis';
 import type { DayName } from '../types';
 import { inRange, resolveRange, routineNames, short, todayIso, type DateBounds, type State } from '../ui/shared';
 import { buildAdherenceCalendarData } from './adherenceCalendar';
+import { buildAdherenceSessions } from './adherenceSessions';
 import { weeksForBounds } from './volumeSelectors';
 
 /**
@@ -53,7 +54,7 @@ export function buildAdherenceViewModel(state: State) {
   const cardio = state.cardio.filter((c) => inRange(c.date, effBounds));
   const cardioDistKm = cardio.reduce((a, c) => a + c.distKm, 0);
   const cardioDurMin = cardio.reduce((a, c) => a + c.durMin, 0);
-  const recentCardio = [...cardio].reverse().slice(0, 12);
+  const { recentSessions, sessionFilters } = buildAdherenceSessions(state, effBounds, routines);
 
   const wellScope = state.wellbeing.filter((w) => inRange(w.date, effBounds));
   const hasSleep = wellScope.some((w) => w.sleepMin != null || w.hrv != null);
@@ -114,7 +115,8 @@ export function buildAdherenceViewModel(state: State) {
     cardioCount: cardio.length,
     cardioDistKm,
     cardioDurMin,
-    recentCardio,
+    recentSessions,
+    sessionFilters,
     sleepChartCfg,
     stepsChartCfg,
   };

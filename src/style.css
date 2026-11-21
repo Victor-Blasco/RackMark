@@ -23,9 +23,13 @@
   color-scheme: dark;
 }
 
+html,
+body {
+  overflow-x: clip;
+}
+
 body {
   background: #090D16;
-  overflow-x: hidden;
 }
 
 @layer base {

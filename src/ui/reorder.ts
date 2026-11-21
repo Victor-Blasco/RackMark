@@ -13,6 +13,74 @@ export function moveItem<T>(arr: T[], from: number, to: number): boolean {
 
 const FLIP_TRANSITION = 'transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)';
 const DRAG_ACTIVE_CLASSES = ['relative', 'z-30', 'shadow-2xl', 'ring-2', 'ring-electricBlue/80', 'is-dragging'];
+const FLIP_HIGHLIGHT_CLASSES = ['relative', 'z-20', 'ring-1', 'ring-electricBlue/60', 'rounded-xl'];
+
+function getSortItems(list: HTMLElement): HTMLElement[] {
+  return Array.from(list.children).filter(
+    (el): el is HTMLElement => typeof (el as HTMLElement).hasAttribute === 'function' && (el as HTMLElement).hasAttribute('data-sort-item'),
+  );
+}
+
+/** Captura las posiciones actuales de los hijos `[data-sort-item]` con `data-sort-key` antes de reordenarlos. */
+export function captureFlipRects(list: HTMLElement | null): Map<string, DOMRect> {
+  const rects = new Map<string, DOMRect>();
+  if (!list) return rects;
+  for (const el of getSortItems(list)) {
+    const key = el.dataset?.sortKey;
+    if (!key) continue;
+    el.style.transition = 'none';
+    el.style.transform = '';
+    rects.set(key, el.getBoundingClientRect());
+  }
+  return rects;
+}
+
+/** Anima el desplazamiento FLIP de elementos reordenados y asegura la visibilidad del elemento movido. */
+export function playFlipRects(list: HTMLElement | null, prevRects: Map<string, DOMRect>, movedKey?: string): void {
+  if (!list || !prevRects.size) return;
+  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let movedEl: HTMLElement | null = null;
+  let movedLast: DOMRect | null = null;
+  const animated: HTMLElement[] = [];
+
+  for (const el of getSortItems(list)) {
+    const key = el.dataset?.sortKey;
+    if (!key) continue;
+    const first = prevRects.get(key);
+    if (!first) continue;
+    const last = el.getBoundingClientRect();
+    if (key === movedKey) {
+      movedEl = el;
+      movedLast = last;
+    }
+    if (reducedMotion) continue;
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+    el.style.transition = 'none';
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    if (key === movedKey) el.classList?.add(...FLIP_HIGHLIGHT_CLASSES);
+    animated.push(el);
+  }
+
+  if (animated.length) {
+    void list.offsetHeight;
+    for (const el of animated) {
+      el.style.transition = FLIP_TRANSITION;
+      el.style.transform = '';
+      const clear = () => {
+        el.style.transition = '';
+        el.classList?.remove(...FLIP_HIGHLIGHT_CLASSES);
+      };
+      el.addEventListener?.('transitionend', clear, { once: true });
+      setTimeout(clear, 260);
+    }
+  }
+
+  if (movedEl && movedLast && typeof window !== 'undefined' && (movedLast.top < 72 || movedLast.bottom > window.innerHeight - 84)) {
+    movedEl.scrollIntoView?.({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest' });
+  }
+}
 
 /**
  * Activa delegación de arrastre con animación FLIP sobre `root` para cualquier
@@ -52,8 +120,7 @@ export function initSortableLists(
     active = null;
   };
 
-  const getItems = (list: HTMLElement) =>
-    Array.from(list.children).filter((el): el is HTMLElement => el instanceof HTMLElement && el.hasAttribute('data-sort-item'));
+  const getItems = getSortItems;
 
   const maybeSwap = () => {
     if (!active || !active.started || performance.now() < active.lockUntil) return;

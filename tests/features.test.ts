@@ -59,7 +59,7 @@ import { createWorkoutRestActions } from '../src/store/workoutRestActions';
 import { initLiveWorkout } from '../src/store/workoutSelectors';
 import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
-import { moveItem } from '../src/ui/reorder';
+import { captureFlipRects, moveItem, playFlipRects } from '../src/ui/reorder';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
 import {
   DAY_COLOR,
@@ -736,8 +736,8 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(homeHtml).toContain('Press Banca X');
 
     const volHtml = renderToString(h(VolumeView, { state }));
-    expect(volHtml).toContain('hidden md:block');
-    expect(volHtml).toContain('md:hidden');
+    expect(volHtml).toContain('sticky left-0');
+    expect(volHtml).toContain('overflow-x-auto');
 
     const adhHtml = renderToString(h(AdherenceView, { state }));
     expect(adhHtml).toContain('aria-label="Mes anterior"');
@@ -949,11 +949,12 @@ describe('onboarding wizard & athlete profile', () => {
     expect(logHtml).toContain('Iniciar entreno en vivo');
     expect(logHtml).toContain('Peso (kg)');
     expect(logHtml).toContain('Reps');
-    expect(logHtml).toContain('flex-wrap sm:flex-nowrap items-center gap-1.5 rounded-xl p-1.5');
-    expect(logHtml).toContain('min-w-[132px]');
+    expect(logHtml).toContain('flex items-center gap-1.5');
+    expect(logHtml).toContain('flex-1 min-w-0');
     expect(logHtml).toContain('min-h-[44px]');
     expect(logHtml).not.toContain('!min-h-[44px]');
-    expect(logHtml).toContain('min-w-[44px]');
+    expect(logHtml).toContain('min-w-[40px]');
+    expect(logHtml).toContain('RIR · Desc.');
   });
 });
 
@@ -1314,7 +1315,8 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
     expect(liveHtml).not.toContain('h-11 w-10 sm:w-11');
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...baseState, tab: 'log', logDraft: initLogDraft(baseState, 'Push', '2026-11-16') } }));
-    expect(logHtml).toContain('text-base sm:text-xs font-semibold tabular-nums');
+    expect(logHtml).toContain('text-base font-semibold tabular-nums');
+    expect(logHtml).toContain('h-11 rounded-md px-1.5 py-0 text-center text-xs font-semibold tabular-nums');
   });
 });
 
@@ -1589,7 +1591,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toBeNull();
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', '2026-11-15') } }));
-    expect(logHtml).toContain('inp-stepper min-w-[44px]');
+    expect(logHtml).toContain('inp-stepper min-h-[44px]');
     expect(logHtml).toContain('btn btn-accent');
     expect(logHtml).toContain('<h1');
     expect(logHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
@@ -1600,7 +1602,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const pickerHtml = renderToString(h(RangePicker, { active: 'Custom', custom: {} }));
     expect(planHtml).toContain('<h1');
     expect(bodyHtml).toContain('<h1');
-    expect(bodyHtml).toContain('table-fixed');
+    expect(bodyHtml).toContain('sticky left-0 z-10 bg-bgDark');
     expect(pickerHtml).toContain('min-h-[44px] min-w-[44px]');
     for (const html of [planHtml, planExHtml, bodyHtml, pickerHtml]) {
       expect(html).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
@@ -1827,7 +1829,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const logDraft = initLogDraft(state, 'Push', '2026-11-15');
     logDraft.exercises = [{ name: 'Press de banca', note: '', done: true, sets: [{ w: 80, r: 8, done: true }] }];
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft } }));
-    expect(logHtml).toContain('<span class="w-14 shrink-0 text-center">RIR</span>');
+    expect(logHtml).toContain('<span class="hidden sm:block w-12 shrink-0 text-center">RIR</span>');
     expect(logHtml).toContain('Guardar sesión (1 serie)');
 
     const dataHtml = renderToString(h(DataView, { state: { ...state, tab: 'data' } }));
@@ -2410,8 +2412,8 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(adhHtml).not.toContain('text-gray-500');
     expect(adhHtml).toContain('border-2 text-white font-extrabold');
     expect(adhHtml).toContain('2b;border-color:');
-    expect(adhHtml).toContain('md:hidden divide-y divide-white/10');
-    expect(adhHtml).toContain('hidden md:block overflow-x-auto');
+    expect(adhHtml).toContain('divide-y divide-white/10');
+    expect(adhHtml).toContain('aria-label="Filtrar sesiones recientes"');
 
     // 3. Plan → Ejercicios: sin text-gray-500, selects con max-w-full, filtros lg:sticky y chips >= 44px
     const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises' } }));
@@ -2425,12 +2427,13 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const exModalHtml = renderToString(h(ModalHost, { state: { ...base, activeModal: { type: 'exercise', routine: 'Push' } } }));
     expect(exModalHtml).toContain('min-h-[44px] sm:min-h-[32px]');
 
-    // 4. Overflow responsive: Cuerpo (w-24), Volumen móvil (overflow-x-auto), Registrar hecho (2xl:grid-cols-2)
+    // 4. Overflow responsive: Cuerpo (sticky + acordeón móvil), Volumen (sticky + overflow-x-auto), Registrar hecho (2xl:grid-cols-2)
     const bodyHtml = renderToString(h(BodyView, { state: { ...base, tab: 'body' } }));
-    expect(bodyHtml).toContain('w-24 sm:w-20 pl-1"><span class="sr-only">Acciones</span>');
+    expect(bodyHtml).toContain('w-20 pl-2 whitespace-nowrap"><span class="sr-only">Acciones</span>');
 
     const volHtml = renderToString(h(VolumeView, { state: { ...base, tab: 'volume' } }));
-    expect(volHtml).toContain('md:hidden overflow-x-auto');
+    expect(volHtml).toContain('overflow-x-auto');
+    expect(volHtml).toContain('sticky left-0');
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: initLogDraft(base, 'Push', sessionDay) } }));
     expect(logHtml).toContain('2xl:grid-cols-2');
@@ -2782,12 +2785,13 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(replaceModalHtml).toContain('Cambiar ejercicio en Push');
     expect(replaceModalHtml).toContain('Elegir');
 
-    // 2. Registrar hecho reemplaza <select id="logAddSelect"> por botón al modal logExercisePicker
+    // 2. Registrar hecho reemplaza <select id="logAddSelect"> y añadir rápido por botón único + Añadir ejercicio
     const logHtml = renderToString(
       h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: initLogDraft(base, 'Push', todayIso()) } }),
     );
     expect(logHtml).not.toContain('id="logAddSelect"');
-    expect(logHtml).toContain('+ Buscar en catálogo');
+    expect(logHtml).not.toContain('id="logNewExName"');
+    expect(logHtml).toContain('+ Añadir ejercicio');
 
     const logModalHtml = renderToString(
       h(ModalHost, {
@@ -2930,5 +2934,211 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(calcHtml).toContain('tabindex="0" aria-checked="true"');
     expect(calcHtml).toContain('tabindex="-1" aria-checked="false"');
     expect(calcHtml).toContain('focus-visible:ring-electricBlue');
+  });
+
+  it('mejoras UX: historial de cuerpo móvil/grupos, volumen sin corte móvil, adherencia sesiones recientes y alta simplificada', async () => {
+    const settings = sanitizeSettings(DEFAULT_SETTINGS);
+    const today = todayIso();
+    const strength = [
+      { id: 's1', ts: 1, date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }], sessionId: `manual-${today}-Push`, durMin: 45, avgHr: 124, kcal: 320 },
+      { id: 's2', ts: 2, date: today, ref: 'name:Dominadas', day: 'Pull' as const, sets: [{ w: 10, r: 8 }], sessionId: `manual-${today}-Pull` },
+    ];
+    const measures = [
+      { date: today, weight: 75.5, bf: 14.5, muscle: 35.6, waist: 80.1, torso: 103, armL: 36.5, armR: 36.8, thighL: 57.5, thighR: 57.8 },
+    ];
+    const cardio = [
+      { id: 'c1', ts: 3, date: today, type: 1, durMin: 30, distKm: 4.5, avgHr: 142, kcal: 310, vo2: 47.2 },
+    ];
+    const base: State = {
+      tab: 'body',
+      strength,
+      cardio,
+      measures,
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      ranges: { volume: '6M', adherence: '3M' },
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. Cuerpo: lista móvil con acordeón de perímetros completos + pestañas en escritorio sin table-fixed
+    const bodyHtml = renderToString(h(BodyView, { state: base }));
+    expect(bodyHtml).toContain('Ver perímetros (5)');
+    expect(bodyHtml).toContain('Brazo izq.');
+    expect(bodyHtml).toContain('Muslo der.');
+    expect(bodyHtml).toContain('grid-rows-[0fr]');
+    expect(bodyHtml).toContain('role="radiogroup" aria-label="Columnas del historial de mediciones"');
+    expect(bodyHtml).toContain('Tren superior');
+    expect(bodyHtml).toContain('Tren inferior');
+    expect(bodyHtml).toContain('relative hidden md:block overflow-x-auto');
+    expect(bodyHtml).not.toContain('table-fixed');
+
+    // 2. Volumen: rango 6M renderiza todas las semanas (~26) sin recorte móvil y con columna Músculo fija
+    const volHtml = renderToString(h(VolumeView, { state: { ...base, tab: 'volume' } }));
+    const thCount = (volHtml.match(/<th scope="col"/g) ?? []).length;
+    expect(thCount).toBeGreaterThan(20);
+    expect(volHtml).toContain('sticky left-0 z-10 bg-bgDark');
+    expect(volHtml).toContain('relative overflow-x-auto');
+    expect(volHtml).not.toContain('hidden md:block');
+
+    // 3. Adherencia: Sesiones recientes combinando rutinas y cardio con chips de filtro y apertura hacia Registrar hecho
+    const adhHtml = renderToString(h(AdherenceView, { state: { ...base, tab: 'adherence' } }));
+    expect(adhHtml).toContain('Sesiones recientes (3)');
+    expect(adhHtml).toContain('aria-label="Filtrar sesiones recientes"');
+    expect(adhHtml).toContain('1 ej. · 2 series');
+    expect(adhHtml).toContain('30 min · 4,5 km');
+    expect(adhHtml).toContain('Abrir sesión Push del');
+
+    let switchedTab = 'adherence';
+    let committed: State['logDraft'] | undefined;
+    const histActions = createLogHistoryActions(
+      {
+        getState: () => ({ ...base, tab: switchedTab }),
+        commitDraft: (d) => { committed = d; },
+        reload: async () => {},
+        setTab: (t) => { switchedTab = t; },
+        queueSync: () => {},
+        toast: () => {},
+        askConfirm: async () => true,
+      },
+      () => initLogDraft(base, 'Push', today),
+      async () => true,
+    );
+    await histActions.editHistorySession(`manual-${today}-Push`, today, 'Push');
+    expect(switchedTab).toBe('log');
+    expect(committed?.day).toBe('Push');
+
+    // 4. Registrar hecho: bloque simplificado + diseño compacto Opción C
+    const draftBase = initLogDraft(base, 'Push', today);
+    const enrichedDraft = {
+      ...draftBase,
+      exercises: draftBase.exercises.map((e, idx) =>
+        idx === 0
+          ? {
+              ...e,
+              note: 'Buen control excéntrico',
+              sets: e.sets.map((s) => ({ ...s, rir: 2, restSec: 90 })),
+            }
+          : e,
+      ),
+    };
+    const logHtml = renderToString(
+      h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: enrichedDraft } }),
+    );
+    expect(logHtml).toContain('+ Añadir ejercicio (');
+    expect(logHtml).not.toContain('+ Añadir rápido');
+    expect(logHtml).not.toContain('+ Crear ejercicio nuevo');
+    expect(logHtml).toContain('flex items-center gap-1.5 overflow-x-auto no-scrollbar');
+    // LogSessionHeader aligerada en móvil pero Guardar siempre visible
+    expect(logHtml).toContain('btn btn-accent hidden sm:inline-flex');
+    expect(logHtml).toContain('Guardar (');
+    // LogExerciseHeader con flechas ^/v inline + menú contextual ⋯
+    expect(logHtml).toContain('aria-haspopup="menu" aria-expanded="false" aria-label="Opciones de');
+    expect(logHtml).toContain('aria-label="Subir ');
+    expect(logHtml).toContain('aria-label="Bajar ');
+    expect(logHtml).toContain('data-sort-key="');
+    // Cabecera compartida única y labels individuales en sr-only
+    expect(logHtml).toContain('class="sr-only">Peso (kg)');
+    expect(logHtml).toContain('RIR · Desc. · 2');
+    // Primer ejercicio con nota -> grid-rows-[1fr]; ejercicios sin nota -> grid-rows-[0fr]
+    expect(logHtml).toContain('grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none grid-rows-[1fr]');
+    expect(logHtml).toContain('grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none grid-rows-[0fr]');
+  });
+
+  it('captureFlipRects y playFlipRects animan el desplazamiento y respetan prefers-reduced-motion', () => {
+    const makeItem = (key: string, top: number) => {
+      let currentTop = top;
+      const cls = new Set<string>();
+      const el = {
+        dataset: { sortKey: key },
+        style: { transition: '', transform: '' },
+        hasAttribute: (attr: string) => attr === 'data-sort-item',
+        getBoundingClientRect: () => ({ left: 0, top: currentTop, bottom: currentTop + 120, right: 360, width: 360, height: 120 }) as DOMRect,
+        classList: {
+          add: (...names: string[]) => names.forEach((n) => cls.add(n)),
+          remove: (...names: string[]) => names.forEach((n) => cls.delete(n)),
+          has: (name: string) => cls.has(name),
+        },
+        addEventListener: () => {},
+        setTop(nextTop: number) { currentTop = nextTop; },
+      };
+      return el;
+    };
+
+    const a = makeItem('Press banca', 100);
+    const b = makeItem('Remo en T', 240);
+    const list = { children: [a, b], offsetHeight: 400 } as unknown as HTMLElement;
+
+    const prev = captureFlipRects(list);
+    expect(prev.get('Press banca')?.top).toBe(100);
+    expect(prev.get('Remo en T')?.top).toBe(240);
+
+    // Simula el intercambio de orden en DOM
+    a.setTop(240);
+    b.setTop(100);
+
+    const prevWin = globalThis.window;
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: { innerHeight: 900, matchMedia: () => ({ matches: false }) },
+    });
+    try {
+      playFlipRects(list, prev, 'Remo en T');
+      expect(a.style.transition).toContain('transform 200ms');
+      expect(b.style.transition).toContain('transform 200ms');
+      expect(b.classList.has('ring-electricBlue/60')).toBe(true);
+      expect(a.classList.has('ring-electricBlue/60')).toBe(false);
+
+      // Con prefers-reduced-motion no añade clases ni transiciones
+      b.classList.remove('relative', 'z-20', 'ring-1', 'ring-electricBlue/60', 'rounded-xl');
+      a.style.transition = '';
+      b.style.transition = '';
+      Object.defineProperty(globalThis, 'window', {
+        configurable: true,
+        value: { innerHeight: 900, matchMedia: () => ({ matches: true }) },
+      });
+      playFlipRects(list, prev, 'Remo en T');
+      expect(a.style.transition).toBe('');
+      expect(b.classList.has('ring-electricBlue/60')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'window', { configurable: true, value: prevWin });
+    }
+  });
+
+  it('PlanRoutinesTab usa filas planas ultra compactas con músculo, cabecera aligerada y FLIP', () => {
+    const settings = sanitizeSettings({
+      ...DEFAULT_SETTINGS,
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8 }],
+      },
+    });
+    const state: State = {
+      tab: 'plan',
+      planTab: 'routines',
+      planRoutine: 'Push',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const html = renderToString(h(PlanView, { state }));
+    expect(html).toContain('hidden sm:block text-xs text-gray-400');
+    expect(html).toContain('<button type="button" class="btn-sm"><span class="sm:hidden">+ Nueva</span>');
+    expect(html).toContain('<button type="button" class="btn-primary-sm w-full sm:w-auto">+ Añadir ejercicio</button>');
+    expect(html).toContain('class="divide-y divide-white/10"');
+    expect(html).not.toContain('bg-white/[0.02]');
+    expect(html).toContain('hidden sm:inline-flex icon-btn rounded-md');
+    expect(html).toContain('data-sort-key="Push:Press de banca#1"');
+    expect(html).toContain('>ser</span>');
+    expect(html).toContain('>reps</span>');
+    expect(html).toContain('Pecho');
   });
 });

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import { Icon } from '../components/common/Icon';
 import { LogAddExerciseSection } from '../components/log/LogAddExerciseSection';
 import { LogExerciseCard } from '../components/log/LogExerciseCard';
@@ -6,6 +7,7 @@ import { LogSessionHeader } from '../components/log/LogSessionHeader';
 import { useAppStore } from '../store/appStore';
 import { exerciseContext } from '../store/exerciseCatalog';
 import { buildLogViewModel } from '../store/logSelectors';
+import { captureFlipRects, playFlipRects } from '../ui/reorder';
 import type { State } from '../ui/shared';
 
 interface LogWorkoutViewProps {
@@ -20,6 +22,16 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
   const { state: storeState, log: actions } = useAppStore();
   const state = propState ?? storeState;
   const vm = buildLogViewModel(state);
+  const listRef = useRef<HTMLDivElement>(null);
+  const pendingFlipRef = useRef<{ rects: Map<string, DOMRect>; key: string } | null>(null);
+  const orderKey = vm.draft.exercises.map((e) => e.name).join('\0');
+
+  useLayoutEffect(() => {
+    const pending = pendingFlipRef.current;
+    if (!pending) return;
+    pendingFlipRef.current = null;
+    playFlipRects(listRef.current, pending.rects, pending.key);
+  }, [orderKey]);
 
   return (
     <div class="space-y-4">
@@ -40,15 +52,20 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
       />
 
       {vm.draft.exercises.length > 0 ? (
-        <div data-sort-list="log" class="grid grid-cols-1 gap-3 2xl:grid-cols-2 items-start">
+        <div ref={listRef} data-sort-list="log" class="grid grid-cols-1 gap-3 2xl:grid-cols-2 items-start">
           {vm.draft.exercises.map((ex, ei) => (
             <LogExerciseCard
-              key={`${ei}-${ex.name}`}
+              key={ex.name}
               ei={ei}
               total={vm.draft.exercises.length}
               exercise={ex}
               ctx={exerciseContext(state, vm.draft.day, ex)}
               actions={actions}
+              onMoveExercise={(dir) => {
+                const rects = captureFlipRects(listRef.current);
+                if (rects.size) pendingFlipRef.current = { rects, key: ex.name };
+                actions.moveExercise(ei, dir);
+              }}
             />
           ))}
         </div>
@@ -71,7 +88,6 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
         availableCount={vm.avail.length}
         quickSuggestions={vm.quick}
         onOpenPicker={actions.openExercisePicker}
-        onOpenNewModal={actions.openNewExerciseModal}
         onAddExercise={(name) => actions.addExerciseByName(name)}
       />
 

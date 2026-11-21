@@ -59,7 +59,8 @@ export function createLogHistoryActions(
       const nextDay = day || 'Libre';
       if (!(await confirmSwitchDraft(nextDay, date, sessionId || undefined))) return;
       deps.commitDraft(initLogDraft(deps.getState(), nextDay, date, sessionId || undefined));
-      window.scrollTo?.(0, 0);
+      if (deps.getState().tab !== 'log') deps.setTab('log');
+      if (typeof window !== 'undefined') window.scrollTo?.(0, 0);
     },
 
     async deleteHistorySession(sessionId: string, date: string) {

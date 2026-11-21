@@ -44,7 +44,6 @@ export function buildVolumeViewModel(state: State) {
   const bounds = resolveRange(state, 'volume', '3M');
   const vol = weeklyVolume(state.strength, state.settings, bounds.from, bounds.to);
   const weeks = weeksForBounds(bounds, state.strength.map((s) => s.date), 12, 4, 104);
-  const mobWeeks = weeks.slice(-6);
   const sel = state.muscleSel || 'Pecho';
   const volChartCfg: ChartConfiguration<'bar'> = {
     type: 'bar',
@@ -66,7 +65,6 @@ export function buildVolumeViewModel(state: State) {
     bounds,
     vol,
     weeks,
-    mobWeeks,
     sel,
     volChartCfg,
   };

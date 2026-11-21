@@ -51,34 +51,34 @@ export function LogSessionHeader({
 }: LogSessionHeaderProps) {
   return (
     <div class="space-y-3 pb-4 border-b border-white/10">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
+      <div class="flex items-center justify-between gap-2">
+        <div class="min-w-0">
           <h1 class="text-lg font-extrabold text-white">Registrar entreno ya hecho</h1>
-          <p class="text-xs text-gray-400">Añade o edita una sesión completada con sus cargas, reps y tiempo de descanso exacto.</p>
+          <p class="hidden sm:block text-xs text-gray-400">Añade o edita una sesión completada con sus cargas, reps y tiempo de descanso exacto.</p>
           <p id="logCountSummary" class="mt-0.5 text-xs sm:text-sm text-gray-300 tabular-nums">
             {doneExCount}/{exerciseCount} {exerciseCount === 1 ? 'ejercicio' : 'ejercicios'} · {doneSetsCount}/{totalSetsCount} {totalSetsCount === 1 ? 'serie marcada' : 'series marcadas'} ✓
           </p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn btn-accent min-h-[44px] text-xs sm:text-sm" onClick={onOpenLive}>
+        <div class="flex shrink-0 items-center gap-2">
+          <button type="button" class="btn btn-accent hidden sm:inline-flex text-sm" onClick={onOpenLive}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar entreno en vivo
           </button>
-          <a href="#log-add-section" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm">+ Añadir ejercicio</a>
-          <button type="button" class="btn min-h-[44px] py-1.5 text-xs sm:text-sm" onClick={onReset}>
+          <a href="#log-add-section" class="btn hidden sm:inline-flex py-1.5 text-sm">+ Añadir ejercicio</a>
+          <button type="button" class="btn hidden sm:inline-flex py-1.5 text-sm" onClick={onReset}>
             <Icon name="reset" className="h-3.5 w-3.5" /> Reiniciar
           </button>
-          <button type="button" class="btn-primary min-h-[44px] py-1.5 tabular-nums" onClick={onSave}>
+          <button type="button" class="btn-primary min-h-[44px] py-1.5 tabular-nums shrink-0" onClick={onSave}>
             <Icon name="save" className="h-4 w-4" /> Guardar ({doneSetsCount})
           </button>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <label class="flex items-center gap-2 text-xs text-gray-400">
+      <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <label class="flex items-center gap-2 text-xs text-gray-400 shrink-0">
           <span>Fecha</span>
           <input class="inp w-auto min-h-[44px] tabular-nums" type="date" value={date} aria-label="Fecha de la sesión" onChange={(e) => onChangeDate(e.currentTarget.value)} />
         </label>
-        <div class="flex flex-wrap gap-1.5" role="group" aria-label="Rutina de la sesión">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-0.5" role="group" aria-label="Rutina de la sesión">
           {[...routines, 'Libre'].map((d, idx) => {
             const on = selectedDay === d;
             const col = d === 'Libre' ? '#9CA3AF' : routineColor(d, state.settings, idx);
@@ -87,7 +87,7 @@ export function LogSessionHeader({
                 key={d}
                 type="button"
                 aria-pressed={on ? 'true' : 'false'}
-                class={`tab min-h-[44px] ${on ? 'tab-on' : ''}`}
+                class={`tab min-h-[44px] sm:min-h-0 ${on ? 'tab-on' : ''}`}
                 style={on && d !== 'Libre' ? { borderColor: col, color: col } : undefined}
                 onClick={() => onSelectDay(d)}
               >

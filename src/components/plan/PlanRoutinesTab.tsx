@@ -1,9 +1,12 @@
-import { useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { musclesOf } from '../../lib/analysis';
 import { ROUTINE_TEMPLATES, norm } from '../../lib/seed';
 import type { PlanActions } from '../../store/planActions';
+import { captureFlipRects, playFlipRects } from '../../ui/reorder';
 import { routineColor, routineNames, type State } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
+import { PlanRoutineRow } from './PlanRoutineRow';
 import { PlanSidebarWidgets } from './PlanSidebarWidgets';
 
 interface PlanRoutinesTabProps {
@@ -18,6 +21,8 @@ interface PlanRoutinesTabProps {
 /** Editor enfocado en una rutina a la vez con plantillas plegables y barra lateral de volumen. */
 export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutinesTabProps) {
   const [tplOpen, setTplOpen] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const pendingFlipRef = useRef<{ rects: Map<string, DOMRect>; key: string } | null>(null);
   const s = state.settings;
   const routines = routineNames(s);
   const activeRoutine = state.planRoutine && routines.includes(state.planRoutine) ? state.planRoutine : (routines[0] ?? '');
@@ -26,20 +31,38 @@ export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutin
   const sub = activeRoutine ? s.routineMeta?.[activeRoutine]?.sub : undefined;
   const list = activeRoutine ? (s.routines[activeRoutine] ?? []) : [];
 
+  const counts = new Map<string, number>();
+  const rowKeys = list.map((r, i) => {
+    const base = r.name || `__empty_${i}`;
+    const occ = (counts.get(base) ?? 0) + 1;
+    counts.set(base, occ);
+    return `${activeRoutine}:${base}#${occ}`;
+  });
+  const orderKey = rowKeys.join('\0');
+
+  useLayoutEffect(() => {
+    const pending = pendingFlipRef.current;
+    if (!pending) return;
+    pendingFlipRef.current = null;
+    playFlipRects(listRef.current, pending.rects, pending.key);
+  }, [orderKey]);
+
   return (
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
       <div class="lg:col-span-8 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-bold text-white">Editor de rutinas</h2>
-            <p class="text-xs text-gray-400">Edita ejercicios y objetivos (series × reps) de una rutina a la vez.</p>
+            <p class="hidden sm:block text-xs text-gray-400">Edita ejercicios y objetivos (series × reps) de una rutina a la vez.</p>
           </div>
           <div class="flex items-center gap-2">
             <button type="button" class="btn-sm" aria-expanded={tplOpen} aria-controls="plan-templates-panel" onClick={() => setTplOpen((v) => !v)}>
               <span>Plantillas</span>
               <Icon name="caretDown" className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${tplOpen ? 'rotate-180' : ''}`} />
             </button>
-            <button type="button" class="btn-primary-sm" onClick={actions.openRoutineModalNew}>+ Nueva rutina</button>
+            <button type="button" class="btn-sm" onClick={actions.openRoutineModalNew}>
+              <span class="sm:hidden">+ Nueva</span><span class="hidden sm:inline">+ Nueva rutina</span>
+            </button>
           </div>
         </div>
 
@@ -70,7 +93,7 @@ export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutin
 
         {activeRoutine && (
           <div key={activeRoutine} id={`plan-routine-${norm(activeRoutine)}`} class="border-b border-white/10 pb-4 scroll-mt-4">
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="mb-1 flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/10">
               <h3 class="flex items-center gap-2 text-sm font-bold min-w-0" style={{ color: col }}>
                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: col }} aria-hidden="true" />
                 <span class="truncate">{activeRoutine}</span>
@@ -84,43 +107,34 @@ export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutin
             </div>
 
             {list.length === 0 ? (
-              <p class="rounded-xl border border-dashed border-white/10 px-3 py-4 text-xs text-gray-400">Esta rutina aún no tiene ejercicios. Pulsa «+ Añadir ejercicio» para buscar en tu catálogo o crear uno nuevo.</p>
+              <p class="mt-3 rounded-xl border border-dashed border-white/10 px-3 py-4 text-xs text-gray-400">Esta rutina aún no tiene ejercicios. Pulsa «+ Añadir ejercicio» para buscar en tu catálogo o crear uno nuevo.</p>
             ) : (
-              <div data-sort-list={`rt:${activeRoutine}`} class="space-y-1.5">
+              <div ref={listRef} data-sort-list={`rt:${activeRoutine}`} class="divide-y divide-white/10">
                 {list.map((r, i) => {
-                  const exLbl = r.name || `ejercicio ${i + 1}`;
+                  const mm = r.name ? musclesOf(r.name, s) : null;
+                  const muscleLabel = mm ? [mm.p, ...mm.s].filter(Boolean).join(' · ') : '';
+                  const rowKey = rowKeys[i];
                   return (
-                    <div key={`${activeRoutine}-${i}-${r.name}`} data-sort-item data-sort-idx={i} class="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1.5 rounded-xl bg-white/[0.02] p-1.5 sm:px-1.5 sm:py-1 transition-shadow">
-                      <div class="grid w-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5">
-                        <button type="button" data-sort-handle class="icon-btn rounded-md touch-none cursor-grab active:cursor-grabbing select-none" aria-label={`Arrastrar ${exLbl} en ${activeRoutine}`} title="Arrastrar para reordenar"><Icon name="grip" className="h-3.5 w-3.5" /></button>
-                        <button
-                          type="button"
-                          class="inp flex min-w-0 max-w-full items-center justify-between gap-2 rounded-md text-left"
-                          aria-label={`Cambiar ejercicio ${i + 1} de ${activeRoutine}: ${exLbl}`}
-                          onClick={() => actions.openRoutineExercisePicker(activeRoutine, i)}
-                        >
-                          <span class={`truncate ${r.name ? 'text-white' : 'text-gray-400'}`}>{r.name || 'Elegir ejercicio…'}</span>
-                          <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-                        </button>
-                      </div>
-                      <div class="flex shrink-0 items-center justify-end gap-1 pl-6 sm:pl-0">
-                        <input class="inp w-12 rounded-md px-1.5 text-center font-semibold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={r.sets} aria-label={`Series objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExSets(activeRoutine, i, e.currentTarget.value)} />
-                        <span class="text-gray-400" aria-hidden="true">×</span>
-                        <input class="inp w-12 rounded-md px-1.5 text-center font-semibold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={r.reps} aria-label={`Repeticiones objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExReps(activeRoutine, i, e.currentTarget.value)} />
-                        <div class="flex shrink-0 items-center">
-                          <button type="button" class="icon-btn rounded-md" disabled={i === 0} aria-label={`Subir ${exLbl} en ${activeRoutine}`} title="Subir" onClick={() => void actions.moveRoutineRow(activeRoutine, i, -1)}><Icon name="caretUp" className="h-3.5 w-3.5" /></button>
-                          <button type="button" class="icon-btn rounded-md" disabled={i === list.length - 1} aria-label={`Bajar ${exLbl} en ${activeRoutine}`} title="Bajar" onClick={() => void actions.moveRoutineRow(activeRoutine, i, 1)}><Icon name="caretDown" className="h-3.5 w-3.5" /></button>
-                          <button type="button" class="icon-btn rounded-md text-coralRed hover:bg-coralRed/10" aria-label={`Eliminar ${exLbl} de ${activeRoutine}`} onClick={() => void actions.deleteRoutineRow(activeRoutine, i)}><Icon name="close" className="h-4 w-4" /></button>
-                        </div>
-                      </div>
-                    </div>
+                    <PlanRoutineRow
+                      key={rowKey} routine={activeRoutine} index={i} total={list.length} sortKey={rowKey}
+                      exercise={r} muscleLabel={muscleLabel}
+                      onOpenPicker={() => actions.openRoutineExercisePicker(activeRoutine, i)}
+                      onChangeSets={(val) => void actions.changeRoutineExSets(activeRoutine, i, val)}
+                      onChangeReps={(val) => void actions.changeRoutineExReps(activeRoutine, i, val)}
+                      onMove={(dir) => {
+                        const rects = captureFlipRects(listRef.current);
+                        if (rects.size) pendingFlipRef.current = { rects, key: rowKey };
+                        void actions.moveRoutineRow(activeRoutine, i, dir);
+                      }}
+                      onDelete={() => void actions.deleteRoutineRow(activeRoutine, i)}
+                    />
                   );
                 })}
               </div>
             )}
 
             <div class="mt-3">
-              <button type="button" class="btn-sm btn-accent" onClick={() => actions.openRoutineExercisePicker(activeRoutine)}>+ Añadir ejercicio</button>
+              <button type="button" class="btn-primary-sm w-full sm:w-auto" onClick={() => actions.openRoutineExercisePicker(activeRoutine)}>+ Añadir ejercicio</button>
             </div>
           </div>
         )}

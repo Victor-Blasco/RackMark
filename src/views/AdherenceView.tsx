@@ -1,5 +1,5 @@
 import { AdherenceCalendar } from '../components/adherence/AdherenceCalendar';
-import { CardioSessionsTable } from '../components/adherence/AdherenceSections';
+import { AdherenceSessionsList } from '../components/adherence/AdherenceSessionsList';
 import { AiInsightBanner, NoDataCard } from '../components/common/AiInsightBanner';
 import { ChartCanvas } from '../components/common/ChartCanvas';
 import { RangePicker } from '../components/common/RangePicker';
@@ -16,7 +16,7 @@ interface AdherenceViewProps {
  * Vista `Adherencia y bienestar`: constancia semanal, cardio, sueño, HRV y pasos diarios.
  */
 export function AdherenceView({ state: propState }: AdherenceViewProps) {
-  const { state: storeState, plan, setTab } = useAppStore();
+  const { state: storeState, plan, log, setTab } = useAppStore();
   const state = propState ?? storeState;
   const vm = buildAdherenceViewModel(state);
 
@@ -95,7 +95,12 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
         </div>
       )}
 
-      <CardioSessionsTable totalCount={vm.cardioCount} recentCardio={vm.recentCardio} />
+      <AdherenceSessionsList
+        sessions={vm.recentSessions}
+        filters={vm.sessionFilters}
+        rangeLabel={vm.bounds.label}
+        onOpenStrengthSession={(id, date, day) => void log.editHistorySession(id, date, day)}
+      />
     </div>
   );
 }

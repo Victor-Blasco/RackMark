@@ -276,7 +276,6 @@ const logActions = createLogWorkoutActions({
     S.activeModal = { type: 'logExercisePicker' };
     renderChrome();
   },
-  onOpenNewExerciseModal: () => planActions.openExerciseModal({ fromLog: true }),
 });
 
 const planActions = createPlanActions({
