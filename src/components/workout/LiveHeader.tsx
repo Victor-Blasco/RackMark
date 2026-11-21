@@ -48,7 +48,7 @@ export function LiveHeader({
           type="button"
           aria-expanded={menuOpen ? 'true' : 'false'}
           aria-controls="live-ex-menu"
-          aria-label="Abrir lista de ejercicios"
+          aria-label={menuOpen ? 'Cerrar lista de ejercicios' : 'Abrir lista de ejercicios'}
           class={`flex h-11 shrink-0 items-center gap-1.5 rounded-xl border px-2 sm:px-2.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${menuOpen ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/15 bg-white/5 text-gray-100 hover:bg-white/10'}`}
           onClick={onToggleMenu}
         >

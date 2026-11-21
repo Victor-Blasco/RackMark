@@ -1,5 +1,5 @@
-import { useRef } from 'preact/hooks';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useEffect, useRef } from 'preact/hooks';
+import { MODAL_FOCUSABLE_SELECTOR, useFocusTrap } from '../../hooks/useFocusTrap';
 import type { WizardDraft } from '../../store/wizardSelectors';
 import { Icon } from '../common/Icon';
 import { WizardStep1, WizardStep2, WizardStep3 } from './WizardSteps';
@@ -37,7 +37,22 @@ export function WizardModal({
   onSkip,
 }: WizardModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const firstStepRef = useRef(true);
   useFocusTrap(dialogRef, true, () => void onSkip());
+
+  useEffect(() => {
+    if (firstStepRef.current) {
+      firstStepRef.current = false;
+      return;
+    }
+    const raf = window.requestAnimationFrame(() => {
+      const target = dialogRef.current?.querySelector<HTMLElement>(
+        `#f-wizard input:not([type="hidden"]):not([disabled]), #f-wizard ${MODAL_FOCUSABLE_SELECTOR}`,
+      ) ?? document.getElementById('wizardTitle');
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [draft.step]);
 
   const info = TITLES[draft.step];
   const modalAnim = draft.anim === 'open' ? 'wizard-modal-in' : '';
@@ -59,7 +74,7 @@ export function WizardModal({
           <div class="flex items-start justify-between gap-3">
             <div class={`min-w-0 ${stepAnim}`}>
               <span class="text-[11px] font-bold uppercase tracking-wider text-blue-300 tabular-nums">Paso {draft.step} de 3 · Configuración inicial</span>
-              <h3 id="wizardTitle" class="text-lg font-extrabold text-white mt-0.5">{info.title}</h3>
+              <h3 id="wizardTitle" tabIndex={-1} class="text-lg font-extrabold text-white mt-0.5 focus:outline-none">{info.title}</h3>
               <p class="text-xs text-gray-400 mt-0.5">{info.sub}</p>
             </div>
             <button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] shrink-0 items-center rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={() => void onSkip()}>

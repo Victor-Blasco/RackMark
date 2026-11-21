@@ -45,9 +45,9 @@ export function MeasuresHistoryTable({
 }: MeasuresHistoryTableProps) {
   return (
     <div class="space-y-2 overflow-x-auto">
-      <h3 class="mb-2 font-bold text-white tabular-nums">
+      <h2 class="mb-2 font-bold text-white tabular-nums">
         Historial de mediciones ({measuresDesc.length}{hasFilter ? ` de ${totalMeasures}` : ''})
-      </h3>
+      </h2>
       {measuresDesc.length > 0 ? (
         <table class="w-full min-w-[760px] lg:min-w-0 table-fixed text-right text-xs sm:text-sm">
           <thead class="text-[11px] sm:text-xs uppercase text-gray-400">

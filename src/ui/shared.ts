@@ -64,12 +64,10 @@ export interface State {
   analysis: Analysis;
   sel: Record<string, string>;
   homeExQuery?: string;
-  logAddQuery?: string;
   perimeter: string;
   muscleSel: string;
   logDraft?: LogDraft;
   liveWorkout?: LiveWorkout;
-  logFilter?: string;
   planTab?: PlanTab;
   aiTab?: number;
   dayExtra?: Record<string, boolean>;
@@ -91,12 +89,10 @@ export interface State {
     meals?: string;
   };
   activeModal?: ActiveModal;
-  planSearch?: string;
   exerciseMapSearch?: string;
   exerciseMapMuscle?: string;
   showAllExerciseMap?: boolean;
   planRoutine?: string;
-  planTargetRoutine?: string;
   authReady?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;

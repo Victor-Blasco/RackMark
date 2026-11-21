@@ -76,7 +76,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
       <div class="lg:pl-64">
         <main id="main-content" tabIndex={-1} class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">
           {['home', 'calc', 'settings'].includes(state.tab) && (
-            <h1 class="hidden lg:block text-lg font-extrabold text-white">{activeTabTitle(state)}</h1>
+            <h1 class="sr-only lg:not-sr-only lg:block text-lg font-extrabold text-white">{activeTabTitle(state)}</h1>
           )}
           {renderActiveView(state)}
         </main>

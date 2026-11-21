@@ -1,7 +1,7 @@
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES } from '../../lib/nutrition';
 
-const ACT_BTN_BASE = 'min-h-[44px] rounded-xl border px-3 py-2 text-left transition-colors';
-const PHASE_BTN_BASE = 'min-h-[44px] rounded-xl border px-2 py-2 text-center transition-colors';
+const ACT_BTN_BASE = 'min-h-[44px] rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const PHASE_BTN_BASE = 'min-h-[44px] rounded-xl border px-2 py-2 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 function phaseDeltaColor(delta: number): string {
   if (delta > 0) return 'text-emerald-300';
@@ -37,6 +37,7 @@ export function MacroPhaseSelectors({ cAct, cGoal, recommendedAct, onUpdateField
                 key={option.factor}
                 type="button"
                 role="radio"
+                tabIndex={active ? 0 : -1}
                 aria-checked={active ? 'true' : 'false'}
                 class={`${ACT_BTN_BASE} ${cls}`}
                 onClick={() => onUpdateField('act', String(option.factor))}
@@ -69,6 +70,7 @@ export function MacroPhaseSelectors({ cAct, cGoal, recommendedAct, onUpdateField
                 key={phase.id}
                 type="button"
                 role="radio"
+                tabIndex={active ? 0 : -1}
                 aria-checked={active ? 'true' : 'false'}
                 class={`${PHASE_BTN_BASE} ${cls}`}
                 onClick={() => onUpdateField('goal', String(phase.delta))}

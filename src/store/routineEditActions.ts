@@ -62,7 +62,6 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       const remaining = routineNames(S.settings);
       if (deps.getLastRoutine() === name) deps.setLastRoutine(remaining[0] ?? 'Push');
       if (S.planRoutine === name) S.planRoutine = remaining[0];
-      if (S.planTargetRoutine === name) S.planTargetRoutine = remaining[0];
       deps.syncWorkoutRoutineNames();
       await deps.persist();
       deps.toast(`Rutina "${name}" eliminada.`);
@@ -84,7 +83,6 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
         deps.toast(`«${name}» ya está en ${day}.`);
         return;
       }
-      S.planTargetRoutine = day;
       await updateRoutineRows(day, (list) => [...list, { name, sets: 3, reps: 10 }]);
       deps.toast(`Añadido «${name}» a ${day}`);
     },

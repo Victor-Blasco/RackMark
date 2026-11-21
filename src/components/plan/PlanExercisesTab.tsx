@@ -30,7 +30,7 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
     <>
       {unmappedCount > 0 && (
         <div class="rounded-2xl border border-amberGold/40 bg-amberGold/5 p-4 space-y-2">
-          <h3 class="font-bold text-white tabular-nums">Ejercicios importados sin nombre ({unmappedCount})</h3>
+          <h2 class="font-bold text-white tabular-nums">Ejercicios importados sin nombre ({unmappedCount})</h2>
           <p class="text-xs text-gray-300">Algunos ejercicios importados solo tienen código numérico. Asígnales nombre (si coincide con uno existente, se unifican).</p>
           <div class="grid grid-cols-1 gap-2 xl:grid-cols-2 xl:gap-x-6">
             {[...state.analysis.unmapped].sort((a, b) => b.last.localeCompare(a.last)).map((u) => (
@@ -45,7 +45,7 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
       )}
 
       <div class="pb-5 border-b border-white/10 space-y-3">
-        <h3 class="font-bold text-white">Unificar ejercicios duplicados</h3>
+        <h2 class="font-bold text-white">Unificar ejercicios duplicados</h2>
         <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
         <div class="flex flex-wrap items-center gap-2">
           <select id="mergeFrom" ref={mergeFromRef} class="inp w-full sm:w-auto max-w-full" aria-label="Ejercicio origen a fusionar">
@@ -74,7 +74,7 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
       <div class="min-w-0 space-y-3">
         <div class="space-y-2">
           <div>
-            <h3 class="font-bold text-white tabular-nums">Músculos por ejercicio ({allNames.length})</h3>
+            <h2 class="font-bold text-white tabular-nums">Músculos por ejercicio ({allNames.length})</h2>
             <p class="text-xs text-gray-400">Toca un ejercicio para elegir su músculo principal (1 serie) y secundarios (0,5 series c/u).</p>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -104,11 +104,11 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           </div>
           {facets.length > 0 && (
             <div class="flex gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-1" role="group" aria-label="Filtrar por músculo">
-              <button type="button" class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(undefined)}>
+              <button type="button" aria-pressed={!state.exerciseMapMuscle ? 'true' : 'false'} class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!state.exerciseMapMuscle ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(undefined)}>
                 Todos
               </button>
               {facets.map((f) => (
-                <button key={f.name} type="button" class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(f.name)}>
+                <button key={f.name} type="button" aria-pressed={state.exerciseMapMuscle === f.name ? 'true' : 'false'} class={`min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${state.exerciseMapMuscle === f.name ? 'border-electricBlue bg-electricBlue/15 text-blue-200' : 'border-white/10 text-gray-400 hover:text-white'}`} onClick={() => actions.setExerciseMapMuscle(f.name)}>
                   {f.name} <span class="tabular-nums text-[11px]">{f.count}</span>
                 </button>
               ))}

@@ -62,12 +62,12 @@ export function MacroCalculator({
   return (
     <div class="min-w-0 space-y-4">
       <div>
-        <h2 class="font-bold text-white">Planificador nutricional ({r1(w)} kg · {r1(bf)}% grasa)</h2>
+        <h2 class="font-bold text-white">Planificador nutricional (<span class="tabular-nums">{r1(w)} kg · {r1(bf)}%</span> grasa)</h2>
         {usingSampleMeasures ? (
           <p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (añade una medida para personalizar)</p>
         ) : (
           <p class="text-xs text-gray-400">
-            Calculado según tu peso y masa libre de grasa ({r1(ffm)} kg). Usa tu última medición.
+            Calculado según tu peso y masa libre de grasa (<span class="tabular-nums">{r1(ffm)} kg</span>). Usa tu última medición.
           </p>
         )}
       </div>
@@ -108,8 +108,9 @@ export function MacroCalculator({
                 key={meals}
                 type="button"
                 role="radio"
+                tabIndex={active ? 0 : -1}
                 aria-checked={active ? 'true' : 'false'}
-                class={`min-h-[44px] min-w-[44px] rounded-lg px-4 text-sm font-bold transition-colors ${active ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
+                class={`min-h-[44px] min-w-[44px] rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
                 onClick={() => onUpdateField('meals', String(meals))}
               >
                 {meals}

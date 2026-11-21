@@ -66,7 +66,7 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
               <Icon name="caretLeft" className="h-4 w-4" />
             </button>
             <div class="text-center">
-              <h3 class="text-sm sm:text-base font-extrabold text-white">{formatMonthTitle(activeYm)}</h3>
+              <h2 class="text-sm sm:text-base font-extrabold text-white">{formatMonthTitle(activeYm)}</h2>
               <p class="text-[11px] text-gray-400 tabular-nums">
                 {monthTotalCount} {monthTotalCount === 1 ? 'sesión' : 'sesiones'} · {monthActs.length} {monthActs.length === 1 ? 'día activo' : 'días activos'}
               </p>

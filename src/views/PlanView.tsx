@@ -24,7 +24,7 @@ export function PlanView({ state: propState }: PlanViewProps) {
 
   return (
     <div class="space-y-5">
-      <div class="hidden lg:flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+      <div class="sr-only lg:not-sr-only lg:flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
           <h1 class="text-lg font-extrabold text-white">Planificación</h1>
           <p class="text-xs text-gray-400">Edita tus rutinas de una en una, gestiona los músculos del catálogo y define las fases del bloque.</p>
@@ -53,7 +53,7 @@ export function PlanView({ state: propState }: PlanViewProps) {
       ) : tab === 'phases' ? (
         <PlanPhasesSection phases={state.settings.phases} onAddPhase={actions.addPhase} onDeletePhase={actions.deletePhase} />
       ) : (
-        <PlanRoutinesTab state={state} allNames={allNames} actions={actions} onOpenRoutineTab={setTab} />
+        <PlanRoutinesTab state={state} actions={actions} onOpenRoutineTab={setTab} />
       )}
     </div>
   );

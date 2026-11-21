@@ -65,8 +65,6 @@ export function createSyncController(ctx: AppContext): SyncController {
     S.syncJob = undefined;
     S.planRoutine = undefined;
     S.planTab = undefined;
-    S.planSearch = undefined;
-    S.planTargetRoutine = undefined;
     S.exerciseMapSearch = undefined;
     S.exerciseMapMuscle = undefined;
     S.showAllExerciseMap = undefined;

@@ -1,7 +1,7 @@
 import { h } from 'preact';
 import renderToString from 'preact-render-to-string';
 import { describe, expect, it, vi } from 'vitest';
-import { maybeOpenInitialWizard, num, splitPair } from '../src/app/context';
+import { maybeOpenInitialWizard } from '../src/app/context';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { AiJobStatusBanner } from '../src/components/home/AiJobStatusBanner';
 import { ModalHost } from '../src/components/modals/ModalHost';
@@ -265,9 +265,7 @@ describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y accio
     launch.clearActiveWorkouts();
     expect(state.liveWorkout).toBeUndefined();
 
-    // 5. Utilidades de contexto y apertura única del wizard inicial en activeModal
-    expect(splitPair('Push|Press de banca')).toEqual(['Push', 'Press de banca']);
-    expect(num('72,5')).toBe(72.5);
+    // 5. Apertura única del wizard inicial en activeModal
     expect(maybeOpenInitialWizard(state)).toBe(true);
     expect((state as State).activeModal?.type).toBe('wizard');
     expect(maybeOpenInitialWizard(state)).toBe(false);

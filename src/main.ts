@@ -271,11 +271,11 @@ const logActions = createLogWorkoutActions({
   toast,
   askConfirm,
   openNoteModal: openFixedNote,
-  onSearchChange: (q) => {
-    S.logAddQuery = q;
+  onStartLiveTab: () => navigateTab('workout'),
+  onOpenExercisePicker: () => {
+    S.activeModal = { type: 'logExercisePicker' };
     renderChrome();
   },
-  onStartLiveTab: () => navigateTab('workout'),
   onOpenNewExerciseModal: () => planActions.openExerciseModal({ fromLog: true }),
 });
 

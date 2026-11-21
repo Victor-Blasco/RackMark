@@ -9,8 +9,6 @@ import { PlanSidebarWidgets } from './PlanSidebarWidgets';
 interface PlanRoutinesTabProps {
   /** Estado global con rutinas y catálogo. */
   state: State;
-  /** Lista ordenada de todos los nombres de ejercicio conocidos. */
-  allNames: string[];
   /** Acciones tipadas de planificación. */
   actions: PlanActions;
   /** Navega al detalle de progreso de una rutina concreta. */
@@ -18,7 +16,7 @@ interface PlanRoutinesTabProps {
 }
 
 /** Editor enfocado en una rutina a la vez con plantillas plegables y barra lateral de volumen. */
-export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: PlanRoutinesTabProps) {
+export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutinesTabProps) {
   const [tplOpen, setTplOpen] = useState(false);
   const s = state.settings;
   const routines = routineNames(s);
@@ -90,17 +88,20 @@ export function PlanRoutinesTab({ state, allNames, actions, onOpenRoutineTab }: 
             ) : (
               <div data-sort-list={`rt:${activeRoutine}`} class="space-y-1.5">
                 {list.map((r, i) => {
-                  const opts = [...new Set([...allNames, r.name].filter(Boolean))];
                   const exLbl = r.name || `ejercicio ${i + 1}`;
                   return (
                     <div key={`${activeRoutine}-${i}-${r.name}`} data-sort-item data-sort-idx={i} class="flex min-w-0 flex-col sm:flex-row sm:items-center gap-1.5 rounded-xl bg-white/[0.02] p-1.5 sm:px-1.5 sm:py-1 transition-shadow">
                       <div class="grid w-full min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5">
                         <button type="button" data-sort-handle class="icon-btn rounded-md touch-none cursor-grab active:cursor-grabbing select-none" aria-label={`Arrastrar ${exLbl} en ${activeRoutine}`} title="Arrastrar para reordenar"><Icon name="grip" className="h-3.5 w-3.5" /></button>
-                        <select class="inp min-w-0 max-w-full rounded-md" aria-label={`Ejercicio ${i + 1} de ${activeRoutine}`} value={r.name} onChange={(e) => void actions.changeRoutineExName(activeRoutine, i, e.currentTarget.value)}>
-                          <option value="" selected={!r.name}>—</option>
-                          {opts.map((o) => <option key={o} value={o} selected={o === r.name}>{o}</option>)}
-                          <option value="__new__">+ Crear nuevo ejercicio…</option>
-                        </select>
+                        <button
+                          type="button"
+                          class="inp flex min-w-0 max-w-full items-center justify-between gap-2 rounded-md text-left"
+                          aria-label={`Cambiar ejercicio ${i + 1} de ${activeRoutine}: ${exLbl}`}
+                          onClick={() => actions.openRoutineExercisePicker(activeRoutine, i)}
+                        >
+                          <span class={`truncate ${r.name ? 'text-white' : 'text-gray-400'}`}>{r.name || 'Elegir ejercicio…'}</span>
+                          <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        </button>
                       </div>
                       <div class="flex shrink-0 items-center justify-end gap-1 pl-6 sm:pl-0">
                         <input class="inp w-12 rounded-md px-1.5 text-center font-semibold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={r.sets} aria-label={`Series objetivo de ${exLbl}`} onChange={(e) => void actions.changeRoutineExSets(activeRoutine, i, e.currentTarget.value)} />

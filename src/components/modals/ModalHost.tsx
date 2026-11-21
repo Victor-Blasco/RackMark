@@ -1,3 +1,4 @@
+import { norm } from '../../lib/seed';
 import { useAppStore } from '../../store/appStore';
 import { resolveActiveModal } from '../../store/types';
 import { routineNames, type State } from '../../ui/shared';
@@ -82,16 +83,41 @@ export function ModalHost({ state: propState }: ModalHostProps) {
           onClose={store.closeModal}
         />
       );
-    case 'routineExercisePicker':
+    case 'routineExercisePicker': {
+      const idx = modal.replaceRowIdx;
       return (
         <AddRoutineExerciseModal
           state={state}
           routine={modal.routine}
-          onAdd={store.plan.quickAddToRoutine}
-          onRemove={store.plan.removeRoutineExByName}
-          onCreateExercise={(r, initialName) => store.plan.openExerciseModal({ routine: r, initialName })}
+          title={idx != null ? `Cambiar ejercicio en ${modal.routine}` : undefined}
+          addLabel={idx != null ? 'Elegir' : undefined}
+          onAdd={idx != null
+            ? async (r, name) => { await store.plan.changeRoutineExName(r, idx, name); store.closeModal(); }
+            : store.plan.quickAddToRoutine}
+          onRemove={idx != null ? undefined : store.plan.removeRoutineExByName}
+          onCreateExercise={(r, initialName) => store.plan.openExerciseModal({ routine: r, rowIdx: idx, initialName })}
           onClose={store.closeModal}
         />
       );
+    }
+    case 'logExercisePicker': {
+      const draftEx = state.logDraft?.exercises ?? [];
+      return (
+        <AddRoutineExerciseModal
+          state={state}
+          routine={state.logDraft?.day ?? 'Libre'}
+          title="Añadir ejercicio a la sesión"
+          countLabel={`${draftEx.length} ${draftEx.length === 1 ? 'ejercicio' : 'ejercicios'} en sesión`}
+          existingNames={draftEx.map((e) => e.name)}
+          onAdd={(_r, name) => store.log.addExerciseByName(name)}
+          onRemove={(_r, name) => {
+            const idx = draftEx.findIndex((e) => norm(e.name) === norm(name));
+            if (idx >= 0) store.log.removeExercise(idx);
+          }}
+          onCreateExercise={(_r, initialName) => store.plan.openExerciseModal({ fromLog: true, initialName })}
+          onClose={store.closeModal}
+        />
+      );
+    }
   }
 }

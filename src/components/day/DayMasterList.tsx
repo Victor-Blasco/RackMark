@@ -74,7 +74,6 @@ export function DayMasterList(props: DayMasterListProps) {
         <div
           class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded-2xl"
           role="listbox"
-          tabIndex={0}
           aria-orientation="vertical"
           aria-label={`Ejercicios de ${day}`}
           onKeyDown={(ev) => onOptionKeyDown(ev, Math.max(0, exercises.findIndex((x) => x.name === desktopCur)))}

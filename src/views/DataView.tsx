@@ -70,7 +70,7 @@ export function DataView({ state: propState }: DataViewProps) {
       <div class="rounded-2xl border border-coralRed/30 p-4 space-y-3">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 class="font-bold text-coralRed">Zona de peligro</h3>
+            <h2 class="font-bold text-coralRed">Zona de peligro</h2>
             <p class="text-xs text-gray-300 mt-0.5">
               {state.user
                 ? 'Elimina todos tus entrenamientos, medidas y ajustes de este dispositivo y de tu nube conectada.'

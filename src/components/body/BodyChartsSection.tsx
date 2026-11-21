@@ -55,7 +55,7 @@ export function BodyChartsSection({
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
       <div class="min-w-0 space-y-2">
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 class="font-bold text-white tabular-nums">Composición corporal ({compCount} registros)</h3>
+          <h2 class="font-bold text-white tabular-nums">Composición corporal ({compCount} registros)</h2>
           {hasCompWeight && hasCompMuscle && (
             <div
               role="group"
@@ -94,7 +94,7 @@ export function BodyChartsSection({
 
       <div class="min-w-0 space-y-2">
         <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <h3 class="font-bold text-white">Medidas con cinta (cm)</h3>
+          <h2 class="font-bold text-white">Medidas con cinta (cm)</h2>
           <select
             class="inp max-w-full sm:w-auto"
             aria-label="Grupo de perímetros"

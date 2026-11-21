@@ -71,9 +71,13 @@ export function createPlanActions(deps: PlanActionDeps) {
       deps.render();
     },
 
-    openRoutineExercisePicker: (routine: string) => {
+    openRoutineExercisePicker: (routine: string, replaceRowIdx?: number) => {
       if (!routine) return;
-      state().activeModal = { type: 'routineExercisePicker', routine };
+      state().activeModal = {
+        type: 'routineExercisePicker',
+        routine,
+        ...(replaceRowIdx != null ? { replaceRowIdx } : {}),
+      };
       deps.render();
     },
 

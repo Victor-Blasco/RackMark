@@ -19,8 +19,8 @@ export interface LogActionDeps {
   toast: (msg: string, action?: ToastAction) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   openNoteModal: (exName: string) => void;
-  onSearchChange: (q: string) => void;
   onStartLiveTab: () => void;
+  onOpenExercisePicker: () => void;
   onOpenNewExerciseModal: () => void;
 }
 
@@ -59,9 +59,9 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
     ...createLogInputActions(ensureDraft, deps.saveDraftOnly, deps.commitDraft),
     ...createLogHistoryActions(deps, ensureDraft, confirmSwitchDraft),
     openLiveWorkoutTab: () => deps.onStartLiveTab(),
+    openExercisePicker: () => deps.onOpenExercisePicker(),
     openNewExerciseModal: () => deps.onOpenNewExerciseModal(),
     openFixedNote: (exName: string) => deps.openNoteModal(exName),
-    setAddQuery: (q: string) => deps.onSearchChange(q),
 
     async changeDate(rawDate: string) {
       const state = deps.getState();
@@ -102,7 +102,6 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
       if (!clean) return;
       const state = deps.getState();
       const draft = ensureDraft();
-      deps.onSearchChange('');
       if (draft.exercises.some((e) => norm(e.name) === norm(clean))) {
         deps.toast(`${clean} ya está en esta sesión.`);
         return;

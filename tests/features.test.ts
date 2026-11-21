@@ -17,7 +17,11 @@ import { Sidebar } from '../src/components/layout/Sidebar';
 import { ModalHost } from '../src/components/modals/ModalHost';
 import { WizardModal } from '../src/components/modals/WizardModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { ChartCanvas } from '../src/components/common/ChartCanvas';
 import { RangePicker } from '../src/components/common/RangePicker';
+import { DayMobileAccordion } from '../src/components/day/DayMobileAccordion';
+import { ExercisePickerSheet } from '../src/components/workout/ExercisePickerSheet';
+import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
 import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
@@ -689,8 +693,7 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
       sel: {},
       perimeter: 'waist',
       muscleSel: 'Pecho',
-      planSearch: 'Hack',
-      planTargetRoutine: 'Torso',
+      planRoutine: 'Torso',
       activeModal: { type: 'note', exName: 'Press Banca X', value: 'Pausa 1s abajo' },
     };
 
@@ -713,7 +716,7 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(exerciseMapHtml).toContain('min-w-0 space-y-3');
     expect(exerciseMapHtml).not.toContain('space-y-3 overflow-x-auto');
 
-    const emptyCatalog = getPlanCatalogData({ ...state, planSearch: 'zzzznoexiste' });
+    const emptyCatalog = getPlanCatalogData(state, { query: 'zzzznoexiste', routine: 'Torso' });
     const emptySearchHtml = renderToString(
       h(PlanCatalogList, { items: emptyCatalog.items, targetRoutine: 'Torso', searchQuery: 'zzzznoexiste' }),
     );
@@ -1119,7 +1122,7 @@ describe('live workout & manual rest separation', () => {
     expect(html).toContain(`1/${live.exercises.length}`);
 
     const renderCatalog = (search: string) => {
-      const cat = getPlanCatalogData({ ...state, planSearch: search });
+      const cat = getPlanCatalogData(state, { query: search });
       return {
         countText: cat.countText,
         listHtml: renderToString(
@@ -1270,7 +1273,8 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
         onCloudLogin: () => {},
       }),
     );
-    expect(mobHead).toContain('<h1');
+    expect(mobHead).not.toContain('<h1');
+    expect(mobHead).toContain('<p class="truncate text-sm font-extrabold leading-tight text-white">');
     expect(mobHead).toContain('role="tablist"');
     expect(
       renderToString(
@@ -1554,7 +1558,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(singleHtml).not.toContain('aria-labelledby="ai-tab-');
 
     const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: base }));
-    expect(dayHtml).toContain('role="listbox" tabindex="0" aria-orientation="vertical"');
+    expect(dayHtml).toContain('role="listbox" aria-orientation="vertical"');
     expect(dayHtml).toContain('id="day-opt-0" role="option" tabindex="0"');
     expect(dayHtml).toContain('id="day-opt-1" role="option" tabindex="-1"');
   });
@@ -1593,7 +1597,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const planHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'routines' } }));
     const planExHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
     const bodyHtml = renderToString(h(BodyView, { state: { ...state, tab: 'body' } }));
-    const pickerHtml = renderToString(h(RangePicker, { scope: 'home', active: 'Custom', custom: {} }));
+    const pickerHtml = renderToString(h(RangePicker, { active: 'Custom', custom: {} }));
     expect(planHtml).toContain('<h1');
     expect(bodyHtml).toContain('<h1');
     expect(bodyHtml).toContain('table-fixed');
@@ -2076,7 +2080,6 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const filter = createPlanFilterActions(() => baseState, () => {}, (t) => { navTab = t; });
     filter.setPlanRoutine('Leg');
     expect(baseState.planRoutine).toBe('Leg');
-    expect(baseState.planTargetRoutine).toBe('Leg');
 
     filter.openPlanTab('phases');
     expect(navTab).toBe('plan');
@@ -2086,11 +2089,9 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(navTab).toBe('plan');
     expect(baseState.planTab).toBe('routines');
     expect(baseState.planRoutine).toBe('Pull');
-    expect(baseState.planTargetRoutine).toBe('Pull');
 
     applyRoutineTemplateToState(baseState, 'upperLower', () => lastRoutine, (d) => { lastRoutine = d; }, () => {});
     expect(baseState.planRoutine).toBe('Torso A');
-    expect(baseState.planTargetRoutine).toBe('Torso A');
 
     const modal = createPlanModalActions({
       getState: () => baseState,
@@ -2105,12 +2106,10 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     baseState.activeModal = { type: 'routine', mode: 'create', name: '', sub: '', color: '#3B82F6' };
     await modal.saveRoutineModal({ name: 'Full Body', sub: 'Extra', color: '#3B82F6' });
     expect(baseState.planRoutine).toBe('Full Body');
-    expect(baseState.planTargetRoutine).toBe('Full Body');
 
     baseState.activeModal = { type: 'routine', mode: 'edit', oldName: 'Full Body', name: 'Full Body', sub: '', color: '#3B82F6' };
     await modal.saveRoutineModal({ name: 'Brazos', sub: '', color: '#3B82F6' });
     expect(baseState.planRoutine).toBe('Brazos');
-    expect(baseState.planTargetRoutine).toBe('Brazos');
 
     const edits = createRoutineEditActions({
       getState: () => baseState,
@@ -2124,7 +2123,6 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     });
     await edits.removeRoutineDay('Brazos');
     expect(baseState.planRoutine).toBe('Torso A');
-    expect(baseState.planTargetRoutine).toBe('Torso A');
   });
 
   it('unifica añadir ejercicio en modal con búsqueda NFD multi-músculo y retira catálogo rápido', () => {
@@ -2748,5 +2746,189 @@ describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
     );
     await histActions.deleteHistorySession('sid-inexistente', todayIso());
     expect(deletedCalled).toBe(false);
+  });
+});
+
+describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
+  it('reemplaza selectores 50+ nativos por modal buscador NFD y enriquece ExercisePickerSheet', () => {
+    const settings = sanitizeSettings({});
+    const strength = [
+      { id: 's1', sessionId: 's1', ts: 1000, date: todayIso(), ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const base: State = {
+      tab: 'plan',
+      planTab: 'routines',
+      planRoutine: 'Push',
+      strength,
+      cardio: [],
+      measures: [{ date: todayIso(), weight: 75, bf: 15 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. PlanRoutinesTab ya no usa <select> por fila sino botón hacia modal buscador
+    const planHtml = renderToString(h(PlanView, { state: base }));
+    expect(planHtml).not.toContain('<select');
+    expect(planHtml).toContain('Cambiar ejercicio 1 de Push');
+    expect(planHtml).toContain('sr-only lg:not-sr-only lg:flex');
+
+    const replaceModalHtml = renderToString(
+      h(ModalHost, { state: { ...base, activeModal: { type: 'routineExercisePicker', routine: 'Push', replaceRowIdx: 0 } } }),
+    );
+    expect(replaceModalHtml).toContain('Cambiar ejercicio en Push');
+    expect(replaceModalHtml).toContain('Elegir');
+
+    // 2. Registrar hecho reemplaza <select id="logAddSelect"> por botón al modal logExercisePicker
+    const logHtml = renderToString(
+      h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: initLogDraft(base, 'Push', todayIso()) } }),
+    );
+    expect(logHtml).not.toContain('id="logAddSelect"');
+    expect(logHtml).toContain('+ Buscar en catálogo');
+
+    const logModalHtml = renderToString(
+      h(ModalHost, {
+        state: {
+          ...base,
+          logDraft: initLogDraft(base, 'Push', todayIso()),
+          activeModal: { type: 'logExercisePicker' },
+        },
+      }),
+    );
+    expect(logModalHtml).toContain('Añadir ejercicio a la sesión');
+
+    // 3. ExercisePickerSheet filtra por músculo, incluye combobox ARIA, aria-activedescendant y estado vacío con consulta exacta
+    const sheetByMuscle = renderToString(
+      h(ExercisePickerSheet, {
+        mode: 'swap',
+        currentExName: 'Sentadilla',
+        available: ['Press de banca', 'Jalones al pecho'],
+        quickSuggestions: ['Press de banca'],
+        settings,
+        query: 'pecho',
+        onQueryChange: () => {},
+        onPick: () => {},
+        onClose: () => {},
+      }),
+    );
+    expect(sheetByMuscle).toContain('role="combobox"');
+    expect(sheetByMuscle).toContain('aria-activedescendant="live-pick-opt-0"');
+    expect(sheetByMuscle).toContain('id="live-pick-opt-0"');
+    expect(sheetByMuscle).toContain('Press de banca');
+    expect(sheetByMuscle).toContain('· Pecho');
+
+    const sheetEmpty = renderToString(
+      h(ExercisePickerSheet, {
+        mode: 'add',
+        available: ['Press de banca'],
+        quickSuggestions: [],
+        settings,
+        query: 'xyz999',
+        onQueryChange: () => {},
+        onPick: () => {},
+        onClose: () => {},
+      }),
+    );
+    expect(sheetEmpty).toContain('Sin ejercicios que coincidan con «xyz999».');
+  });
+
+  it('cumple jerarquía de encabezados, A11y en modales, gráficas, radiogroups y acordeones', () => {
+    const settings = sanitizeSettings({});
+    const today = todayIso();
+    const strength = [
+      { id: 's1', sessionId: 's1', ts: 1000, date: today, ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const base: State = {
+      tab: 'body',
+      strength,
+      cardio: [{ id: 'c1', ts: 1000, date: today, type: 1, distKm: 4, durMin: 25, avgHr: 140, kcal: 250 }],
+      measures: [{ date: today, weight: 75, bf: 15 }],
+      wellbeing: [{ date: today, steps: 9000, sleepMin: 450 }],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // Jerarquía h1 -> h2 continua (sin saltar a h3 directo bajo h1)
+    for (const [Comp, tab] of [
+      [BodyView, 'body'],
+      [VolumeView, 'volume'],
+      [AdherenceView, 'adherence'],
+      [DataView, 'data'],
+    ] as const) {
+      const html = renderToString(h(Comp, { state: { ...base, tab } }));
+      expect(html).toContain('<h1');
+      expect(html).toContain('<h2');
+      expect(html).not.toContain('<h4');
+    }
+
+    const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises' } }));
+    expect(planExHtml).toContain('<h2 class="font-bold text-white">Unificar ejercicios duplicados</h2>');
+    expect(planExHtml).toContain('aria-pressed="true"');
+
+    // Modales Confirm y Routine con aria-describedby y colores accesibles
+    const confirmHtml = renderToString(
+      h(ModalHost, {
+        state: { ...base, activeModal: { type: 'confirm', title: 'Borrar', message: 'Detalle seguro' } },
+      }),
+    );
+    expect(confirmHtml).toContain('aria-describedby="confirmModalDesc"');
+    expect(confirmHtml).toContain('id="confirmModalDesc"');
+
+    const routineHtml = renderToString(
+      h(ModalHost, {
+        state: { ...base, activeModal: { type: 'routine', mode: 'create', name: '', sub: '', color: '#A855F7' } },
+      }),
+    );
+    expect(routineHtml).toContain('aria-label="Color Morado"');
+    expect(routineHtml).toContain('peer-focus-visible:ring-2');
+
+    // ChartCanvas role="img" y aria-label automático
+    const chartHtml = renderToString(
+      h(ChartCanvas, {
+        id: 'c-test',
+        config: { type: 'line', data: { labels: ['01/11'], datasets: [{ label: 'Peso', data: [75] }] } },
+      }),
+    );
+    expect(chartHtml).toContain('role="img"');
+    expect(chartHtml).toContain('aria-label="Gráfica de Peso"');
+
+    // LiveHeader aria-label dinámico y DayMobileAccordion ids únicos
+    const openHdrHtml = renderToString(
+      h(LiveHeader, {
+        day: 'Push', dayColor: '#A855F7', curIdx: 0, total: 2,
+        doneSetsCount: 1, totalSetsCount: 4, elapsedLabel: '5 min',
+        menuOpen: true, onToggleMenu: () => {}, onSave: () => {},
+      }),
+    );
+    expect(openHdrHtml).toContain('aria-label="Cerrar lista de ejercicios"');
+
+    const accHtml = renderToString(
+      h(DayMobileAccordion, {
+        exercises: [...base.analysis.byDay.Push],
+        mobileCur: base.analysis.byDay.Push[0]?.name,
+        rangeLabel: '1M',
+        userNotes: {},
+        mobileChartCfg: { type: 'line', data: { labels: ['21/11'], datasets: [{ label: 'Peso', data: [80] }] } },
+        aiFor: () => undefined,
+        onSelectEx: () => {},
+        onStartWorkout: () => {},
+        onEditNote: () => {},
+      }),
+    );
+    expect(accHtml).toContain('aria-controls="day-mob-panel-0"');
+    expect(accHtml).toContain('id="day-mob-panel-0"');
+    expect(accHtml).toContain('id="c-day-mob-0"');
+
+    // CalcView radiogroups con roving tabindex y focus-visible
+    const calcHtml = renderToString(h(CalcView, { state: { ...base, tab: 'calc' } }));
+    expect(calcHtml).toContain('tabindex="0" aria-checked="true"');
+    expect(calcHtml).toContain('tabindex="-1" aria-checked="false"');
+    expect(calcHtml).toContain('focus-visible:ring-electricBlue');
   });
 });

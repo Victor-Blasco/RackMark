@@ -1,16 +1,5 @@
 import type { Analysis } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
-import type {
-  AiJob,
-  CardioRow,
-  DailyWellbeing,
-  LiveWorkout,
-  LogDraft,
-  Measure,
-  Settings,
-  StrengthRow,
-  SyncJob,
-} from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import type { WizardDraft } from './wizardSelectors';
 
@@ -39,48 +28,17 @@ export interface ConfirmModalOpts {
   onConfirm?: () => void;
 }
 
-/** Estado de dominio persistido y su análisis derivado. */
-export interface DomainState {
-  strength: StrengthRow[];
-  cardio: CardioRow[];
-  measures: Measure[];
-  wellbeing: DailyWellbeing[];
-  settings: Settings;
-  analysis: Analysis;
-}
-
 /** Unión discriminada de todos los modales posibles en la aplicación. */
 export type ActiveModal =
   | null
   | ({ type: 'confirm' } & ConfirmModalOpts)
   | { type: 'wizard'; draft: WizardDraft }
   | { type: 'exercise'; routine?: string; rowIdx?: number; fromLog?: boolean; initialName?: string }
-  | { type: 'routineExercisePicker'; routine: string }
+  | { type: 'routineExercisePicker'; routine: string; replaceRowIdx?: number }
+  | { type: 'logExercisePicker' }
   | { type: 'routine'; mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string }
   | { type: 'note'; exName: string; value: string }
   | { type: 'workoutSummary'; summary: WorkoutSummary };
-
-/** Estado efímero de navegación, borradores activos y red/UI. */
-export interface UiState {
-  tab: string;
-  sel: Record<string, string>;
-  perimeter: string;
-  muscleSel: string;
-  ranges?: Record<string, RangeKey>;
-  customRanges?: Record<string, { from?: string; to?: string }>;
-  liveWorkout?: LiveWorkout;
-  logDraft?: LogDraft;
-  activeModal: ActiveModal;
-  authReady?: boolean;
-  user?: CloudUser | null;
-  syncing?: boolean;
-  syncJob?: SyncJob;
-  lastSync?: number;
-  busy?: string;
-  aiJob?: AiJob;
-  toast?: string;
-  toastAction?: ToastAction;
-}
 
 const ERROR_PATTERNS: [RegExp, string][] = [
   [/permission-denied|insufficient permissions/i, 'Sin permisos en la nube. Cierra sesión y vuelve a entrar con tu cuenta verificada.'],

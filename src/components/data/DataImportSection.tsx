@@ -25,7 +25,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 pb-5 border-b border-white/10">
         <div class="space-y-3 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
           <div>
-            <h3 class="font-bold text-white">Samsung Health</h3>
+            <h2 class="font-bold text-white">Samsung Health</h2>
             <p class="text-xs text-gray-400 mt-0.5">
               Sube el archivo ZIP o los CSV exportados desde Samsung Health. Puedes volver a importar cuando quieras sin duplicar sesiones.
             </p>
@@ -48,7 +48,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
         <div class="space-y-3">
           <div class="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <h3 class="font-bold text-white">Medidas corporales (CSV)</h3>
+              <h2 class="font-bold text-white">Medidas corporales (CSV)</h2>
               <p class="text-xs text-gray-400 mt-0.5">
                 Importa tu histórico de peso, % grasa y perímetros, o añade mediciones nuevas manualmente desde la pestaña Cuerpo.
               </p>
@@ -74,7 +74,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
 
       <div class="space-y-4 pb-5 border-b border-white/10">
         <div>
-          <h3 class="font-bold text-white">Copia de seguridad completa</h3>
+          <h2 class="font-bold text-white">Copia de seguridad completa</h2>
           <p class="text-xs text-gray-400 mt-0.5">
             Descarga o restaura todos tus entrenamientos, medidas, rutinas y ajustes en un archivo de respaldo.
           </p>

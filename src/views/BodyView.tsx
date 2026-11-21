@@ -40,7 +40,6 @@ export function BodyView({ state: propState }: BodyViewProps) {
           </p>
         </div>
         <RangePicker
-          scope="body"
           active={vm.bounds.key}
           custom={state.customRanges?.body}
           onSelectRange={(key) => plan.setRange('body', key)}

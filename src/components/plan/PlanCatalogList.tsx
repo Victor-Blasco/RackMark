@@ -17,6 +17,8 @@ interface PlanCatalogListProps {
   onClearFilters?: () => void;
   /** Abre el modal de creación de ejercicio nuevo. */
   onCreateExercise?: () => void;
+  /** Etiqueta del botón de acción positiva (`+ Añadir` por defecto). */
+  addLabel?: string;
   /** Añade un ejercicio a la rutina destino. */
   onQuickAdd?: (routine: string, name: string) => void;
   /** Quita un ejercicio ya incluido en la rutina destino. */
@@ -25,7 +27,7 @@ interface PlanCatalogListProps {
 
 /** Lista filtrada del catálogo en Plan para añadir o quitar ejercicios en un clic. */
 export function PlanCatalogList({
-  items, targetRoutine, searchQuery, existingCounts, hasActiveFilters, onClearFilters, onCreateExercise, onQuickAdd, onQuickRemove,
+  items, targetRoutine, searchQuery, existingCounts, hasActiveFilters, onClearFilters, onCreateExercise, addLabel = '+ Añadir', onQuickAdd, onQuickRemove,
 }: PlanCatalogListProps) {
   const q = searchQuery.trim();
   if (!items.length) {
@@ -90,7 +92,7 @@ export function PlanCatalogList({
                 disabled={!targetRoutine}
                 onClick={() => targetRoutine && onQuickAdd?.(targetRoutine, item.name)}
               >
-                + Añadir
+                {addLabel}
               </button>
             )}
           </div>

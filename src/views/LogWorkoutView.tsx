@@ -69,11 +69,9 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
 
       <LogAddExerciseSection
         availableCount={vm.avail.length}
-        filteredOptions={vm.filteredAvail}
         quickSuggestions={vm.quick}
-        query={state.logAddQuery ?? ''}
+        onOpenPicker={actions.openExercisePicker}
         onOpenNewModal={actions.openNewExerciseModal}
-        onSearchChange={actions.setAddQuery}
         onAddExercise={(name) => actions.addExerciseByName(name)}
       />
 

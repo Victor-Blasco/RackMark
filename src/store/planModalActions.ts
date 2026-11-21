@@ -105,7 +105,6 @@ export function createPlanModalActions(deps: PlanModalDeps) {
         if (existingKeys.length >= 20) return 'Máximo 20 rutinas permitidas.';
         S.settings = { ...S.settings, routines: { ...S.settings.routines, [rawName]: [] }, routineMeta: { ...(S.settings.routineMeta ?? {}), [rawName]: entryMeta } };
         S.planRoutine = rawName;
-        S.planTargetRoutine = rawName;
         S.activeModal = null;
         await deps.persist();
         deps.toast(`Rutina "${rawName}" creada.`);
@@ -131,7 +130,6 @@ export function createPlanModalActions(deps: PlanModalDeps) {
           S.ranges = renameKey(S.ranges, oldName, rawName);
           S.customRanges = renameKey(S.customRanges, oldName, rawName);
           if (S.planRoutine === oldName) S.planRoutine = rawName;
-          if (S.planTargetRoutine === oldName) S.planTargetRoutine = rawName;
           deps.syncWorkoutRoutineNames(oldName, rawName);
           const migrated = S.strength.filter((r) => r.day === oldName).map((r) => ({ ...r, day: rawName }));
           if (migrated.length) {

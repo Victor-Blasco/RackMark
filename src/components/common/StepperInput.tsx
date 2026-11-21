@@ -33,7 +33,7 @@ interface StepperInputProps {
   onBlurValue?: (raw: string) => void;
 }
 
-const DEFAULT_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const DEFAULT_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Control numérico táctil `− | valor | +` con etiqueta explícita y targets de 44 px.

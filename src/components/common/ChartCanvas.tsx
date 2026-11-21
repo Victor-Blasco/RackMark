@@ -42,5 +42,8 @@ export function ChartCanvas({ config, id, className, ariaLabel }: ChartCanvasPro
     chartRef.current = null;
   }, []);
 
-  return <canvas ref={canvasRef} id={id} class={className} aria-label={ariaLabel} />;
+  const dsLabels = (config.data?.datasets ?? []).map((d) => d.label).filter(Boolean).join(', ');
+  const resolvedLabel = ariaLabel ?? (dsLabels ? `Gráfica de ${dsLabels}` : 'Gráfica de evolución');
+
+  return <canvas ref={canvasRef} id={id} class={className} role="img" aria-label={resolvedLabel} />;
 }

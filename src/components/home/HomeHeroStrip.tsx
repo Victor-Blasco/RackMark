@@ -99,7 +99,6 @@ export function HomeHeroStrip({
         <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5">
           <span class="text-xs font-medium text-gray-400">Periodo de análisis</span>
           <RangePicker
-            scope="home"
             active={bounds.key}
             custom={customRange}
             onSelectRange={onSelectRange}

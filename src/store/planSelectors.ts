@@ -54,10 +54,10 @@ export function getPlanCatalogData(
   opts?: { query?: string; muscles?: string[]; routine?: string; limit?: number },
 ): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
   const routines = routineNames(state.settings);
-  const preferred = opts?.routine || state.planTargetRoutine || state.planRoutine;
+  const preferred = opts?.routine || state.planRoutine;
   const targetRoutine = preferred && routines.includes(preferred) ? preferred : (routines[0] ?? '');
   const names = allExerciseNames(state);
-  const q = normalizeSelectionText(opts?.query ?? state.planSearch ?? '');
+  const q = normalizeSelectionText(opts?.query ?? '');
   const tokens = q ? q.split(/\s+/) : [];
   const muscleSet = opts?.muscles?.length ? new Set(opts.muscles) : null;
   const matches = names

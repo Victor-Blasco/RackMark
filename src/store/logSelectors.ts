@@ -1,7 +1,6 @@
 import { resolveName } from '../lib/analysis';
 import { norm } from '../lib/seed';
 import type { DayName, LogDraft, LogExDraft, LogExMeta, SetRec } from '../types';
-import { filterSelectionOptions } from '../ui/selection';
 import { routineNames, todayIso, type State } from '../ui/shared';
 import { defaultSetsForEx, manualSessionId, quickExSuggestions } from './exerciseCatalog';
 
@@ -117,9 +116,6 @@ export function buildLogViewModel(state: State) {
     draft.day,
     draft.exercises.map((e) => e.name),
   );
-  const filteredAvail = avail.length > 12
-    ? filterSelectionOptions(avail.map((n) => ({ id: n, label: n })), state.logAddQuery ?? '')
-    : avail.map((n) => ({ id: n, label: n }));
 
   const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
   const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
@@ -131,7 +127,6 @@ export function buildLogViewModel(state: State) {
     draft,
     avail,
     quick,
-    filteredAvail,
     doneExCount,
     doneSetsCount,
     totalSetsCount,

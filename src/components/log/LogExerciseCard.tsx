@@ -18,7 +18,7 @@ interface LogExerciseCardProps {
   actions: LogWorkoutActions;
 }
 
-const LOG_STEP_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const LOG_STEP_BTN = 'flex h-11 w-11 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Bloque de ejercicio dentro de `Registrar hecho` con reordenamiento y edición por series.
@@ -107,7 +107,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions }: LogEx
               <span class="mb-0.5 block sm:hidden text-[11px] font-semibold uppercase tracking-wide text-gray-400">RIR</span>
               <input class="inp h-11 w-14 rounded-md px-2 py-0 text-center text-base sm:text-xs font-semibold tabular-nums" type="number" step="1" min="0" max="10" inputMode="numeric" enterKeyHint="done" value={s.rir ?? ''} placeholder="RIR" aria-label={`RIR de serie ${si + 1} de ${ex.name}`} onInput={(e) => actions.updateRir(ei, si, e.currentTarget.value)} />
             </div>
-            <button type="button" aria-pressed={s.done ? 'true' : 'false'} aria-label={`${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${ex.name}`} class={`ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}`} style={{ touchAction: 'manipulation' }} onClick={() => actions.toggleSet(ei, si)}>
+            <button type="button" aria-pressed={s.done ? 'true' : 'false'} aria-label={`${s.done ? 'Desmarcar' : 'Completar'} serie ${si + 1} de ${ex.name}`} class={`ml-auto sm:ml-0 self-end flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition-colors active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-emeraldGreen/60 hover:text-white'}`} style={{ touchAction: 'manipulation' }} onClick={() => actions.toggleSet(ei, si)}>
               {s.done ? <Icon name="check" className="h-5 w-5" /> : <span class="h-4 w-4 rounded-full border-2 border-current opacity-60" aria-hidden="true" />}
             </button>
           </div>

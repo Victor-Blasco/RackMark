@@ -45,7 +45,7 @@ export function DayMobileAccordion({
 }: DayMobileAccordionProps) {
   return (
     <div class="lg:hidden space-y-3">
-      {exercises.map((x) => {
+      {exercises.map((x, idx) => {
         const open = x.name === mobileCur;
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
         const advice = aiFor(x);
@@ -59,6 +59,7 @@ export function DayMobileAccordion({
             <button
               type="button"
               aria-expanded={open ? 'true' : 'false'}
+              aria-controls={`day-mob-panel-${idx}`}
               class="w-full p-4 text-left flex items-center justify-between gap-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
               onClick={() => onSelectEx(open ? '__closed__' : x.name)}
             >
@@ -79,19 +80,21 @@ export function DayMobileAccordion({
               </div>
             </button>
             <Collapsible open={open}>
-              <DayExerciseDetail
-                exercise={x}
-                aiAdvice={advice}
-                userNote={userNotes[x.name]?.trim() ?? ''}
-                aiDate={aiDate}
-                canvasId="c-day-mob"
-                historyLimit={8}
-                rangeLabel={rangeLabel}
-                chartConfig={mobileChartCfg}
-                embedded
-                onStartWorkout={onStartWorkout}
-                onEditNote={() => onEditNote(x.name)}
-              />
+              <div id={`day-mob-panel-${idx}`}>
+                <DayExerciseDetail
+                  exercise={x}
+                  aiAdvice={advice}
+                  userNote={userNotes[x.name]?.trim() ?? ''}
+                  aiDate={aiDate}
+                  canvasId={`c-day-mob-${idx}`}
+                  historyLimit={8}
+                  rangeLabel={rangeLabel}
+                  chartConfig={mobileChartCfg}
+                  embedded
+                  onStartWorkout={onStartWorkout}
+                  onEditNote={() => onEditNote(x.name)}
+                />
+              </div>
             </Collapsible>
           </div>
         );

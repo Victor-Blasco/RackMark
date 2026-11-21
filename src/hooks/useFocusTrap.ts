@@ -29,6 +29,25 @@ export function useFocusTrap(
       prevTrigger.current = activeEl;
     }
 
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const parent = containerRef.current?.parentElement;
+    const inerted: HTMLElement[] = [];
+    if (parent) {
+      for (const child of Array.from(parent.children)) {
+        if (
+          child instanceof HTMLElement &&
+          child !== containerRef.current &&
+          child.getAttribute('role') !== 'status' &&
+          !child.inert
+        ) {
+          child.inert = true;
+          inerted.push(child);
+        }
+      }
+    }
+
     const focusTimer = window.requestAnimationFrame(() => {
       const dialog = containerRef.current;
       if (!dialog) return;
@@ -70,6 +89,8 @@ export function useFocusTrap(
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      document.body.style.overflow = prevOverflow;
+      for (const el of inerted) el.inert = false;
       window.cancelAnimationFrame(focusTimer);
       window.removeEventListener('keydown', handleKeyDown);
       const trigger = prevTrigger.current;

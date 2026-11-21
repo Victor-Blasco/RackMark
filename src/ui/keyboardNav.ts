@@ -61,6 +61,24 @@ function handleListboxNav(root: HTMLElement, e: KeyboardEvent, target: HTMLEleme
   return true;
 }
 
+function handleRadioGroupNav(e: KeyboardEvent, target: HTMLElement | null): boolean {
+  const radio = target?.closest<HTMLElement>('[role="radio"]');
+  const group = radio?.closest<HTMLElement>('[role="radiogroup"]');
+  if (!radio || !group) return false;
+  const radios = [...group.querySelectorAll<HTMLElement>('[role="radio"]')];
+  const idx = radios.indexOf(radio);
+  if (idx === -1 || !radios.length) return false;
+  const key = e.key === 'ArrowDown' ? 'ArrowRight' : e.key === 'ArrowUp' ? 'ArrowLeft' : e.key;
+  const nextIdx = resolveNavIndex(key, idx, radios.length, false);
+  if (nextIdx === null) return false;
+  const nextRadio = radios[nextIdx];
+  if (!nextRadio) return false;
+  e.preventDefault();
+  nextRadio.click();
+  nextRadio.focus({ preventScroll: true });
+  return true;
+}
+
 /**
  * Registra navegación accesible por teclado (`Arrow*`, `Home`, `End`) para pestañas y listboxes ARIA.
  *
@@ -71,6 +89,7 @@ export function initKeyboardNav(root: HTMLElement): void {
     if (e.defaultPrevented) return;
     const target = e.target as HTMLElement | null;
     if (handleTabNav(root, e, target)) return;
+    if (handleRadioGroupNav(e, target)) return;
     handleListboxNav(root, e, target);
   });
 }

@@ -25,13 +25,14 @@ export function PlanExerciseMapList({ items, onChangePrimary, onToggleSecondary 
 
   return (
     <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 items-start border-t border-white/10">
-      {items.map((item) => {
+      {items.map((item, idx) => {
         const open = expandedEx === item.name;
         return (
           <div key={item.name} class="border-b border-white/10">
             <button
               type="button"
               aria-expanded={open ? 'true' : 'false'}
+              aria-controls={`ex-map-panel-${idx}`}
               class="flex min-h-[56px] w-full items-start justify-between gap-3 px-1 py-3 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded-lg"
               onClick={() => setExpandedEx((cur) => (cur === item.name ? null : item.name))}
             >
@@ -61,7 +62,7 @@ export function PlanExerciseMapList({ items, onChangePrimary, onToggleSecondary 
             </button>
 
             <Collapsible open={open}>
-              <div class="space-y-3 border-t border-white/5 px-1 pb-3.5 pt-2.5">
+              <div id={`ex-map-panel-${idx}`} class="space-y-3 border-t border-white/5 px-1 pb-3.5 pt-2.5">
                 <div class="space-y-1.5">
                   <span class="block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                     Músculo principal (1 serie)

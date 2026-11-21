@@ -51,15 +51,6 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
       await deps.persist();
     },
 
-    async changeSecondaryMuscles(exName: string, rawSec: string) {
-      const S = state();
-      const key = norm(exName);
-      const cur = musclesOf(exName, S.settings) ?? { p: '', s: [] };
-      const s = rawSec.split(',').map((x) => x.trim()).filter((m) => m && m !== cur.p);
-      S.settings = { ...S.settings, muscles: { ...S.settings.muscles, [key]: { ...cur, s } } };
-      await deps.persist();
-    },
-
     async mergeExercises(rawFrom: string, rawTo: string) {
       const from = rawFrom.trim();
       const to = rawTo.trim();

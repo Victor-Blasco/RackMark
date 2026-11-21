@@ -62,7 +62,6 @@ export function applyRoutineTemplateToState(
   const remaining = routineNames(state.settings);
   if (!isRoutineTab(state, getLastRoutine())) setLastRoutine(remaining[0] ?? 'Push');
   state.planRoutine = remaining[0];
-  state.planTargetRoutine = remaining[0];
   if (state.sel.home && !state.settings.routines[state.sel.home]) {
     const { home: _home, ...restSel } = state.sel;
     state.sel = restSel;

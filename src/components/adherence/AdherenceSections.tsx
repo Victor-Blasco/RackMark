@@ -6,8 +6,6 @@ import {
 import type { CardioRow } from '../../types';
 import { fmtDate, r1 } from '../../ui/shared';
 
-export { AdherenceCalendar } from './AdherenceCalendar';
-
 interface AdherenceDayDetailProps {
   /** Fecha ISO seleccionada actualmente en el calendario. */
   selectedIso: string;
@@ -19,7 +17,7 @@ interface AdherenceDayDetailProps {
 export function AdherenceDayDetail({ selectedIso, dayAct }: AdherenceDayDetailProps) {
   return (
     <div class="lg:col-span-5 border-t border-white/10 pt-3 lg:border-t-0 lg:border-l lg:border-white/10 lg:pl-5 lg:pt-0 space-y-2.5">
-      <h4 class="text-sm font-bold text-white capitalize">{formatDayHeading(selectedIso)}</h4>
+      <h3 class="text-sm font-bold text-white capitalize">{formatDayHeading(selectedIso)}</h3>
       {dayAct ? (
         <div class="divide-y divide-white/10">
           {dayAct.strength.map((s, idx) => (
@@ -79,7 +77,7 @@ export function CardioSessionsTable({ totalCount, recentCardio }: CardioSessions
 
   return (
     <section class="space-y-2">
-      <h3 class="font-bold text-white tabular-nums">Sesiones de cardio ({totalCount})</h3>
+      <h2 class="font-bold text-white tabular-nums">Sesiones de cardio ({totalCount})</h2>
       <div class="md:hidden divide-y divide-white/10">
         {recentCardio.map((c) => {
           const metrics = [

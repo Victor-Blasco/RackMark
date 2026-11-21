@@ -59,14 +59,14 @@ export function MeasureForm(props: MeasureFormProps) {
     >
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 class="font-bold text-white">Añadir / editar medición</h3>
+          <h2 class="font-bold text-white">Añadir / editar medición</h2>
           <p class="text-xs text-gray-400">
             Rellena solo lo que hayas medido hoy (el resto se muestra como referencia). Si guardas otro dato en la misma fecha, se combina sin borrar los anteriores.
           </p>
         </div>
         {currentEntry && (
           <div class="flex items-center gap-2">
-            <span class="rounded-full border border-electricBlue/40 bg-electricBlue/15 px-2.5 py-0.5 text-[11px] font-semibold text-blue-200">
+            <span class="rounded-full border border-electricBlue/40 bg-electricBlue/15 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-blue-200">
               Editando {fmtDate(activeDate)}
             </span>
             {activeDate !== today && <button type="button" class="btn-sm" onClick={onClearDate}>Ir a hoy</button>}
@@ -90,13 +90,15 @@ export function MeasureForm(props: MeasureFormProps) {
       </div>
 
       <div>
-        <button type="button" aria-expanded={perimOpen ? 'true' : 'false'} class="btn-sm" onClick={onTogglePerim}>
+        <button type="button" aria-expanded={perimOpen ? 'true' : 'false'} aria-controls="measure-perim-panel" class="btn-sm" onClick={onTogglePerim}>
           {perimOpen ? '− Ocultar perímetros con cinta' : '+ Añadir perímetros con cinta (opcional)'}
         </button>
       </div>
 
       <Collapsible open={perimOpen} keepMounted>
-        <MeasurePerimGroups groups={perimGroups} getFieldInputMeta={getFieldInputMeta} onUpdateDraft={onUpdateDraft} />
+        <div id="measure-perim-panel">
+          <MeasurePerimGroups groups={perimGroups} getFieldInputMeta={getFieldInputMeta} onUpdateDraft={onUpdateDraft} />
+        </div>
       </Collapsible>
 
       <div class="flex flex-wrap items-center gap-2">

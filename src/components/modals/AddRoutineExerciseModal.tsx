@@ -11,6 +11,14 @@ interface AddRoutineExerciseModalProps {
   state: State;
   /** Rutina activa donde se insertará el ejercicio elegido. */
   routine: string;
+  /** Título personalizado del modal (por defecto añadir a la rutina). */
+  title?: string;
+  /** Subtítulo contador personalizado. */
+  countLabel?: string;
+  /** Nombres ya presentes en la sesión/rutina destino si difiere de `settings.routines`. */
+  existingNames?: string[];
+  /** Etiqueta personalizada para el botón de selección (`+ Añadir` o `Elegir`). */
+  addLabel?: string;
   /** Añade un ejercicio existente a la rutina seleccionada. */
   onAdd: (routine: string, name: string) => void | Promise<void>;
   /** Quita un ejercicio ya incluido en la rutina seleccionada. */
@@ -21,9 +29,9 @@ interface AddRoutineExerciseModalProps {
   onClose: () => void;
 }
 
-/** Modal buscador multi-músculo para añadir ejercicios del catálogo o crear uno nuevo en la rutina activa. */
+/** Modal buscador multi-músculo para añadir o elegir ejercicios del catálogo. */
 export function AddRoutineExerciseModal({
-  state, routine, onAdd, onRemove, onCreateExercise, onClose,
+  state, routine, title, countLabel, existingNames, addLabel, onAdd, onRemove, onCreateExercise, onClose,
 }: AddRoutineExerciseModalProps) {
   const [query, setQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -33,10 +41,10 @@ export function AddRoutineExerciseModal({
   const toggleMuscle = (m: string) =>
     setSelectedMuscles((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
 
-  const rows = state.settings.routines[routine] ?? [];
+  const sourceNames = existingNames ?? (state.settings.routines[routine] ?? []).map((r) => r.name);
   const existingCounts = new Map<string, number>();
-  for (const row of rows) {
-    if (row.name) existingCounts.set(row.name, (existingCounts.get(row.name) ?? 0) + 1);
+  for (const name of sourceNames) {
+    if (name) existingCounts.set(name, (existingCounts.get(name) ?? 0) + 1);
   }
   const catalog = getPlanCatalogData(state, { query, muscles: selectedMuscles, routine, limit: 80 });
   const hasFilters = Boolean(query.trim() || selectedMuscles.length);
@@ -48,9 +56,9 @@ export function AddRoutineExerciseModal({
         <div class="shrink-0 space-y-3 border-b border-white/10 px-4 pt-4 pb-3 sm:px-5">
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
-              <h3 id="addRoutineExTitle" class="text-base font-extrabold text-white truncate">Añadir ejercicio a {routine}</h3>
+              <h3 id="addRoutineExTitle" class="text-base font-extrabold text-white truncate">{title ?? `Añadir ejercicio a ${routine}`}</h3>
               <p class="text-xs text-gray-400">
-                <span class="tabular-nums">{rows.length} {rows.length === 1 ? 'ejercicio' : 'ejercicios'} en rutina</span>
+                <span class="tabular-nums">{countLabel ?? `${sourceNames.length} ${sourceNames.length === 1 ? 'ejercicio' : 'ejercicios'} en rutina`}</span>
                 {' · '}
                 <span id="planCatalogCount" aria-live="polite" class="tabular-nums">{catalog.countText}</span>
               </p>
@@ -120,6 +128,7 @@ export function AddRoutineExerciseModal({
             hasActiveFilters={hasFilters}
             onClearFilters={() => { setQuery(''); setSelectedMuscles([]); }}
             onCreateExercise={() => onCreateExercise(routine, query.trim() || undefined)}
+            addLabel={addLabel}
             onQuickAdd={(r, name) => void onAdd(r, name)}
             onQuickRemove={onRemove ? (r, name) => void onRemove(r, name) : undefined}
           />

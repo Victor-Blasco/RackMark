@@ -1,4 +1,5 @@
-import { AdherenceCalendar, CardioSessionsTable } from '../components/adherence/AdherenceSections';
+import { AdherenceCalendar } from '../components/adherence/AdherenceCalendar';
+import { CardioSessionsTable } from '../components/adherence/AdherenceSections';
 import { AiInsightBanner, NoDataCard } from '../components/common/AiInsightBanner';
 import { ChartCanvas } from '../components/common/ChartCanvas';
 import { RangePicker } from '../components/common/RangePicker';
@@ -33,7 +34,6 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
           <p class="text-xs text-gray-400">Constancia semanal, cardio, sueño y actividad diaria ({vm.bounds.label}).</p>
         </div>
         <RangePicker
-          scope="adherence"
           active={vm.bounds.key}
           custom={state.customRanges?.adherence}
           onSelectRange={(key) => plan.setRange('adherence', key)}

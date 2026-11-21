@@ -82,19 +82,7 @@ export function createPlanFilterActions(
     },
 
     setPlanRoutine: (day: string) => {
-      const S = state();
-      S.planRoutine = day;
-      S.planTargetRoutine = day;
-      render();
-    },
-
-    setTargetRoutine: (routine: string) => {
-      state().planTargetRoutine = routine;
-      render();
-    },
-
-    setPlanSearch: (q: string) => {
-      state().planSearch = q;
+      state().planRoutine = day;
       render();
     },
 
@@ -127,10 +115,7 @@ export function createPlanFilterActions(
     openRoutineInPlan: (day?: DayName) => {
       const S = state();
       S.planTab = 'routines';
-      if (day) {
-        S.planRoutine = day;
-        S.planTargetRoutine = day;
-      }
+      if (day) S.planRoutine = day;
       navigateTab('plan');
     },
   };

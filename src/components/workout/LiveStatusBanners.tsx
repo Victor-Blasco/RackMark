@@ -3,8 +3,6 @@ import { Icon } from '../common/Icon';
 interface PrevCompletedBannerProps {
   /** Nombre del ejercicio recién terminado. */
   prevName: string;
-  /** Índice del ejercicio recién terminado. */
-  prevIdx: number;
   /** Regresa al ejercicio anterior. */
   onGoBack: () => void;
   /** Añade una serie extra al ejercicio terminado y vuelve a él. */
@@ -51,7 +49,7 @@ export function AllDoneBanner({ doneExCount, doneSetsCount, elapsedLabel, onSave
   return (
     <div class="border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-3 rounded-r-xl space-y-2.5">
       <div>
-        <h3 class="text-sm font-extrabold text-emerald-200">¡Todos los ejercicios completados!</h3>
+        <h2 class="text-sm font-extrabold text-emerald-200">¡Todos los ejercicios completados!</h2>
         <p class="text-xs text-gray-300 tabular-nums">
           {doneExCount} {doneExCount === 1 ? 'ejercicio' : 'ejercicios'} · {doneSetsCount} {doneSetsCount === 1 ? 'serie' : 'series'} · {elapsedLabel}
         </p>

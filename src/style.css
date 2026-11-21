@@ -126,9 +126,6 @@ body {
   .bnav-item-on {
     @apply text-electricBlue;
   }
-  .num-col {
-    @apply tabular-nums text-right;
-  }
   .chart-box {
     @apply relative h-[240px] w-full sm:h-[280px] lg:h-[340px];
   }

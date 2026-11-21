@@ -25,7 +25,7 @@ interface SetRowProps {
   onRestChange: (raw: string) => void;
 }
 
-const STEP_BTN = 'flex min-h-[48px] sm:min-h-[44px] w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const STEP_BTN = 'flex min-h-[48px] sm:min-h-[44px] w-11 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Fila interactiva de una serie individual en `En vivo` con peso, reps, RIR y descanso.
@@ -122,7 +122,7 @@ export function SetRow({
           type="button"
           aria-pressed={s.done ? 'true' : 'false'}
           aria-label={`${s.done ? 'Desmarcar' : 'Marcar'} serie ${n}`}
-          class={`flex min-h-[48px] min-w-[48px] sm:min-h-[44px] sm:min-w-[80px] sm:px-2.5 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
+          class={`flex min-h-[48px] min-w-[48px] sm:min-h-[44px] sm:min-w-[80px] sm:px-2.5 items-center justify-center gap-1 rounded-xl border text-xs font-bold transition-colors active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${s.done ? 'border-emeraldGreen bg-emeraldGreen text-gray-950' : 'border-white/15 bg-white/5 text-gray-200 hover:border-emeraldGreen/60'}`}
           style={{ touchAction: 'manipulation' }}
           onClick={onToggleDone}
         >

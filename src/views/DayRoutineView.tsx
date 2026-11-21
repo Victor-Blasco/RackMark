@@ -79,7 +79,6 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
             </div>
           ) : <span />}
           <RangePicker
-            scope={day}
             active={vm.bounds.key}
             custom={state.customRanges?.[day]}
             onSelectRange={(k) => plan.setRange(day, k)}

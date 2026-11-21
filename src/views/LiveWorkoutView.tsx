@@ -79,7 +79,6 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
       {vm.prevBannerEx && live.lastCompletedExIdx != null && (
         <PrevCompletedBanner
           prevName={vm.prevBannerEx.name}
-          prevIdx={live.lastCompletedExIdx}
           onGoBack={() => actions.selectExercise(live.lastCompletedExIdx!)}
           onAddExtraSet={actions.addExtraSetPrev}
           onDismiss={actions.clearPrevBanner}
@@ -108,7 +107,7 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
       {pickerMounted && pickerData && (
         <div class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none ${pickerExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 pointer-events-none'}`}>
           <div class="overflow-hidden" inert={!pickerOpen}>
-            <ExercisePickerSheet mode={pickerMode} currentExName={vm.currentEx?.name} available={pickerData.avail} quickSuggestions={pickerData.quick} query={live.pickerQuery ?? ''} onQueryChange={actions.setPickerQuery} onPick={actions.pickExercise} onClose={actions.closePicker} />
+            <ExercisePickerSheet mode={pickerMode} currentExName={vm.currentEx?.name} available={pickerData.avail} quickSuggestions={pickerData.quick} settings={state.settings} query={live.pickerQuery ?? ''} onQueryChange={actions.setPickerQuery} onPick={actions.pickExercise} onClose={actions.closePicker} />
           </div>
         </div>
       )}

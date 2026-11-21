@@ -2,8 +2,6 @@ import { RANGES, type RangeKey } from '../../store/types';
 import { Collapsible } from './Collapsible';
 
 interface RangePickerProps {
-  /** Identificador de ámbito para filtros temporales (`home`, `body`, nombre de rutina…). */
-  scope: string;
   /** Rango actualmente seleccionado. */
   active: RangeKey;
   /** Fechas inicio/fin personalizadas cuando `active === 'Custom'`. */

@@ -101,7 +101,6 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
           </p>
         </div>
         <RangePicker
-          scope="volume"
           active={vm.bounds.key}
           custom={state.customRanges?.volume}
           onSelectRange={(key) => plan.setRange('volume', key)}
@@ -113,7 +112,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
       <AiInsightBanner state={state} pattern={/rendimiento|fuerza|sobrecarga|ppl|volumen/i} />
 
       <div class="pb-5 border-b border-white/10 space-y-2">
-        <h3 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h3>
+        <h2 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h2>
         <p class="mb-2 text-xs text-gray-400">
           Músculo principal = 1 serie, secundario = 0,5. <span class="text-coralRed">&lt;8↓ bajo</span> ·{' '}
           <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.
@@ -123,7 +122,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
       </div>
 
       <div class="space-y-2">
-        <h3 class="mb-2 font-bold text-white">Tendencia · {vm.sel}</h3>
+        <h2 class="mb-2 font-bold text-white">Tendencia · {vm.sel}</h2>
         <div class="chart-box"><ChartCanvas id="c-vol" config={vm.volChartCfg} /></div>
       </div>
     </div>

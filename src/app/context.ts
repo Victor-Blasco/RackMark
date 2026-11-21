@@ -22,16 +22,6 @@ export interface AppContext {
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
 }
 
-export const splitPair = (raw: string): [string, string] => {
-  const sep = raw.lastIndexOf('|');
-  return sep < 0 ? [raw, ''] : [raw.slice(0, sep), raw.slice(sep + 1)];
-};
-
-export const num = (v: string): number | undefined => {
-  const n = parseFloat(v.replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-};
-
 export function loadJson<T>(key: string): T | undefined {
   if (typeof localStorage === 'undefined') return undefined;
   try {
