@@ -1028,8 +1028,10 @@ describe('live workout & manual rest separation', () => {
     expect(step1Html).toContain('id="live-ex-menu-wrap" data-open="false"');
     expect(step1Html).toContain('grid-rows-[0fr]');
     expect(step1Html).toContain('+ Añadir serie');
-    expect(step1Html).toContain('Cambiar ejercicio');
+    expect(step1Html).toContain(`aria-haspopup="menu" aria-expanded="false" aria-label="Opciones de ${ex0Name}"`);
     expect(step1Html).toContain('Añadir ejercicio');
+    expect(step1Html).toContain('RIR · Desc.');
+    expect(step1Html).toContain('+ Nota');
     expect(step1Html).toContain(`aria-label="Nota para ${ex0Name}"`);
     expect(step1Html).not.toContain(`aria-label="Nota para ${ex1Name}"`);
 
