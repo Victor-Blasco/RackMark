@@ -7,31 +7,23 @@ import { Icon } from '../common/Icon';
 import { PlanCatalogList } from '../plan/PlanCatalogList';
 
 interface AddRoutineExerciseModalProps {
-  /** Estado global con catálogo completo, rutinas y mapa muscular. */
-  state: State;
-  /** Rutina activa donde se insertará el ejercicio elegido. */
-  routine: string;
-  /** Título personalizado del modal (por defecto añadir a la rutina). */
-  title?: string;
-  /** Subtítulo contador personalizado. */
-  countLabel?: string;
-  /** Nombres ya presentes en la sesión/rutina destino si difiere de `settings.routines`. */
-  existingNames?: string[];
-  /** Etiqueta personalizada para el botón de selección (`+ Añadir` o `Elegir`). */
-  addLabel?: string;
-  /** Añade un ejercicio existente a la rutina seleccionada. */
+  state: State; /** Estado global con catálogo, rutinas y mapa muscular. */
+  routine: string; /** Rutina o ámbito destino seleccionado. */
+  title?: string; /** Título personalizado del modal. */
+  countLabel?: string; /** Subtítulo contador personalizado. */
+  candidates?: string[]; /** Subconjunto opcional de ejercicios filtrables. */
+  existingNames?: string[]; /** Nombres ya seleccionados si difieren de `settings.routines`. */
+  addLabel?: string; /** Etiqueta positiva (`+ Añadir` / `Elegir`). */
+  addedLabel?: string; /** Etiqueta de estado presente (`Añadido` / `Actual`). */
   onAdd: (routine: string, name: string) => void | Promise<void>;
-  /** Quita un ejercicio ya incluido en la rutina seleccionada. */
   onRemove?: (routine: string, name: string) => void | Promise<void>;
-  /** Abre el modal de creación de nuevo ejercicio con nombre y rutina preseleccionados. */
-  onCreateExercise: (routine: string, initialName?: string) => void;
-  /** Cierra el modal sin aplicar cambios adicionales. */
+  onCreateExercise?: (routine: string, initialName?: string) => void;
   onClose: () => void;
 }
 
 /** Modal buscador multi-músculo para añadir o elegir ejercicios del catálogo. */
 export function AddRoutineExerciseModal({
-  state, routine, title, countLabel, existingNames, addLabel, onAdd, onRemove, onCreateExercise, onClose,
+  state, routine, title, countLabel, candidates, existingNames, addLabel, addedLabel, onAdd, onRemove, onCreateExercise, onClose,
 }: AddRoutineExerciseModalProps) {
   const [query, setQuery] = useState('');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -46,7 +38,7 @@ export function AddRoutineExerciseModal({
   for (const name of sourceNames) {
     if (name) existingCounts.set(name, (existingCounts.get(name) ?? 0) + 1);
   }
-  const catalog = getPlanCatalogData(state, { query, muscles: selectedMuscles, routine, limit: 80 });
+  const catalog = getPlanCatalogData(state, { query, muscles: selectedMuscles, routine, candidates, limit: 80 });
   const hasFilters = Boolean(query.trim() || selectedMuscles.length);
 
   return (
@@ -127,20 +119,21 @@ export function AddRoutineExerciseModal({
             existingCounts={existingCounts}
             hasActiveFilters={hasFilters}
             onClearFilters={() => { setQuery(''); setSelectedMuscles([]); }}
-            onCreateExercise={() => onCreateExercise(routine, query.trim() || undefined)}
+            onCreateExercise={onCreateExercise ? () => onCreateExercise(routine, query.trim() || undefined) : undefined}
             addLabel={addLabel}
+            addedLabel={addedLabel}
             onQuickAdd={(r, name) => void onAdd(r, name)}
             onQuickRemove={onRemove ? (r, name) => void onRemove(r, name) : undefined}
           />
         </div>
 
         <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3.5 sm:px-5">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="hidden sm:inline text-xs text-gray-400">¿No encuentras el ejercicio?</span>
-            <button type="button" class="btn-sm btn-accent" onClick={() => onCreateExercise(routine, query.trim() || undefined)}>
-              + Crear ejercicio
-            </button>
-          </div>
+          {onCreateExercise && (
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="hidden sm:inline text-xs text-gray-400">¿No encuentras el ejercicio?</span>
+              <button type="button" class="btn-sm btn-accent" onClick={() => onCreateExercise(routine, query.trim() || undefined)}>+ Crear ejercicio</button>
+            </div>
+          )}
           <button type="button" class="btn-sm ml-auto shrink-0" onClick={onClose}>Listo</button>
         </div>
       </div>

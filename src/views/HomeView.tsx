@@ -66,15 +66,11 @@ export function HomeView({ state: propState }: HomeViewProps) {
       />
 
       <HomeChartsSection
-        exCount={vm.exCount}
         selectedEx={vm.cur}
-        options={vm.filteredHomeOptions}
-        query={state.homeExQuery ?? ''}
         rangeLabel={vm.bounds.label}
         exChartCfg={vm.homeExCfg}
         bodyChartCfg={vm.bodyHomeCfg}
-        onSearchChange={plan.setHomeExQuery}
-        onSelectEx={plan.selectHomeEx}
+        onOpenPicker={plan.openHomeExercisePicker}
       />
 
       <LoadControlSection

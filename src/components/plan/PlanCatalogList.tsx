@@ -19,6 +19,8 @@ interface PlanCatalogListProps {
   onCreateExercise?: () => void;
   /** Etiqueta del botón de acción positiva (`+ Añadir` por defecto). */
   addLabel?: string;
+  /** Etiqueta del estado ya presente (`Añadido` por defecto). */
+  addedLabel?: string;
   /** Añade un ejercicio a la rutina destino. */
   onQuickAdd?: (routine: string, name: string) => void;
   /** Quita un ejercicio ya incluido en la rutina destino. */
@@ -27,7 +29,7 @@ interface PlanCatalogListProps {
 
 /** Lista filtrada del catálogo en Plan para añadir o quitar ejercicios en un clic. */
 export function PlanCatalogList({
-  items, targetRoutine, searchQuery, existingCounts, hasActiveFilters, onClearFilters, onCreateExercise, addLabel = '+ Añadir', onQuickAdd, onQuickRemove,
+  items, targetRoutine, searchQuery, existingCounts, hasActiveFilters, onClearFilters, onCreateExercise, addLabel = '+ Añadir', addedLabel = 'Añadido', onQuickAdd, onQuickRemove,
 }: PlanCatalogListProps) {
   const q = searchQuery.trim();
   if (!items.length) {
@@ -62,7 +64,7 @@ export function PlanCatalogList({
                 <span class="truncate text-sm font-medium text-gray-100" title={item.name}>{item.name}</span>
                 {added && (
                   <span class="shrink-0 rounded-full bg-emeraldGreen/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                    Añadido
+                    {addedLabel}
                   </span>
                 )}
               </div>
@@ -83,7 +85,7 @@ export function PlanCatalogList({
                   Quitar
                 </button>
               ) : (
-                <button type="button" class="btn-sm shrink-0" disabled>Añadido</button>
+                <button type="button" class="btn-sm shrink-0" disabled>{addedLabel}</button>
               )
             ) : (
               <button

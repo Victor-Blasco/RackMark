@@ -39,15 +39,9 @@ export function createPlanFilterActions(
       render();
     },
 
-    setHomeExQuery: (q: string) => {
-      state().homeExQuery = q;
-      render();
-    },
-
     selectHomeEx: (exName: string) => {
       const S = state();
       S.sel = { ...S.sel, home: exName };
-      S.homeExQuery = undefined;
       render();
     },
 

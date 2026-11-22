@@ -81,6 +81,11 @@ export function createPlanActions(deps: PlanActionDeps) {
       deps.render();
     },
 
+    openHomeExercisePicker: () => {
+      state().activeModal = { type: 'homeExercisePicker' };
+      deps.render();
+    },
+
     openRoutineModalNew: () => {
       const S = state();
       const used = new Set(routineNames(S.settings).map((r) => routineColor(r, S.settings)));

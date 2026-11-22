@@ -63,7 +63,6 @@ export interface State {
   settings: Settings;
   analysis: Analysis;
   sel: Record<string, string>;
-  homeExQuery?: string;
   perimeter: string;
   muscleSel: string;
   logDraft?: LogDraft;

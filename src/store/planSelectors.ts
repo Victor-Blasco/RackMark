@@ -51,12 +51,12 @@ export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
  */
 export function getPlanCatalogData(
   state: State,
-  opts?: { query?: string; muscles?: string[]; routine?: string; limit?: number },
+  opts?: { query?: string; muscles?: string[]; routine?: string; candidates?: string[]; limit?: number },
 ): { targetRoutine: string; countText: string; items: PlanCatalogItem[] } {
   const routines = routineNames(state.settings);
   const preferred = opts?.routine || state.planRoutine;
   const targetRoutine = preferred && routines.includes(preferred) ? preferred : (routines[0] ?? '');
-  const names = allExerciseNames(state);
+  const names = opts?.candidates ?? allExerciseNames(state);
   const q = normalizeSelectionText(opts?.query ?? '');
   const tokens = q ? q.split(/\s+/) : [];
   const muscleSet = opts?.muscles?.length ? new Set(opts.muscles) : null;

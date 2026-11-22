@@ -1,6 +1,5 @@
 import { currentPhase } from '../lib/analysis';
 import type { AiTone, DayName, Measure } from '../types';
-import { filterSelectionOptions } from '../ui/selection';
 import {
   findAiExercise,
   inRange,
@@ -92,8 +91,6 @@ export function buildHomeViewModel(state: State) {
   const fourthMetric = resolveFourthMetric(state, ms, bounds.label, hasFilter, bounds);
   const ex = homeExercises(state);
   const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : ex[0]?.name;
-  const homeOptions = ex.map((e) => ({ id: e.name, label: e.name }));
-  const filteredHomeOptions = ex.length > 12 ? filterSelectionOptions(homeOptions, state.homeExQuery ?? '') : homeOptions;
   const routines = routineNames(state.settings);
   const rows = routines.flatMap((d, idx) =>
     (state.analysis.byDay[d] ?? []).map((e) => {
@@ -121,9 +118,7 @@ export function buildHomeViewModel(state: State) {
     lastDayHex: lastS?.day ? routineColor(lastS.day, state.settings, Math.max(0, routines.indexOf(lastS.day))) : '#3B82F6',
     lastBadge: lastS ? routineShort(lastS.day ?? 'Sesión') : '—',
     fourthMetric,
-    exCount: ex.length,
     cur,
-    filteredHomeOptions,
     homeExCfg: buildHomeExChartConfig(state),
     bodyHomeCfg: buildBodyHomeChartConfig(ms, state.measures),
     rows,

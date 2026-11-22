@@ -1,5 +1,6 @@
 import { norm } from '../../lib/seed';
 import { useAppStore } from '../../store/appStore';
+import { homeExercises } from '../../store/homeChartConfigs';
 import { resolveActiveModal } from '../../store/types';
 import { routineNames, type State } from '../../ui/shared';
 import { AddRoutineExerciseModal } from './AddRoutineExerciseModal';
@@ -115,6 +116,24 @@ export function ModalHost({ state: propState }: ModalHostProps) {
             if (idx >= 0) store.log.removeExercise(idx);
           }}
           onCreateExercise={(_r, initialName) => store.plan.openExerciseModal({ fromLog: true, initialName })}
+          onClose={store.closeModal}
+        />
+      );
+    }
+    case 'homeExercisePicker': {
+      const names = homeExercises(state).map((e) => e.name);
+      const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : names[0];
+      return (
+        <AddRoutineExerciseModal
+          state={state}
+          routine="home"
+          title="Elegir ejercicio para gráfica"
+          countLabel={`${names.length} ${names.length === 1 ? 'ejercicio disponible' : 'ejercicios disponibles'}`}
+          candidates={names}
+          existingNames={cur ? [cur] : []}
+          addLabel="Elegir"
+          addedLabel="Actual"
+          onAdd={(_r, name) => { store.plan.selectHomeEx(name); store.closeModal(); }}
           onClose={store.closeModal}
         />
       );

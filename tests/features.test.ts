@@ -3143,4 +3143,37 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(html).toContain('>reps</span>');
     expect(html).toContain('Pecho');
   });
+
+  it('HomeView unifica el selector de ejercicio en un único botón con modal homeExercisePicker', () => {
+    const settings = sanitizeSettings(DEFAULT_SETTINGS);
+    const strength = [
+      { id: 'h1', sessionId: 'sh1', ts: 1, date: todayIso(), ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8 }] },
+      { id: 'h2', sessionId: 'sh2', ts: 2, date: todayIso(), ref: 'name:Dominadas', day: 'Pull' as const, sets: [{ w: 10, r: 8 }] },
+    ];
+    const state: State = {
+      tab: 'home',
+      strength,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: { home: 'Press de banca' },
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const homeHtml = renderToString(h(HomeView, { state }));
+    expect(homeHtml).toContain('Seleccionar ejercicio para gráfica: Press de banca');
+    expect(homeHtml).not.toContain('<select');
+    expect(homeHtml).not.toContain('Buscar ejercicio para gráfica');
+
+    const modalHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'homeExercisePicker' } } }),
+    );
+    expect(modalHtml).toContain('Elegir ejercicio para gráfica');
+    expect(modalHtml).toContain('Actual');
+    expect(modalHtml).toContain('Elegir');
+    expect(modalHtml).not.toContain('+ Crear ejercicio');
+  });
 });
