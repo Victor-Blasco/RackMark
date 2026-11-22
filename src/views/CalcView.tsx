@@ -10,7 +10,7 @@ interface CalcViewProps {
 }
 
 /**
- * Vista `Calculadoras`: estimación de 1RM con zonas y planificador calórico/macros.
+ * Vista `Calculadoras`: planificador calórico/macros y estimación de 1RM con zonas.
  */
 export function CalcView({ state: propState }: CalcViewProps) {
   const { state: storeState, analytics } = useAppStore();
@@ -19,20 +19,6 @@ export function CalcView({ state: propState }: CalcViewProps) {
 
   return (
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <OneRmCalculator
-        usingSampleStrength={vm.usingSampleStrength}
-        presets={vm.presets}
-        cW={vm.cW}
-        cR={vm.cR}
-        cRir={vm.cRir}
-        oneRm={vm.oneRm}
-        oneRmRir={vm.oneRmRir}
-        ratio={vm.ratio}
-        zones={vm.zones}
-        onSelectPreset={analytics.applyCalcPreset}
-        onUpdateField={analytics.updateCalcField}
-      />
-
       <MacroCalculator
         w={vm.w}
         bf={vm.bf}
@@ -49,6 +35,20 @@ export function CalcView({ state: propState }: CalcViewProps) {
         deltaSign={vm.deltaSign}
         projectionText={vm.projectionText}
         carbWarning={vm.carbWarning}
+        onUpdateField={analytics.updateCalcField}
+      />
+
+      <OneRmCalculator
+        usingSampleStrength={vm.usingSampleStrength}
+        presets={vm.presets}
+        cW={vm.cW}
+        cR={vm.cR}
+        cRir={vm.cRir}
+        oneRm={vm.oneRm}
+        oneRmRir={vm.oneRmRir}
+        ratio={vm.ratio}
+        zones={vm.zones}
+        onSelectPreset={analytics.applyCalcPreset}
         onUpdateField={analytics.updateCalcField}
       />
     </div>
