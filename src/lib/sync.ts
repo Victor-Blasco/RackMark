@@ -298,6 +298,7 @@ export function hasCustomSettings(s: Settings): boolean {
       Object.keys(s.aliases).length > 0 ||
       Object.keys(s.notes).length > 0 ||
       Object.keys(s.muscles).length > 0 ||
+      (s.hiddenExercises?.length ?? 0) > 0 ||
       JSON.stringify(s.routines) !== JSON.stringify(DEFAULT_SETTINGS.routines) ||
       JSON.stringify(s.routineMeta ?? {}) !== JSON.stringify(DEFAULT_SETTINGS.routineMeta ?? {}),
   );
@@ -305,6 +306,7 @@ export function hasCustomSettings(s: Settings): boolean {
 
 /** Une ajustes remotos y locales conservando las opciones locales recientes en conflictos. */
 export function mergeSyncSettings(local: Settings, remote: Settings): Settings {
+  const hidden = [...new Set([...(remote.hiddenExercises ?? []), ...(local.hiddenExercises ?? [])])];
   return sanitizeSettings({
     ...remote,
     customNames: { ...remote.customNames, ...local.customNames },
@@ -312,6 +314,7 @@ export function mergeSyncSettings(local: Settings, remote: Settings): Settings {
     aliases: { ...remote.aliases, ...local.aliases },
     notes: { ...remote.notes, ...local.notes },
     muscles: { ...remote.muscles, ...local.muscles },
+    ...(hidden.length ? { hiddenExercises: hidden } : {}),
   });
 }
 

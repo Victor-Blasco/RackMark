@@ -1,5 +1,5 @@
 import { ROUTINE_COLORS } from '../lib/seed';
-import type { AiTone, DayName } from '../types';
+import type { AiTone, DayName, LiveWorkout, LogDraft } from '../types';
 import { routineColor, routineNames, type State } from '../ui/shared';
 import { createCatalogMapActions } from './catalogMapActions';
 import { createPlanFilterActions } from './planFilterActions';
@@ -29,6 +29,8 @@ export interface PlanActionDeps {
   dismissAiJob: () => void;
   openWizard: () => void;
   closeModal: () => void;
+  saveDraft?: (draft?: LogDraft) => void;
+  saveLive?: (live?: LiveWorkout) => void;
 }
 
 /** Tipo de retorno completo de las acciones de planificación, resumen y detalle. */

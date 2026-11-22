@@ -1,5 +1,5 @@
 import { musclesOf } from '../lib/analysis';
-import { MUSCLES } from '../lib/seed';
+import { MUSCLES, norm } from '../lib/seed';
 import type { Settings } from '../types';
 import { normalizeSelectionText } from '../ui/selection';
 import { routineNames, type State } from '../ui/shared';
@@ -87,7 +87,10 @@ function getExerciseMapCandidates(state: State): string[] {
   const names = allExerciseNames(state);
   if (state.showAllExerciseMap) return names;
   const activeRoutineNames = new Set(Object.values(state.settings.routines).flat().map((i) => i.name).filter(Boolean));
-  return names.filter((n) => activeRoutineNames.has(n) || state.analysis.exercises.has(n) || !musclesOf(n, state.settings));
+  const customNorms = new Set(Object.values(state.settings.customNames).map((n) => norm(n)).filter(Boolean));
+  return names.filter(
+    (n) => activeRoutineNames.has(n) || customNorms.has(norm(n)) || state.analysis.exercises.has(n) || !musclesOf(n, state.settings),
+  );
 }
 
 /**

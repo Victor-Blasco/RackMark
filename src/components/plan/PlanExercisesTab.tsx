@@ -21,6 +21,7 @@ interface PlanExercisesTabProps {
  */
 export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanExercisesTabProps) {
   const unmappedCount = state.analysis.unmapped.length;
+  const hiddenCount = state.settings.hiddenExercises?.length ?? 0;
   const mapRes = getExerciseMapData(state);
   const facets = getExerciseMapFacets(state);
   const mergeFromRef = useRef<HTMLSelectElement>(null);
@@ -80,6 +81,11 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
           <div class="flex flex-wrap items-center justify-between gap-2">
             <span id="exercise-map-count" aria-live="polite" class="text-xs text-gray-400 tabular-nums">{mapRes.countText}</span>
             <div class="flex flex-wrap items-center gap-2">
+              {hiddenCount > 0 && (
+                <button type="button" class="btn-sm" onClick={() => void actions.restoreDefaultExercises()}>
+                  Restaurar predeterminados ({hiddenCount})
+                </button>
+              )}
               <button type="button" class="btn-sm" onClick={actions.toggleExerciseMapAll}>
                 {state.showAllExerciseMap ? 'Solo en uso' : 'Ver catálogo completo'}
               </button>
@@ -119,6 +125,8 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
         <div id="exercise-map-results">
           <PlanExerciseMapList
             items={mapRes.items}
+            onRename={(oldName, newName) => actions.renameExercise(oldName, newName)}
+            onDelete={(ex) => actions.deleteExercise(ex)}
             onChangePrimary={(ex, p) => void actions.changePrimaryMuscle(ex, p)}
             onToggleSecondary={(ex, sec) => void actions.toggleSecondaryMuscle(ex, sec)}
           />

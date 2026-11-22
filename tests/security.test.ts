@@ -166,5 +166,13 @@ describe('security hardening', () => {
     expect(() => weeklyVolume(corruptedRows, s)).not.toThrow();
     const a = analyze(corruptedRows, s);
     expect(a.exercises.size).toBe(0);
+
+    const hiddenSanitized = sanitizeSettings({
+      hiddenExercises: ['Press de banca', '  press de banca  ', '', 123, ...Array.from({ length: 520 }, (_, i) => `Ex ${i}`)],
+    });
+    expect(hiddenSanitized.hiddenExercises).toBeDefined();
+    expect(hiddenSanitized.hiddenExercises!.length).toBeLessThanOrEqual(500);
+    expect(hiddenSanitized.hiddenExercises![0]).toBe('press de banca');
+    expect(hiddenSanitized.hiddenExercises!.filter((x) => x === 'press de banca')).toHaveLength(1);
   });
 });

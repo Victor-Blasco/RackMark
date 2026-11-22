@@ -2,7 +2,7 @@ import { MEASURE_FIELDS } from '../types';
 import type {
   AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow, SyncJob,
 } from '../types';
-import { DEFAULT_SETTINGS, isValidIsoDate } from './seed';
+import { DEFAULT_SETTINGS, isValidIsoDate, norm } from './seed';
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const LEGACY_CORAL_COLORS = new Set(['#F43F5E', '#EC4899']);
@@ -252,6 +252,16 @@ export function sanitizeSettings(raw: unknown): Settings {
       const sec = v.s.filter((item): item is string => typeof item === 'string');
       base.muscles[k] = { p: v.p, s: sec } satisfies MuscleMap;
     }
+  }
+
+  if (Array.isArray(raw.hiddenExercises)) {
+    const cleanHidden = [...new Set(
+      raw.hiddenExercises
+        .filter((x): x is string => typeof x === 'string')
+        .map((x) => norm(x.slice(0, 80)))
+        .filter(Boolean),
+    )].slice(0, MAX_AUX_MAP_ENTRIES);
+    if (cleanHidden.length) base.hiddenExercises = cleanHidden;
   }
 
   if (Array.isArray(raw.phases)) {

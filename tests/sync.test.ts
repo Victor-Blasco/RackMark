@@ -324,6 +324,16 @@ describe('cloud sync helpers', () => {
       ...DEFAULT_SETTINGS,
       routines: { ...DEFAULT_SETTINGS.routines, Extra: [{ name: 'Dominadas', sets: 3, reps: 8 }] },
     })).toBe(true);
+    expect(hasCustomSettings({
+      ...DEFAULT_SETTINGS,
+      hiddenExercises: ['press de banca'],
+    })).toBe(true);
+
+    const mergedHidden = mergeSyncSettings(
+      { ...structuredClone(DEFAULT_SETTINGS), hiddenExercises: ['press de banca', 'plancha'] },
+      { ...structuredClone(DEFAULT_SETTINGS), hiddenExercises: ['plancha', 'fondos en paralelas'] },
+    );
+    expect(mergedHidden.hiddenExercises).toEqual(['plancha', 'fondos en paralelas', 'press de banca']);
   });
 
   it('syncWithCloud conserva cambios concurrentes durante el vuelo y limpia deletes huérfanos', async () => {

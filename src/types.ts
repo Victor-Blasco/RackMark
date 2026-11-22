@@ -186,6 +186,7 @@ export interface Settings {
   aliases: Record<string, string>;       // nombre -> nombre (fusionar)
   muscles: Record<string, MuscleMap>;    // nombre normalizado -> músculos
   notes: Record<string, string>;         // nombre -> nota biomecánica editable
+  hiddenExercises?: string[];            // nombres normalizados de ejercicios predeterminados ocultos
   phases: { name: string; start: string }[];
   profile: AthleteProfile;
   onboardingCompleted?: boolean;

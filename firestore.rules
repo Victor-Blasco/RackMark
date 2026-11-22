@@ -23,6 +23,7 @@ service cloud.firestore {
     //       - aliases: map (size <= 500)
     //       - muscles: map (size <= 500)
     //       - notes: map (size <= 500)
+    //       - hiddenExercises: list (optional, size <= 500)
     //       - phases: list (size <= 100)
     //       - onboardingCompleted: bool (optional)
     //       - geminiKey: string (size <= 256, optional legacy field)
@@ -126,8 +127,8 @@ service cloud.firestore {
       return d is map
         && d.keys().hasOnly([
           'routines', 'routineMeta', 'profile', 'customNames', 'refNames',
-          'aliases', 'muscles', 'notes', 'phases', 'onboardingCompleted',
-          'geminiKey', 'aiTone', 'ai'
+          'aliases', 'muscles', 'notes', 'hiddenExercises', 'phases',
+          'onboardingCompleted', 'geminiKey', 'aiTone', 'ai'
         ])
         && (!('routines' in d) || isValidRoutines(d.routines))
         && isOptionalMapMax(d, 'routineMeta', 20)
@@ -137,6 +138,7 @@ service cloud.firestore {
         && isOptionalMapMax(d, 'aliases', 500)
         && isOptionalMapMax(d, 'muscles', 500)
         && isOptionalMapMax(d, 'notes', 500)
+        && isOptionalListMax(d, 'hiddenExercises', 500)
         && isOptionalListMax(d, 'phases', 100)
         && (!('onboardingCompleted' in d) || d.onboardingCompleted is bool)
         && isOptionalStringMax(d, 'geminiKey', 256)

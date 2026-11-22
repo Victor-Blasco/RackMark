@@ -7,7 +7,7 @@ import { analyze, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/li
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
-import { DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
+import { CATALOG_EXERCISES, DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
 import { AiInsightBanner } from '../src/components/common/AiInsightBanner';
 import { ToastBanner, SwUpdateBanner } from '../src/components/common/ToastBanner';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
@@ -750,7 +750,7 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
     expect(pickerHtml).toContain('id="add-routine-ex-modal"');
     expect(pickerHtml).toContain('id="planExSearch"');
     expect(pickerHtml).toContain('+ Añadir');
-    expect(pickerHtml).toContain('Sentadilla Hack');
+    expect(pickerHtml).toContain('Sentadilla hack');
 
     const exerciseMapHtml = renderToString(h(PlanView, { state: { ...state, tab: 'plan', planTab: 'exercises' } }));
     expect(exerciseMapHtml).toContain('min-w-0 space-y-3');
@@ -1042,7 +1042,7 @@ describe('live workout & manual rest separation', () => {
         sessionId: 'manual-2026-11-10-Push',
         ts: Date.parse('2026-11-10T12:00:00Z'),
         date: '2026-11-10',
-        ref: 'name:Press horizontal en máquina',
+        ref: 'name:Press de banca',
         day: 'Push',
         sets: [
           { w: 80, r: 8, restSec: 110 },
@@ -1088,7 +1088,7 @@ describe('live workout & manual rest separation', () => {
     expect(menuHtml).toContain('id="live-ex-menu"');
     expect(menuHtml).toContain('rounded-2xl');
     expect(menuHtml).toContain(ex1Name);
-    expect(menuHtml).toContain('Obj 2×10');
+    expect(menuHtml).toContain('Obj 3×10');
     expect(menuHtml).toContain('Últ. 80 kg × 8');
 
     const step2Html = renderToString(
@@ -1180,7 +1180,7 @@ describe('live workout & manual rest separation', () => {
 
     const byName = renderCatalog('hack');
     expect(byName.countText).toMatch(/^\d+\/\d+$/);
-    expect(byName.listHtml).toContain('Sentadilla Hack');
+    expect(byName.listHtml).toContain('Sentadilla hack');
     expect(byName.listHtml).not.toContain('Press Banca');
 
     const byMuscle = renderCatalog('bíceps');
@@ -1202,7 +1202,7 @@ describe('Bloque 2 tokens, contraste y accesibilidad', () => {
         sessionId: 'sess-b2',
         ts: Date.now(),
         date: today,
-        ref: 'name:Press horizontal en máquina',
+        ref: 'name:Press de banca',
         sets: [{ w: 60, r: 10 }],
         day: 'Push',
       },
@@ -1389,7 +1389,7 @@ describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', ()
     expect(homeHtml).toContain('<span>Push</span>');
 
     const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: emptyState }));
-    expect(dayHtml).toContain('Press horizontal en máquina');
+    expect(dayHtml).toContain('Press de banca');
     expect(dayHtml).toContain('Pendiente de estrenar');
     expect(dayHtml).toContain('Sin estrenar');
     expect(dayHtml).not.toContain('No hay ejercicios con datos para esta rutina');
@@ -1506,7 +1506,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         sessionId: 'manual-2026-11-15-push',
         ts: Date.parse('2026-11-15T10:00:00Z'),
         date: '2026-11-15',
-        ref: 'name:Press horizontal en máquina',
+        ref: 'name:Press de banca',
         day: 'Push',
         sets: [{ w: 70, r: 8 }],
       },
@@ -2757,7 +2757,7 @@ describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
     };
     const picker = createWorkoutPickerActions(() => state, () => state.liveWorkout, (l) => { state.liveWorkout = l; }, () => {});
     picker.pickExercise('  aperturas en máquina  ');
-    expect(state.liveWorkout?.exercises[1].name).toBe('Aperturas En Máquina');
+    expect(state.liveWorkout?.exercises[1].name).toBe('Aperturas en máquina');
     expect(state.liveWorkout?.restRef).toEqual({ ei: 0, si: 0 });
     state.liveWorkout = { ...state.liveWorkout!, curIdx: 0, pickerMode: 'swap', restRef: { ei: 0, si: 0 } };
     picker.pickExercise('Fondos en paralelas');
@@ -3215,5 +3215,136 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(modalHtml).toContain('Actual');
     expect(modalHtml).toContain('Elegir');
     expect(modalHtml).not.toContain('+ Crear ejercicio');
+  });
+
+  it('catálogo de 60 ejercicios limpios, respaldo legacy, renombrado completo, borrado total y restauración', async () => {
+    expect(CATALOG_EXERCISES).toHaveLength(60);
+    expect(DEFAULT_MUSCLES[norm('Jalones al pecho')]?.p).toBe('Espalda');
+
+    const settings = sanitizeSettings(DEFAULT_SETTINGS);
+    const today = todayIso();
+    const state: State = {
+      tab: 'plan',
+      planTab: 'exercises',
+      showAllExerciseMap: true,
+      strength: [
+        {
+          id: 'st-1',
+          sessionId: 'ses-1',
+          ts: 1,
+          date: today,
+          ref: 'name:Curl de bíceps con barra',
+          day: 'Pull',
+          sets: [{ w: 30, r: 10 }],
+        },
+        {
+          id: 'st-2',
+          sessionId: 'ses-2',
+          ts: 2,
+          date: today,
+          ref: 'name:Hip thrust',
+          day: 'Leg',
+          sets: [{ w: 120, r: 8 }],
+        },
+      ],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: {
+        ...settings,
+        routines: {
+          ...settings.routines,
+          Pull: [...settings.routines.Pull, { name: 'Curl de bíceps con barra', sets: 3, reps: 10 }],
+          Leg: [...settings.routines.Leg, { name: 'Hip thrust', sets: 3, reps: 8 }],
+        },
+        notes: { 'Curl de bíceps con barra': 'Codos fijos' },
+      },
+      analysis: analyze([], settings),
+      sel: { home: 'Curl de bíceps con barra', Pull: 'Curl de bíceps con barra' },
+      perimeter: 'arms',
+      muscleSel: 'Bíceps',
+    };
+    state.analysis = analyze(state.strength, state.settings);
+
+    const putRows: unknown[] = [];
+    const deletedIds: string[] = [];
+    const confirmMsgs: string[] = [];
+    let confirmAnswer = true;
+    const catActions = createCatalogMapActions({
+      getState: () => state,
+      persist: async () => {
+        state.analysis = analyze(state.strength, state.settings);
+      },
+      askConfirm: async (opts) => {
+        confirmMsgs.push(opts.message);
+        return confirmAnswer;
+      },
+      toast: () => {},
+      putStrength: async (rows) => { putRows.push(...rows); },
+      deleteStrength: async (id) => { deletedIds.push(id); },
+    });
+
+    // Colisión al renombrar rechaza sin sobrescribir
+    const dupErr = await catActions.renameExercise('Curl de bíceps con barra', 'Curl martillo');
+    expect(dupErr).toContain('Curl martillo');
+
+    // Renombrado completo migra historial, rutinas, notas, músculos y oculta el nombre predeterminado anterior
+    const renameErr = await catActions.renameExercise('Curl de bíceps con barra', 'Curl barra Z');
+    expect(renameErr).toBeUndefined();
+    expect(putRows).toHaveLength(1);
+    expect(state.strength[0].ref).toBe('name:Curl barra Z');
+    expect(state.settings.routines.Pull.some((r) => r.name === 'Curl barra Z')).toBe(true);
+    expect(state.settings.notes['Curl barra Z']).toBe('Codos fijos');
+    expect(state.settings.hiddenExercises).toContain(norm('Curl de bíceps con barra'));
+    expect(allExerciseNames(state)).toContain('Curl barra Z');
+    expect(allExerciseNames(state)).not.toContain('Curl de bíceps con barra');
+
+    // Cancelar borrado no toca nada
+    confirmAnswer = false;
+    expect(await catActions.deleteExercise('Hip thrust')).toBe(false);
+    expect(state.strength).toHaveLength(2);
+
+    // Confirmar borrado total elimina historial, rutinas y oculta si es predeterminado
+    confirmAnswer = true;
+    expect(await catActions.deleteExercise('Hip thrust')).toBe(true);
+    expect(confirmMsgs[1]).toContain('1 rutina');
+    expect(confirmMsgs[1]).toContain('1 sesión del historial');
+    expect(deletedIds).toEqual(['st-2']);
+    expect(state.strength).toHaveLength(1);
+    expect(state.settings.routines.Leg.some((r) => r.name === 'Hip thrust')).toBe(false);
+    expect(state.settings.hiddenExercises).toContain(norm('Hip thrust'));
+    expect(allExerciseNames(state)).not.toContain('Hip thrust');
+
+    // Render SSR muestra el botón Restaurar predeterminados con su contador
+    const tabHtml = renderToString(h(PlanView, { state }));
+    expect(tabHtml).toContain('Restaurar predeterminados (2)');
+
+    // Volver a crear un ejercicio oculto lo desoculta automáticamente
+    const modal = createPlanModalActions({
+      getState: () => state,
+      getLastRoutine: () => 'Leg',
+      setLastRoutine: () => {},
+      setTab: () => {},
+      persist: async () => {},
+      syncWorkoutRoutineNames: () => {},
+      addExToDraft: () => {},
+      toast: () => {},
+    });
+    const recreateErr = await modal.saveExerciseModal({
+      name: 'Hip thrust',
+      primary: 'Glúteo',
+      secondary: ['Isquios'],
+      sets: 3,
+      reps: 10,
+      routine: '',
+    });
+    expect(recreateErr).toBeUndefined();
+    expect(allExerciseNames(state)).toContain('Hip thrust');
+    expect(state.settings.hiddenExercises).not.toContain(norm('Hip thrust'));
+
+    // Restaurar predeterminados limpia hiddenExercises
+    await catActions.restoreDefaultExercises();
+    expect(state.settings.hiddenExercises).toBeUndefined();
+    expect(allExerciseNames(state)).toContain('Curl de bíceps con barra');
   });
 });

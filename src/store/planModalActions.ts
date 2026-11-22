@@ -77,7 +77,11 @@ export function createPlanModalActions(deps: PlanModalDeps) {
         } else if (!list.some((x) => norm(x.name) === norm(finalName))) list.push({ name: finalName, sets, reps });
         routines = { ...S.settings.routines, [targetRoutine]: list };
       }
-      S.settings = { ...S.settings, muscles, customNames, routines };
+      const nextHidden = (S.settings.hiddenExercises ?? []).filter((h) => norm(h) !== norm(finalName));
+      const nextSettings = { ...S.settings, muscles, customNames, routines };
+      if (nextHidden.length) nextSettings.hiddenExercises = nextHidden;
+      else delete nextSettings.hiddenExercises;
+      S.settings = nextSettings;
       if (S.activeModal?.type === 'exercise') S.activeModal = null;
       await deps.persist();
       if (modal?.fromLog) deps.addExToDraft(finalName, sets, reps);

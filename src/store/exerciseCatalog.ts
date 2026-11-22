@@ -12,6 +12,7 @@ import { findAiExercise, isAiFreshForEx, routineNames, short, type State } from 
 export function allExerciseNames(state: State): string[] {
   const byNorm = new Map<string, string>();
   const aliases = state.settings.aliases;
+  const hidden = new Set((state.settings.hiddenExercises ?? []).map((h) => norm(h)));
   const add = (n: string) => {
     let t = n.trim();
     for (let seen = new Set<string>(); aliases[t] && !seen.has(t) && seen.size < 10; t = aliases[t]) seen.add(t);
@@ -20,7 +21,9 @@ export function allExerciseNames(state: State): string[] {
     if (!byNorm.has(k)) byNorm.set(k, t);
   };
   routineNames(state.settings).forEach((d) => (state.settings.routines[d] ?? []).forEach((r) => add(r.name)));
-  CATALOG_EXERCISES.forEach(add);
+  CATALOG_EXERCISES.forEach((n) => {
+    if (!hidden.has(norm(n))) add(n);
+  });
   Object.values(state.settings.customNames).forEach(add);
   Object.values(state.settings.refNames).forEach(add);
   [...state.analysis.exercises.keys()].forEach(add);

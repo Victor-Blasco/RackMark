@@ -299,6 +299,8 @@ const planActions = createPlanActions({
   dismissAiJob: () => void syncCtrl.dismissAi(),
   openWizard: () => wizardActions.open(),
   closeModal,
+  saveDraft,
+  saveLive,
 });
 
 const analyticsActions = createAnalyticsActions({
