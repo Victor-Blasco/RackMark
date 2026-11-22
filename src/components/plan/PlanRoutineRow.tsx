@@ -60,7 +60,7 @@ export function PlanRoutineRow({
             </span>
             {muscleLabel && <span class="block text-xs text-gray-400 mt-0.5 truncate">{muscleLabel}</span>}
           </div>
-          <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400 transition-colors group-hover:text-blue-300" />
+          <Icon name="edit" className="h-3.5 w-3.5 shrink-0 text-gray-400 transition-colors group-hover:text-blue-300" />
         </button>
       </div>
 
