@@ -111,13 +111,53 @@ describe('ai tone & chart axis offset', () => {
     expect(simplePrompt).toContain('"summary"');
     expect(simplePrompt).toContain('"byExercise"');
     expect(simplePrompt).toContain('Peso y forma física');
-    expect(simplePrompt).toContain('sin tecnicismos');
-    expect(simplePrompt).not.toContain('fatiga del SNC');
+    expect(simplePrompt).toContain('sin jerga ni siglas técnicas');
+    expect(simplePrompt).not.toContain('Fatiga Sistémica');
 
     expect(techPrompt).toContain('"summary"');
     expect(techPrompt).toContain('"byExercise"');
-    expect(techPrompt).toContain('Composición Corporal y Antropometría');
-    expect(techPrompt).toContain('fatiga del SNC');
+    expect(techPrompt).toContain('Composición Corporal y Balance Energético');
+    expect(techPrompt).toContain('Fatiga Sistémica');
+  });
+
+  it('calcula volumen semanal con DEFAULT_MUSCLES, restSec y resumen_composicion en buildPayload', () => {
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    settings.muscles = {};
+    const dPrev = todayIso(new Date(Date.now() - 14 * 864e5));
+    const dCur = todayIso(new Date(Date.now() - 1 * 864e5));
+    const analysis = analyze(
+      [
+        {
+          id: 's-1',
+          sessionId: 'sess-1',
+          ts: Date.now(),
+          date: dCur,
+          ref: 'name:Press de banca',
+          sets: [{ w: 80, r: 8, rir: 2, restSec: 120 }, { w: 80, r: 8, restSec: 120 }],
+          day: 'Push',
+        },
+      ],
+      settings,
+    );
+    const payload = buildPayload(
+      analysis,
+      [
+        { date: dPrev, weight: 80, waist: 86 },
+        { date: dCur, weight: 79, waist: 85 },
+      ],
+      settings,
+    );
+
+    expect(payload.volumen_semanal?.series_efectivas_semana['Pecho']).toBeGreaterThan(0);
+    const bench = (payload.ejercicios as Record<string, { musculo?: string; sesiones: { series: string[] }[] }>)['Press de banca'];
+    expect(bench.musculo).toBe('Pecho');
+    expect(bench.sesiones[0].series[0]).toContain('· 120s');
+    expect(payload.resumen_composicion).toMatchObject({
+      peso_media_7d_kg: 79,
+      cambio_cintura_cm: -1,
+      cintura_previa_fecha: dPrev,
+    });
+    expect(payload.resumen_composicion.ritmo_semanal_kg).toBeCloseTo(-0.54, 1);
   });
 
   it('conserva aiTone y ai.tone válidos en parseBackup y sanea valores desconocidos', () => {

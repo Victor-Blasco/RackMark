@@ -112,8 +112,8 @@ describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y accio
 
     const simplePrompt = buildPrompt(payload, 'simple');
     const techPrompt = buildPrompt(payload, 'technical');
-    expect(simplePrompt).toContain('entrenador personal cercano y claro');
-    expect(techPrompt).toContain('fisiólogo y entrenador de fuerza e hipertrofia');
+    expect(simplePrompt).toContain('entrenador personal cercano y riguroso');
+    expect(techPrompt).toContain('preparador de fuerza e hipertrofia basado en evidencia');
   });
 
   it('muestra estado persistente de generación y conserva el informe anterior', () => {
