@@ -28,26 +28,37 @@ interface AiToneToggleProps {
   onChange: (tone: AiTone) => void;
 }
 
+const TONE_OPTIONS: ReadonlyArray<readonly [AiTone, string]> = [
+  ['simple', 'Sencillo'],
+  ['technical', 'Técnico'],
+];
+
+const BASE_BTN =
+  'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+
 /** Selector segmentado para elegir el nivel técnico de los informes del Coach IA. */
 export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
   return (
-    <div role="group" aria-label="Nivel técnico de la IA" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]">
-      <button
-        type="button"
-        aria-pressed={tone === 'simple' ? 'true' : 'false'}
-        class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tone === 'simple' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-        onClick={() => onChange('simple')}
-      >
-        Sencillo
-      </button>
-      <button
-        type="button"
-        aria-pressed={tone === 'technical' ? 'true' : 'false'}
-        class={`inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tone === 'technical' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-        onClick={() => onChange('technical')}
-      >
-        Técnico
-      </button>
+    <div
+      role="group"
+      aria-label="Nivel técnico de la IA"
+      class="inline-flex rounded-xl border border-white/10 bg-gray-950/60 p-1 text-xs sm:text-[11px]"
+    >
+      {TONE_OPTIONS.map(([value, label]) => {
+        const active = tone === value;
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={active ? 'true' : 'false'}
+            class={`${BASE_BTN} ${active ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/10' : 'text-gray-400 hover:text-gray-200'}`}
+            onClick={() => onChange(value)}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
