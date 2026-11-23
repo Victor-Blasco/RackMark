@@ -357,6 +357,8 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
       S.settings = { ...S.settings, aliases: nextAliases, routines: nextRoutines, notes: nextNotes };
       S.liveWorkout = rename(S.liveWorkout);
       S.logDraft = rename(S.logDraft);
+      S.mergeFrom = undefined;
+      S.mergeTo = undefined;
       await deps.persist();
       deps.toast(`«${from}» unificado con «${target}».`);
     },

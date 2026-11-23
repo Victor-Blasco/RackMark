@@ -1,5 +1,6 @@
 import { norm } from '../../lib/seed';
 import { useAppStore } from '../../store/appStore';
+import { allExerciseNames } from '../../store/exerciseCatalog';
 import { homeExercises } from '../../store/homeChartConfigs';
 import { resolveActiveModal } from '../../store/types';
 import { routineNames, type State } from '../../ui/shared';
@@ -134,6 +135,27 @@ export function ModalHost({ state: propState }: ModalHostProps) {
           addLabel="Elegir"
           addedLabel="Actual"
           onAdd={(_r, name) => { store.plan.selectHomeEx(name); store.closeModal(); }}
+          onClose={store.closeModal}
+        />
+      );
+    }
+    case 'mergeExercisePicker': {
+      const other = modal.slot === 'from' ? state.mergeTo : state.mergeFrom;
+      const cur = modal.slot === 'from' ? state.mergeFrom : state.mergeTo;
+      const known = [...new Set([...allExerciseNames(state), ...state.analysis.exercises.keys()])]
+        .filter((n) => !other || norm(n) !== norm(other))
+        .sort((a, b) => a.localeCompare(b, 'es'));
+      return (
+        <AddRoutineExerciseModal
+          state={state}
+          routine="merge"
+          title={modal.slot === 'from' ? 'Elegir ejercicio origen a fusionar' : 'Elegir ejercicio destino'}
+          countLabel={`${known.length} ejercicios disponibles`}
+          candidates={known}
+          existingNames={cur ? [cur] : []}
+          addLabel="Elegir"
+          addedLabel="Actual"
+          onAdd={(_r, name) => { store.plan.selectMergeExercise(modal.slot, name); store.closeModal(); }}
           onClose={store.closeModal}
         />
       );

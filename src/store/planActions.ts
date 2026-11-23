@@ -88,6 +88,18 @@ export function createPlanActions(deps: PlanActionDeps) {
       deps.render();
     },
 
+    openMergeExercisePicker: (slot: 'from' | 'to') => {
+      state().activeModal = { type: 'mergeExercisePicker', slot };
+      deps.render();
+    },
+
+    selectMergeExercise: (slot: 'from' | 'to', name: string) => {
+      const S = state();
+      if (slot === 'from') S.mergeFrom = name;
+      else S.mergeTo = name;
+      deps.render();
+    },
+
     openRoutineModalNew: () => {
       const S = state();
       const used = new Set(routineNames(S.settings).map((r) => routineColor(r, S.settings)));

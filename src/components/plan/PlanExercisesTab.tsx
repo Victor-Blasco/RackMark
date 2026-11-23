@@ -1,4 +1,3 @@
-import { useRef } from 'preact/hooks';
 import type { PlanActions } from '../../store/planActions';
 import { getExerciseMapData, getExerciseMapFacets } from '../../store/planSelectors';
 import { fmtDate, type State } from '../../ui/shared';
@@ -8,10 +7,10 @@ import { PlanExerciseMapList } from './PlanExerciseMapList';
 interface PlanExercisesTabProps {
   /** Estado global con ejercicios, alias y mapa muscular. */
   state: State;
-  /** Lista completa de nombres conocidos para sugerencias y fusiones. */
+  /** Lista completa de nombres conocidos para contador del catálogo. */
   allNames: string[];
-  /** Lista combinada de nombres en historial y biblioteca. */
-  knownNames: string[];
+  /** Lista combinada opcional (conservada por compatibilidad). */
+  knownNames?: string[];
   /** Acciones tipadas de edición de ejercicios y músculos. */
   actions: PlanActions;
 }
@@ -19,13 +18,13 @@ interface PlanExercisesTabProps {
 /**
  * Pestaña `Ejercicios y músculos` dentro de Plan: mapeo de importados, fusiones y grupos musculares.
  */
-export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanExercisesTabProps) {
+export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabProps) {
   const unmappedCount = state.analysis.unmapped.length;
   const hiddenCount = state.settings.hiddenExercises?.length ?? 0;
   const mapRes = getExerciseMapData(state);
   const facets = getExerciseMapFacets(state);
-  const mergeFromRef = useRef<HTMLSelectElement>(null);
-  const mergeToRef = useRef<HTMLSelectElement>(null);
+  const mergeFrom = state.mergeFrom ?? '';
+  const mergeTo = state.mergeTo ?? '';
 
   return (
     <>
@@ -49,16 +48,37 @@ export function PlanExercisesTab({ state, allNames, knownNames, actions }: PlanE
         <h2 class="font-bold text-white">Unificar ejercicios duplicados</h2>
         <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
         <div class="flex flex-wrap items-center gap-2">
-          <select id="mergeFrom" ref={mergeFromRef} class="inp w-full sm:w-auto max-w-full" aria-label="Ejercicio origen a fusionar">
-            <option value="">—</option>
-            {knownNames.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <span aria-hidden="true">→</span>
-          <select id="mergeTo" ref={mergeToRef} class="inp w-full sm:w-auto max-w-full" aria-label="Ejercicio destino">
-            <option value="">—</option>
-            {knownNames.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-          <button type="button" class="btn" onClick={() => void actions.mergeExercises(mergeFromRef.current?.value ?? '', mergeToRef.current?.value ?? '')}>
+          <button
+            id="mergeFrom"
+            type="button"
+            class="inp inline-flex w-full sm:w-auto sm:min-w-[210px] max-w-full items-center justify-between gap-2 text-left"
+            aria-label={`Ejercicio origen a fusionar${mergeFrom ? `: ${mergeFrom}` : ''}`}
+            onClick={() => actions.openMergeExercisePicker('from')}
+          >
+            <span class={`truncate ${mergeFrom ? 'font-semibold text-white' : 'text-gray-400'}`}>
+              {mergeFrom || 'Elegir origen…'}
+            </span>
+            <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          </button>
+          <span aria-hidden="true" class="text-gray-400">→</span>
+          <button
+            id="mergeTo"
+            type="button"
+            class="inp inline-flex w-full sm:w-auto sm:min-w-[210px] max-w-full items-center justify-between gap-2 text-left"
+            aria-label={`Ejercicio destino${mergeTo ? `: ${mergeTo}` : ''}`}
+            onClick={() => actions.openMergeExercisePicker('to')}
+          >
+            <span class={`truncate ${mergeTo ? 'font-semibold text-white' : 'text-gray-400'}`}>
+              {mergeTo || 'Elegir destino…'}
+            </span>
+            <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          </button>
+          <button
+            type="button"
+            class="btn"
+            disabled={!mergeFrom || !mergeTo || mergeFrom === mergeTo}
+            onClick={() => void actions.mergeExercises(mergeFrom, mergeTo)}
+          >
             Fusionar
           </button>
         </div>

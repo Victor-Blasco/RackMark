@@ -37,6 +37,7 @@ export type ActiveModal =
   | { type: 'routineExercisePicker'; routine: string; replaceRowIdx?: number }
   | { type: 'logExercisePicker' }
   | { type: 'homeExercisePicker' }
+  | { type: 'mergeExercisePicker'; slot: 'from' | 'to' }
   | { type: 'routine'; mode: 'create' | 'edit'; oldName?: string; name: string; sub: string; color: string }
   | { type: 'note'; exName: string; value: string }
   | { type: 'workoutSummary'; summary: WorkoutSummary };

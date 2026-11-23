@@ -2461,7 +2461,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     // 3. Plan → Ejercicios: sin text-gray-500, selects con max-w-full, filtros lg:sticky y chips >= 44px
     const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises' } }));
     expect(planExHtml).not.toContain('text-gray-500');
-    expect(planExHtml).toContain('inp w-full sm:w-auto max-w-full');
+    expect(planExHtml).toContain('max-w-full items-center justify-between');
     expect(planExHtml).toContain('lg:sticky lg:top-0 lg:z-10');
     expect(planExHtml).toContain('min-h-[44px] sm:min-h-[34px]');
 
@@ -3483,5 +3483,38 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
     expect(dayHtml).toContain('aria-label="Ver cómo se calcula este estado"');
     expect(dayHtml).toContain('Regla aplicada');
+  });
+
+  it('PlanExercisesTab usa modal buscador mergeExercisePicker reciclado en lugar de selects largos', () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'plan',
+      planTab: 'exercises',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      mergeFrom: 'Sóleo Sentado',
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const planExHtml = renderToString(h(PlanView, { state }));
+    expect(planExHtml).toContain('id="mergeFrom"');
+    expect(planExHtml).toContain('id="mergeTo"');
+    expect(planExHtml).toContain('Sóleo Sentado');
+    expect(planExHtml).not.toContain('<select id="mergeFrom"');
+    expect(planExHtml).not.toContain('<select id="mergeTo"');
+
+    const modalHtml = renderToString(
+      h(ModalHost, { state: { ...state, activeModal: { type: 'mergeExercisePicker', slot: 'to' } } }),
+    );
+    expect(modalHtml).toContain('Elegir ejercicio destino');
+    expect(modalHtml).toContain('id="planExSearch"');
+    expect(modalHtml).toContain('Elevación de gemelos sentado');
+    expect(modalHtml).not.toContain('Sóleo Sentado');
   });
 });

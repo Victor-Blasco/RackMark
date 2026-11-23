@@ -91,6 +91,8 @@ export interface State {
   exerciseMapSearch?: string;
   exerciseMapMuscle?: string;
   showAllExerciseMap?: boolean;
+  mergeFrom?: string;
+  mergeTo?: string;
   planRoutine?: string;
   authReady?: boolean;
   user?: CloudUser | null;
