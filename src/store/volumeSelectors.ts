@@ -2,6 +2,7 @@ import type { ChartConfiguration } from 'chart.js';
 import { isoWeekStart, weeklyVolume } from '../lib/analysis';
 import { MUSCLES } from '../lib/seed';
 import { resolveRange, short, todayIso, type DateBounds, type State } from '../ui/shared';
+import { chartAccentColor } from '../ui/theme';
 
 /** Genera el listado de inicios de semana ISO comprendidos en el rango temporal activo. */
 export function weeksForBounds(
@@ -53,7 +54,7 @@ export function buildVolumeViewModel(state: State) {
         {
           label: `Series efectivas · ${sel}`,
           data: weeks.map((w) => vol.get(sel)?.get(w) ?? 0),
-          backgroundColor: '#3B82F6',
+          backgroundColor: chartAccentColor(),
         },
       ],
     },

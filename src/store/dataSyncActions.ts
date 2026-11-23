@@ -10,8 +10,9 @@ import {
 import { parseMeasuresCsv } from '../lib/measures';
 import { importSamsungInWorker } from '../lib/samsung';
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
-import type { AiTone } from '../types';
+import type { AiTone, ThemeMode } from '../types';
 import { todayIso, type State } from '../ui/shared';
+import { applyTheme } from '../ui/theme';
 import { humanizeError } from './types';
 
 const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
@@ -135,6 +136,16 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
       S.settings = { ...S.settings, aiTone: tone };
       await deps.persist();
       deps.toast(`Nivel de IA: ${tone === 'simple' ? 'Sencillo y generalista' : 'Técnico y detallado'}.`);
+    },
+
+    async setThemeWithToast(theme: ThemeMode) {
+      const S = state();
+      if ((S.settings.theme ?? 'dark') === theme) return;
+      S.settings = { ...S.settings, theme };
+      applyTheme(theme);
+      await deps.persist();
+      const label = theme === 'light' ? 'Claro' : theme === 'system' ? 'Preferencia del sistema' : 'Oscuro';
+      deps.toast(`Apariencia: ${label}.`);
     },
   };
 }

@@ -20,6 +20,7 @@ import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from '.
 import { initKeyboardNav } from './ui/keyboardNav';
 import { initSortableLists } from './ui/reorder';
 import { routineNames, type State } from './ui/shared';
+import { applyTheme, initThemeListener } from './ui/theme';
 import { loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, type AppContext } from './app/context';
 import { createSyncController } from './app/syncController';
 
@@ -50,6 +51,7 @@ const S = {
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
+initThemeListener(() => S.settings?.theme ?? 'dark', () => render());
 
 function downloadBrowserFile(name: string, data: string, type: string): void {
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -72,6 +74,7 @@ function setTab(tab: string) {
 
 async function reload() {
   S.settings = await loadSettings();
+  applyTheme(S.settings.theme ?? 'dark');
   S.aiJob = await loadAiJob();
   S.syncJob = await loadSyncJob();
   S.strength = (await getAll<StrengthRow>('strength')).sort((a, b) => a.ts - b.ts);
@@ -123,6 +126,7 @@ function render() {
 }
 
 async function persist() {
+  applyTheme(S.settings.theme ?? 'dark');
   await saveSettings(S.settings);
   markSettingsDirty();
   S.analysis = analyze(S.strength, S.settings);

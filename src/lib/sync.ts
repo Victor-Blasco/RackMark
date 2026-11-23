@@ -299,6 +299,7 @@ export function hasCustomSettings(s: Settings): boolean {
       Object.keys(s.notes).length > 0 ||
       Object.keys(s.muscles).length > 0 ||
       (s.hiddenExercises?.length ?? 0) > 0 ||
+      Boolean(s.theme && s.theme !== 'dark') ||
       JSON.stringify(s.routines) !== JSON.stringify(DEFAULT_SETTINGS.routines) ||
       JSON.stringify(s.routineMeta ?? {}) !== JSON.stringify(DEFAULT_SETTINGS.routineMeta ?? {}),
   );

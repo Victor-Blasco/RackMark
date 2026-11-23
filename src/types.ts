@@ -120,6 +120,7 @@ export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }
 export interface RoutineEx { name: string; sets: number; reps: number }
 export interface MuscleMap { p: string; s: string[] }
 export type AiTone = 'simple' | 'technical';
+export type ThemeMode = 'dark' | 'light' | 'system';
 export interface AiEntry { status?: string; prescription?: string; biomech?: string }
 export interface AiSection {
   title: string;
@@ -191,5 +192,6 @@ export interface Settings {
   profile: AthleteProfile;
   onboardingCompleted?: boolean;
   aiTone?: AiTone;
+  theme?: ThemeMode;
   ai?: AiResult;
 }

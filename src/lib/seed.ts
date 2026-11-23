@@ -356,4 +356,5 @@ export const DEFAULT_SETTINGS: Settings = {
   phases: [],
   profile: { sex: 'hombre', age: 25, height: 170 },
   aiTone: 'technical',
+  theme: 'dark',
 };

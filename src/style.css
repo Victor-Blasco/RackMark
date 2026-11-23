@@ -19,8 +19,83 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* Paleta "Reloj GPS Polar" — Oscuro por defecto (Pizarra Mineral + Hielo Ártico) */
+:root,
+html[data-theme='dark'] {
   color-scheme: dark;
+  --c-bg: 10 13 14;
+  --c-nav: 14 18 20;
+  --c-embed: 16 21 23;
+  --c-float: 18 23 25;
+  --c-modal: 18 23 25;
+  --c-card: 18 23 25;
+  --c-drag: 24 31 34;
+  --c-border: 34 43 46;
+  --c-accent: 45 212 191;
+  --c-accent-fg: 10 13 14;
+  --c-accent-50: 240 253 250;
+  --c-accent-100: 204 251 241;
+  --c-accent-200: 153 246 228;
+  --c-accent-300: 94 234 212;
+  --c-accent-400: 45 212 191;
+  --c-accent-500: 94 234 212;
+  --c-accent-600: 45 212 191;
+  --c-accent-700: 15 118 110;
+  --c-accent-800: 17 94 89;
+  --c-accent-900: 19 78 74;
+  --c-emerald: 34 197 94;
+  --c-coral: 244 63 94;
+  --c-amber: 245 158 11;
+  --c-gray-50: 247 250 251;
+  --c-gray-100: 238 243 245;
+  --c-gray-200: 218 227 231;
+  --c-gray-300: 184 197 202;
+  --c-gray-400: 148 163 168;
+  --c-gray-500: 112 128 134;
+  --c-gray-600: 75 91 97;
+  --c-gray-700: 38 49 53;
+  --c-gray-800: 24 31 34;
+  --c-gray-900: 15 20 22;
+  --c-gray-950: 10 13 14;
+}
+
+/* Paleta "Reloj GPS Polar" — Claro (Hielo Mineral + Teal Profundo) */
+html[data-theme='light'] {
+  color-scheme: light;
+  --c-bg: 243 247 248;
+  --c-nav: 232 239 241;
+  --c-embed: 235 241 243;
+  --c-float: 255 255 255;
+  --c-modal: 255 255 255;
+  --c-card: 255 255 255;
+  --c-drag: 224 234 237;
+  --c-border: 220 229 231;
+  --c-accent: 15 118 110;
+  --c-accent-fg: 255 255 255;
+  --c-accent-50: 240 253 250;
+  --c-accent-100: 19 78 74;
+  --c-accent-200: 17 94 89;
+  --c-accent-300: 15 118 110;
+  --c-accent-400: 13 148 136;
+  --c-accent-500: 13 148 136;
+  --c-accent-600: 15 118 110;
+  --c-accent-700: 17 94 89;
+  --c-accent-800: 19 78 74;
+  --c-accent-900: 15 23 26;
+  --c-emerald: 22 163 74;
+  --c-coral: 225 29 72;
+  --c-amber: 217 119 6;
+  --c-gray-50: 10 15 18;
+  --c-gray-100: 15 23 26;
+  --c-gray-200: 30 43 48;
+  --c-gray-300: 51 67 73;
+  --c-gray-400: 75 94 101;
+  --c-gray-500: 92 112 119;
+  --c-gray-600: 130 148 154;
+  --c-gray-700: 200 212 216;
+  --c-gray-800: 226 234 236;
+  --c-gray-900: 255 255 255;
+  --c-gray-950: 236 242 244;
 }
 
 html,
@@ -29,7 +104,8 @@ body {
 }
 
 body {
-  background: #090D16;
+  background: rgb(var(--c-bg));
+  color: rgb(var(--c-gray-100));
 }
 
 @layer base {
@@ -56,13 +132,15 @@ body {
     @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-semibold text-gray-200 transition-colors hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-500 active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-[44px] sm:min-h-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold transition-colors hover:bg-blue-500 active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-50;
+    color: rgb(var(--c-accent-fg));
   }
   .btn-sm {
     @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-gray-700 bg-gray-900 px-3 py-1.5 text-xs font-semibold text-gray-100 transition-colors hover:border-electricBlue hover:bg-gray-800 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue disabled:pointer-events-none disabled:opacity-40;
   }
   .btn-primary-sm {
-    @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-blue-500 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center gap-1.5 rounded-xl border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold shadow-sm transition-colors hover:bg-blue-500 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-40;
+    color: rgb(var(--c-accent-fg));
   }
   .btn-danger {
     @apply border-coralRed/50 bg-coralRed/10 text-rose-300 hover:border-coralRed hover:bg-coralRed/20;
@@ -100,8 +178,8 @@ body {
   }
   select.inp,
   select.inp option {
-    background-color: #111827;
-    color: #F9FAFB;
+    background-color: rgb(var(--c-card));
+    color: rgb(var(--c-gray-100));
   }
   .lbl {
     @apply mb-1 block text-xs text-gray-400;
@@ -140,6 +218,65 @@ body {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
+
+/* Alto contraste para texto sobre botones/badges de acento (oscuro en dark mode, blanco en light mode) */
+.bg-electricBlue.text-white,
+.bg-blue-600.text-white {
+  color: rgb(var(--c-accent-fg));
+}
+
+/* Adaptación completa a Modo Claro conservando contraste WCAG 2.1 AA */
+html[data-theme='light'] .text-white:not(.btn-primary):not(.btn-primary-sm):not(.btn-danger-solid):not(.bg-electricBlue):not(.bg-blue-600):not(.bg-rose-600),
+html[data-theme='light'] .hover\:text-white:hover,
+html[data-theme='light'] .inp,
+html[data-theme='light'] .inp-stepper {
+  color: rgb(var(--c-gray-100));
+}
+
+html[data-theme='light'] .border-white\/5 { border-color: rgba(15, 23, 26, 0.06); }
+html[data-theme='light'] .border-white\/10 { border-color: rgba(15, 23, 26, 0.11); }
+html[data-theme='light'] .border-white\/15 { border-color: rgba(15, 23, 26, 0.16); }
+html[data-theme='light'] .border-white\/20 { border-color: rgba(15, 23, 26, 0.22); }
+html[data-theme='light'] .border-white\/25,
+html[data-theme='light'] .hover\:border-white\/25:hover { border-color: rgba(15, 23, 26, 0.26); }
+
+html[data-theme='light'] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15, 23, 26, 0.06); }
+html[data-theme='light'] .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15, 23, 26, 0.11); }
+
+html[data-theme='light'] .bg-white\/\[0\.02\] { background-color: rgba(15, 23, 26, 0.025); }
+html[data-theme='light'] .bg-white\/\[0\.03\],
+html[data-theme='light'] .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(15, 23, 26, 0.04); }
+html[data-theme='light'] .bg-white\/\[0\.04\] { background-color: rgba(15, 23, 26, 0.05); }
+html[data-theme='light'] .bg-white\/\[0\.06\] { background-color: rgba(15, 23, 26, 0.07); }
+html[data-theme='light'] .bg-white\/5,
+html[data-theme='light'] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 26, 0.05); }
+html[data-theme='light'] .bg-white\/10,
+html[data-theme='light'] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 26, 0.08); }
+html[data-theme='light'] .bg-white\/15 { background-color: rgb(var(--c-card)); box-shadow: 0 1px 2px rgba(15, 23, 26, 0.08); }
+html[data-theme='light'] .ring-white\/10 { --tw-ring-color: rgba(15, 23, 26, 0.12); }
+
+html[data-theme='light'] .text-emerald-200,
+html[data-theme='light'] .text-emerald-300,
+html[data-theme='light'] .text-emerald-400 {
+  color: rgb(21 128 61);
+}
+html[data-theme='light'] .text-amber-200,
+html[data-theme='light'] .text-amber-300,
+html[data-theme='light'] .text-amber-400 {
+  color: rgb(180 83 9);
+}
+html[data-theme='light'] .text-rose-200,
+html[data-theme='light'] .text-rose-300,
+html[data-theme='light'] .text-rose-400,
+html[data-theme='light'] .btn-danger {
+  color: rgb(190 18 60);
+}
+html[data-theme='light'] .text-cyan-300 {
+  color: rgb(14 116 144);
+}
+html[data-theme='light'] .text-blue-100 {
+  color: rgb(15 118 110);
 }
 
 @keyframes wizardModalIn {

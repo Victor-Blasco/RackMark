@@ -10,6 +10,7 @@ import {
   type DateBounds,
   type State,
 } from '../ui/shared';
+import { chartAccentColor } from '../ui/theme';
 
 export const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string; glyph: string }> = {
   emeraldGreen: { dot: 'bg-emeraldGreen', text: 'text-emerald-300', glyph: '↑' },
@@ -70,7 +71,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
       labels: sessions.map((x) => short(x.date)),
       datasets: [
         { label: allBw ? 'Reps máx' : 'Peso máx (kg)', data: sessions.map((x) => (allBw ? x.repsAtTop : x.top)), borderColor: color, backgroundColor: color, borderWidth: 2.5, tension: 0.25, yAxisID: 'y' },
-        { label: allBw ? 'Reps totales' : 'Tonelaje (kg)', data: sessions.map((x) => (allBw ? x.sets.reduce((a, s) => a + s.r, 0) : Math.round(x.volume))), borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
+        { label: allBw ? 'Reps totales' : 'Tonelaje (kg)', data: sessions.map((x) => (allBw ? x.sets.reduce((a, s) => a + s.r, 0) : Math.round(x.volume))), borderColor: '#94A3A8', backgroundColor: '#94A3A8', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
       ],
     },
     options: {
@@ -112,9 +113,10 @@ export function buildBodyHomeChartConfig(ms: Measure[], allMeasures?: Measure[])
   const hasBf = mm.some((m) => m.bf != null);
   const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];
   if (hasWeight) {
+    const accent = chartAccentColor();
     datasets.push(
-      { label: 'Tendencia 7d (kg)', data: movingAverage7dFor(mm, allMeasures), borderColor: '#3B82F6', backgroundColor: '#3B82F6', borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
-      { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(59,130,246,0.38)', backgroundColor: 'rgba(59,130,246,0.5)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
+      { label: 'Tendencia 7d (kg)', data: movingAverage7dFor(mm, allMeasures), borderColor: accent, backgroundColor: accent, borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
+      { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(148,163,168,0.55)', backgroundColor: 'rgba(148,163,168,0.65)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
     );
   }
   if (hasBf) {
@@ -140,5 +142,5 @@ export function buildHomeExChartConfig(state: State): ChartConfiguration<'line'>
   const ex = homeExercises(state);
   const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : ex[0]?.name;
   const curEx = cur ? filterExByRange(state.analysis.exercises.get(cur)!, bounds) : undefined;
-  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, '#3B82F6') : null;
+  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, chartAccentColor()) : null;
 }

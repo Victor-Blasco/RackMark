@@ -328,6 +328,14 @@ describe('cloud sync helpers', () => {
       ...DEFAULT_SETTINGS,
       hiddenExercises: ['press de banca'],
     })).toBe(true);
+    expect(hasCustomSettings({
+      ...DEFAULT_SETTINGS,
+      theme: 'light',
+    })).toBe(true);
+    expect(hasCustomSettings({
+      ...DEFAULT_SETTINGS,
+      theme: 'system',
+    })).toBe(true);
 
     const mergedHidden = mergeSyncSettings(
       { ...structuredClone(DEFAULT_SETTINGS), hiddenExercises: ['press de banca', 'plancha'] },

@@ -174,5 +174,9 @@ describe('security hardening', () => {
     expect(hiddenSanitized.hiddenExercises!.length).toBeLessThanOrEqual(500);
     expect(hiddenSanitized.hiddenExercises![0]).toBe('press de banca');
     expect(hiddenSanitized.hiddenExercises!.filter((x) => x === 'press de banca')).toHaveLength(1);
+
+    expect(sanitizeSettings({ theme: 'light' }).theme).toBe('light');
+    expect(sanitizeSettings({ theme: 'system' }).theme).toBe('system');
+    expect(sanitizeSettings({ theme: 'neon-invalid' }).theme).toBe('dark');
   });
 });

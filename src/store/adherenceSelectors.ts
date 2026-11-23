@@ -2,6 +2,7 @@ import type { ChartConfiguration } from 'chart.js';
 import { isoWeekStart } from '../lib/analysis';
 import type { DayName } from '../types';
 import { inRange, resolveRange, routineNames, short, todayIso, type DateBounds, type State } from '../ui/shared';
+import { chartAccentColor } from '../ui/theme';
 import { buildAdherenceCalendarData } from './adherenceCalendar';
 import { buildAdherenceSessions } from './adherenceSessions';
 import { weeksForBounds } from './volumeSelectors';
@@ -69,7 +70,7 @@ export function buildAdherenceViewModel(state: State) {
             {
               label: 'Sueño (h)',
               data: wellScope.map((w) => (w.sleepMin != null ? Math.round((w.sleepMin / 60) * 10) / 10 : null)),
-              borderColor: '#3B82F6',
+              borderColor: chartAccentColor(),
               yAxisID: 'y',
               tension: 0.25,
               spanGaps: true,

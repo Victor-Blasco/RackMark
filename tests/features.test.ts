@@ -1,6 +1,6 @@
 import { h } from 'preact';
 import renderToString from 'preact-render-to-string';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
 import { analyze, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
@@ -77,6 +77,7 @@ import {
   weightDeltaColor,
   type State,
 } from '../src/ui/shared';
+import { applyTheme, resolveEffectiveTheme } from '../src/ui/theme';
 import { AdherenceView } from '../src/views/AdherenceView';
 import { BodyView } from '../src/views/BodyView';
 import { CalcView } from '../src/views/CalcView';
@@ -3346,5 +3347,86 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     await catActions.restoreDefaultExercises();
     expect(state.settings.hiddenExercises).toBeUndefined();
     expect(allExerciseNames(state)).toContain('Curl de bíceps con barra');
+  });
+
+  it('tema Reloj GPS Polar: selector Oscuro/Claro/Sistema, resolveEffectiveTheme/applyTheme y gráficas sin arcoíris', () => {
+    const settings = sanitizeSettings({ theme: 'system' });
+    const today = todayIso();
+    const strength = [
+      { id: 't1', sessionId: 'st1', ts: 1, date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8 }] },
+    ];
+    const measures = [
+      { date: todayIso(new Date(Date.now() - 864e5)), weight: 75 },
+      { date: today, weight: 75.5 },
+    ];
+    const state: State = {
+      tab: 'settings',
+      strength,
+      cardio: [],
+      measures,
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: { home: 'Press de banca' },
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const settingsHtml = renderToString(h(SettingsView, { state }));
+    expect(settingsHtml).toContain('Apariencia');
+    expect(settingsHtml).toContain('aria-label="Apariencia de la interfaz"');
+    expect(settingsHtml).toContain('Oscuro');
+    expect(settingsHtml).toContain('Claro');
+    expect(settingsHtml).toContain('Sistema');
+    expect(settingsHtml).toContain('aria-pressed="true"');
+
+    // Gráficas Reloj GPS Polar: serie principal en #2DD4BF y secundaria/diaria en gris mineral
+    const homeExCfg = buildHomeExChartConfig(state);
+    expect(homeExCfg?.data.datasets[0].borderColor).toBe('#2DD4BF');
+    expect(homeExCfg?.data.datasets[1].borderColor).toBe('#94A3A8');
+
+    const compCfg = buildCompChartConfig(measures, 'weight', measures);
+    expect(compCfg?.data.datasets[0].borderColor).toBe('#2DD4BF');
+    expect(compCfg?.data.datasets[1].borderColor).toBe('rgba(148,163,168,0.55)');
+
+    // resolveEffectiveTheme y applyTheme con mock ligero de document y window.matchMedia
+    const fakeClasses = new Set<string>(['dark']);
+    const fakeRoot = {
+      dataset: {} as Record<string, string>,
+      style: { colorScheme: '' },
+      classList: {
+        toggle: (cls: string, force?: boolean) => {
+          if (force) fakeClasses.add(cls);
+          else fakeClasses.delete(cls);
+          return fakeClasses.has(cls);
+        },
+      },
+    };
+    let metaColor = '#0A0D0E';
+    vi.stubGlobal('document', {
+      documentElement: fakeRoot,
+      querySelector: () => ({ setAttribute: (_k: string, v: string) => { metaColor = v; } }),
+    });
+    vi.stubGlobal('window', {
+      matchMedia: () => ({ matches: true }),
+    });
+
+    expect(resolveEffectiveTheme('dark')).toBe('dark');
+    expect(resolveEffectiveTheme('light')).toBe('light');
+    expect(resolveEffectiveTheme('system')).toBe('light');
+
+    expect(applyTheme('light')).toBe('light');
+    expect(fakeRoot.dataset.theme).toBe('light');
+    expect(fakeClasses.has('light')).toBe(true);
+    expect(fakeClasses.has('dark')).toBe(false);
+    expect(metaColor).toBe('#F3F7F8');
+
+    expect(applyTheme('dark')).toBe('dark');
+    expect(fakeRoot.dataset.theme).toBe('dark');
+    expect(fakeClasses.has('dark')).toBe(true);
+    expect(fakeClasses.has('light')).toBe(false);
+    expect(metaColor).toBe('#0A0D0E');
+
+    vi.unstubAllGlobals();
   });
 });

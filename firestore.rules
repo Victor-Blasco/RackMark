@@ -29,6 +29,7 @@ service cloud.firestore {
     //       - geminiKey: string (size <= 256, optional legacy field)
     //       - aiTone: string (optional, in ['simple', 'technical'])
     //       - ai: map (keys in ['date', 'tone', 'summary', 'overview', 'byExercise']; tone optional in ['simple', 'technical'])
+    //       - theme: string (optional, in ['dark', 'light', 'system'])
     //   - updatedAt: number (required, 0 <= val <= request.time + 24h) - client epoch ms
     //   - wipedAt: number (optional, 0 <= val <= request.time + 24h) - client epoch ms of cloud wipe
     //
@@ -128,7 +129,7 @@ service cloud.firestore {
         && d.keys().hasOnly([
           'routines', 'routineMeta', 'profile', 'customNames', 'refNames',
           'aliases', 'muscles', 'notes', 'hiddenExercises', 'phases',
-          'onboardingCompleted', 'geminiKey', 'aiTone', 'ai'
+          'onboardingCompleted', 'geminiKey', 'aiTone', 'ai', 'theme'
         ])
         && (!('routines' in d) || isValidRoutines(d.routines))
         && isOptionalMapMax(d, 'routineMeta', 20)
@@ -143,7 +144,8 @@ service cloud.firestore {
         && (!('onboardingCompleted' in d) || d.onboardingCompleted is bool)
         && isOptionalStringMax(d, 'geminiKey', 256)
         && (!('aiTone' in d) || (d.aiTone is string && d.aiTone in ['simple', 'technical']))
-        && (!('ai' in d) || isValidAiResult(d.ai));
+        && (!('ai' in d) || isValidAiResult(d.ai))
+        && (!('theme' in d) || (d.theme is string && d.theme in ['dark', 'light', 'system']));
     }
 
     function isValidSyncSettings(docData) {

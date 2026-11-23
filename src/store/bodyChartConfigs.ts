@@ -1,6 +1,7 @@
 import type { ChartConfiguration } from 'chart.js';
 import { MEASURE_FIELDS, type Measure } from '../types';
 import { inRange, movingAverage7dFor, resolveRange, short, type State } from '../ui/shared';
+import { chartAccentColor } from '../ui/theme';
 
 export const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
   arms: { label: 'Brazos', keys: ['armL', 'armR'] },
@@ -16,7 +17,7 @@ export const PERIM_GROUPS: { title: string; keys: (keyof Measure)[] }[] = [
 ];
 
 export const PERIM_ALL_KEYS: (keyof Measure)[] = PERIM_GROUPS.flatMap((g) => g.keys);
-const PAL = ['#3B82F6', '#10B981', '#F59E0B', '#A78BFA', '#22D3EE', '#6366F1'];
+const PAL = ['#2DD4BF', '#22C55E', '#F59E0B', '#A78BFA', '#38BDF8', '#94A3A8'];
 
 /** Construye la configuración de Composición Corporal separando Peso y Masa muscular. */
 export function buildCompChartConfig(
@@ -43,12 +44,13 @@ export function buildCompChartConfig(
       spanGaps: true,
     });
   } else if (hasWeight) {
+    const accent = chartAccentColor();
     datasets.push(
       {
         label: 'Tendencia 7d (kg)',
         data: movingAverage7dFor(comp, allMeasures),
-        borderColor: '#3B82F6',
-        backgroundColor: '#3B82F6',
+        borderColor: accent,
+        backgroundColor: accent,
         borderWidth: 2.5,
         pointRadius: 0,
         yAxisID: 'y',
@@ -58,8 +60,8 @@ export function buildCompChartConfig(
       {
         label: 'Peso diario (kg)',
         data: comp.map((m) => m.weight ?? null),
-        borderColor: 'rgba(59,130,246,0.38)',
-        backgroundColor: 'rgba(59,130,246,0.5)',
+        borderColor: 'rgba(148,163,168,0.55)',
+        backgroundColor: 'rgba(148,163,168,0.65)',
         borderDash: [3, 3],
         borderWidth: 1.5,
         pointRadius: 2,

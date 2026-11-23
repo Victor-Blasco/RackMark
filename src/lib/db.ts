@@ -275,6 +275,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (typeof raw.onboardingCompleted === 'boolean') base.onboardingCompleted = raw.onboardingCompleted;
 
   if (raw.aiTone === 'simple' || raw.aiTone === 'technical') base.aiTone = raw.aiTone;
+  if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'system') base.theme = raw.theme;
 
   if (isObj(raw.ai) && isValidIsoDate(raw.ai.date) && isObj(raw.ai.byExercise)) {
     const byExercise: Record<string, AiEntry> = {};

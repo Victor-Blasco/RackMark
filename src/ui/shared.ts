@@ -32,8 +32,8 @@ Chart.register(
   Legend,
   Filler,
 );
-Chart.defaults.color = '#9CA3AF';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.color = '#94A3A8';
+Chart.defaults.borderColor = 'rgba(238,243,245,0.07)';
 Chart.defaults.maintainAspectRatio = false;
 
 export function rangeCutoff(r: RangeKey): string | null {
