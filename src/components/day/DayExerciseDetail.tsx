@@ -1,8 +1,10 @@
 import type { ChartConfiguration } from 'chart.js';
-import type { ExStats } from '../../lib/analysis';
+import { useEffect, useState } from 'preact/hooks';
+import { describeStatus, type ExStats } from '../../lib/analysis';
 import type { AiEntry } from '../../types';
 import { fmtDate, short } from '../../ui/shared';
 import { ChartCanvas } from '../common/ChartCanvas';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { StatusInline } from '../common/StatusBadge';
 
@@ -34,6 +36,8 @@ interface DayExerciseDetailProps {
 /** Panel maestro-detalle de un ejercicio concreto dentro de una rutina. */
 export function DayExerciseDetail(props: DayExerciseDetailProps) {
   const { exercise: e, aiAdvice, userNote, aiDate, canvasId, historyLimit, rangeLabel, chartConfig, embedded = false, onStartWorkout, onEditNote } = props;
+  const [infoOpen, setInfoOpen] = useState(false);
+  useEffect(() => { setInfoOpen(false); }, [e.name]);
   const aiBiomech = aiAdvice?.biomech?.trim() ?? '';
   const recent = [...e.sessions].reverse().slice(0, historyLimit);
   const prescLabel = aiAdvice?.prescription && aiDate ? `Próxima sesión · IA (${short(aiDate)})` : 'Próxima sesión';
@@ -49,8 +53,19 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
       <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
           {!embedded && <h3 class="text-lg font-extrabold text-white">{e.name}</h3>}
-          <div class={`flex flex-wrap items-center gap-x-3 gap-y-1 ${embedded ? '' : 'mt-1'}`}>
+          <div class={`flex flex-wrap items-center gap-x-2 gap-y-1 ${embedded ? '' : 'mt-1'}`}>
             <StatusInline stats={e} aiStatus={aiAdvice?.status} />
+            <button
+              type="button"
+              aria-expanded={infoOpen ? 'true' : 'false'}
+              aria-controls={`status-info-${canvasId}`}
+              aria-label="Ver cómo se calcula este estado"
+              title="Ver cómo se calcula este estado"
+              class={`inline-flex h-11 w-11 sm:h-7 sm:w-7 -my-2 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${infoOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+              onClick={() => setInfoOpen((v) => !v)}
+            >
+              <Icon name="info" className="h-4 w-4" />
+            </button>
             <span class="text-xs text-gray-400 tabular-nums">Objetivo {e.target ? `${e.target.sets}×${e.target.reps}` : '—'} · {e.n} {e.n === 1 ? 'sesión' : 'sesiones'}</span>
           </div>
         </div>
@@ -59,6 +74,12 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
           <button type="button" class="btn-sm" onClick={onEditNote}><Icon name="edit" className="h-3.5 w-3.5" /> Nota</button>
         </div>
       </div>
+
+      <Collapsible open={infoOpen} keepMounted>
+        <p id={`status-info-${canvasId}`} class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-xs text-gray-300 leading-relaxed">
+          {describeStatus(e, aiAdvice?.status)}
+        </p>
+      </Collapsible>
 
       <div class="border-l-2 border-emeraldGreen pl-3.5 py-0.5">
         <p class="text-xs font-semibold uppercase tracking-wider text-emerald-400">{prescLabel}</p>

@@ -19,7 +19,7 @@ GymApp combina dos necesidades operativas opuestas dentro de una misma PWA:
 | :--- | :--- | :--- |
 | **Vistas principales** | `Entrenar` -> `En vivo` (`src/views/LiveWorkoutView.tsx`), `Registrar hecho` (`src/views/LogWorkoutView.tsx`), barra inferior móvil | `Resumen`, `Rutinas` (`Push`/`Pull`/`Leg`...), `Planificación`, `Composición`, `Volumen`, `Adherencia`, `Calculadoras`, `Datos`, `Ajustes` |
 | **Carga cognitiva** | **Mínima**: un único ejercicio activo en pantalla durante el entreno en vivo | **Alta controlada**: maestro-detalle, tablas comparativas, múltiples gráficas con rango temporal |
-| **Superficie visual** | Lienzo plano `#090D16` con divisores `1px`; cero cards anidadas | Lienzo plano `#090D16` con paneles elevados solo en detalle lateral sticky, modales e informe IA |
+| **Superficie visual** | Lienzo plano `bgDark` (`#0A0D0E` oscuro / `#F3F7F8` claro) con divisores `1px`; cero cards anidadas | Lienzo plano `bgDark` (`#0A0D0E` oscuro / `#F3F7F8` claro) con paneles elevados solo en detalle lateral sticky, modales e informe IA |
 | **Prioridad operativa** | Ergonomía con una mano (`>= 44px` global, `>= 48px` en controles primarios `En vivo`), sin auto-zoom iOS, cero pérdidas de foco/datos | Precisión analítica, edición rápida de rutinas, drag & drop FLIP y exportación/sincronización |
 
 ---
@@ -78,41 +78,44 @@ El usuario distingue explícitamente entre entrenar **ahora mismo** y registrar 
 
 ## 3. Sistema de Diseño Visual y Antipatrones
 
-### 3.1 Paleta Oficial (`tailwind.config.js`)
+### 3.1 Paleta Oficial — «Reloj GPS Polar» (`tailwind.config.js` + `src/style.css`)
 
-| Token Tailwind | Hex | Uso canónico |
-| :--- | :--- | :--- |
-| `bgDark` | `#090D16` | Lienzo principal de la aplicación y fondo base (`index.html`) |
-| `navDark` | `#0B101B` | Cabecera móvil, barra inferior fija (`MobileNav`) y barra lateral (`Sidebar`) |
-| `embedDark` | `#0D1320` | Detalle embebido dentro de acordeones móviles (`DayMobileAccordion`) |
-| `floatDark` | `#0E1525` | Capas flotantes transitorias (`LiveExerciseMenu`, `ExercisePickerSheet`) |
-| `modalDark` | `#0F1624` | Fondo de diálogos modales en `ModalHost` |
-| `cardDark` | `#111827` | Superficie elevada reservada para bloques autónomos o panel maestro-detalle |
-| `dragDark` | `#121A2B` | Superficie temporal de elemento durante arrastre activo (`reorder.ts`) |
-| `borderDark` | `#1F2937` | Bordes estructurales de contenedores, cabeceras, `.card` y `.tab` |
-| `electricBlue` | `#3B82F6` | Acción primaria, foco activo, serie en curso, acento de marca |
-| `emeraldGreen` | `#10B981` | Éxito, serie/objetivo completado, tendencia o adherencia positiva |
-| `amberGold` | `#F59E0B` | Precaución, advertencia moderada, indicador intermedio o temporizador de aviso |
-| `coralRed` | `#F43F5E` | Error, acción destructiva, déficit crítico o fatiga alta (`text-rose-300` para textos/badges legibles) |
+La interfaz emplea tokens CSS dinámicos (`--c-*` en canales RGB en `src/style.css`) y soporta tres modos de apariencia persistidos en `Settings.theme` (`'dark' | 'light' | 'system'`, gestionados por `src/ui/theme.ts` y seleccionables en `Ajustes`):
+
+| Token Tailwind | Oscuro (`dark`) | Claro (`light`) | Uso canónico |
+| :--- | :--- | :--- | :--- |
+| `bgDark` (`--c-bg`) | `#0A0D0E` *(Pizarra Mineral)* | `#F3F7F8` *(Hielo Claro)* | Lienzo principal de la aplicación y fondo base |
+| `navDark` (`--c-nav`) | `#0E1214` | `#E8EFF1` | Cabecera móvil, barra inferior fija (`MobileNav`) y barra lateral (`Sidebar`) |
+| `embedDark` (`--c-embed`) | `#101517` | `#EBF1F3` | Detalle embebido dentro de acordeones móviles (`DayMobileAccordion`) |
+| `floatDark` (`--c-float`) | `#121719` | `#FFFFFF` | Capas flotantes transitorias (`LiveExerciseMenu`, `ExercisePickerSheet`) |
+| `modalDark` (`--c-modal`) | `#121719` | `#FFFFFF` | Fondo de diálogos modales en `ModalHost` |
+| `cardDark` (`--c-card`) | `#121719` | `#FFFFFF` | Superficie elevada reservada para bloques autónomos o panel maestro-detalle |
+| `dragDark` (`--c-drag`) | `#181F22` | `#E0EAED` | Superficie temporal de elemento durante arrastre activo (`reorder.ts`) |
+| `borderDark` (`--c-border`) | `#222B2E` | `#DCE5E7` | Bordes estructurales de contenedores, cabeceras, `.card` y `.tab` |
+| `electricBlue` (`--c-accent`) | `#2DD4BF` *(Hielo Ártico)* | `#0F766E` *(Teal Polar)* | Acción primaria, foco activo, serie en curso y serie principal en gráficas |
+| `--c-accent-fg` | `#0A0D0E` *(texto oscuro)* | `#FFFFFF` *(texto blanco)* | Texto e iconos sobre botones/badges sólidos de acento (`bg-electricBlue`, `.btn-primary`) |
+| `emeraldGreen` (`--c-emerald`) | `#22C55E` | `#16A34A` | Deltas positivos reales (`+kg`, `+reps`, PR, adherencia) y serie completada |
+| `amberGold` (`--c-amber`) | `#F59E0B` | `#D97706` | Consolidación intermedia, precaución o temporizador de aviso |
+| `coralRed` (`--c-coral`) | `#F43F5E` | `#E11D48` | Error, acción destructiva, estancamiento o déficit crítico (`text-rose-300` en oscuro) |
 
 - **Paleta de rutinas (`ROUTINE_COLORS` en `src/lib/seed.ts`):** `['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#06B6D4', '#6366F1', '#14B8A6', '#84CC16']`.
-- **Paleta multi-serie en gráficas corporales (`PAL` en `src/store/bodyChartConfigs.ts`):** `['#3B82F6', '#10B981', '#F59E0B', '#A78BFA', '#22D3EE', '#6366F1']`.
+- **Paleta multi-serie en gráficas corporales (`PAL` en `src/store/bodyChartConfigs.ts`):** `['#2DD4BF', '#22C55E', '#F59E0B', '#A78BFA', '#38BDF8', '#94A3A8']`.
 
-> **Regla de tokens:** Prohibido introducir códigos hexadecimales literales en clases Tailwind de `src/`. Usar únicamente los tokens semánticos definidos en `tailwind.config.js` y bordes `border-borderDark` / `border-white/10` / `border-white/15`.
+> **Regla de tokens:** Prohibido introducir códigos hexadecimales literales en clases Tailwind de `src/`. Usar únicamente los tokens semánticos definidos en `tailwind.config.js` y bordes `border-borderDark` / `border-white/10` / `border-white/15` (adaptados automáticamente en `html[data-theme="light"]`).
 
 ### 3.2 Semántica de Color y Reserva Estricta de `coralRed`
 
-`coralRed` (`#F43F5E` y derivados `rose-*`) queda **reservado exclusivamente** para riesgo, error, alerta o borrado destructivo:
+`coralRed` (`#F43F5E` / `#E11D48` y derivados `rose-*`) queda **reservado exclusivamente** para riesgo, error, alerta o borrado destructivo, y `emeraldGreen` (`#22C55E`) queda reservado para mejoras reales o progreso positivo:
 - Acciones destructivas y confirmaciones críticas (`DataView.tsx`, `PlanView.tsx`, `SettingsView.tsx`, `LogExerciseCard.tsx`, `LiveHeader.tsx`, `ExerciseCard.tsx`).
-- Alertas reales de análisis: volumen semanal bajo `< 8` series (`VolumeView.tsx`, `PlanView.tsx`), retroceso de carga (`StatusBadge.tsx`) y veredicto `'warning'` del Coach IA (`HomeView.tsx`).
+- Alertas reales de análisis: volumen semanal bajo `< 8` series (`VolumeView.tsx`, `PlanView.tsx`), estancamiento/bajada (`StatusBadge.tsx`) y veredicto `'warning'` del Coach IA (`HomeView.tsx`).
 
-**Directriz:** Todas las métricas fisiológicas neutras (`% Grasa`, `Pulso`, objetivo de proteína) y paletas categóricas de rutinas (`ROUTINE_COLORS`, `DAY_COLOR`) o perímetros (`PAL`) emplean acentos informativos no alarmantes (azul, violeta, verde, ámbar, cian o índigo) sin `#F43F5E` ni `#EC4899`.
+**Directriz:** Todas las métricas fisiológicas neutras (`% Grasa`, `Pulso`, objetivo de proteína) y paletas categóricas de rutinas (`ROUTINE_COLORS`, `DAY_COLOR`) o perímetros (`PAL`) emplean acentos informativos no alarmantes sin `#F43F5E` ni `#EC4899`.
 
 ### 3.3 Regla Anti *Card-itis* y Jerarquía de Superficies
 
 El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentro de múltiples cajas con bordes y fondos distintos.
 
-1. **Plano por defecto:** El contenido principal descansa directamente sobre `bgDark` (`#090D16`), estructurado mediante aire vertical y divisores horizontales `1px` (`border-b border-white/10`, `divide-y divide-white/5`).
+1. **Plano por defecto:** El contenido principal descansa directamente sobre `bgDark` (`#0A0D0E` en oscuro / `#F3F7F8` en claro), estructurado mediante aire vertical y divisores horizontales `1px` (`border-b border-white/10`, `divide-y divide-white/5`).
 2. **Prohibido anidar cards dentro de cards:** Nunca colocar una tarjeta redondeada con borde y fondo distinto dentro de otra tarjeta en flujos operativos (`LiveWorkoutView.tsx`, `LogWorkoutView.tsx`).
 3. **Cuándo sí usar superficie elevada (`bg-cardDark` / `rounded-2xl` / `.card`):**
    - Capas flotantes o transitorias (`LiveExerciseMenu.tsx`, `ExercisePickerSheet.tsx`).
@@ -125,12 +128,12 @@ El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentr
 
 - **Tipografía base:** `Inter Variable` (`@fontsource-variable/inter`) con `antialiased` en `<body>` y pila monoespaciada para datos técnicos cuando corresponda.
 - **Estabilidad numérica (`.num-col` / `tabular-nums`):** Obligatorio en pesos, repeticiones, tiempos de descanso, volúmenes, series completadas, porcentajes y celdas numéricas de tabla.
-- **Ratios y contraste mínimo en tema oscuro (WCAG 2.1 AA):** Todo texto normal debe alcanzar **`>= 4,5:1`** (y texto grande/iconografía activa **`>= 3:1`**). Usar como mínimo **`text-gray-400`** (`#9CA3AF`, que ofrece `6,99:1` sobre `cardDark` `#111827` y `7,65:1` sobre `bgDark` `#090D16`) para metadatos, subtítulos e instrucciones secundarias. **Prohibido introducir `text-gray-500`** (`#6B7280`, `3,67:1` sobre `#111827`).
+- **Ratios y contraste mínimo (WCAG 2.1 AA):** Todo texto normal debe alcanzar **`>= 4,5:1`** (y texto grande/iconografía activa **`>= 3:1`**). Usar como mínimo **`text-gray-400`** (`#94A3A8` en oscuro, `#4B5E65` en claro) para metadatos, subtítulos e instrucciones secundarias. **Prohibido introducir `text-gray-500`**. En botones/badges con fondo acento brillante en oscuro (`#2DD4BF`), usar texto oscuro (`#0A0D0E` vía `--c-accent-fg`).
 
 ### 3.5 Controles (`src/style.css`) y Prohibición de Nuevos `!important`
 
 - Clases compartidas en `src/style.css`: `.card` (reservada estrictamente para los casos permitidos en §3.3, nunca como caja genérica ni anidada), `.btn`, `.btn-primary`, `.inp`, `.lbl`, `.tab` / `.tab-on`, `.nav-item` / `.nav-item-on` / `.nav-sec-lbl`, `.bnav-item` / `.bnav-item-on`, `.num-col`, `.chart-box`.
-- Los inputs numéricos ocultan spinners nativos y los `<select>` mantienen paleta oscura legible (`#F9FAFB` sobre fondo oscuro).
+- Los inputs numéricos ocultan spinners nativos y los `<select>` mantienen contraste adaptativo (`rgb(var(--c-gray-100))` sobre `rgb(var(--c-card))`).
 - **Tokens y clases base (`!`):** No añadir nuevos modificadores `!important` (`!`) de Tailwind sobre `.btn`, `.inp` o `.tab`; utilizar las variantes limpias de `src/style.css` (ej. `.btn-sm`, `.btn-accent`, `.btn-danger`, `.icon-btn`).
 
 ### 3.6 Iconografía (`src/components/common/Icon.tsx` y `src/ui/icons.ts`)
@@ -141,7 +144,8 @@ El ruido visual en móvil proviene de encerrar cada fila, input y cabecera dentr
 
 ### 3.7 Gráficas (`Chart.js` con `<ChartCanvas />` y `src/ui/shared.ts`)
 
-- Renderizar todas las gráficas de forma declarativa con **`<ChartCanvas config={...} />`** (`src/components/common/ChartCanvas.tsx`), apoyado en **`normalizeChartConfig()`** (`src/ui/shared.ts`).
+- Renderizar todas las gráficas de forma declarativa con **`<ChartCanvas config={...} />`** (`src/components/common/ChartCanvas.tsx`), apoyado en **`normalizeChartConfig()`** (`src/ui/shared.ts`) y observando `data-theme` para adaptarse automáticamente entre oscuro y claro.
+- **Sin arcoíris:** La serie principal (peso máx., tendencia 7d, horas de sueño o volumen por músculo) usa el color de acento (`chartAccentColor()`: `#2DD4BF` en oscuro / `#0F766E` en claro); las series de referencia o densidad (tonelaje o peso diario) usan gris mineral discontinuo (`#94A3A8`).
 - **Un eje `y` por defecto:** Mantener una sola escala vertical salvo cuando convivan magnitudes de distinta unidad (por ejemplo, `y` en `kg` y `y1` en `% grasa` o `HRV`).
 - Respetar `<RangePicker />`, `resolveRange()`, `inRange()` y medias móviles (`movingAverage7d()`).
 

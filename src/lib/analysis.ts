@@ -101,7 +101,7 @@ export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<
 
   const cmp = sessions.filter((x) => x.top >= last.top * 0.6 && x.top <= last.top * 1.6);
   const prev = cmp[cmp.length - 2];
-  const inc = last.top >= 40 ? 5 : 2.5;
+  const inc = last.top >= 80 ? 5 : 2.5;
   const maxE = Math.max(...cmp.map((x) => x.e1rm));
 
   if (hit) {
@@ -124,6 +124,11 @@ export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<
     return { status: 'Récord personal (e1RM)', statusColor: 'electricBlue',
       prescription: `Nuevo máximo estimado (${round(last.e1rm)} kg). Mantén ${last.top} kg hasta ${nSets}×${minReps}.` };
   }
+  if (prev && last.top === prev.top && last.repsAtTop > prev.repsAtTop) {
+    const diffReps = last.repsAtTop - prev.repsAtTop;
+    return { status: `Progresando (+${diffReps} ${diffReps === 1 ? 'rep' : 'reps'})`, statusColor: 'emeraldGreen',
+      prescription: `Buen avance (+${diffReps} ${diffReps === 1 ? 'rep' : 'reps'}) con ${last.top} kg. Sigue hasta ${nSets}×${minReps} (faltan ${missing} reps).` };
+  }
   const recent = cmp.slice(-4);
   const stalled = recent.length === 4 && recent.every((x) => x.top === last.top) && recent[3].repsAtTop <= recent[0].repsAtTop;
   const avgReps = atTop.length ? atTop.reduce((a, b) => a + b.r, 0) / atTop.length : 0;
@@ -135,6 +140,55 @@ export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<
   }
   return { status: 'Consolidando', statusColor: 'amberGold',
     prescription: `Mantén ${last.top} kg buscando ${nSets}×${minReps} (faltan ${missing} reps) antes de subir a ${last.top + inc} kg.` };
+}
+
+/** Leyenda resumida de los estados automáticos de progresión en fuerza. */
+export const STATUS_LEGEND: ReadonlyArray<{ label: string; dot: string; desc: string }> = [
+  { label: 'Subir carga', dot: 'bg-emeraldGreen', desc: 'Completaste todas las series×reps objetivo: toca subir +2,5 kg (menos de 80 kg) o +5 kg (desde 80 kg).' },
+  { label: 'Progresando', dot: 'bg-emeraldGreen', desc: 'Subiste peso o repeticiones respecto a la sesión comparable anterior.' },
+  { label: 'Récord personal', dot: 'bg-electricBlue', desc: 'Mejor marca histórica comparable de fuerza estimada o repeticiones.' },
+  { label: 'Consolidando', dot: 'bg-amberGold', desc: 'Aún faltan repeticiones para completar el objetivo con este peso, sin estancamiento.' },
+  { label: 'Cambio de carga', dot: 'bg-amberGold', desc: 'Peso fuera del rango 60%–160% previo (p. ej., cambio de máquina o unidad).' },
+  { label: 'Estancado / Ajustar', dot: 'bg-coralRed', desc: '4 sesiones seguidas al mismo peso sin subir reps, o media >3 reps bajo objetivo.' },
+];
+
+/** Explica en lenguaje claro la regla que originó el estado actual del ejercicio. */
+export function describeStatus(e: ExStats, aiStatus?: string): string {
+  const nSets = e.target?.sets ?? 2;
+  const minReps = e.target?.reps ?? 10;
+  const last = e.last;
+  const prefix = aiStatus && aiStatus !== e.status
+    ? `Estado del Coach IA («${aiStatus}»). Regla local (${e.status}): `
+    : `Regla aplicada (${e.status}): `;
+  if (!last) return `${prefix}no hay sesiones registradas para este ejercicio.`;
+
+  const top = last.top;
+  const inc = top >= 80 ? 5 : 2.5;
+  const s = e.status;
+  if (s === 'Subir carga') {
+    return `${prefix}completaste al menos ${nSets}×${minReps} con ${top} kg; el siguiente salto sugerido es +${inc} kg (+2,5 kg por debajo de 80 kg y +5 kg desde 80 kg).`;
+  }
+  if (s === 'Añadir lastre o reps') {
+    return `${prefix}completaste ${nSets}×${minReps} con peso corporal (0 kg); ya puedes añadir lastre (+2,5 kg) o ampliar repeticiones.`;
+  }
+  if (s === 'Cambio de carga') {
+    return `${prefix}la carga actual (${top} kg) queda fuera del margen comparable (60%–160%) frente a sesiones anteriores.`;
+  }
+  if (s.startsWith('Récord personal')) {
+    const metric = top === 0 ? `${last.repsAtTop} reps máximas` : `${round(last.e1rm)} kg de e1RM`;
+    return `${prefix}alcanzaste tu mejor marca comparable (${metric}) mientras buscas consolidar ${nSets}×${minReps}.`;
+  }
+  if (s.startsWith('Progresando')) {
+    const what = top === 0 ? 'tus repeticiones' : s.includes('rep') ? `tus repeticiones máximas con ${top} kg` : 'tu carga máxima';
+    return `${prefix}superaste ${what} frente a la sesión comparable anterior camino a ${nSets}×${minReps}.`;
+  }
+  if (s === 'Estancado') {
+    return `${prefix}llevas 4 sesiones comparables seguidas con ${top === 0 ? 'peso corporal' : `${top} kg`} sin mejorar tus repeticiones máximas.`;
+  }
+  if (s.startsWith('Ajustar carga')) {
+    return `${prefix}la media de repeticiones con ${top} kg quedó más de 3 reps por debajo de tu objetivo (${minReps} reps).`;
+  }
+  return `${prefix}aún faltan repeticiones para completar ${nSets}×${minReps} con ${top === 0 ? 'peso corporal' : `${top} kg`}, sin señales de estancamiento en las últimas 4 sesiones.`;
 }
 
 interface PhysioAcc { hrs: number[]; maxHr: number; durMin: number; kcal: number }

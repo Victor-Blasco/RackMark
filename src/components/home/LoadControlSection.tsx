@@ -1,6 +1,9 @@
-import type { ExStats } from '../../lib/analysis';
+import { useState } from 'preact/hooks';
+import { STATUS_LEGEND, type ExStats } from '../../lib/analysis';
 import type { DayName } from '../../types';
 import { short } from '../../ui/shared';
+import { Collapsible } from '../common/Collapsible';
+import { Icon } from '../common/Icon';
 import { StatusInline } from '../common/StatusBadge';
 
 /** Fila preparada del bloque de control de cargas. */
@@ -24,12 +27,40 @@ interface LoadControlSectionProps {
  * Sección inferior de `Resumen` con tabla de escritorio y listado móvil de progresión.
  */
 export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlSectionProps) {
+  const [legendOpen, setLegendOpen] = useState(false);
+
   return (
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
+        <div class="flex items-center gap-1.5">
+          <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
+          <button
+            type="button"
+            aria-expanded={legendOpen ? 'true' : 'false'}
+            aria-controls="load-status-legend"
+            aria-label="Qué significa cada estado"
+            title="Qué significa cada estado"
+            class={`inline-flex h-11 w-11 sm:h-7 sm:w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${legendOpen ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+            onClick={() => setLegendOpen((v) => !v)}
+          >
+            <Icon name="info" className="h-4 w-4" />
+          </button>
+        </div>
         <button type="button" class="btn-sm btn-accent sm:text-sm" onClick={onGoLog}>+ Registrar entreno</button>
       </div>
+
+      <Collapsible open={legendOpen} keepMounted>
+        <div id="load-status-legend" class="grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs sm:grid-cols-2">
+          {STATUS_LEGEND.map((item) => (
+            <div key={item.label} class="flex items-start gap-2">
+              <span class={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.dot}`} aria-hidden="true" />
+              <p class="text-gray-300 leading-relaxed">
+                <strong class="text-white">{item.label}:</strong> {item.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Collapsible>
 
       {rows.length === 0 ? (
         <div class="border-t border-white/10 py-6 text-center space-y-2">

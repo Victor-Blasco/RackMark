@@ -3,7 +3,7 @@ import renderToString from 'preact-render-to-string';
 import { describe, expect, it, vi } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
-import { analyze, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
+import { analyze, describeStatus, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
@@ -1265,7 +1265,7 @@ describe('Bloque 2 tokens, contraste y accesibilidad', () => {
 describe('Bloque 3 gráficas, shellView e iconos', () => {
   it('elimina iconos muertos, separa escalas en composición corporal y renderiza shellView', () => {
     expect('sparkle' in ICON_PATHS).toBe(false);
-    expect('info' in ICON_PATHS).toBe(false);
+    expect('info' in ICON_PATHS).toBe(true);
 
     const onlyWeight = buildBodyHomeChartConfig([{ date: '2026-11-10', weight: 75 }]);
     expect(onlyWeight?.data.datasets.map((d) => d.label)).toEqual(['Tendencia 7d (kg)', 'Peso diario (kg)']);
@@ -3428,5 +3428,60 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(metaColor).toBe('#0A0D0E');
 
     vi.unstubAllGlobals();
+  });
+
+  it('judge usa salto +2,5 kg <80 kg y +5 kg >=80 kg, reconoce Progresando (+X reps) y renderiza desplegables info', () => {
+    // < 80 kg sube +2,5 kg
+    const sub80 = judge('Press de banca', [
+      { date: '2026-11-10', sets: [{ w: 60, r: 8 }, { w: 60, r: 8 }], top: 60, repsAtTop: 8, volume: 960, e1rm: 76 },
+    ], { name: 'Press de banca', sets: 2, reps: 8 });
+    expect(sub80.status).toBe('Subir carga');
+    expect(sub80.prescription).toContain('62.5 kg');
+
+    // >= 80 kg sube +5 kg
+    const over80 = judge('Press de banca', [
+      { date: '2026-11-10', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }], top: 80, repsAtTop: 8, volume: 1280, e1rm: 101.3 },
+    ], { name: 'Press de banca', sets: 2, reps: 8 });
+    expect(over80.status).toBe('Subir carga');
+    expect(over80.prescription).toContain('85 kg');
+
+    // Progresando (+1 rep) al mismo peso sin llegar al objetivo ni récord e1RM
+    const repProg = judge('Press de banca', [
+      { date: '2026-11-01', sets: [{ w: 70, r: 9 }, { w: 70, r: 8 }], top: 70, repsAtTop: 9, volume: 1190, e1rm: 91 },
+      { date: '2026-11-05', sets: [{ w: 70, r: 6 }, { w: 70, r: 6 }], top: 70, repsAtTop: 6, volume: 840, e1rm: 84 },
+      { date: '2026-11-10', sets: [{ w: 70, r: 7 }, { w: 70, r: 7 }], top: 70, repsAtTop: 7, volume: 980, e1rm: 86.3 },
+    ], { name: 'Press de banca', sets: 3, reps: 10 });
+    expect(repProg.status).toBe('Progresando (+1 rep)');
+    expect(repProg.statusColor).toBe('emeraldGreen');
+
+    const settings = sanitizeSettings({});
+    const today = todayIso();
+    const strength = [
+      { id: 'j1', sessionId: 'sj1', ts: 1, date: todayIso(new Date(Date.now() - 864e5)), ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 70, r: 6 }, { w: 70, r: 6 }] },
+      { id: 'j2', sessionId: 'sj2', ts: 2, date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 70, r: 7 }, { w: 70, r: 7 }] },
+    ];
+    const state: State = {
+      tab: 'home',
+      strength,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    const exStats = state.analysis.exercises.get('Press de banca')!;
+    expect(describeStatus(exStats)).toContain('superaste tus repeticiones máximas con 70 kg');
+
+    const homeHtml = renderToString(h(HomeView, { state }));
+    expect(homeHtml).toContain('aria-label="Qué significa cada estado"');
+    expect(homeHtml).toContain('id="load-status-legend"');
+    expect(homeHtml).toContain('+2,5 kg (menos de 80 kg) o +5 kg (desde 80 kg)');
+
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
+    expect(dayHtml).toContain('aria-label="Ver cómo se calcula este estado"');
+    expect(dayHtml).toContain('Regla aplicada');
   });
 });
