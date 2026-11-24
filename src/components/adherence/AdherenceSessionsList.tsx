@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { AdherenceSessionFilter, AdherenceSessionItem } from '../../store/adherenceSessions';
 import type { DayName } from '../../types';
-import { fmtDate, r1 } from '../../ui/shared';
-import { Icon } from '../common/Icon';
+import { AdherenceSessionRow } from './AdherenceSessionRow';
 
 interface AdherenceSessionsListProps {
   /** Sesiones combinadas de fuerza y cardio del periodo actual, ordenadas descendentemente. */
@@ -16,22 +15,6 @@ interface AdherenceSessionsListProps {
 }
 
 const PAGE_SIZE = 12;
-
-function strengthMeta(item: Extract<AdherenceSessionItem, { kind: 'strength' }>): string {
-  return [
-    item.durMin ? `${Math.round(item.durMin)} min` : null,
-    item.avgHr ? `${Math.round(item.avgHr)} lpm` : null,
-    item.kcal ? `${Math.round(item.kcal)} kcal` : null,
-  ].filter(Boolean).join(' · ');
-}
-
-function cardioMeta(item: Extract<AdherenceSessionItem, { kind: 'cardio' }>): string {
-  return [
-    item.avgHr ? `${Math.round(item.avgHr)} lpm` : null,
-    item.kcal ? `${Math.round(item.kcal)} kcal` : null,
-    item.vo2 ? `VO2 ${r1(item.vo2)}` : null,
-  ].filter(Boolean).join(' · ');
-}
 
 /**
  * Lista filtrable y compacta de sesiones recientes (rutinas de fuerza y cardio) en `Adherencia`.
@@ -95,43 +78,9 @@ export function AdherenceSessionsList({
       {shown.length > 0 ? (
         <>
           <div class="divide-y divide-white/10">
-            {shown.map((item) => {
-              const meta = item.kind === 'strength' ? strengthMeta(item) : cardioMeta(item);
-              const title = item.kind === 'strength' ? item.day : 'Cardio';
-              return (
-                <div key={`${item.kind}-${item.id}`} class="flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
-                      <span class="truncate font-semibold text-white">{title}</span>
-                      <span class="text-gray-400" aria-hidden="true">·</span>
-                      <span class="shrink-0 text-xs sm:text-sm text-gray-300 tabular-nums">{fmtDate(item.date)}</span>
-                    </div>
-                    {meta && (
-                      <p class="pl-[18px] text-xs text-gray-400 tabular-nums" title={item.kind === 'cardio' && item.vo2 ? 'VO2 máx: capacidad aeróbica estimada (más alto = mejor resistencia)' : undefined}>{meta}</p>
-                    )}
-                  </div>
-
-                  <div class="flex shrink-0 items-center gap-1.5">
-                    <span class="text-xs sm:text-sm font-semibold text-gray-100 tabular-nums whitespace-nowrap">
-                      {item.kind === 'strength'
-                        ? `${item.exCount} ej. · ${item.sets} ${item.sets === 1 ? 'serie' : 'series'}`
-                        : `${r1(item.durMin)} min · ${r1(item.distKm)} km`}
-                    </span>
-                    {item.kind === 'strength' && (
-                      <button
-                        type="button"
-                        class="icon-btn sm:h-8 sm:w-8 text-gray-400 hover:text-blue-300 hover:bg-electricBlue/15"
-                        aria-label={`Abrir sesión ${item.day} del ${fmtDate(item.date)} en Registrar hecho`}
-                        onClick={() => onOpenStrengthSession(item.id, item.date, item.routineKey)}
-                      >
-                        <Icon name="edit" className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {shown.map((item) => (
+              <AdherenceSessionRow key={`${item.kind}-${item.id}`} item={item} onOpenStrengthSession={onOpenStrengthSession} />
+            ))}
           </div>
           {remaining > 0 && (
             <div class="flex justify-center pt-1">

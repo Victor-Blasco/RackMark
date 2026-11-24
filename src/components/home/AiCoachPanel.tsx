@@ -4,6 +4,7 @@ import { fmtDate, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { AiToneToggle } from '../common/StatusBadge';
 import { AiJobStatusBanner } from './AiJobStatusBanner';
+import { AiReportBody } from './AiReportBody';
 
 export { AiJobStatusBanner };
 
@@ -28,14 +29,7 @@ interface AiCoachPanelProps {
 
 /** Panel de informe del Coach IA con pestañas por área o llamada inicial a generar. */
 export function AiCoachPanel({
-  state,
-  tone,
-  onToneChange = () => {},
-  onSelectTab = () => {},
-  onGenerate = () => {},
-  onRetry,
-  onDismiss,
-  onCloudLogin = () => {},
+  state, tone, onToneChange = () => {}, onSelectTab = () => {}, onGenerate = () => {}, onRetry, onDismiss, onCloudLogin = () => {},
 }: AiCoachPanelProps) {
   const vm = buildAiReportViewModel(state);
 
@@ -68,10 +62,9 @@ export function AiCoachPanel({
   const hasWarning = sections.some((s) => s.verdict === 'warning');
   const allGood = sections.length > 0 && sections.every((s) => s.verdict === 'good');
   const statusToneCls = hasWarning ? 'text-amber-200' : allGood ? 'text-emerald-300' : 'text-white';
-
   const tabPanelAttrs = steps.length > 1
-    ? { id: 'ai-tabpanel', role: 'tabpanel' as const, 'aria-labelledby': `ai-tab-${activeIdx}` }
-    : {};
+    ? { id: 'ai-tabpanel', role: 'tabpanel', 'aria-labelledby': `ai-tab-${activeIdx}` }
+    : undefined;
 
   const handleTabKeyDown = (e: KeyboardEvent, idx: number) => {
     let next = idx;
@@ -80,7 +73,6 @@ export function AiCoachPanel({
     else if (e.key === 'Home') next = 0;
     else if (e.key === 'End') next = steps.length - 1;
     else return;
-
     e.preventDefault();
     onSelectTab(next);
     const tabs = (e.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
@@ -136,31 +128,7 @@ export function AiCoachPanel({
         </div>
       )}
 
-      <div {...tabPanelAttrs} class="space-y-3 pt-1">
-        {current.kind === 'summary' ? (
-          <div class={`grid grid-cols-1 gap-4 ${current.highlights.length ? 'lg:grid-cols-12 lg:items-start' : ''}`}>
-            <div class={`space-y-2 ${current.highlights.length ? 'lg:col-span-5' : ''}`}>
-              {current.overallStatus && <p class={`text-sm sm:text-[15px] font-semibold ${statusToneCls}`}>{current.overallStatus}</p>}
-              {current.summary && <p class="max-w-prose text-sm sm:text-[15px] text-gray-100 leading-relaxed">{current.summary}</p>}
-            </div>
-            {current.highlights.length > 0 && (
-              <ul class="border-t border-white/10 pt-3 space-y-2 lg:col-span-7 lg:border-t-0 lg:border-l lg:border-white/10 lg:pt-0 lg:pl-6">
-                {current.highlights.map((h, i) => (
-                  <li key={i} class="flex items-start gap-2.5 text-xs sm:text-sm text-gray-300 leading-relaxed">
-                    <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-electricBlue" aria-hidden="true" />
-                    <span class="max-w-prose">{h}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : (
-          <>
-            <h3 class={`text-base sm:text-lg font-bold ${current.titleColor}`}>{current.title}</h3>
-            <p class="max-w-prose text-[15px] sm:text-base text-gray-200 leading-7">{current.text}</p>
-          </>
-        )}
-      </div>
+      <AiReportBody current={current} statusToneCls={statusToneCls} tabPanelAttrs={tabPanelAttrs} />
     </section>
   );
 }

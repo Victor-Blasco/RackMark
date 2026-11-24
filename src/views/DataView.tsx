@@ -64,6 +64,7 @@ export function DataView({ state: propState }: DataViewProps) {
       <DataImportSection
         onImportFiles={dataSync.importFiles}
         onGoBody={() => setTab('body')}
+        onDownloadTemplate={dataSync.downloadMeasuresTemplate}
         onExportBackup={dataSync.exportBackupFile}
       />
 

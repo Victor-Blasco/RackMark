@@ -3,6 +3,7 @@ import { AdherenceSessionsList } from '../components/adherence/AdherenceSessions
 import { AiInsightBanner, NoDataCard } from '../components/common/AiInsightBanner';
 import { ChartCanvas } from '../components/common/ChartCanvas';
 import { RangePicker } from '../components/common/RangePicker';
+import { ViewHeader } from '../components/common/ViewHeader';
 import { buildAdherenceViewModel } from '../store/adherenceSelectors';
 import { useAppStore } from '../store/appStore';
 import { r1, type State } from '../ui/shared';
@@ -28,19 +29,19 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
     <div class="space-y-5">
       {!vm.hasStrength && <NoDataCard onGoLog={() => plan.openLog()} onImportData={() => setTab('data')} />}
 
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
-        <div>
-          <h1 class="text-lg font-extrabold text-white">Adherencia y bienestar</h1>
-          <p class="text-xs text-gray-400">Constancia semanal, cardio, sueño y actividad diaria ({vm.bounds.label}).</p>
-        </div>
-        <RangePicker
-          active={vm.bounds.key}
-          custom={state.customRanges?.adherence}
-          onSelectRange={(key) => plan.setRange('adherence', key)}
-          onChangeFrom={(val) => plan.setCustomRangeDate('adherence', 'from', val)}
-          onChangeTo={(val) => plan.setCustomRangeDate('adherence', 'to', val)}
-        />
-      </div>
+      <ViewHeader
+        title="Adherencia y bienestar"
+        subtitle={`Constancia semanal, cardio, sueño y actividad diaria (${vm.bounds.label}).`}
+        right={
+          <RangePicker
+            active={vm.bounds.key}
+            custom={state.customRanges?.adherence}
+            onSelectRange={(key) => plan.setRange('adherence', key)}
+            onChangeFrom={(val) => plan.setCustomRangeDate('adherence', 'from', val)}
+            onChangeTo={(val) => plan.setCustomRangeDate('adherence', 'to', val)}
+          />
+        }
+      />
 
       <AiInsightBanner state={state} pattern={/recuperaci|sueñ|suen|neat|card/i} />
 

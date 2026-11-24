@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { ROUTINE_TEMPLATES } from '../../lib/seed';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 
 interface DayOrganizeBarProps {
@@ -73,7 +74,7 @@ export function DayOrganizeBar({
         </button>
       </div>
 
-      {tplOpen && (
+      <Collapsible open={tplOpen}>
         <div class="grid grid-cols-1 gap-2 border-t border-white/10 pt-2.5 sm:grid-cols-2 lg:grid-cols-4">
           {Object.entries(ROUTINE_TEMPLATES).map(([key, tpl]) => (
             <button
@@ -90,7 +91,7 @@ export function DayOrganizeBar({
             </button>
           ))}
         </div>
-      )}
+      </Collapsible>
 
       <p class="text-[11px] text-gray-400">
         Usa las flechas <span class="text-gray-200 font-semibold">^ / v</span> para reordenar o toca <span class="text-gray-200 font-semibold">3×8 ✎</span> en cualquier fila para cambiar series y reps.

@@ -3101,8 +3101,9 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(logHtml).toContain('class="sr-only">Peso (kg)');
     expect(logHtml).toContain('RIR · Desc. · 2');
     // Primer ejercicio con nota -> grid-rows-[1fr]; ejercicios sin nota -> grid-rows-[0fr]
-    expect(logHtml).toContain('grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none grid-rows-[1fr]');
-    expect(logHtml).toContain('grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none grid-rows-[0fr]');
+    expect(logHtml).toContain('transition-[grid-template-rows,opacity]');
+    expect(logHtml).toContain('grid-rows-[1fr]');
+    expect(logHtml).toContain('grid-rows-[0fr]');
   });
 
   it('captureFlipRects y playFlipRects animan el desplazamiento y respetan prefers-reduced-motion', () => {

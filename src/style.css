@@ -173,6 +173,10 @@ body {
     -moz-appearance: textfield;
     appearance: textfield;
   }
+  .inp[type='search']::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
   select.inp {
     @apply truncate;
   }

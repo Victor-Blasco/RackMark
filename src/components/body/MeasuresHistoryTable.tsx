@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import type { Measure, MEASURE_FIELDS } from '../../types';
 import { fmtDate, r1 } from '../../ui/shared';
 import { Icon } from '../common/Icon';
+import { SegmentedControl } from '../common/SegmentedControl';
 import { MeasuresHistoryMobileList } from './MeasuresHistoryMobileList';
 
 type MeasureFieldDef = (typeof MEASURE_FIELDS)[number];
@@ -66,24 +67,15 @@ export function MeasuresHistoryTable({
           Historial de mediciones ({measuresDesc.length}{hasFilter ? ` de ${totalMeasures}` : ''})
         </h2>
         {measuresDesc.length > 0 && tabs.length > 1 && (
-          <div role="radiogroup" aria-label="Columnas del historial de mediciones" class="hidden md:inline-flex items-center gap-1 rounded-xl border border-white/10 bg-gray-900/70 p-1">
-            {tabs.map((t) => {
-              const checked = t.id === activeTab;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={checked ? 'true' : 'false'}
-                  tabIndex={checked ? 0 : -1}
-                  class={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${checked ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-                  onClick={() => setGroup(t.id)}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
+          <SegmentedControl
+            role="radiogroup"
+            options={tabs}
+            value={activeTab}
+            ariaLabel="Columnas del historial de mediciones"
+            className="hidden md:inline-flex items-center gap-1 rounded-xl border border-white/10 bg-gray-900/70 p-1"
+            buttonClassName="px-2.5 py-1 text-xs"
+            onChange={setGroup}
+          />
         )}
       </div>
 

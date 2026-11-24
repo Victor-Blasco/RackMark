@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useMemo, useState } from 'preact/hooks';
 import { Collapsible } from '../components/common/Collapsible';
 import { Icon } from '../components/common/Icon';
 import { DayMasterList } from '../components/day/DayMasterList';
@@ -23,7 +23,10 @@ interface DayRoutineViewProps {
 export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
   const { state: storeState, plan, openFixedNote } = useAppStore();
   const state = propState ?? storeState;
-  const vm = buildDayRoutineViewModel(state, day);
+  const vm = useMemo(
+    () => buildDayRoutineViewModel(state, day),
+    [state.analysis, state.settings, state.sel, state.dayExtra, state.ranges, state.customRanges, day],
+  );
   const [organizeOpen, setOrganizeOpen] = useState(false);
   const [simOpen, setSimOpen] = useState(false);
   const routineRows = state.settings.routines[day] ?? [];

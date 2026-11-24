@@ -1,5 +1,6 @@
 import { Icon } from '../common/Icon';
 import { RangePicker } from '../common/RangePicker';
+import { SegmentedControl } from '../common/SegmentedControl';
 import { fmtDate, type DateBounds, type RangeKey } from '../../ui/shared';
 
 interface DayRoutineHeaderProps {
@@ -80,14 +81,18 @@ export function DayRoutineHeader({
 
       <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
         {extraCount > 0 && primaryCount > 0 ? (
-          <div role="tablist" aria-label="Filtro de ejercicios" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
-            <button type="button" role="tab" aria-selected={!showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${!showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => onSetScope('routine')}>
-              En rutina ({primaryCount})
-            </button>
-            <button type="button" role="tab" aria-selected={showingExtra ? 'true' : 'false'} class={`inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-3 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${showingExtra ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`} onClick={() => onSetScope('extra')}>
-              Anteriores ({extraCount})
-            </button>
-          </div>
+          <SegmentedControl
+            role="tablist"
+            options={[
+              { id: 'routine' as const, label: `En rutina (${primaryCount})` },
+              { id: 'extra' as const, label: `Anteriores (${extraCount})` },
+            ]}
+            value={showingExtra ? 'extra' : 'routine'}
+            ariaLabel="Filtro de ejercicios"
+            className="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1"
+            buttonClassName="min-h-[44px] sm:min-h-[34px] px-3 py-1.5 text-xs tabular-nums"
+            onChange={onSetScope}
+          />
         ) : <span />}
         <RangePicker
           active={bounds.key}

@@ -1,4 +1,5 @@
 import { AiCoachPanel } from '../components/home/AiCoachPanel';
+import { NoDataCard } from '../components/common/AiInsightBanner';
 import { HomeChartsSection } from '../components/home/HomeChartsSection';
 import { HomeHeroStrip } from '../components/home/HomeHeroStrip';
 import { LoadControlSection } from '../components/home/LoadControlSection';
@@ -34,15 +35,7 @@ export function HomeView({ state: propState }: HomeViewProps) {
 
   return (
     <div class="space-y-6">
-      {!state.strength.length && (
-        <div class="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-300">
-          <p>Aún no hay entrenamientos guardados. Registra tu primera sesión o importa tus datos previos.</p>
-          <div class="flex shrink-0 flex-wrap gap-2">
-            <button type="button" class="btn-sm btn-accent" onClick={() => plan.openLog()}>+ Registrar entreno</button>
-            <button type="button" class="btn-sm" onClick={() => setTab('data')}>Importar datos</button>
-          </div>
-        </div>
-      )}
+      {!state.strength.length && <NoDataCard onGoLog={() => plan.openLog()} onImportData={() => setTab('data')} />}
 
       <HomeHeroStrip
         vm={vm}

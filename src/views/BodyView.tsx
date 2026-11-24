@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AiInsightBanner } from '../components/common/AiInsightBanner';
 import { RangePicker } from '../components/common/RangePicker';
+import { ViewHeader } from '../components/common/ViewHeader';
 import { BodyChartsSection } from '../components/body/BodyChartsSection';
 import { MeasureForm } from '../components/body/MeasureForm';
 import { MeasuresHistoryTable } from '../components/body/MeasuresHistoryTable';
@@ -19,7 +20,10 @@ interface BodyViewProps {
 export function BodyView({ state: propState }: BodyViewProps) {
   const { state: storeState, plan, analytics } = useAppStore();
   const state = propState ?? storeState;
-  const vm = buildBodyViewModel(state);
+  const vm = useMemo(
+    () => buildBodyViewModel(state),
+    [state.measures, state.settings, state.ranges, state.customRanges, state.measureDate, state.measureDraft, state.measurePerimOpen, state.bodyMetric, state.perimeter],
+  );
   const [formOpen, setFormOpen] = useState(() => vm.ms.length === 0 || Boolean(state.measureDate));
 
   useEffect(() => {
@@ -37,21 +41,19 @@ export function BodyView({ state: propState }: BodyViewProps) {
 
   return (
     <div class="space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
-        <div>
-          <h1 class="text-lg font-extrabold text-white">Cuerpo y medidas</h1>
-          <p class="text-xs text-gray-400">
-            Peso con media móvil de 7 días, composición corporal y perímetros{vm.hasFilter ? ` · ${vm.bounds.label}` : ''}.
-          </p>
-        </div>
-        <RangePicker
-          active={vm.bounds.key}
-          custom={state.customRanges?.body}
-          onSelectRange={(key) => plan.setRange('body', key)}
-          onChangeFrom={(val) => plan.setCustomRangeDate('body', 'from', val)}
-          onChangeTo={(val) => plan.setCustomRangeDate('body', 'to', val)}
-        />
-      </div>
+      <ViewHeader
+        title="Cuerpo y medidas"
+        subtitle={`Peso con media móvil de 7 días, composición corporal y perímetros${vm.hasFilter ? ` · ${vm.bounds.label}` : ''}.`}
+        right={
+          <RangePicker
+            active={vm.bounds.key}
+            custom={state.customRanges?.body}
+            onSelectRange={(key) => plan.setRange('body', key)}
+            onChangeFrom={(val) => plan.setCustomRangeDate('body', 'from', val)}
+            onChangeTo={(val) => plan.setCustomRangeDate('body', 'to', val)}
+          />
+        }
+      />
 
       <AiInsightBanner state={state} pattern={/composici|cuerpo|antropo/i} />
 

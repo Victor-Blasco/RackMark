@@ -1,8 +1,8 @@
-import { useRef, useState } from 'preact/hooks';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useState } from 'preact/hooks';
 import { MUSCLES } from '../../lib/seed';
 import type { SaveExercisePayload } from '../../store/planActions';
 import { Icon } from '../common/Icon';
+import { ModalShell } from '../common/ModalShell';
 
 interface ExerciseModalProps {
   /** Lista de rutinas disponibles para asignar directamente el nuevo ejercicio. */
@@ -30,18 +30,15 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
   const [secondary, setSecondary] = useState<string[]>([]);
   const [routine, setRoutine] = useState(defaultRoutine);
   const [error, setError] = useState<string | null>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef, true, onClose);
 
   const toggleSec = (m: string) =>
     setSecondary((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
 
   return (
-    <div id="ex-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="exModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
+    <ModalShell id="ex-modal" labelledBy="exModalTitle" panelClass="max-w-lg border-white/10 max-h-[90vh] overflow-y-auto" onClose={onClose}>
       <form
         id="f-new-ex"
-        class="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+        class="p-5 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
@@ -61,9 +58,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
         </div>
 
         {error && (
-          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
-            {error}
-          </p>
+          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">{error}</p>
         )}
 
         <label class="block">
@@ -130,6 +125,6 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'preact/hooks';
 import { AiInsightBanner, NoDataCard } from '../components/common/AiInsightBanner';
 import { ChartCanvas } from '../components/common/ChartCanvas';
 import { RangePicker } from '../components/common/RangePicker';
+import { ViewHeader } from '../components/common/ViewHeader';
 import { useAppStore } from '../store/appStore';
 import { buildVolumeViewModel } from '../store/volumeSelectors';
 import { r1, short, type State } from '../ui/shared';
@@ -40,21 +41,19 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
 
   return (
     <div class="space-y-5">
-      <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
-        <div>
-          <h1 class="text-lg font-extrabold text-white">Volumen semanal</h1>
-          <p class="text-xs text-gray-400">
-            Series efectivas por grupo muscular · {vm.weeks.length} semanas ({vm.bounds.label}).
-          </p>
-        </div>
-        <RangePicker
-          active={vm.bounds.key}
-          custom={state.customRanges?.volume}
-          onSelectRange={(key) => plan.setRange('volume', key)}
-          onChangeFrom={(val) => plan.setCustomRangeDate('volume', 'from', val)}
-          onChangeTo={(val) => plan.setCustomRangeDate('volume', 'to', val)}
-        />
-      </div>
+      <ViewHeader
+        title="Volumen semanal"
+        subtitle={`Series efectivas por grupo muscular · ${vm.weeks.length} semanas (${vm.bounds.label}).`}
+        right={
+          <RangePicker
+            active={vm.bounds.key}
+            custom={state.customRanges?.volume}
+            onSelectRange={(key) => plan.setRange('volume', key)}
+            onChangeFrom={(val) => plan.setCustomRangeDate('volume', 'from', val)}
+            onChangeTo={(val) => plan.setCustomRangeDate('volume', 'to', val)}
+          />
+        }
+      />
 
       <AiInsightBanner state={state} pattern={/rendimiento|fuerza|sobrecarga|ppl|volumen/i} />
 

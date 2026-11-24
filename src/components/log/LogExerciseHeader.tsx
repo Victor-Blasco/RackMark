@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LogExDraft } from '../../types';
 import { Icon } from '../common/Icon';
@@ -38,30 +38,7 @@ export function LogExerciseHeader({
   onOpenFixedNote,
   onRemoveExercise,
 }: LogExerciseHeaderProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node | null;
-      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return;
-      setMenuOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      setMenuOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [menuOpen]);
+  const { open: menuOpen, setOpen: setMenuOpen, triggerRef, menuRef } = useDismissibleMenu();
 
   const act = (fn: () => void) => {
     setMenuOpen(false);

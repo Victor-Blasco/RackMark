@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LiveWorkoutActions } from '../../store/workoutActions';
 import type { LogExDraft } from '../../types';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { SetRow } from './SetRow';
 
@@ -25,9 +27,7 @@ const PILL_BTN = 'min-h-[44px] sm:min-h-[34px] inline-flex items-center rounded-
 export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions }: ExerciseCardProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [noteOpen, setNoteOpen] = useState(() => Boolean(ex.note.trim()));
-  const [menuOpen, setMenuOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const { open: menuOpen, setOpen: setMenuOpen, triggerRef, menuRef } = useDismissibleMenu();
 
   useEffect(() => {
     setShowDetails(false);
@@ -38,22 +38,6 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
   useEffect(() => {
     if (ex.note.trim()) setNoteOpen(true);
   }, [ex.note]);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDown = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node) && !triggerRef.current?.contains(e.target as Node)) setMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      setMenuOpen(false);
-      triggerRef.current?.focus();
-    };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [menuOpen]);
 
   const showBanner = Boolean(ctx.prescription || ctx.fixedNote || (!ctx.hist && ex.sets.every((s) => s.w === 0)));
   const detailsCount = ex.sets.filter((s) => s.rir != null || s.restSec != null).length;
@@ -130,11 +114,9 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             <button type="button" aria-expanded={noteOpen ? 'true' : 'false'} class={`${PILL_BTN} ${noteOpen || hasNote ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`} onClick={() => setNoteOpen((v) => !v)}>{hasNote ? 'Nota de hoy' : '+ Nota de hoy'}</button>
           </div>
         </div>
-        <div class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${noteOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-          <div class="overflow-hidden" inert={!noteOpen} aria-hidden={noteOpen ? undefined : 'true'}>
-            <input class="w-full min-h-[44px] rounded-sm border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" enterKeyHint="done" value={ex.note} placeholder="Nota de hoy (sensaciones, ajustes)…" aria-label={`Nota para ${ex.name}`} onInput={(e) => actions.updateNote(curIdx, e.currentTarget.value)} />
-          </div>
-        </div>
+        <Collapsible open={noteOpen} keepMounted>
+          <input class="w-full min-h-[44px] rounded-sm border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" enterKeyHint="done" value={ex.note} placeholder="Nota de hoy (sensaciones, ajustes)…" aria-label={`Nota para ${ex.name}`} onInput={(e) => actions.updateNote(curIdx, e.currentTarget.value)} />
+        </Collapsible>
       </div>
     </section>
   );

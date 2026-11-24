@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useEffect, useState } from 'preact/hooks';
 import { Icon } from '../common/Icon';
+import { ModalShell } from '../common/ModalShell';
 
 interface NoteModalProps {
   /** Nombre del ejercicio cuya nota permanente se está editando. */
@@ -18,19 +18,16 @@ interface NoteModalProps {
  */
 export function NoteModal({ exName, value, onSave, onClose }: NoteModalProps) {
   const [draft, setDraft] = useState(value);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef, true, onClose);
 
   useEffect(() => {
     setDraft(value);
   }, [exName, value]);
 
   return (
-    <div id="note-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="noteModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
+    <ModalShell id="note-modal" labelledBy="noteModalTitle" panelClass="max-w-md border-white/10" onClose={onClose}>
       <form
         id="f-note-modal"
-        class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4"
+        class="p-5 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           void onSave(draft);
@@ -64,6 +61,6 @@ export function NoteModal({ exName, value, onSave, onClose }: NoteModalProps) {
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

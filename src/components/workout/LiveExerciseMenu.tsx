@@ -1,4 +1,5 @@
 import type { LogExDraft } from '../../types';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 
 /** Elemento enriquecido del menú hamburguesa de ejercicios en vivo. */
@@ -40,14 +41,13 @@ export function LiveExerciseMenu({
   onOpenAddPicker,
 }: LiveExerciseMenuProps) {
   return (
-    <div
+    <Collapsible
       id="live-ex-menu-wrap"
-      data-open={String(open)}
-      aria-hidden={open ? 'false' : 'true'}
-      class={`grid transition-[grid-template-rows,opacity,transform,margin] duration-200 ease-out motion-reduce:transition-none ${open ? 'mt-3 grid-rows-[1fr] opacity-100 translate-y-0' : 'mt-0 grid-rows-[0fr] opacity-0 -translate-y-1 pointer-events-none'}`}
+      open={open}
+      keepMounted
+      className={open ? 'mt-3' : 'mt-0 -translate-y-1'}
     >
-      <div class="overflow-hidden">
-        <nav id="live-ex-menu" inert={!open} aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-floatDark p-2.5 shadow-2xl shadow-black/45 space-y-2">
+      <nav id="live-ex-menu" aria-label="Ejercicios del entrenamiento" class="rounded-2xl border border-white/15 bg-floatDark p-2.5 shadow-2xl shadow-black/45 space-y-2">
           <div class="flex items-center justify-between px-1.5 pb-1">
             <span id="liveMenuSummary" class="text-xs font-bold uppercase tracking-wide text-gray-300 tabular-nums">Ejercicios ({doneExCount}/{items.length} listos)</span>
             <button type="button" class="flex min-h-[44px] sm:min-h-[34px] items-center gap-1 rounded-full bg-white/5 px-3.5 text-xs font-semibold text-gray-300 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onToggleMenu}>
@@ -93,7 +93,6 @@ export function LiveExerciseMenu({
             <Icon name="plus" className="h-4 w-4" /> Añadir ejercicio al entreno
           </button>
         </nav>
-      </div>
-    </div>
+    </Collapsible>
   );
 }

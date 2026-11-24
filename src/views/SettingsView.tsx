@@ -1,3 +1,4 @@
+import { SegmentedControl } from '../components/common/SegmentedControl';
 import { AccountSyncSection } from '../components/settings/AccountSyncSection';
 import { AiPreferencesSection } from '../components/settings/AiPreferencesSection';
 import { AthleteProfileSection } from '../components/settings/AthleteProfileSection';
@@ -15,10 +16,6 @@ const THEME_OPTIONS: ReadonlyArray<{ id: ThemeMode; label: string }> = [
   { id: 'light', label: 'Claro' },
   { id: 'system', label: 'Sistema' },
 ];
-
-const THEME_BTN_BASE =
-  'inline-flex min-h-[44px] sm:min-h-[34px] items-center justify-center rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Vista `Cuenta y ajustes`: sincronización en la nube, perfil del atleta, apariencia y tono del Coach IA.
@@ -57,26 +54,14 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
             Elige entre modo oscuro, claro o automático según tu dispositivo.
           </p>
         </div>
-        <div
-          role="group"
-          aria-label="Apariencia de la interfaz"
-          class="inline-flex w-full sm:w-auto rounded-xl border border-white/10 bg-gray-950/60 p-1 gap-1"
-        >
-          {THEME_OPTIONS.map((opt) => {
-            const active = theme === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                aria-pressed={active ? 'true' : 'false'}
-                class={`flex-1 sm:flex-initial ${THEME_BTN_BASE} ${active ? 'bg-electricBlue text-white font-bold shadow-sm' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => void dataSync.setThemeWithToast(opt.id)}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          options={THEME_OPTIONS}
+          value={theme}
+          ariaLabel="Apariencia de la interfaz"
+          className="inline-flex w-full sm:w-auto rounded-xl border border-white/10 bg-gray-950/60 p-1 gap-1"
+          buttonClassName="flex-1 sm:flex-initial min-h-[44px] sm:min-h-[34px] px-3.5 py-1.5 text-xs font-bold"
+          onChange={(next) => void dataSync.setThemeWithToast(next)}
+        />
       </div>
 
       <AiPreferencesSection

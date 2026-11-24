@@ -7,7 +7,7 @@ import {
   sanitizeSettings,
   saveSettings,
 } from '../lib/db';
-import { parseMeasuresCsv } from '../lib/measures';
+import { MEASURES_CSV_TEMPLATE, parseMeasuresCsv } from '../lib/measures';
 import { importSamsungInWorker } from '../lib/samsung';
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import type { AiTone, ThemeMode } from '../types';
@@ -47,6 +47,10 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
     async exportBackupFile() {
       const data = JSON.stringify(await exportBackup());
       deps.downloadFile?.(`gymapp-backup-${todayIso()}.json`, data, 'application/json');
+    },
+
+    downloadMeasuresTemplate() {
+      deps.downloadFile?.('plantilla-medidas-gymapp.csv', MEASURES_CSV_TEMPLATE, 'text/csv;charset=utf-8');
     },
 
     async importFiles(kind: 'samsung' | 'measures' | 'backup', fileList: FileList | null) {

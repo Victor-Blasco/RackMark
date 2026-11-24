@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { MODAL_FOCUSABLE_SELECTOR, useFocusTrap } from '../../hooks/useFocusTrap';
+import { MODAL_FOCUSABLE_SELECTOR } from '../../hooks/useFocusTrap';
 import type { WizardDraft } from '../../store/wizardSelectors';
 import { Icon } from '../common/Icon';
+import { ModalShell } from '../common/ModalShell';
 import { WizardStep1, WizardStep2, WizardStep3 } from './WizardSteps';
 
 interface WizardModalProps {
@@ -38,7 +39,6 @@ export function WizardModal({
 }: WizardModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstStepRef = useRef(true);
-  useFocusTrap(dialogRef, true, () => void onSkip());
 
   useEffect(() => {
     if (firstStepRef.current) {
@@ -60,11 +60,19 @@ export function WizardModal({
   const stepAnim = draft.anim === 'next' ? 'wizard-step-next' : draft.anim === 'prev' ? 'wizard-step-prev' : '';
 
   return (
-    <div id="wizard-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="wizardTitle" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-      <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} aria-hidden="true" />
+    <ModalShell
+      id="wizard-modal"
+      labelledBy="wizardTitle"
+      dialogRef={dialogRef}
+      wrapperClass="p-3 sm:p-4"
+      backdropClass={backdropAnim}
+      closeOnBackdrop={false}
+      panelClass={`max-w-xl border-white/10 flex flex-col overflow-hidden max-h-[90dvh] ${modalAnim}`}
+      onClose={() => void onSkip()}
+    >
       <form
         id="f-wizard"
-        class={`relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[90dvh] ${modalAnim}`}
+        class="flex min-h-0 flex-1 flex-col"
         onSubmit={(e) => {
           e.preventDefault();
           void onSubmitStep();
@@ -96,9 +104,7 @@ export function WizardModal({
 
         <div class="flex-1 overflow-y-auto overflow-x-clip px-4 py-3.5 sm:px-6 sm:py-4">
           {draft.error && (
-            <p role="alert" class="mb-3 rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
-              {draft.error}
-            </p>
+            <p role="alert" class="mb-3 rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">{draft.error}</p>
           )}
           <div class={stepAnim}>
             {draft.step === 1 && <WizardStep1 draft={draft} onPatch={onPatch} />}
@@ -108,16 +114,12 @@ export function WizardModal({
         </div>
 
         <div class="shrink-0 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-modalDark px-4 py-3 sm:px-6">
-          <div>
-            {draft.step > 1 && (
-              <button type="button" class="btn min-h-[44px]" onClick={onBack}>← Anterior</button>
-            )}
-          </div>
+          <div>{draft.step > 1 && <button type="button" class="btn min-h-[44px]" onClick={onBack}>← Anterior</button>}</div>
           <button id="wizardNext" type="submit" class="btn-primary min-h-[44px] px-5">
             {draft.step < 3 ? 'Siguiente →' : <><Icon name="save" className="h-4 w-4" /> Guardar y empezar</>}
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

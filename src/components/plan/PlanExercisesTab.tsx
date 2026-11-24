@@ -1,16 +1,15 @@
 import type { PlanActions } from '../../store/planActions';
 import { getExerciseMapData, getExerciseMapFacets } from '../../store/planSelectors';
 import { fmtDate, type State } from '../../ui/shared';
-import { Icon } from '../common/Icon';
+import { SearchInput } from '../common/SearchInput';
 import { PlanExerciseMapList } from './PlanExerciseMapList';
+import { PlanMergeSection } from './PlanMergeSection';
 
 interface PlanExercisesTabProps {
   /** Estado global con ejercicios, alias y mapa muscular. */
   state: State;
   /** Lista completa de nombres conocidos para contador del catálogo. */
   allNames: string[];
-  /** Lista combinada opcional (conservada por compatibilidad). */
-  knownNames?: string[];
   /** Acciones tipadas de edición de ejercicios y músculos. */
   actions: PlanActions;
 }
@@ -23,8 +22,6 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
   const hiddenCount = state.settings.hiddenExercises?.length ?? 0;
   const mapRes = getExerciseMapData(state);
   const facets = getExerciseMapFacets(state);
-  const mergeFrom = state.mergeFrom ?? '';
-  const mergeTo = state.mergeTo ?? '';
 
   return (
     <>
@@ -44,59 +41,14 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
         </div>
       )}
 
-      <div class="pb-5 border-b border-white/10 space-y-3">
-        <h2 class="font-bold text-white">Unificar ejercicios duplicados</h2>
-        <p class="text-xs text-gray-400">Une el histórico de un ejercicio con otro si cambiaste de máquina o nombre.</p>
-        <div class="flex flex-wrap items-center gap-2">
-          <button
-            id="mergeFrom"
-            type="button"
-            class="inp inline-flex w-full sm:w-auto sm:min-w-[210px] max-w-full items-center justify-between gap-2 text-left"
-            aria-label={`Ejercicio origen a fusionar${mergeFrom ? `: ${mergeFrom}` : ''}`}
-            onClick={() => actions.openMergeExercisePicker('from')}
-          >
-            <span class={`truncate ${mergeFrom ? 'font-semibold text-white' : 'text-gray-400'}`}>
-              {mergeFrom || 'Duplicado a eliminar…'}
-            </span>
-            <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          </button>
-          <span aria-hidden="true" class="text-gray-400">→</span>
-          <button
-            id="mergeTo"
-            type="button"
-            class="inp inline-flex w-full sm:w-auto sm:min-w-[210px] max-w-full items-center justify-between gap-2 text-left"
-            aria-label={`Ejercicio destino${mergeTo ? `: ${mergeTo}` : ''}`}
-            onClick={() => actions.openMergeExercisePicker('to')}
-          >
-            <span class={`truncate ${mergeTo ? 'font-semibold text-white' : 'text-gray-400'}`}>
-              {mergeTo || 'Ejercicio que se conserva…'}
-            </span>
-            <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
-          </button>
-          <button
-            type="button"
-            class="btn"
-            disabled={!mergeFrom || !mergeTo || mergeFrom === mergeTo}
-            onClick={() => void actions.mergeExercises(mergeFrom, mergeTo)}
-          >
-            Fusionar
-          </button>
-        </div>
-        {mergeFrom && mergeTo && mergeFrom !== mergeTo && (
-          <p class="text-xs text-gray-300">
-            Todo el historial de <b class="text-white">{mergeFrom}</b> pasará a <b class="text-white">{mergeTo}</b> y{' '}
-            <b class="text-coralRed">{mergeFrom}</b> se eliminará.
-          </p>
-        )}
-        {Object.entries(state.settings.aliases).map(([a, b]) => (
-          <div key={a} class="flex items-center gap-2 text-xs text-gray-400">
-            <span>{a} → {b}</span>
-            <button type="button" class="icon-btn text-coralRed hover:bg-coralRed/10" aria-label={`Deshacer fusión ${a}`} onClick={() => void actions.unmergeExercise(a)}>
-              <Icon name="close" className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
+      <PlanMergeSection
+        mergeFrom={state.mergeFrom ?? ''}
+        mergeTo={state.mergeTo ?? ''}
+        aliases={state.settings.aliases}
+        onOpenPicker={actions.openMergeExercisePicker}
+        onMerge={(from, to) => void actions.mergeExercises(from, to)}
+        onUnmerge={(a) => void actions.unmergeExercise(a)}
+      />
 
       <div class="min-w-0 space-y-3">
         <div class="space-y-2">
@@ -124,15 +76,15 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
 
         <div class="lg:sticky lg:top-0 lg:z-10 -mx-1 space-y-2 bg-bgDark px-1 pb-2">
           <div class="flex items-center gap-2">
-            <label class="relative min-w-0 flex-1">
-              <span class="sr-only">Buscar ejercicio o músculo</span>
-              <input id="exerciseMapSearch" class="inp min-w-0 w-full pr-10" type="search" enterKeyHint="search" value={state.exerciseMapSearch ?? ''} placeholder="Buscar por nombre o músculo…" aria-label="Buscar ejercicio o músculo" onInput={(e) => actions.setExerciseMapSearch(e.currentTarget.value)} />
-              {state.exerciseMapSearch && (
-                <button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" aria-label="Limpiar búsqueda" onClick={actions.clearExerciseMapSearch}>
-                  <Icon name="close" className="h-4 w-4" />
-                </button>
-              )}
-            </label>
+            <SearchInput
+              id="exerciseMapSearch"
+              value={state.exerciseMapSearch ?? ''}
+              placeholder="Buscar por nombre o músculo…"
+              ariaLabel="Buscar ejercicio o músculo"
+              inputClass="inp min-w-0 w-full pr-10"
+              onInput={actions.setExerciseMapSearch}
+              onClear={actions.clearExerciseMapSearch}
+            />
           </div>
           {facets.length > 0 && (
             <div class="flex gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-1" role="group" aria-label="Filtrar por músculo">

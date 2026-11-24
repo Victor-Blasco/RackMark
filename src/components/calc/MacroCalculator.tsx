@@ -1,5 +1,6 @@
 import type { NutritionResult } from '../../lib/nutrition';
 import { r1 } from '../../ui/shared';
+import { SegmentedControl } from '../common/SegmentedControl';
 import { MacroPhaseSelectors } from './MacroPhaseSelectors';
 import { CalorieSummaryCard, MacroDistributionPanel } from './MacroResultsPanel';
 
@@ -110,24 +111,15 @@ export function MacroCalculator({
 
       <div class="space-y-2">
         <span class="lbl">Reparto por comidas</span>
-        <div role="radiogroup" aria-label="Número de comidas" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1">
-          {[3, 4, 5].map((meals) => {
-            const active = Number(cMeals) === meals;
-            return (
-              <button
-                key={meals}
-                type="button"
-                role="radio"
-                tabIndex={active ? 0 : -1}
-                aria-checked={active ? 'true' : 'false'}
-                class={`min-h-[44px] min-w-[44px] rounded-lg px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => onUpdateField('meals', String(meals))}
-              >
-                {meals}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          role="radiogroup"
+          options={[{ id: '3', label: '3' }, { id: '4', label: '4' }, { id: '5', label: '5' }]}
+          value={cMeals}
+          ariaLabel="Número de comidas"
+          className="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1"
+          buttonClassName="min-h-[44px] min-w-[44px] px-4 text-sm font-bold"
+          onChange={(val) => onUpdateField('meals', val)}
+        />
       </div>
 
       <MacroDistributionPanel nutrition={nutrition} carbWarning={carbWarning} />

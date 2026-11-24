@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LogWorkoutActions } from '../../store/logActions';
 import type { LogExDraft } from '../../types';
+import { Collapsible } from '../common/Collapsible';
 import { LogExerciseHeader } from './LogExerciseHeader';
 import { LogSetRow } from './LogSetRow';
 
@@ -116,13 +117,11 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
           </div>
         </div>
 
-        <div class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${noteOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-          <div class="overflow-hidden" inert={!noteOpen} aria-hidden={noteOpen ? undefined : 'true'}>
-            <div class="pt-1">
-              <input class="inp min-h-[44px] py-1.5" enterKeyHint="done" value={ex.note} placeholder="Nota de la sesión (sensaciones, agarre…)" aria-label={`Nota de sesión para ${ex.name}`} onInput={(e) => actions.updateNote(ei, e.currentTarget.value)} />
-            </div>
+        <Collapsible open={noteOpen} keepMounted>
+          <div class="pt-1">
+            <input class="inp min-h-[44px] py-1.5" enterKeyHint="done" value={ex.note} placeholder="Nota de la sesión (sensaciones, agarre…)" aria-label={`Nota de sesión para ${ex.name}`} onInput={(e) => actions.updateNote(ei, e.currentTarget.value)} />
           </div>
-        </div>
+        </Collapsible>
       </div>
     </div>
   );

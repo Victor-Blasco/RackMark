@@ -1,6 +1,7 @@
 import type { ChartConfiguration } from 'chart.js';
 import { PERIM } from '../../store/bodySelectors';
 import { ChartCanvas } from '../common/ChartCanvas';
+import { SegmentedControl } from '../common/SegmentedControl';
 
 interface BodyChartsSectionProps {
   /** Total de registros de composición corporal en el rango activo. */
@@ -35,7 +36,10 @@ interface BodyChartsSectionProps {
   onChangePerimeter: (perim: string) => void;
 }
 
-const MODE_BTN_BASE = 'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+const COMP_OPTIONS: ReadonlyArray<{ id: 'weight' | 'muscle'; label: string }> = [
+  { id: 'weight', label: 'Peso' },
+  { id: 'muscle', label: 'Masa muscular' },
+];
 
 /**
  * Gráficas de composición corporal y perímetros con cinta en `Cuerpo y medidas`.
@@ -63,28 +67,14 @@ export function BodyChartsSection({
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 class="font-bold text-white tabular-nums">Composición corporal ({compCount} registros)</h2>
           {hasCompWeight && hasCompMuscle && (
-            <div
-              role="group"
-              aria-label="Métrica principal de composición"
-              class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]"
-            >
-              <button
-                type="button"
-                aria-pressed={activeCompMode === 'weight' ? 'true' : 'false'}
-                class={`${MODE_BTN_BASE} ${activeCompMode === 'weight' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => onChangeCompMode('weight')}
-              >
-                Peso
-              </button>
-              <button
-                type="button"
-                aria-pressed={activeCompMode === 'muscle' ? 'true' : 'false'}
-                class={`${MODE_BTN_BASE} ${activeCompMode === 'muscle' ? 'bg-electricBlue text-white' : 'text-gray-400 hover:text-white'}`}
-                onClick={() => onChangeCompMode('muscle')}
-              >
-                Masa muscular
-              </button>
-            </div>
+            <SegmentedControl
+              options={COMP_OPTIONS}
+              value={activeCompMode}
+              ariaLabel="Métrica principal de composición"
+              className="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 text-[11px]"
+              buttonClassName="min-h-[44px] sm:min-h-[30px] px-2.5 py-1"
+              onChange={onChangeCompMode}
+            />
           )}
         </div>
         {compVerdict && <p class="text-xs font-semibold text-gray-200 num-col">{compVerdict}</p>}

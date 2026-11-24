@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { PERIM_ALL_KEYS, PERIM_GROUPS } from '../../store/bodyChartConfigs';
 import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type Measure } from '../../types';
 import { fmtDate, r1 } from '../../ui/shared';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 
 interface MeasuresHistoryMobileListProps {
@@ -22,6 +23,8 @@ const BASIC_SHORT: Record<string, string> = {
   waist: 'Cintura',
 };
 
+const FIELD_BY_KEY = new Map(MEASURE_FIELDS.map((f) => [f.key, f]));
+
 /**
  * Lista móvil legible para el historial de mediciones con métricas básicas etiquetadas
  * y acordeón expandible por fecha para los perímetros detallados.
@@ -33,7 +36,6 @@ export function MeasuresHistoryMobileList({
   onDeleteMeasure,
 }: MeasuresHistoryMobileListProps) {
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
-  const fieldByKey = new Map(MEASURE_FIELDS.map((f) => [f.key, f]));
 
   const toggleDate = (date: string) =>
     setOpenDates((prev) => ({ ...prev, [date]: !prev[date] }));
@@ -77,7 +79,7 @@ export function MeasuresHistoryMobileList({
             {basics.length > 0 && (
               <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-2">
                 {basics.map((k) => {
-                  const f = fieldByKey.get(k);
+                  const f = FIELD_BY_KEY.get(k);
                   const val = m[k];
                   if (!f || typeof val !== 'number') return null;
                   return (
@@ -102,34 +104,32 @@ export function MeasuresHistoryMobileList({
                   <span>{isOpen ? 'Ocultar perímetros' : `Ver perímetros (${perimCount})`}</span>
                   <Icon name="caretDown" className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
-                <div id={panelId} aria-hidden={isOpen ? undefined : 'true'} class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                  <div class="overflow-hidden">
-                    <div class="pt-1 pb-1.5 space-y-2.5 border-t border-white/[0.06]">
-                      {PERIM_GROUPS.map((g) => {
-                        const items = g.keys.filter((k) => typeof m[k] === 'number');
-                        if (!items.length) return null;
-                        return (
-                          <div key={g.title} class="space-y-1">
-                            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{g.title}</p>
-                            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                              {items.map((k) => {
-                                const f = fieldByKey.get(k);
-                                const val = m[k];
-                                if (!f || typeof val !== 'number') return null;
-                                return (
-                                  <div key={k} class="flex items-baseline justify-between gap-2 text-xs">
-                                    <span class="text-gray-400">{f.label}</span>
-                                    <span class="font-semibold text-gray-100 tabular-nums shrink-0">{r1(val)} {f.unit}</span>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                <Collapsible id={panelId} open={isOpen} keepMounted>
+                  <div class="pt-1 pb-1.5 space-y-2.5 border-t border-white/[0.06]">
+                    {PERIM_GROUPS.map((g) => {
+                      const items = g.keys.filter((k) => typeof m[k] === 'number');
+                      if (!items.length) return null;
+                      return (
+                        <div key={g.title} class="space-y-1">
+                          <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{g.title}</p>
+                          <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                            {items.map((k) => {
+                              const f = FIELD_BY_KEY.get(k);
+                              const val = m[k];
+                              if (!f || typeof val !== 'number') return null;
+                              return (
+                                <div key={k} class="flex items-baseline justify-between gap-2 text-xs">
+                                  <span class="text-gray-400">{f.label}</span>
+                                  <span class="font-semibold text-gray-100 tabular-nums shrink-0">{r1(val)} {f.unit}</span>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                </Collapsible>
               </div>
             )}
           </div>

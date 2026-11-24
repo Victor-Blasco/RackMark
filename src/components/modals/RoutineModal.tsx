@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { useEffect, useState } from 'preact/hooks';
 import { ROUTINE_COLORS } from '../../lib/seed';
 import type { SaveRoutinePayload } from '../../store/planActions';
 import { Icon } from '../common/Icon';
+import { ModalShell } from '../common/ModalShell';
 
 interface RoutineModalProps {
   /** Modo de operación: crear nueva rutina o editar una existente. */
@@ -20,33 +20,18 @@ interface RoutineModalProps {
 }
 
 const COLOR_NAMES: Record<string, string> = {
-  '#A855F7': 'Morado',
-  '#3B82F6': 'Azul',
-  '#10B981': 'Esmeralda',
-  '#F59E0B': 'Ámbar',
-  '#06B6D4': 'Cian',
-  '#6366F1': 'Índigo',
-  '#14B8A6': 'Turquesa',
-  '#84CC16': 'Lima',
+  '#A855F7': 'Morado', '#3B82F6': 'Azul', '#10B981': 'Esmeralda', '#F59E0B': 'Ámbar',
+  '#06B6D4': 'Cian', '#6366F1': 'Índigo', '#14B8A6': 'Turquesa', '#84CC16': 'Lima',
 };
 
 /**
  * Modal de creación y edición de nombre, subtítulo y color de una rutina.
  */
-export function RoutineModal({
-  mode,
-  initialName,
-  initialSub,
-  initialColor,
-  onSave,
-  onClose,
-}: RoutineModalProps) {
+export function RoutineModal({ mode, initialName, initialSub, initialColor, onSave, onClose }: RoutineModalProps) {
   const [name, setName] = useState(initialName);
   const [sub, setSub] = useState(initialSub);
   const [color, setColor] = useState(initialColor);
   const [error, setError] = useState<string | null>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef, true, onClose);
 
   useEffect(() => {
     setName(initialName);
@@ -58,11 +43,10 @@ export function RoutineModal({
   const isEdit = mode === 'edit';
 
   return (
-    <div id="rt-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="rtModalTitle" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div class="fixed inset-0 bg-black/80" aria-hidden="true" onClick={onClose} />
+    <ModalShell id="rt-modal" labelledBy="rtModalTitle" panelClass="max-w-md border-white/10" onClose={onClose}>
       <form
         id="f-routine-meta"
-        class="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-modalDark p-5 shadow-2xl space-y-4"
+        class="p-5 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
@@ -84,9 +68,7 @@ export function RoutineModal({
         </div>
 
         {error && (
-          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">
-            {error}
-          </p>
+          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">{error}</p>
         )}
 
         <label class="block">
@@ -118,6 +100,6 @@ export function RoutineModal({
           </button>
         </div>
       </form>
-    </div>
+    </ModalShell>
   );
 }

@@ -1,4 +1,3 @@
-import { MEASURES_CSV_TEMPLATE } from '../../lib/measures';
 import { Icon } from '../common/Icon';
 
 interface DataImportSectionProps {
@@ -6,6 +5,8 @@ interface DataImportSectionProps {
   onImportFiles: (kind: 'samsung' | 'measures' | 'backup', files: FileList | null) => Promise<void>;
   /** Cambia a la pestaña de medidas corporales. */
   onGoBody: () => void;
+  /** Descarga la plantilla CSV de medidas corporales. */
+  onDownloadTemplate: () => void;
   /** Descarga una copia JSON con todo el historial y ajustes. */
   onExportBackup: () => Promise<void>;
 }
@@ -13,7 +14,7 @@ interface DataImportSectionProps {
 /**
  * Secciones de importación externa (Samsung Health / CSV) y copias de seguridad JSON.
  */
-export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: DataImportSectionProps) {
+export function DataImportSection({ onImportFiles, onGoBody, onDownloadTemplate, onExportBackup }: DataImportSectionProps) {
   const handleFile = (kind: 'samsung' | 'measures' | 'backup', input: HTMLInputElement) => {
     const files = input.files;
     void onImportFiles(kind, files).finally(() => {
@@ -73,18 +74,7 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
                   onChange={(e) => handleFile('measures', e.currentTarget)}
                 />
               </label>
-              <button
-                type="button"
-                class="btn"
-                onClick={() => {
-                  const url = URL.createObjectURL(new Blob([MEASURES_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' }));
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'plantilla-medidas-gymapp.csv';
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
+              <button type="button" class="btn" onClick={onDownloadTemplate}>
                 <Icon name="download" className="h-4 w-4" /> Descargar plantilla CSV
               </button>
             </div>

@@ -1,28 +1,20 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { musclesOf } from '../../lib/analysis';
 import { norm } from '../../lib/seed';
 import type { Settings } from '../../types';
 import { filterSelectionOptions } from '../../ui/selection';
 import { Icon } from '../common/Icon';
+import { SearchInput } from '../common/SearchInput';
 
 interface ExercisePickerSheetProps {
-  /** Modo de apertura: añadir ejercicio adicional o sustituir el actual. */
-  mode: 'add' | 'swap';
-  /** Nombre del ejercicio actual (solo en modo `swap`). */
-  currentExName?: string;
-  /** Ejercicios disponibles no presentes todavía en la sesión. */
-  available: string[];
-  /** Sugerencias principales afines al grupo muscular del día o del ejercicio sustituido. */
-  quickSuggestions: string[];
-  /** Ajustes del usuario para enriquecer búsqueda y subtítulo por grupo muscular. */
-  settings?: Settings;
-  /** Término actual del campo de búsqueda. */
-  query: string;
-  /** Actualiza la búsqueda mientras escribe el usuario. */
+  mode: 'add' | 'swap'; /** Modo de apertura: añadir ejercicio adicional o sustituir el actual. */
+  currentExName?: string; /** Nombre del ejercicio actual (solo en modo `swap`). */
+  available: string[]; /** Ejercicios disponibles no presentes todavía en la sesión. */
+  quickSuggestions: string[]; /** Sugerencias afines al grupo muscular del día o del ejercicio sustituido. */
+  settings?: Settings; /** Ajustes del usuario para enriquecer búsqueda y subtítulo muscular. */
+  query: string; /** Término actual del campo de búsqueda. */
   onQueryChange: (q: string) => void;
-  /** Selecciona o crea el ejercicio elegido. */
   onPick: (name: string) => void;
-  /** Cierra el panel selector. */
   onClose: () => void;
 }
 
@@ -31,36 +23,39 @@ export function ExercisePickerSheet({
   mode, currentExName, available, quickSuggestions, settings, query, onQueryChange, onPick, onClose,
 }: ExercisePickerSheetProps) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const onCloseRef = useRef(onClose);
+  const hasCurrentRef = useRef(Boolean(currentExName));
+  onCloseRef.current = onClose;
+  hasCurrentRef.current = Boolean(currentExName);
   const [activeIdx, setActiveIdx] = useState(0);
   const trimmed = query.trim();
-  const baseOptions = available.map((name) => {
-    const m = settings ? musclesOf(name, settings) : null;
-    return { id: name, label: name, subtitle: m?.p, aliases: m ? [m.p, ...m.s] : undefined };
-  });
-  const options = filterSelectionOptions(baseOptions, query);
-  const canCreate = Boolean(trimmed) && !available.some((n) => norm(n) === norm(trimmed));
+
+  const baseOptions = useMemo(
+    () => available.map((name) => {
+      const m = settings ? musclesOf(name, settings) : null;
+      return { id: name, label: name, subtitle: m?.p, aliases: m ? [m.p, ...m.s] : undefined };
+    }),
+    [available, settings],
+  );
+  const options = useMemo(() => filterSelectionOptions(baseOptions, query), [baseOptions, query]);
+  const canCreate = useMemo(() => Boolean(trimmed) && !available.some((n) => norm(n) === norm(trimmed)), [available, trimmed]);
   const title = mode === 'swap' && currentExName ? `Cambiar "${currentExName}" por otro` : 'Añadir ejercicio a este entreno';
   const activeOptionId = options[activeIdx] ? `live-pick-opt-${activeIdx}` : undefined;
 
-  useEffect(() => {
-    setActiveIdx(0);
-  }, [query, mode]);
+  useEffect(() => { setActiveIdx(0); }, [query, mode]);
 
   useEffect(() => {
     const prevFocused = document.activeElement as HTMLElement | null;
     searchRef.current?.focus({ preventScroll: true });
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && currentExName) {
-        e.preventDefault();
-        onClose();
-      }
+      if (e.key === 'Escape' && hasCurrentRef.current) { e.preventDefault(); onCloseRef.current(); }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
       if (prevFocused?.isConnected && prevFocused !== document.body) prevFocused.focus({ preventScroll: true });
     };
-  }, [currentExName, onClose]);
+  }, []);
 
   const onSearchKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown' && options.length) {
@@ -80,9 +75,7 @@ export function ExercisePickerSheet({
       <div class="flex items-center justify-between gap-2">
         <h3 class="text-sm font-extrabold text-white">{title}</h3>
         {currentExName && (
-          <button type="button" class="min-h-[44px] sm:min-h-[34px] rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onClose}>
-            Cancelar
-          </button>
+          <button type="button" class="min-h-[44px] sm:min-h-[34px] rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onClose}>Cancelar</button>
         )}
       </div>
 
@@ -90,22 +83,24 @@ export function ExercisePickerSheet({
         <div class="space-y-1.5">
           <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400">Sugeridos</p>
           <div class="flex flex-wrap gap-1.5">
-            {quickSuggestions.map((n) => (
-              <button key={n} type="button" class="btn-sm rounded-full font-medium text-gray-100" onClick={() => onPick(n)}>{n}</button>
-            ))}
+            {quickSuggestions.map((n) => <button key={n} type="button" class="btn-sm rounded-full font-medium text-gray-100" onClick={() => onPick(n)}>{n}</button>)}
           </div>
         </div>
       )}
 
       <div class="space-y-2">
-        <div class="relative">
-          <input id="livePickerSearch" ref={searchRef} type="search" inputMode="search" enterKeyHint="search" list={undefined} role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="livePickerList" aria-activedescendant={activeOptionId} class="inp w-full min-h-[44px] pr-10" value={query} placeholder="Buscar ejercicio o músculo…" aria-label="Buscar o crear ejercicio" onInput={(e) => onQueryChange(e.currentTarget.value)} onKeyDown={onSearchKeyDown} />
-          {query && (
-            <button type="button" class="icon-btn absolute right-1 top-1/2 -translate-y-1/2" aria-label="Limpiar búsqueda" onClick={() => onQueryChange('')}>
-              <Icon name="close" className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          id="livePickerSearch"
+          inputRef={searchRef}
+          value={query}
+          placeholder="Buscar ejercicio o músculo…"
+          ariaLabel="Buscar o crear ejercicio"
+          inputClass="inp w-full min-h-[44px] pr-10"
+          comboboxProps={{ role: 'combobox', ariaControls: 'livePickerList', ariaActiveDescendant: activeOptionId }}
+          onInput={onQueryChange}
+          onClear={() => onQueryChange('')}
+          onKeyDown={onSearchKeyDown}
+        />
 
         <div class="flex items-center justify-between text-[11px] text-gray-400">
           <span aria-live="polite" class="tabular-nums">{trimmed ? `Resultados (${options.length})` : `Todos los ejercicios (${available.length})`}</span>
@@ -122,9 +117,7 @@ export function ExercisePickerSheet({
               <Icon name="plus" className="h-4 w-4 shrink-0 text-blue-300" />
             </button>
           )) : (
-            <p class="px-3 py-3 text-xs text-gray-400">
-              {trimmed ? `Sin ejercicios que coincidan con «${trimmed}».` : 'Sin ejercicios disponibles.'}
-            </p>
+            <p class="px-3 py-3 text-xs text-gray-400">{trimmed ? `Sin ejercicios que coincidan con «${trimmed}».` : 'Sin ejercicios disponibles.'}</p>
           )}
         </div>
 

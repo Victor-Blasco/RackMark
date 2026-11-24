@@ -1,4 +1,5 @@
 import type { SetRec } from '../../types';
+import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { StepperInput } from '../common/StepperInput';
 
@@ -88,22 +89,20 @@ export function SetRow({
         </button>
       </div>
 
-      <div class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${showDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-        <div class="overflow-hidden" inert={!showDetails} aria-hidden={showDetails ? undefined : 'true'}>
-          <div class="flex flex-wrap items-center gap-4 pl-6 pt-2 pb-0.5 text-xs text-gray-400">
-            <label class="inline-flex items-center gap-1.5">
-              <span title="Repeticiones en reserva">RIR</span>
-              <input class={`${EXTRA_INP} w-12`} type="number" step="1" min="0" max="10" inputMode="numeric" enterKeyHint="done" value={s.rir ?? ''} placeholder="—" aria-label={`RIR de serie ${n}`} onInput={(e) => onRirChange(e.currentTarget.value)} />
-            </label>
-            <label class="inline-flex items-center gap-1.5">
-              <span title="Descanso real en esta serie (se rellena solo al usar el reloj)">Desc. real</span>
-              <input class={`${EXTRA_INP} w-16`} type="number" step="5" min="0" max="1800" inputMode="numeric" enterKeyHint="done" value={s.restSec ?? ''} placeholder={String(targetRestSec)} aria-label={`Descanso en segundos serie ${n}`} onInput={(e) => onRestChange(e.currentTarget.value)} />
-              <span>s</span>
-            </label>
-          </div>
-          <p class="pl-6 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
+      <Collapsible open={showDetails} keepMounted>
+        <div class="flex flex-wrap items-center gap-4 pl-6 pt-2 pb-0.5 text-xs text-gray-400">
+          <label class="inline-flex items-center gap-1.5">
+            <span title="Repeticiones en reserva">RIR</span>
+            <input class={`${EXTRA_INP} w-12`} type="number" step="1" min="0" max="10" inputMode="numeric" enterKeyHint="done" value={s.rir ?? ''} placeholder="—" aria-label={`RIR de serie ${n}`} onInput={(e) => onRirChange(e.currentTarget.value)} />
+          </label>
+          <label class="inline-flex items-center gap-1.5">
+            <span title="Descanso real en esta serie (se rellena solo al usar el reloj)">Desc. real</span>
+            <input class={`${EXTRA_INP} w-16`} type="number" step="5" min="0" max="1800" inputMode="numeric" enterKeyHint="done" value={s.restSec ?? ''} placeholder={String(targetRestSec)} aria-label={`Descanso en segundos serie ${n}`} onInput={(e) => onRestChange(e.currentTarget.value)} />
+            <span>s</span>
+          </label>
         </div>
-      </div>
+        <p class="pl-6 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
+      </Collapsible>
     </div>
   );
 }

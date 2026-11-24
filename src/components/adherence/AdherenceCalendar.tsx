@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import {
   CARDIO_CALENDAR_COLOR,
   OTHER_CALENDAR_COLOR,
@@ -46,9 +46,12 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
 
   const monthIdx = Math.max(0, calendar.months.indexOf(monthYm));
   const activeYm = calendar.months[monthIdx] ?? calendar.defaultMonth;
-  const cells = buildMonthGrid(activeYm, calendar.today, bounds, calendar.byDate);
-  const monthActs = Object.values(calendar.byDate).filter((a) => a.iso.startsWith(activeYm));
-  const monthTotalCount = monthActs.reduce((acc, a) => acc + a.strength.length + a.cardio.length, 0);
+  const { cells, monthActs, monthTotalCount } = useMemo(() => {
+    const grid = buildMonthGrid(activeYm, calendar.today, bounds, calendar.byDate);
+    const acts = Object.values(calendar.byDate).filter((a) => a.iso.startsWith(activeYm));
+    const total = acts.reduce((acc, a) => acc + a.strength.length + a.cardio.length, 0);
+    return { cells: grid, monthActs: acts, monthTotalCount: total };
+  }, [activeYm, calendar.today, calendar.byDate, bounds]);
 
   const stepMonth = (delta: number) => {
     const nextYm = calendar.months[monthIdx + delta];

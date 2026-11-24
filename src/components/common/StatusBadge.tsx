@@ -1,6 +1,7 @@
-import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { ExStats } from '../../lib/analysis';
+import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { AiTone } from '../../types';
+import { SegmentedControl } from './SegmentedControl';
 
 interface StatusInlineProps {
   /** Estadísticas del ejercicio con color y estado automático. */
@@ -28,37 +29,22 @@ interface AiToneToggleProps {
   onChange: (tone: AiTone) => void;
 }
 
-const TONE_OPTIONS: ReadonlyArray<readonly [AiTone, string]> = [
-  ['simple', 'Sencillo'],
-  ['technical', 'Técnico'],
+const TONE_OPTIONS: ReadonlyArray<{ id: AiTone; label: string }> = [
+  { id: 'simple', label: 'Sencillo' },
+  { id: 'technical', label: 'Técnico' },
 ];
-
-const BASE_BTN =
-  'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-lg px-2.5 py-1 font-semibold transition-colors ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /** Selector segmentado para elegir el nivel técnico de los informes del Coach IA. */
 export function AiToneToggle({ tone, onChange }: AiToneToggleProps) {
   return (
-    <div
-      role="group"
-      aria-label="Nivel técnico de la IA"
-      class="inline-flex rounded-xl border border-white/10 bg-gray-950/60 p-1 text-xs sm:text-[11px]"
-    >
-      {TONE_OPTIONS.map(([value, label]) => {
-        const active = tone === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={active ? 'true' : 'false'}
-            class={`${BASE_BTN} ${active ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/10' : 'text-gray-400 hover:text-gray-200'}`}
-            onClick={() => onChange(value)}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl
+      options={TONE_OPTIONS}
+      value={tone}
+      ariaLabel="Nivel técnico de la IA"
+      variant="subtle"
+      className="inline-flex rounded-xl border border-white/10 bg-gray-950/60 p-1 text-xs sm:text-[11px]"
+      buttonClassName="min-h-[44px] sm:min-h-[30px] px-2.5 py-1"
+      onChange={onChange}
+    />
   );
 }
