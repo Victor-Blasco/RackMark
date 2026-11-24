@@ -22,6 +22,8 @@ interface AiCoachPanelProps {
   onRetry?: () => void;
   /** Descarta el error del trabajo IA. */
   onDismiss?: () => void;
+  /** Inicia sesión con Google para habilitar la generación IA. */
+  onCloudLogin?: () => void;
 }
 
 /** Panel de informe del Coach IA con pestañas por área o llamada inicial a generar. */
@@ -33,6 +35,7 @@ export function AiCoachPanel({
   onGenerate = () => {},
   onRetry,
   onDismiss,
+  onCloudLogin = () => {},
 }: AiCoachPanelProps) {
   const vm = buildAiReportViewModel(state);
 
@@ -47,9 +50,15 @@ export function AiCoachPanel({
           <AiToneToggle tone={tone} onChange={onToneChange} />
         </div>
         <AiJobStatusBanner job={state.aiJob} onRetry={onRetry} onDismiss={onDismiss} />
-        <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
-          <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
-        </button>
+        {!state.user ? (
+          <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.syncing} onClick={onCloudLogin}>
+            <Icon name="login" className="h-3.5 w-3.5" /> Inicia sesión con Google para generar análisis IA
+          </button>
+        ) : (
+          <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
+            <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
+          </button>
+        )}
       </section>
     );
   }

@@ -1,7 +1,9 @@
 import { useRef } from 'preact/hooks';
 import type { Settings } from '../../types';
-import { fmtDate } from '../../ui/shared';
+import { fmtDate, todayIso } from '../../ui/shared';
 import { Icon } from '../common/Icon';
+
+const QUICK_PHASES = ['Volumen limpio', 'Definición', 'Mantenimiento', 'Fuerza'];
 
 interface PlanPhasesSectionProps {
   /** Lista de fases registradas en los ajustes del usuario. */
@@ -41,21 +43,40 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
           ))}
         </div>
       )}
-      <form
-        id="f-phase"
-        class="flex flex-wrap items-center gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const name = phaseNameRef.current?.value ?? '';
-          const start = phaseStartRef.current?.value ?? '';
-          void onAddPhase(name, start);
-          if (name.trim() && start.trim()) e.currentTarget.reset();
-        }}
-      >
-        <input ref={phaseNameRef} class="inp w-full sm:w-56" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
-        <input ref={phaseStartRef} class="inp w-full sm:w-44" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
-        <button class="btn-primary-sm" type="submit">Añadir fase</button>
-      </form>
+      <div class="space-y-2.5">
+        <div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Etapas rápidas">
+          <span class="text-xs text-gray-400 mr-1">Etapas rápidas:</span>
+          {QUICK_PHASES.map((label) => (
+            <button
+              key={label}
+              type="button"
+              class="btn-sm min-h-[44px] sm:min-h-[32px]"
+              onClick={() => {
+                if (phaseNameRef.current) phaseNameRef.current.value = label;
+                if (phaseStartRef.current && !phaseStartRef.current.value) phaseStartRef.current.value = todayIso();
+                phaseNameRef.current?.focus();
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <form
+          id="f-phase"
+          class="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const name = phaseNameRef.current?.value ?? '';
+            const start = phaseStartRef.current?.value ?? '';
+            void onAddPhase(name, start);
+            if (name.trim() && start.trim()) e.currentTarget.reset();
+          }}
+        >
+          <input ref={phaseNameRef} class="inp w-full sm:w-56" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
+          <input ref={phaseStartRef} class="inp w-full sm:w-44" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
+          <button class="btn-primary-sm" type="submit">Añadir fase</button>
+        </form>
+      </div>
     </div>
   );
 }

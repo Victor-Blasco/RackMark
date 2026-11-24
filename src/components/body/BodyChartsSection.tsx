@@ -11,6 +11,8 @@ interface BodyChartsSectionProps {
   hasCompMuscle: boolean;
   /** Métrica principal seleccionada en la gráfica de composición. */
   activeCompMode: 'weight' | 'muscle';
+  /** Indica si existe al menos un registro de perímetros con cinta en el historial. */
+  hasAnyPerim: boolean;
   /** Configuración de Chart.js para composición corporal o `null`. */
   compCfg: ChartConfiguration<'line'> | null;
   /** Configuración de Chart.js para el grupo de perímetros activo o `null`. */
@@ -41,6 +43,7 @@ export function BodyChartsSection({
   hasCompWeight,
   hasCompMuscle,
   activeCompMode,
+  hasAnyPerim,
   compCfg,
   perimCfg,
   activePerimeter,
@@ -52,7 +55,7 @@ export function BodyChartsSection({
   onChangePerimeter,
 }: BodyChartsSectionProps) {
   return (
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
+    <div class={`grid grid-cols-1 gap-6 ${hasAnyPerim ? 'lg:grid-cols-2' : ''} pb-5 border-b border-white/10`}>
       <div class="min-w-0 space-y-2">
         <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 class="font-bold text-white tabular-nums">Composición corporal ({compCount} registros)</h2>
@@ -92,29 +95,31 @@ export function BodyChartsSection({
         )}
       </div>
 
-      <div class="min-w-0 space-y-2">
-        <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <h2 class="font-bold text-white">Medidas con cinta (cm)</h2>
-          <select
-            class="inp max-w-full sm:w-auto"
-            aria-label="Grupo de perímetros"
-            value={activePerimeter}
-            onChange={(e) => onChangePerimeter(e.currentTarget.value)}
-          >
-            {Object.entries(PERIM).map(([k, v]) => (
-              <option key={k} value={k} selected={k === activePerimeter}>{v.label}</option>
-            ))}
-          </select>
+      {hasAnyPerim && (
+        <div class="min-w-0 space-y-2">
+          <div class="mb-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <h2 class="font-bold text-white">Medidas con cinta (cm)</h2>
+            <select
+              class="inp max-w-full sm:w-auto"
+              aria-label="Grupo de perímetros"
+              value={activePerimeter}
+              onChange={(e) => onChangePerimeter(e.currentTarget.value)}
+            >
+              {Object.entries(PERIM).map(([k, v]) => (
+                <option key={k} value={k} selected={k === activePerimeter}>{v.label}</option>
+              ))}
+            </select>
+          </div>
+          {perimCfg ? (
+            <div class="chart-box"><ChartCanvas id="c-perim" config={perimCfg} /></div>
+          ) : (
+            <p class="py-12 text-center text-sm text-gray-400">
+              Sin registros en {perimeterLabel.toLowerCase()}
+              {hasFilter ? ` (${rangeLabel})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.
+            </p>
+          )}
         </div>
-        {perimCfg ? (
-          <div class="chart-box"><ChartCanvas id="c-perim" config={perimCfg} /></div>
-        ) : (
-          <p class="py-12 text-center text-sm text-gray-400">
-            Sin registros en {perimeterLabel.toLowerCase()}
-            {hasFilter ? ` (${rangeLabel})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.
-          </p>
-        )}
-      </div>
+      )}
     </div>
   );
 }

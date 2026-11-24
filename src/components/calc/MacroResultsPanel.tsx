@@ -40,11 +40,11 @@ export function CalorieSummaryCard({ nutrition, deltaNum, deltaSign, projectionT
         </div>
         <div class="mt-3 grid grid-cols-2 divide-x divide-white/10 border-t border-white/10 pt-3 text-center">
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">TMB</span>
+            <span class="block text-[11px] text-gray-400">Gasto en reposo (TMB)</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-white">{nutrition.bmr} kcal</span>
           </div>
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">TDEE</span>
+            <span class="block text-[11px] text-gray-400">Gasto diario total (TDEE)</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-electricBlue">{nutrition.tdee} kcal</span>
           </div>
         </div>

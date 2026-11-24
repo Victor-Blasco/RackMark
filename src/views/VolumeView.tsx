@@ -14,9 +14,9 @@ interface VolumeViewProps {
 const MUSCLE_BTN_BASE =
   'inline-flex min-h-[44px] sm:min-h-0 items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
-function cellColor(v: number): string {
+function cellColor(v: number, isCurrentWeek: boolean): string {
   if (v === 0) return 'text-gray-400';
-  if (v < 8) return 'text-coralRed';
+  if (v < 8) return isCurrentWeek ? 'text-gray-300' : 'text-coralRed';
   if (v <= 20) return 'text-emeraldGreen';
   return 'text-amberGold';
 }
@@ -60,6 +60,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
 
       <div class="pb-5 border-b border-white/10 space-y-2">
         <h2 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h2>
+        <p class="text-xs sm:text-sm font-medium text-gray-200">{vm.summaryText}</p>
         <p class="mb-2 text-xs text-gray-400">
           Músculo principal = 1 serie, secundario = 0,5. <span class="text-coralRed">&lt;8↓ bajo</span> ·{' '}
           <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.
@@ -79,7 +80,8 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
                 </th>
                 {vm.weeks.map((w) => (
                   <th key={w} scope="col" class="min-w-[3.25rem] sm:min-w-[3.75rem] px-2 py-2 tabular-nums font-medium whitespace-nowrap">
-                    {short(w)}
+                    <span>{short(w)}</span>
+                    {w === vm.curWeek && <span class="block text-[10px] font-semibold text-blue-300">En curso</span>}
                   </th>
                 ))}
               </tr>
@@ -104,12 +106,13 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
                     </td>
                     {vm.weeks.map((w) => {
                       const v = vm.vol.get(m)?.get(w) ?? 0;
+                      const isCurrentWeek = w === vm.curWeek;
                       return (
-                        <td key={w} class={`min-w-[3.25rem] sm:min-w-[3.75rem] px-2 tabular-nums font-bold whitespace-nowrap ${cellColor(v)}`}>
+                        <td key={w} class={`min-w-[3.25rem] sm:min-w-[3.75rem] px-2 tabular-nums font-bold whitespace-nowrap ${cellColor(v, isCurrentWeek)}`}>
                           {v ? (
                             <>
                               {r1(v)}
-                              {v < 8 && (
+                              {!isCurrentWeek && v < 8 && (
                                 <>
                                   <span class="sr-only"> (bajo)</span>
                                   <span aria-hidden="true">↓</span>

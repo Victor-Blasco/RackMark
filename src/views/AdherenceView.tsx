@@ -5,7 +5,7 @@ import { ChartCanvas } from '../components/common/ChartCanvas';
 import { RangePicker } from '../components/common/RangePicker';
 import { buildAdherenceViewModel } from '../store/adherenceSelectors';
 import { useAppStore } from '../store/appStore';
-import { r1, routineShort, type State } from '../ui/shared';
+import { r1, type State } from '../ui/shared';
 
 interface AdherenceViewProps {
   /** Estado explícito opcional para renderizado SSR aislado en tests. */
@@ -51,7 +51,7 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
           <span class="block text-xs text-gray-400">días entrenados</span>
         </div>
         <div>
-          <span class="block text-xs text-gray-400">Racha ≥3 días/sem.</span>
+          <span class="block text-xs text-gray-400">Racha ≥{vm.targetDays} {vm.targetDays === 1 ? 'día' : 'días'}/sem.</span>
           <span class="tabular-nums text-xl font-extrabold text-white">{vm.streak}</span>
           <span class="block text-xs text-gray-400">semanas completas</span>
         </div>
@@ -60,7 +60,7 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
           <span class="tabular-nums text-xl font-extrabold text-white">
             {vm.routines.map((r) => vm.counts[r] ?? 0).join('/')}
           </span>
-          <span class="block text-xs text-gray-400">{vm.routines.map((r) => routineShort(r)).join(' / ')}</span>
+          <span class="block text-xs text-gray-400">{vm.routines.join(' · ')}</span>
         </div>
         <div>
           <span class="block text-xs text-gray-400">Cardio ({vm.bounds.label})</span>

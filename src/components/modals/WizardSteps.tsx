@@ -114,7 +114,6 @@ export function WizardStep2({ draft, onPatch }: WizardStepProps) {
                   onPatch({
                     experience: e.id,
                     templateKey: recommendTemplate(draft.daysPerWeek, e.id),
-                    aiTone: e.id === 'beginner' ? 'simple' : 'technical',
                   })
                 }
               >

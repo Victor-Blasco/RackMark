@@ -119,7 +119,9 @@ export function buildLogViewModel(state: State) {
 
   const doneExCount = draft.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0)).length;
   const doneSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
+  const validSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.r > 0).length, 0);
   const totalSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.length, 0);
+  const allSetsDone = validSetsCount > 0 && doneSetsCount === validSetsCount;
   const recentSessions = [...state.analysis.sessions].reverse().slice(0, 10);
 
   return {
@@ -130,6 +132,7 @@ export function buildLogViewModel(state: State) {
     doneExCount,
     doneSetsCount,
     totalSetsCount,
+    allSetsDone,
     recentSessions,
   };
 }

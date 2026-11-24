@@ -30,9 +30,12 @@ import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyCh
 import { buildCalcViewModel } from '../src/store/calcSelectors';
 import { createCatalogMapActions } from '../src/store/catalogMapActions';
 import { allExerciseNames, extractTargetWeight, manualSessionId, quickExSuggestions } from '../src/store/exerciseCatalog';
+import { buildBodyViewModel } from '../src/store/bodySelectors';
 import { buildBodyHomeChartConfig, buildHomeExChartConfig, exerciseChartConfig, filterExByRange } from '../src/store/homeChartConfigs';
+import { buildDayRoutineViewModel } from '../src/store/daySelectors';
 import { buildHomeViewModel } from '../src/store/homeSelectors';
 import { createLogHistoryActions } from '../src/store/logHistoryActions';
+import { createLogInputActions } from '../src/store/logInputActions';
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { activeTabTitle, isValidTab, syncStatusInfo } from '../src/store/navigation';
@@ -44,7 +47,7 @@ import { createProfileActions } from '../src/store/profileActions';
 import { createRoutineEditActions } from '../src/store/routineEditActions';
 import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
 import { buildWorkoutSummary } from '../src/store/sessionPersistence';
-import { weeksForBounds } from '../src/store/volumeSelectors';
+import { buildVolumeViewModel, weeksForBounds } from '../src/store/volumeSelectors';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -543,7 +546,7 @@ describe('P1 analytics, trends & empty states', () => {
     expect(adhHtml).not.toContain('Calendario (últimas');
 
     const homeHtml = renderToString(h(HomeView, { state: emptyState }));
-    expect(homeHtml).toContain('+ Empezar primer entreno hoy');
+    expect(homeHtml).toContain('+ Empezar entreno en vivo');
     expect(homeHtml).not.toContain('<canvas');
     expect(homeHtml).not.toContain('ai-report');
 
@@ -1294,7 +1297,7 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
       muscleSel: 'Pecho',
     };
     expect(activeTabTitle(state)).toBe('Cuerpo');
-    expect(syncStatusInfo(state, false, true).text).toBe('Solo local');
+    expect(syncStatusInfo(state, false, true).text).toBe('En este dispositivo');
     expect(
       renderToString(
         h(Sidebar, {
@@ -1386,7 +1389,7 @@ describe('Bloque Usuario Final: Día 1, copy deportista y persistencia calc', ()
     };
 
     const homeHtml = renderToString(h(HomeView, { state: emptyState }));
-    expect(homeHtml).toContain('+ Empezar primer entreno hoy');
+    expect(homeHtml).toContain('+ Empezar entreno en vivo');
     expect(homeHtml).toContain('<span>Push</span>');
 
     const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: emptyState }));
@@ -1866,13 +1869,14 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         onCloudLogin: () => {},
       }),
     );
-    expect(mobHtml.indexOf('Solo local')).toBeLessThan(mobHtml.indexOf('18 ses.'));
+    expect(mobHtml.indexOf('En este dispositivo')).toBeLessThan(mobHtml.indexOf('18 ses.'));
 
     // Prioridad 7 & 8 & 10: Log RIR cabecera desktop, singular "1 serie", DataView inputs estilizados y aria-live en Plan
     const logDraft = initLogDraft(state, 'Push', '2026-11-15');
     logDraft.exercises = [{ name: 'Press de banca', note: '', done: true, sets: [{ w: 80, r: 8, done: true }] }];
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft } }));
-    expect(logHtml).toContain('<span class="hidden sm:block w-12 shrink-0 text-center">RIR</span>');
+    expect(logHtml).toContain('RIR</span>');
+    expect(logHtml).toContain('Reps que te guardaste sin llegar al fallo');
     expect(logHtml).toContain('Guardar sesión (1 serie)');
 
     const dataHtml = renderToString(h(DataView, { state: { ...state, tab: 'data' } }));
@@ -1978,16 +1982,16 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     const bodyHtml = renderToString(h(BodyView, { state: baseState }));
     expect(bodyHtml).toContain('grid-rows-[0fr]');
 
-    // 8. Gráfica de cargas sin e1RM ni switch, con leyenda Peso máx + Tonelaje y tooltip mínimo
+    // 8. Gráfica de cargas sin e1RM ni switch, con leyenda Peso máx + Kilos totales y tooltip mínimo
     const chartCfg = exerciseChartConfig(
       [{ date: '2026-10-21', sets: [{ w: 25, r: 12 }, { w: 27.5, r: 6 }], top: 27.5, repsAtTop: 6, volume: 465, e1rm: 33, avgHr: 132, maxHr: 159 }],
       '#3B82F6',
     );
-    expect(chartCfg.data.datasets.map((d) => d.label)).toEqual(['Peso máx (kg)', 'Tonelaje (kg)']);
+    expect(chartCfg.data.datasets.map((d) => d.label)).toEqual(['Peso máx (kg)', 'Kilos totales (kg)']);
     expect(chartCfg.data.datasets.map((d) => (d as { yAxisID?: string }).yAxisID)).toEqual(['y', 'y1']);
     const tipCb = (chartCfg.options?.plugins?.tooltip as { callbacks?: { label?: (c: { dataIndex: number; datasetIndex: number }) => string; afterBody?: (items: { dataIndex: number }[]) => string[] } })?.callbacks;
     expect(tipCb?.label?.({ dataIndex: 0, datasetIndex: 0 })).toBe('Peso máx: 27,5 kg');
-    expect(tipCb?.label?.({ dataIndex: 0, datasetIndex: 1 })).toBe('Tonelaje: 465 kg');
+    expect(tipCb?.label?.({ dataIndex: 0, datasetIndex: 1 })).toBe('Kilos totales: 465 kg');
     const tipExtra = tipCb?.afterBody?.([{ dataIndex: 0 }]) ?? [];
     expect(tipExtra).toEqual(['Series: 25×12 · 27,5×6']);
     expect(tipExtra.join(' ')).not.toContain('e1RM');
@@ -1998,7 +2002,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(cleanHomeHtml).not.toContain('Métrica de progresión');
     const cleanDayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: baseState }));
     expect(cleanDayHtml).not.toContain('e1RM');
-    expect(cleanDayHtml).toContain('Tonelaje máx');
+    expect(cleanDayHtml).toContain('Kilos totales máx');
   });
 
   it('separa Rutinas de Plan, centra Entrenar en 5 pestañas móviles y edita 1 rutina a la vez', async () => {
@@ -3075,7 +3079,7 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(logHtml).not.toContain('+ Crear ejercicio nuevo');
     expect(logHtml).toContain('flex items-center gap-1.5 overflow-x-auto no-scrollbar');
     // LogSessionHeader aligerada en móvil pero Guardar siempre visible
-    expect(logHtml).toContain('btn btn-accent hidden sm:inline-flex');
+    expect(logHtml).toContain('btn btn-accent hidden lg:inline-flex');
     expect(logHtml).toContain('Guardar (');
     // LogExerciseHeader con flechas ^/v inline + menú contextual ⋯
     expect(logHtml).toContain('aria-haspopup="menu" aria-expanded="false" aria-label="Opciones de');
@@ -3516,5 +3520,196 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(modalHtml).toContain('id="planExSearch"');
     expect(modalHtml).toContain('Elevación de gemelos sentado');
     expect(modalHtml).not.toContain('Sóleo Sentado');
+  });
+
+  it('auto-marca series editadas, toggleAllSets y avisa si hay notas sin marcar al guardar', async () => {
+    const settings = sanitizeSettings({});
+    let draft = initLogDraft(
+      {
+        tab: 'log',
+        strength: [],
+        cardio: [],
+        measures: [],
+        wellbeing: [],
+        settings,
+        analysis: analyze([], settings),
+        sel: {},
+        perimeter: 'arms',
+        muscleSel: 'Pecho',
+      },
+      'Push',
+      todayIso(),
+    );
+    const commits: number[] = [];
+    const inputActions = createLogInputActions(
+      () => draft,
+      (d) => { if (d) draft = d; },
+      (d) => { if (d) draft = d; commits.push(1); },
+    );
+    const setActions = createLogSetActions(
+      () => draft,
+      (d) => { if (d) draft = d; commits.push(1); },
+      () => {},
+    );
+
+    expect(draft.exercises[0].sets[0].done).toBe(false);
+    inputActions.stepWeight(0, 0, 2.5);
+    expect(draft.exercises[0].sets[0].done).toBe(true);
+
+    inputActions.updateReps(0, 0, '0', true);
+    expect(draft.exercises[0].sets[0].done).toBe(false);
+    inputActions.updateReps(0, 0, '8', false);
+    expect(draft.exercises[0].sets[0].done).toBe(true);
+    expect(commits.length).toBeGreaterThanOrEqual(3);
+
+    setActions.addSet(0);
+    expect(draft.exercises[0].sets[draft.exercises[0].sets.length - 1].done).toBe(true);
+
+    setActions.applyTargetWeight(1, 50);
+    expect(draft.exercises[1].sets.every((s) => s.w === 50 && s.done)).toBe(true);
+
+    setActions.toggleAllSets();
+    expect(draft.exercises.every((ex) => ex.sets.every((s) => s.done))).toBe(true);
+    setActions.toggleAllSets();
+    expect(draft.exercises.every((ex) => ex.sets.every((s) => !s.done))).toBe(true);
+
+    // Ejercicio 0 marcado, ejercicio 1 con nota pero sin series marcadas -> pregunta antes de guardar
+    setActions.toggleExercise(0);
+    inputActions.updateNote(1, 'Molestia leve en hombro');
+    const confirms: string[] = [];
+    const histActions = createLogHistoryActions(
+      {
+        getState: () => ({
+          tab: 'log',
+          strength: [],
+          cardio: [],
+          measures: [],
+          wellbeing: [],
+          settings,
+          analysis: analyze([], settings),
+          sel: {},
+          perimeter: 'arms',
+          muscleSel: 'Pecho',
+          logDraft: draft,
+        }),
+        commitDraft: (d) => { if (d) draft = d; },
+        reload: async () => {},
+        setTab: () => {},
+        queueSync: () => {},
+        toast: () => {},
+        askConfirm: async (opts) => {
+          confirms.push(opts.message);
+          return false;
+        },
+      },
+      () => draft,
+      async () => true,
+    );
+    await histActions.saveSession();
+    expect(confirms).toHaveLength(1);
+    expect(confirms[0]).toContain(draft.exercises[1].name);
+  });
+
+  it('mantiene onboarding con medidas sin entrenos, muestra IA en 1M, adapta racha, Cuerpo, Volumen y sincroniza fases', async () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({
+      aiTone: 'simple',
+      profile: { sex: 'hombre', age: 30, height: 175, goal: 'bulk', daysPerWeek: 2, experience: 'beginner' },
+      ai: {
+        date: today,
+        tone: 'simple',
+        summary: 'Buen progreso',
+        overview: { overallStatus: 'Bien', highlights: [], sections: [] },
+        byExercise: {
+          'Press de banca': {
+            status: 'Listo para subir',
+            prescription: 'Sube a 82,5 kg',
+            biomech: 'Retracción escapular',
+          },
+        },
+      },
+    });
+
+    // 1. Con medidas iniciales pero 0 entrenos sigue en OnboardingHome
+    const onboardingWithWeight: State = {
+      tab: 'home',
+      strength: [],
+      cardio: [],
+      measures: [{ date: today, weight: 75 }],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    expect(buildHomeViewModel(onboardingWithWeight).isOnboarding).toBe(true);
+
+    // 2. Con sesiones y filtro por defecto 1M mantiene consejos IA visibles en Home y Rutinas
+    const strength = [
+      { id: 's1', sessionId: 'sess-1', ts: Date.now() - 864e5, date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const activeState: State = {
+      ...onboardingWithWeight,
+      strength,
+      analysis: analyze(strength, settings),
+    };
+    const homeVm = buildHomeViewModel(activeState);
+    expect(homeVm.hasFilter).toBe(true);
+    expect(homeVm.rows.find((r) => r.e.name === 'Press de banca')?.aiStatus).toBe('Listo para subir');
+    const dayVm = buildDayRoutineViewModel(activeState, 'Push');
+    expect(dayVm.hasFilter).toBe(true);
+    expect(dayVm.aiFor(dayVm.primary[0])?.prescription).toBe('Sube a 82,5 kg');
+
+    // 3. Adherencia usa daysPerWeek del perfil (2 días/semana -> racha >= 2)
+    const curWkMs = Date.parse(`${isoWeekStart(today)}T00:00:00Z`);
+    const twoDayRows = [1, 2, 3].flatMap((w) =>
+      [0, 2].map((d, i) => {
+        const dt = new Date(curWkMs - w * 7 * 864e5 + d * 864e5).toISOString().slice(0, 10);
+        return { id: `td-${w}-${i}`, sessionId: `tds-${w}-${i}`, ts: Date.parse(`${dt}T10:00:00Z`), date: dt, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 70, r: 8, done: true }] };
+      }),
+    );
+    const adhVm = buildAdherenceViewModel({ ...activeState, strength: twoDayRows, analysis: analyze(twoDayRows, settings) });
+    expect(adhVm.targetDays).toBe(2);
+    expect(adhVm.streak).toBe(3);
+
+    // 4. Cuerpo pone MeasureForm antes de gráficas y oculta cinta vacía; Volumen etiqueta En curso; Plan ligero usa 6-16
+    expect(buildBodyViewModel(activeState).hasAnyPerim).toBe(false);
+    const bodyHtml = renderToString(h(BodyView, { state: activeState }));
+    expect(bodyHtml.indexOf('Registrar medidas')).toBeLessThan(bodyHtml.indexOf('Composición corporal'));
+    expect(bodyHtml).not.toContain('Medidas con cinta (cm)');
+
+    const volHtml = renderToString(h(VolumeView, { state: activeState }));
+    expect(volHtml).toContain('En curso');
+    expect(buildVolumeViewModel(activeState).summaryText).toContain('Esta semana (en curso)');
+    expect(buildVolumeViewModel({ ...activeState, strength: twoDayRows, analysis: analyze(twoDayRows, settings) }).summaryText).toContain('Última semana completa');
+
+    const planHtml = renderToString(h(PlanView, { state: { ...activeState, tab: 'plan', planTab: 'routines' } }));
+    expect(planHtml).toContain('(plan ligero)');
+    expect(planHtml).toContain('6–16');
+
+    // 5. Sincronizar objetivo del perfil con Fases + textos limpios
+    const syncState: State = { ...activeState, settings: sanitizeSettings({ profile: { goal: 'bulk' } }) };
+    const profileActions = createProfileActions({
+      getState: () => syncState,
+      persist: async () => {},
+      render: () => {},
+      toast: () => {},
+    });
+    await profileActions.updateProfileGoal('cut');
+    expect(syncState.settings.phases.some((p) => p.name === 'Definición' && p.start === today)).toBe(true);
+
+    const settingsHtml = renderToString(h(SettingsView, { state: activeState }));
+    expect(settingsHtml).not.toContain('Reloj GPS Polar');
+    expect(createWizardDraft(onboardingWithWeight).aiTone).toBe('simple');
+    expect(
+      createWizardDraft({
+        ...onboardingWithWeight,
+        settings: sanitizeSettings({}),
+      }).aiTone,
+    ).toBe('simple');
+    expect(renderToString(h(HomeView, { state: { ...activeState, settings: { ...settings, ai: undefined } } }))).toContain(
+      'Inicia sesión con Google para generar análisis IA',
+    );
   });
 });

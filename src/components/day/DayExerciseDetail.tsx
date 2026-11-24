@@ -44,7 +44,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
   const maxVol = e.n ? Math.round(Math.max(...e.sessions.map((s) => s.volume))) : 0;
   const kpis = [
     { lbl: 'Peso máx', val: e.n ? `${e.maxWeight} kg` : '—', cls: 'text-white' },
-    { lbl: 'Tonelaje máx', val: e.n ? `${maxVol} kg` : '—', cls: 'text-white' },
+    { lbl: 'Kilos totales máx', val: e.n ? `${maxVol} kg` : '—', cls: 'text-white' },
     { lbl: 'FC media', val: e.avgHr ? `${e.avgHr} lpm` : '—', cls: 'text-cyan-300' },
   ];
 

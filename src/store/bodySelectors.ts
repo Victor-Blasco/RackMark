@@ -46,6 +46,7 @@ export function buildBodyViewModel(state: State) {
 
   const pk = PERIM[state.perimeter] ?? PERIM.arms;
   const basicFields = MEASURE_FIELDS.filter((f) => BASIC_MEASURE_KEYS.includes(f.key));
+  const hasAnyPerim = ms.some((m) => PERIM_ALL_KEYS.some((k) => m[k] != null));
   const hasPerimsInCurrent = Boolean(currentEntry && PERIM_ALL_KEYS.some((k) => currentEntry[k] != null));
   const perimOpen = state.measurePerimOpen ?? hasPerimsInCurrent;
   const perimGroups = PERIM_GROUPS.map((g) => ({
@@ -81,6 +82,7 @@ export function buildBodyViewModel(state: State) {
     hasCompWeight,
     hasCompMuscle,
     activeCompMode,
+    hasAnyPerim,
     pk,
     basicFields,
     perimOpen,

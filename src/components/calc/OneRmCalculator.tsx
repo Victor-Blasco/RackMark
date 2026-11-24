@@ -89,18 +89,19 @@ export function OneRmCalculator({
 
       <div id="calcOut" class="grid grid-cols-3 divide-x divide-white/10 border-t border-b border-white/10 py-3 text-center">
         <div class="px-2">
-          <span class="block text-[11px] text-gray-400">1RM (Epley)</span>
+          <span class="block text-[11px] text-gray-400">Máximo estimado (1RM)</span>
           <span class="tabular-nums text-lg sm:text-xl font-extrabold text-electricBlue">{r1(oneRm)} kg</span>
         </div>
         <div class="px-2">
-          <span class="block text-[11px] text-gray-400">1RM ajustado RIR</span>
+          <span class="block text-[11px] text-gray-400">Con reps en reserva</span>
           <span class="tabular-nums text-lg sm:text-xl font-extrabold text-emeraldGreen">{r1(oneRmRir)} kg</span>
         </div>
         <div class="px-2">
-          <span class="block text-[11px] text-gray-400">Ratio / peso</span>
+          <span class="block text-[11px] text-gray-400">Fuerza / tu peso</span>
           <span class="tabular-nums text-lg sm:text-xl font-extrabold text-amberGold">{ratio}×</span>
         </div>
       </div>
+      <p class="text-[11px] text-gray-400 text-center">Fuerza / tu peso: &lt;1× Base · 1–1,5× Intermedio · &gt;1,5× Avanzado</p>
 
       <div id="calcZones" class="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-white/10 pb-3 text-sm tabular-nums sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-white/10 sm:text-center">
         {zones.map((z) => (

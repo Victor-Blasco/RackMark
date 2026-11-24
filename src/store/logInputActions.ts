@@ -65,7 +65,7 @@ export function createLogInputActions(
       const s = draft.exercises[ei]?.sets[si];
       if (!s || !Number.isFinite(delta)) return;
       const nextW = Math.max(0, Math.round((s.w + delta) * 10) / 10);
-      commitDraft(mapDraftSet(draft, ei, si, (set) => ({ ...set, w: nextW })));
+      commitDraft(mapDraftSet(draft, ei, si, (set) => ({ ...set, w: nextW, done: set.r > 0 })));
     },
 
     updateWeight(ei: number, si: number, raw: string, finalize = false) {
@@ -75,8 +75,9 @@ export function createLogInputActions(
       const trimmed = raw.trim();
       if (!finalize && (!trimmed || /[.,]$/.test(trimmed))) return;
       const nextW = Math.max(0, parseFloat(trimmed.replace(',', '.')) || 0);
-      const nextDraft = mapDraftSet(draft, ei, si, (set) => ({ ...set, w: nextW }));
-      if (finalize || s.done) commitDraft(nextDraft);
+      const nextDone = s.r > 0;
+      const nextDraft = mapDraftSet(draft, ei, si, (set) => ({ ...set, w: nextW, done: nextDone }));
+      if (finalize || nextDone || Boolean(s.done) !== nextDone) commitDraft(nextDraft);
       else saveDraftOnly(nextDraft);
     },
 
@@ -85,7 +86,7 @@ export function createLogInputActions(
       const s = draft.exercises[ei]?.sets[si];
       if (!s || !Number.isFinite(delta)) return;
       const nextR = Math.max(0, s.r + delta);
-      commitDraft(mapDraftSet(draft, ei, si, (set) => ({ ...set, r: nextR, done: nextR === 0 ? false : Boolean(set.done) })));
+      commitDraft(mapDraftSet(draft, ei, si, (set) => ({ ...set, r: nextR, done: nextR > 0 })));
     },
 
     updateReps(ei: number, si: number, raw: string, finalize = false) {
@@ -95,7 +96,7 @@ export function createLogInputActions(
       const trimmed = raw.trim();
       if (!trimmed && !finalize) return;
       const nextR = Math.max(0, parseInt(trimmed, 10) || 0);
-      const nextDone = nextR === 0 ? false : Boolean(s.done);
+      const nextDone = nextR > 0;
       const nextDraft = mapDraftSet(draft, ei, si, (set) => ({ ...set, r: nextR, done: nextDone }));
       if (finalize || Boolean(s.done) !== nextDone || nextDone) commitDraft(nextDraft);
       else saveDraftOnly(nextDraft);

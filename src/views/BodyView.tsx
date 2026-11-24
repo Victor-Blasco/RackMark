@@ -50,22 +50,6 @@ export function BodyView({ state: propState }: BodyViewProps) {
 
       <AiInsightBanner state={state} pattern={/composici|cuerpo|antropo/i} />
 
-      <BodyChartsSection
-        compCount={vm.compCount}
-        hasCompWeight={vm.hasCompWeight}
-        hasCompMuscle={vm.hasCompMuscle}
-        activeCompMode={vm.activeCompMode}
-        compCfg={compCfg}
-        perimCfg={perimCfg}
-        activePerimeter={state.perimeter}
-        perimeterLabel={vm.pk.label}
-        totalMeasures={vm.ms.length}
-        hasFilter={vm.hasFilter}
-        rangeLabel={vm.bounds.label}
-        onChangeCompMode={analytics.setBodyMetric}
-        onChangePerimeter={analytics.setPerimeter}
-      />
-
       <MeasureForm
         activeDate={vm.activeDate}
         today={vm.today}
@@ -81,6 +65,23 @@ export function BodyView({ state: propState }: BodyViewProps) {
         onTogglePerim={analytics.toggleMeasurePerim}
         onUpdateDraft={analytics.updateMeasureDraft}
         onSubmitMeasure={analytics.saveMeasure}
+      />
+
+      <BodyChartsSection
+        compCount={vm.compCount}
+        hasCompWeight={vm.hasCompWeight}
+        hasCompMuscle={vm.hasCompMuscle}
+        activeCompMode={vm.activeCompMode}
+        hasAnyPerim={vm.hasAnyPerim}
+        compCfg={compCfg}
+        perimCfg={perimCfg}
+        activePerimeter={state.perimeter}
+        perimeterLabel={vm.pk.label}
+        totalMeasures={vm.ms.length}
+        hasFilter={vm.hasFilter}
+        rangeLabel={vm.bounds.label}
+        onChangeCompMode={analytics.setBodyMetric}
+        onChangePerimeter={analytics.setPerimeter}
       />
 
       <MeasuresHistoryTable

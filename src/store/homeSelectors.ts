@@ -71,7 +71,7 @@ function resolveFourthMetric(state: State, ms: Measure[], rangeLabel: string, ha
 
 /** Construye todos los KPIs, series de gráficas y tabla de cargas para `<HomeView />`. */
 export function buildHomeViewModel(state: State) {
-  const isOnboarding = !state.strength.length && !state.measures.length && !state.cardio.length && !state.wellbeing.length;
+  const isOnboarding = !state.strength.length && !state.cardio.length;
   const bounds = resolveRange(state, 'home');
   const hasFilter = Boolean(bounds.from || bounds.to);
   const ms = hasFilter ? state.measures.filter((m) => inRange(m.date, bounds)) : state.measures;
@@ -95,7 +95,7 @@ export function buildHomeViewModel(state: State) {
   const rows = routines.flatMap((d, idx) =>
     (state.analysis.byDay[d] ?? []).map((e) => {
       const filtered = filterExByRange(e, bounds);
-      const aiStatus = !hasFilter && isAiFreshForEx(state, state.analysis.exercises.get(filtered.name) ?? filtered) ? findAiExercise(state.settings.ai, filtered.name)?.status : undefined;
+      const aiStatus = isAiFreshForEx(state, state.analysis.exercises.get(filtered.name) ?? filtered) ? findAiExercise(state.settings.ai, filtered.name)?.status : undefined;
       return { d: d as DayName, c: routineColor(d, state.settings, idx), e: filtered, aiStatus };
     }),
   );

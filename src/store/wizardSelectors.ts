@@ -107,7 +107,7 @@ export function createWizardDraft(state: State): WizardDraft {
     experience,
     daysPerWeek,
     templateKey: recommendTemplate(daysPerWeek, experience),
-    aiTone: state.settings.aiTone ?? (experience === 'beginner' ? 'simple' : 'technical'),
+    aiTone: state.settings.onboardingCompleted ? (state.settings.aiTone ?? 'simple') : 'simple',
     anim: 'open',
   };
 }

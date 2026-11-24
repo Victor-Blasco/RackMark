@@ -1,4 +1,5 @@
-import type { State } from '../ui/shared';
+import { todayIso, type State } from '../ui/shared';
+import { goalPhaseName, resolveWizardPhases } from './wizardSelectors';
 
 /** Dependencias para actualizar perfil del atleta y calculadoras. */
 export interface ProfileActionDeps {
@@ -63,13 +64,29 @@ export function createProfileActions(deps: ProfileActionDeps) {
 
     async updateProfileGoal(val: string) {
       clearCalcOverride('goal');
-      await patchProfile((cur) => {
-        if (val === 'bulk' || val === 'cut' || val === 'recomp' || val === 'strength') {
-          return { ...cur, goal: val };
-        }
-        const { goal: _removed, ...rest } = cur;
-        return rest;
-      });
+      const validGoal = val === 'bulk' || val === 'cut' || val === 'recomp' || val === 'strength';
+      const S = state();
+      S.settings = {
+        ...S.settings,
+        profile: validGoal
+          ? { ...S.settings.profile, goal: val }
+          : (() => {
+              const { goal: _removed, ...rest } = S.settings.profile;
+              return rest;
+            })(),
+        ...(validGoal
+          ? {
+              phases: resolveWizardPhases(
+                S.settings.phases,
+                true,
+                S.strength.length > 0,
+                goalPhaseName(val),
+                todayIso(),
+              ),
+            }
+          : {}),
+      };
+      await deps.persist();
     },
 
     async updateProfileExperience(val: string) {

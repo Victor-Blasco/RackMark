@@ -73,7 +73,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
           <span class="flex-1 text-center">Peso (kg)</span>
           <span class="flex-1 text-center">Reps</span>
           <span class="hidden sm:block w-16 shrink-0 text-center">Desc (s)</span>
-          <span class="hidden sm:block w-12 shrink-0 text-center">RIR</span>
+          <span class="hidden sm:block w-12 shrink-0 text-center cursor-help" title="Reps que te guardaste sin llegar al fallo (0 = al fallo)">RIR</span>
           <span class="w-11 shrink-0 text-center">OK</span>
         </div>
 
@@ -99,6 +99,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
             <button
               type="button"
               aria-expanded={showDetails ? 'true' : 'false'}
+              title="Reps que te guardaste sin llegar al fallo (0 = al fallo) y descanso entre series"
               class={`sm:hidden ${TOGGLE_PILL} tabular-nums ${showDetails ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`}
               onClick={() => setShowDetails((v) => !v)}
             >

@@ -62,10 +62,30 @@ export function createLogSetActions(
     applyTargetWeight(ei: number, targetW: number) {
       if (!Number.isFinite(targetW)) return;
       const w = Math.max(0, targetW);
-      commitDraft(mapDraftEx(ensureDraft(), ei, (ex) => ({
-        ...ex,
-        sets: ex.sets.map((s) => (s.done ? s : { ...s, w })),
-      })));
+      commitDraft(mapDraftEx(ensureDraft(), ei, (ex) => {
+        const sets = ex.sets.map((s) => (s.done ? s : { ...s, w, done: s.r > 0 }));
+        return { ...ex, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
+      }));
+    },
+
+    toggleAllSets() {
+      const draft = ensureDraft();
+      const validSets = draft.exercises.flatMap((ex) => ex.sets.filter((s) => s.r > 0));
+      if (!validSets.length) {
+        toast('Indica al menos 1 repetición antes de marcar ✓.');
+        return;
+      }
+      const next = !validSets.every((s) => s.done);
+      const exercises = draft.exercises.map((ex) => {
+        const sets = ex.sets.map((s) => ({ ...s, done: next ? s.r > 0 : false }));
+        return { ...ex, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
+      });
+      commitDraft({
+        ...draft,
+        dirty: true,
+        exercises,
+        startedAt: next ? draft.startedAt ?? Date.now() : draft.startedAt,
+      });
     },
 
     addSet(ei: number) {
@@ -73,8 +93,12 @@ export function createLogSetActions(
       const ex = draft.exercises[ei];
       if (!ex) return;
       const last = ex.sets[ex.sets.length - 1];
-      const added = last ? { w: last.w, r: last.r, done: false } : { w: 0, r: 10, done: false };
-      commitDraft(mapDraftEx(draft, ei, (item) => ({ ...item, sets: [...item.sets, added] })));
+      const r = last ? last.r : 10;
+      const added = { w: last ? last.w : 0, r, done: r > 0 };
+      commitDraft(mapDraftEx(draft, ei, (item) => {
+        const sets = [...item.sets, added];
+        return { ...item, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
+      }));
     },
 
     delSet(ei: number, si: number) {

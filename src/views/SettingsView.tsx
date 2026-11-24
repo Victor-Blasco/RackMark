@@ -54,7 +54,7 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
         <div>
           <h2 class="font-bold text-white">Apariencia</h2>
           <p class="text-xs text-gray-400 mt-0.5">
-            Elige entre modo oscuro, claro o automático según tu dispositivo (paleta Reloj GPS Polar).
+            Elige entre modo oscuro, claro o automático según tu dispositivo.
           </p>
         </div>
         <div

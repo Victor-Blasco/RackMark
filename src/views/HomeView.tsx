@@ -16,7 +16,7 @@ interface HomeViewProps {
  * Vista principal `Resumen`: muestra bienvenida en el Día 1 o KPIs, Coach IA, gráficas y control de cargas.
  */
 export function HomeView({ state: propState }: HomeViewProps) {
-  const { state: storeState, plan, setTab } = useAppStore();
+  const { state: storeState, plan, dataSync, setTab } = useAppStore();
   const state = propState ?? storeState;
   const vm = buildHomeViewModel(state);
 
@@ -27,7 +27,6 @@ export function HomeView({ state: propState }: HomeViewProps) {
         onOpenWizard={plan.openWizard}
         onStartWorkout={(d) => plan.startWorkout(d)}
         onGoLog={() => plan.openLog()}
-        onApplyTemplate={(k) => void plan.applyTemplate(k)}
         onNavigateTab={setTab}
       />
     );
@@ -63,6 +62,7 @@ export function HomeView({ state: propState }: HomeViewProps) {
         onGenerate={plan.runAi}
         onRetry={plan.retryAi}
         onDismiss={plan.dismissAi}
+        onCloudLogin={dataSync.cloudLogin}
       />
 
       <HomeChartsSection

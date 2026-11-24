@@ -71,7 +71,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
       labels: sessions.map((x) => short(x.date)),
       datasets: [
         { label: allBw ? 'Reps máx' : 'Peso máx (kg)', data: sessions.map((x) => (allBw ? x.repsAtTop : x.top)), borderColor: color, backgroundColor: color, borderWidth: 2.5, tension: 0.25, yAxisID: 'y' },
-        { label: allBw ? 'Reps totales' : 'Tonelaje (kg)', data: sessions.map((x) => (allBw ? x.sets.reduce((a, s) => a + s.r, 0) : Math.round(x.volume))), borderColor: '#94A3A8', backgroundColor: '#94A3A8', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
+        { label: allBw ? 'Reps totales' : 'Kilos totales (kg)', data: sessions.map((x) => (allBw ? x.sets.reduce((a, s) => a + s.r, 0) : Math.round(x.volume))), borderColor: '#94A3A8', backgroundColor: '#94A3A8', borderDash: [4, 3], borderWidth: 1.75, tension: 0.25, yAxisID: 'y1' },
       ],
     },
     options: {
@@ -92,7 +92,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
               const s = sessions[ctx.dataIndex];
               if (!s) return '';
               if (allBw) return ctx.datasetIndex === 0 ? `Reps máx: ${s.repsAtTop}` : `Reps totales: ${s.sets.reduce((a, x) => a + x.r, 0)}`;
-              return ctx.datasetIndex === 0 ? `Peso máx: ${r1(s.top)} kg` : `Tonelaje: ${Math.round(s.volume)} kg`;
+              return ctx.datasetIndex === 0 ? `Peso máx: ${r1(s.top)} kg` : `Kilos totales: ${Math.round(s.volume)} kg`;
             },
             afterBody: (items) => {
               const s = items[0] ? sessions[items[0].dataIndex] : undefined;

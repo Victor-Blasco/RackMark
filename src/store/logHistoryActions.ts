@@ -35,6 +35,20 @@ export function createLogHistoryActions(
     async saveSession() {
       const state = deps.getState();
       const draft = ensureDraft();
+      const hasAnyDone = draft.exercises.some((ex) => ex.sets.some((s) => s.done && s.r > 0));
+      const unmarkedWithNotes = draft.exercises.filter(
+        (ex) => ex.note.trim().length > 0 && !ex.sets.some((s) => s.done && s.r > 0),
+      );
+      if (hasAnyDone && unmarkedWithNotes.length > 0) {
+        const names = unmarkedWithNotes.map((e) => e.name).join(', ');
+        const confirmed = await deps.askConfirm({
+          title: 'Ejercicios con nota sin marcar',
+          message: `Estos ejercicios tienen nota escrita pero ninguna serie marcada con ✓ y no se guardarán: ${names}. ¿Guardar igualmente?`,
+          confirmLabel: 'Guardar sin ellos',
+          danger: true,
+        });
+        if (!confirmed) return;
+      }
       const saved = await persistCompletedSession(
         state,
         {

@@ -70,7 +70,6 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
   const lastS = sess[sess.length - 1];
 
   const aiFor = (ex: ExStats) => {
-    if (hasFilter) return undefined;
     return isAiFreshForEx(state, state.analysis.exercises.get(ex.name) ?? ex)
       ? findAiExercise(state.settings.ai, ex.name)
       : undefined;

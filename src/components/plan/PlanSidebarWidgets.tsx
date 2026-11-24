@@ -18,6 +18,9 @@ export function PlanSidebarWidgets({ state }: PlanSidebarWidgetsProps) {
     (acc, d) => acc + (s.routines[d] ?? []).reduce((sum, item) => sum + (item.name ? item.sets : 0), 0),
     0,
   );
+  const isLightPlan = s.profile.experience === 'beginner' || (s.profile.daysPerWeek != null && s.profile.daysPerWeek <= 3);
+  const minSets = isLightPlan ? 6 : 8;
+  const maxSets = isLightPlan ? 16 : 20;
 
   return (
     <aside class="lg:col-span-4 lg:sticky lg:top-6">
@@ -29,17 +32,18 @@ export function PlanSidebarWidgets({ state }: PlanSidebarWidgetsProps) {
           </span>
         </div>
         <p class="text-[11px] text-gray-400">
-          Principal = 1, secundario = 0,5 · <span class="text-coralRed">↓ &lt;8</span> · <span class="text-emeraldGreen">✓ 8–20</span> · <span class="text-amberGold">↑ &gt;20</span>
+          Principal = 1, secundario = 0,5 · <span class="text-coralRed">↓ &lt;{minSets}</span> · <span class="text-emeraldGreen">✓ {minSets}–{maxSets}</span> · <span class="text-amberGold">↑ &gt;{maxSets}</span>
+          {isLightPlan && ' (plan ligero)'}
         </p>
         <div class="space-y-1.5">
           {MUSCLES.map((m) => {
             const v = volMap.get(m) ?? 0;
             const labelV = v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ',');
-            const textCol = v === 0 ? 'text-gray-400' : v < 8 ? 'text-coralRed' : v <= 20 ? 'text-emeraldGreen' : 'text-amberGold';
-            const barCol = v === 0 ? 'bg-white/10' : v < 8 ? 'bg-coralRed' : v <= 20 ? 'bg-emeraldGreen' : 'bg-amberGold';
-            const cue = v === 0 ? '' : v < 8 ? '↓ ' : v <= 20 ? '✓ ' : '↑ ';
-            const srLabel = v === 0 ? ' sin series' : v < 8 ? ' volumen bajo' : v <= 20 ? ' volumen óptimo' : ' volumen alto';
-            const pct = Math.min(100, Math.round((v / 22) * 100));
+            const textCol = v === 0 ? 'text-gray-400' : v < minSets ? 'text-coralRed' : v <= maxSets ? 'text-emeraldGreen' : 'text-amberGold';
+            const barCol = v === 0 ? 'bg-white/10' : v < minSets ? 'bg-coralRed' : v <= maxSets ? 'bg-emeraldGreen' : 'bg-amberGold';
+            const cue = v === 0 ? '' : v < minSets ? '↓ ' : v <= maxSets ? '✓ ' : '↑ ';
+            const srLabel = v === 0 ? ' sin series' : v < minSets ? ' volumen bajo' : v <= maxSets ? ' volumen óptimo' : ' volumen alto';
+            const pct = Math.min(100, Math.round((v / (maxSets + 2)) * 100));
             return (
               <div key={m} class="grid grid-cols-[96px_1fr_54px] items-center gap-2 text-xs">
                 <span class="truncate text-gray-200">{m}</span>
