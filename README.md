@@ -9,6 +9,12 @@
   <a href="https://rackmark.web.app"><strong>https://rackmark.web.app</strong></a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/Victor-Blasco/RackMark/actions/workflows/ci.yml">
+    <img src="https://github.com/Victor-Blasco/RackMark/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+</p>
+
 ---
 
 ## Funcionalidades principales

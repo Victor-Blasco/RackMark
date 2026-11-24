@@ -7,3 +7,4 @@ dist
 firebase-debug.log
 *-debug.log
 .worktrees
+GEMINI.md
