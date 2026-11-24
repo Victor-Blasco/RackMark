@@ -90,8 +90,13 @@ export function createLogHistoryActions(
         danger: true,
       });
       if (!confirmed) return;
-      for (const r of toDel) await deleteKey('strength', r.id);
-      markBucketDeletes('strength', toDel.map((r) => ({ key: r.id, date: r.date })));
+      const latestState = deps.getState();
+      const freshToDel = sessionId
+        ? latestState.strength.filter((r) => r.sessionId === sessionId)
+        : latestState.strength.filter((r) => r.date === date);
+      if (!freshToDel.length) return;
+      for (const r of freshToDel) await deleteKey('strength', r.id);
+      markBucketDeletes('strength', freshToDel.map((r) => ({ key: r.id, date: r.date })));
       await deps.reload();
       const curDraft = deps.getState().logDraft;
       const editingDeleted = curDraft && (sessionId ? curDraft.sessionId === sessionId : curDraft.date === date);

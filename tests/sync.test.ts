@@ -388,4 +388,28 @@ describe('cloud sync helpers', () => {
     expect(hasUnsyncedChanges(postMeta)).toBe(true);
     vi.unstubAllGlobals();
   });
+
+  it('syncWithCloud ignora documentos remotos con kind o updatedAt inválidos sin lanzar error', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, String(v)); },
+      removeItem: (k: string) => { store.delete(k); },
+    });
+    fakeRemoteDocs.clear();
+    Object.values(fakeIdb).forEach((m) => m.clear());
+    fakeSettings = structuredClone(DEFAULT_SETTINGS);
+    clearSyncMeta();
+
+    fakeRemoteDocs.set('users/u1/sync/settings', { data: DEFAULT_SETTINGS, updatedAt: 'corrupto' });
+    fakeRemoteDocs.set('users/u1/buckets/unknown_2026', {
+      kind: 'unknown',
+      items: { bad1: { id: 'bad1' } },
+      updatedAt: 'corrupto',
+    });
+
+    const report = await syncWithCloud('u1');
+    expect(report.pulledItems).toBe(0);
+    vi.unstubAllGlobals();
+  });
 });

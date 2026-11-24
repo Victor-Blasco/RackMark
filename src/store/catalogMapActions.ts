@@ -355,8 +355,14 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
       const rename = <T extends { exercises: { name: string }[] }>(b?: T): T | undefined =>
         b && { ...b, exercises: b.exercises.map((e) => (norm(e.name) === norm(from) ? { ...e, name: target } : e)) };
       S.settings = { ...S.settings, aliases: nextAliases, routines: nextRoutines, notes: nextNotes };
-      S.liveWorkout = rename(S.liveWorkout);
-      S.logDraft = rename(S.logDraft);
+      if (S.liveWorkout) {
+        S.liveWorkout = rename(S.liveWorkout);
+        deps.saveLive?.(S.liveWorkout);
+      }
+      if (S.logDraft) {
+        S.logDraft = rename(S.logDraft);
+        deps.saveDraft?.(S.logDraft);
+      }
       S.mergeFrom = undefined;
       S.mergeTo = undefined;
       await deps.persist();

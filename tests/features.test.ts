@@ -2561,10 +2561,14 @@ describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
         exercises: [{ name: 'Press máquina viejo', done: false, sets: [{ w: 50, r: 10, done: false }], note: '' }],
       },
     };
+    const savedLive: unknown[] = [];
+    const savedDrafts: unknown[] = [];
     const catActions = createCatalogMapActions({
       getState: () => state,
       persist: async () => {},
       askConfirm: async () => true,
+      saveLive: (live) => { savedLive.push(live); },
+      saveDraft: (draft) => { savedDrafts.push(draft); },
       toast: (m) => { toasts.push(m); },
     });
 
@@ -2575,6 +2579,8 @@ describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
     expect(state.settings.notes['Press máquina viejo']).toBeUndefined();
     expect(state.liveWorkout?.exercises[0].name).toBe('Press de banca');
     expect(state.logDraft?.exercises[0].name).toBe('Press de banca');
+    expect(savedLive).toHaveLength(1);
+    expect(savedDrafts).toHaveLength(1);
     expect(allExerciseNames(state)).not.toContain('Press máquina viejo');
 
     // Rechaza ciclo B -> A cuando A -> B existe

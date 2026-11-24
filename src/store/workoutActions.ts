@@ -92,18 +92,19 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
         if (!confirmed) return;
       }
 
-      const curLive = finalizePendingRest(deps.getState().liveWorkout ?? live);
+      const latestState = deps.getState();
+      const curLive = finalizePendingRest(latestState.liveWorkout ?? live);
       const validEx = curLive.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
       const totalDurMin = Math.max(1, Math.round((Date.now() - curLive.startedAt) / 60000));
       const perExDur = validEx.length > 0 ? Math.max(0.2, Math.round((totalDurMin / validEx.length) * 10) / 10) : undefined;
       const baseSid = manualSessionId(curLive.date, curLive.day);
-      const hasCollision = state.strength.some((r) => r.sessionId === baseSid);
+      const hasCollision = latestState.strength.some((r) => r.sessionId === baseSid);
       const sessionId = hasCollision
         ? `${baseSid}-${Math.floor(curLive.startedAt / 1000).toString(36)}`
         : baseSid;
 
       const saved = await persistCompletedSession(
-        state,
+        latestState,
         {
           sessionId,
           day: curLive.day,
@@ -116,7 +117,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
       );
       if (!saved) return;
 
-      const summary = buildWorkoutSummary(state, curLive, saved);
+      const summary = buildWorkoutSummary(latestState, curLive, saved);
       deps.commitLive(undefined);
       await deps.reload();
       if (curLive.day !== 'Libre') {

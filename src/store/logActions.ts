@@ -70,17 +70,16 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
       }
       const day = ensureDraft().day;
       if (!(await confirmSwitchDraft(day, rawDate))) {
-        deps.commitDraft(state.logDraft);
+        deps.commitDraft(deps.getState().logDraft);
         return;
       }
-      deps.commitDraft(initLogDraft(state, day, rawDate));
+      deps.commitDraft(initLogDraft(deps.getState(), day, rawDate));
     },
 
     async selectDay(day: DayName | 'Libre') {
-      const state = deps.getState();
       const date = ensureDraft().date;
       if (!(await confirmSwitchDraft(day, date))) return;
-      deps.commitDraft(initLogDraft(state, day, date));
+      deps.commitDraft(initLogDraft(deps.getState(), day, date));
     },
 
     async resetDraft() {

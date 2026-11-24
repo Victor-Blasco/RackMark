@@ -68,6 +68,11 @@ export function createSyncController(ctx: AppContext): SyncController {
     S.exerciseMapSearch = undefined;
     S.exerciseMapMuscle = undefined;
     S.showAllExerciseMap = undefined;
+    S.mergeFrom = undefined;
+    S.mergeTo = undefined;
+    S.measureScrollTs = undefined;
+    S.bodyMetric = undefined;
+    S.aiTab = undefined;
   }
 
   function scheduleSyncRetry(at: number): void {
@@ -197,12 +202,20 @@ export function createSyncController(ctx: AppContext): SyncController {
     const exec = (async () => {
       let runningJob: SyncJob | undefined;
       try {
-        const storedJob = await loadSyncJob();
-        if (!showToast && storedJob?.status === 'error' && storedJob.nextAttemptAt && storedJob.nextAttemptAt > Date.now()) {
+        let previousJob: SyncJob | undefined;
+        try {
+          previousJob = await loadSyncJob();
+        } catch (e) {
+          if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${humanizeError(e)}`);
           return;
         }
+        if (!showToast && previousJob?.status === 'error' && previousJob.nextAttemptAt && previousJob.nextAttemptAt > Date.now()) {
+          return;
+        }
+        const initialUid = S.user?.uid;
+        if (!initialUid) return;
         const preMeta = loadSyncMeta();
-        if (preMeta.uid && preMeta.uid !== S.user!.uid && hasUnsyncedChanges(preMeta)) {
+        if (preMeta.uid && preMeta.uid !== initialUid && hasUnsyncedChanges(preMeta)) {
           const ok = await ctx.askConfirm({
             title: 'Cambiar de cuenta con cambios pendientes',
             message: 'Hay cambios locales sin subir de una cuenta anterior. Si cambias ahora se limpiarán de este dispositivo.',
@@ -221,13 +234,6 @@ export function createSyncController(ctx: AppContext): SyncController {
         if (!activeUid) return;
         S.syncing = true;
         ctx.render();
-        let previousJob: SyncJob | undefined;
-        try {
-          previousJob = await loadSyncJob();
-        } catch (e) {
-          if (showToast) ctx.toast(`No se pudo preparar la sincronización: ${humanizeError(e)}`);
-          return;
-        }
         runningJob = {
           id: 'cloud-sync',
           status: 'running',
@@ -393,9 +399,14 @@ export function createSyncController(ctx: AppContext): SyncController {
       return;
     }
     if (S.busy) return;
-    lastAiAt = Date.now();
+    let buildPayload: typeof import('../lib/ai').buildPayload;
+    try {
+      ({ buildPayload } = await import('../lib/ai'));
+    } catch (e) {
+      ctx.toast(`No se pudo cargar el módulo IA: ${humanizeError(e)}`);
+      return;
+    }
     const now = Date.now();
-    const { buildPayload } = await import('../lib/ai');
     const job: AiJob = {
       id: createAiJobId(),
       status: 'pending',
@@ -413,6 +424,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       ctx.toast(`No se pudo guardar el estado del informe: ${humanizeError(e)}`);
       return;
     }
+    lastAiAt = now;
     await runAiJob(job);
   };
 

@@ -45,9 +45,9 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
-          void Promise.resolve(onSave({ name, primary, secondary, sets, reps, routine })).then((err) => {
-            if (typeof err === 'string' && err) setError(err);
-          });
+          void Promise.resolve(onSave({ name, primary, secondary, sets, reps, routine }))
+            .then((err) => { if (typeof err === 'string' && err) setError(err); })
+            .catch(() => setError('No se pudo guardar el ejercicio. Inténtalo de nuevo.'));
         }}
       >
         <div class="flex items-center justify-between gap-2">

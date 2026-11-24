@@ -12,7 +12,6 @@ import { importSamsungInWorker } from '../lib/samsung';
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import type { AiTone, ThemeMode } from '../types';
 import { todayIso, type State } from '../ui/shared';
-import { applyTheme } from '../ui/theme';
 import { humanizeError } from './types';
 
 const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
@@ -146,7 +145,6 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
       const S = state();
       if ((S.settings.theme ?? 'dark') === theme) return;
       S.settings = { ...S.settings, theme };
-      applyTheme(theme);
       await deps.persist();
       const label = theme === 'light' ? 'Claro' : theme === 'system' ? 'Preferencia del sistema' : 'Oscuro';
       deps.toast(`Apariencia: ${label}.`);

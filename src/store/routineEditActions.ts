@@ -1,7 +1,7 @@
 import { ROUTINE_TEMPLATES, norm } from '../lib/seed';
 import type { DayName, RoutineEx } from '../types';
 import { moveItem } from '../ui/reorder';
-import { routineNames, type State } from '../ui/shared';
+import { humanizeError, routineNames, type State } from '../ui/shared';
 import type { ConfirmModalOpts, ToastAction } from './types';
 import { applyRoutineTemplateToState, confirmRemoveRoutineOpts, confirmTemplateOpts } from './routineTemplate';
 
@@ -56,12 +56,14 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       if (names.length <= 1) { deps.toast('Debes mantener al menos una rutina activa.'); return; }
       const confirmOpts = confirmRemoveRoutineOpts(S, name);
       if (confirmOpts && !(await deps.askConfirm(confirmOpts))) return;
-      const { [name]: _removedRoutine, ...routines } = S.settings.routines;
-      const { [name]: _removedMeta, ...routineMeta } = S.settings.routineMeta ?? {};
-      S.settings = { ...S.settings, routines, routineMeta };
-      const remaining = routineNames(S.settings);
+      const cur = state();
+      if (!cur.settings.routines[name] || routineNames(cur.settings).length <= 1) return;
+      const { [name]: _removedRoutine, ...routines } = cur.settings.routines;
+      const { [name]: _removedMeta, ...routineMeta } = cur.settings.routineMeta ?? {};
+      cur.settings = { ...cur.settings, routines, routineMeta };
+      const remaining = routineNames(cur.settings);
       if (deps.getLastRoutine() === name) deps.setLastRoutine(remaining[0] ?? 'Push');
-      if (S.planRoutine === name) S.planRoutine = remaining[0];
+      if (cur.planRoutine === name) cur.planRoutine = remaining[0];
       deps.syncWorkoutRoutineNames();
       await deps.persist();
       deps.toast(`Rutina "${name}" eliminada.`);
@@ -106,7 +108,9 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
           const cur = state().settings.routines[day];
           if (!cur) return;
           const pos = Math.min(idx, cur.length);
-          void updateRoutineRows(day, (list) => [...list.slice(0, pos), removed, ...list.slice(pos)]);
+          void updateRoutineRows(day, (list) => [...list.slice(0, pos), removed, ...list.slice(pos)]).catch((e) =>
+            deps.toast(`No se pudo deshacer: ${humanizeError(e)}`),
+          );
         },
       });
     },

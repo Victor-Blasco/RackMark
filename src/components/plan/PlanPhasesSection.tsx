@@ -66,10 +66,12 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
           class="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
+            const form = e.currentTarget;
             const name = phaseNameRef.current?.value ?? '';
             const start = phaseStartRef.current?.value ?? '';
-            void onAddPhase(name, start);
-            if (name.trim() && start.trim()) e.currentTarget.reset();
+            void Promise.resolve(onAddPhase(name, start))
+              .then(() => { if (name.trim() && start.trim()) form.reset(); })
+              .catch(() => {});
           }}
         >
           <input ref={phaseNameRef} class="inp w-full sm:w-56" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />

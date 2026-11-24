@@ -3,6 +3,7 @@ import { h, render as renderPreact } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './lib/db';
+import { DEFAULT_SETTINGS } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
 import { playRestBeep } from './hooks/useRestTimer';
@@ -19,7 +20,7 @@ import { createWorkoutLaunchActions } from './store/workoutLaunchActions';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
 import { initKeyboardNav } from './ui/keyboardNav';
 import { initSortableLists } from './ui/reorder';
-import { routineNames, type State } from './ui/shared';
+import { humanizeError, routineNames, type State } from './ui/shared';
 import { applyTheme, initThemeListener } from './ui/theme';
 import { loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, type AppContext } from './app/context';
 import { createSyncController } from './app/syncController';
@@ -40,14 +41,21 @@ const initialTab = () => {
   }
 };
 
-const S = {
+const initialSettings = structuredClone(DEFAULT_SETTINGS);
+const S: State = {
   tab: initialTab(),
+  strength: [],
+  cardio: [],
+  measures: [],
+  wellbeing: [],
+  settings: initialSettings,
+  analysis: analyze([], initialSettings),
   sel: {},
   perimeter: 'arms',
   muscleSel: 'Pecho',
   logDraft: loadDraft(),
   liveWorkout: loadLive(),
-} as State;
+};
 let lastRoutine: DayName = 'Push';
 let lastAnalytics = ANALYTICS_IDS.has(S.tab) ? S.tab : 'body';
 const root = document.getElementById('app')!;
@@ -232,7 +240,6 @@ const liveActions = createLiveWorkoutActions({
   showSummary: (summary) => {
     S.activeModal = { type: 'workoutSummary', summary };
     render();
-    syncCtrl.queueSync();
   },
 });
 
@@ -363,7 +370,7 @@ function RootShell() {
     reloadSwUpdate: () => {
       swUpdatePending = false;
       renderChrome();
-      void updateSW(true);
+      void updateSW(true).catch((e) => toast(`No se pudo actualizar la app: ${humanizeError(e)}`));
     },
     openFixedNote,
     live: liveActions,
@@ -391,13 +398,22 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => renderChrome());
 
 initSortableLists(root, async (scope, from, to) => {
-  if (scope === 'log') logActions.reorderExercises(from, to);
-  else if (scope.startsWith('rt:')) await planActions.reorderRoutineRows(scope.slice(3), from, to);
+  try {
+    if (scope === 'log') logActions.reorderExercises(from, to);
+    else if (scope.startsWith('rt:')) await planActions.reorderRoutineRows(scope.slice(3), from, to);
+  } catch (e) {
+    toast(`No se pudo guardar el orden: ${humanizeError(e)}`);
+  }
 });
 
-reload().then(async () => {
-  S.lastSync = syncCtrl.getLastSyncAt();
-  maybeOpenInitialWizard(S);
-  render();
-  await syncCtrl.initAuth();
-});
+reload()
+  .then(async () => {
+    S.lastSync = syncCtrl.getLastSyncAt();
+    maybeOpenInitialWizard(S);
+    render();
+    await syncCtrl.initAuth();
+  })
+  .catch((e) => {
+    renderChrome();
+    toast(`No se pudieron cargar los datos locales: ${humanizeError(e)}`);
+  });

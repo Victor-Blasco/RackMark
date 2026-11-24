@@ -53,7 +53,14 @@ function open(): Promise<IDBDatabase> {
         if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
       };
       rq.onsuccess = () => res(rq.result);
-      rq.onerror = () => rej(rq.error);
+      rq.onerror = () => {
+        dbp = null;
+        rej(rq.error);
+      };
+      rq.onblocked = () => {
+        dbp = null;
+        rej(new Error('Base de datos bloqueada por otra pestaña'));
+      };
     });
   }
   return dbp;

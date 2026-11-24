@@ -46,13 +46,16 @@ export function PlanExerciseMapRow({
     const trimmed = draftName.trim();
     if (!onRename || !trimmed || trimmed === item.name || busy) return;
     setBusy(true);
-    const err = await onRename(item.name, trimmed);
-    setBusy(false);
-    if (err) setRenameErr(err);
-    else {
-      setRenameErr('');
-      onRenamed?.(trimmed.slice(0, 80));
-    }
+    try {
+      const err = await onRename(item.name, trimmed);
+      if (err) setRenameErr(err);
+      else {
+        setRenameErr('');
+        onRenamed?.(trimmed.slice(0, 80));
+      }
+    } catch {
+      setRenameErr('No se pudo renombrar el ejercicio.');
+    } finally { setBusy(false); }
   };
 
   const handleDelete = async () => {

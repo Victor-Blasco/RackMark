@@ -374,7 +374,15 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   const bucketsCol = collection(fs, 'users', uid, 'buckets');
 
   const [settingsSnap, bucketsSnap] = await Promise.all([getDoc(settingsRef), getDocs(bucketsCol)]);
-  const remoteSettings = settingsSnap.exists() ? (settingsSnap.data() as RemoteSettingsDoc) : null;
+  const rawRemoteSettings = settingsSnap.exists() ? (settingsSnap.data() as Partial<RemoteSettingsDoc> | undefined) : null;
+  const remoteSettings: RemoteSettingsDoc | null =
+    rawRemoteSettings && typeof rawRemoteSettings === 'object'
+      ? {
+          data: rawRemoteSettings.data as Settings,
+          updatedAt: typeof rawRemoteSettings.updatedAt === 'number' && Number.isFinite(rawRemoteSettings.updatedAt) ? rawRemoteSettings.updatedAt : 0,
+          ...(typeof rawRemoteSettings.wipedAt === 'number' && Number.isFinite(rawRemoteSettings.wipedAt) ? { wipedAt: rawRemoteSettings.wipedAt } : {}),
+        }
+      : null;
 
   // Handle pending local wipe first if newer than any cloud update
   if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
@@ -458,7 +466,14 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   // Load local collections and index remote buckets
   const remoteMap: Record<string, RemoteBucket> = {};
   bucketsSnap.forEach((d) => {
-    remoteMap[d.id] = d.data() as RemoteBucket;
+    const raw = d.data() as Partial<RemoteBucket> | undefined;
+    if (!raw || typeof raw !== 'object') return;
+    remoteMap[d.id] = {
+      kind: raw.kind as DataKind,
+      items: raw.items && typeof raw.items === 'object' ? raw.items : {},
+      ...(raw.deleted && typeof raw.deleted === 'object' ? { deleted: raw.deleted } : {}),
+      updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
+    };
   });
 
   const allLocalBuckets: { kind: DataKind; id: string; items: Record<string, DataRecord> }[] = [];
@@ -486,7 +501,9 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
   for (const bId of allBucketIds) {
     const localEntry = localBucketById.get(bId);
     const remoteEntry = remoteMap[bId];
-    const kind = (localEntry?.kind ?? remoteEntry?.kind ?? bId.split('_')[0]) as DataKind;
+    const rawKind = localEntry?.kind ?? remoteEntry?.kind ?? bId.split('_')[0];
+    if (!KINDS.includes(rawKind as DataKind)) continue;
+    const kind = rawKind as DataKind;
 
     const res = mergeBucket({
       kind,
