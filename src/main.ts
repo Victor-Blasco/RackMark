@@ -6,7 +6,6 @@ import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './li
 import { DEFAULT_SETTINGS } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
-import { playRestBeep } from './hooks/useRestTimer';
 import { createAnalyticsActions } from './store/analyticsActions';
 import { AppStoreProvider, type AppStoreValue } from './store/appStore';
 import { createDataSyncActions } from './store/dataSyncActions';
@@ -20,9 +19,11 @@ import { createWorkoutLaunchActions } from './store/workoutLaunchActions';
 import type { CardioRow, DailyWellbeing, DayName, Measure, StrengthRow } from './types';
 import { initKeyboardNav } from './ui/keyboardNav';
 import { initSortableLists } from './ui/reorder';
+import { playRestBeep } from './ui/restAudio';
 import { humanizeError, routineNames, type State } from './ui/shared';
 import { applyTheme, initThemeListener } from './ui/theme';
 import { loadDraft, loadLive, maybeOpenInitialWizard, saveDraft, saveLive, type AppContext } from './app/context';
+import { createAiController } from './app/aiController';
 import { createSyncController } from './app/syncController';
 
 let swUpdatePending = false;
@@ -201,21 +202,24 @@ const ctx: AppContext = {
   state: S,
   render,
   reload,
-  persist,
   toast,
-  setTab,
-  getLastRoutine: () => lastRoutine,
-  setLastRoutine: (day) => {
-    lastRoutine = day;
-  },
-  queueSync: () => syncCtrl.queueSync(),
   askConfirm,
   clearActiveWorkouts: workoutLaunch.clearActiveWorkouts,
-  addExToDraft: (name, fallbackSets, fallbackReps) => logActions.addExerciseByName(name, fallbackSets, fallbackReps),
-  syncWorkoutRoutineNames: workoutLaunch.syncWorkoutRoutineNames,
 };
 
-const syncCtrl = createSyncController(ctx);
+const syncCtrl = createSyncController(ctx, {
+  onUserReady: () => {
+    void aiCtrl.resumeAiJob().catch((e) => toast(`No se pudo recuperar el informe IA: ${humanizeError(e)}`));
+  },
+  onSessionReset: () => aiCtrl.resetResumeFlag(),
+});
+
+const aiCtrl = createAiController({
+  state: S,
+  render,
+  toast,
+  queueSync: () => syncCtrl.queueSync(),
+});
 
 const liveActions = createLiveWorkoutActions({
   getState: () => S,
@@ -305,9 +309,9 @@ const planActions = createPlanActions({
   toast,
   startWorkoutDay: workoutLaunch.startWorkoutDay,
   openLogDay: workoutLaunch.openLogDay,
-  runAiAnalysis: () => void syncCtrl.runAi(),
-  retryAiAnalysis: () => void syncCtrl.retryAi(),
-  dismissAiJob: () => void syncCtrl.dismissAi(),
+  runAiAnalysis: () => void aiCtrl.runAi(),
+  retryAiAnalysis: () => void aiCtrl.retryAi(),
+  dismissAiJob: () => void aiCtrl.dismissAi(),
   openWizard: () => wizardActions.open(),
   closeModal,
   saveDraft,

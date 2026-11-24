@@ -1,5 +1,5 @@
 import type { ExStats } from '../lib/analysis';
-import { daysAgoIso, diffIsoDays, isValidIsoDate, norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
+import { daysAgoIso, diffIsoDays, isValidIsoDate, LEGACY_ROUTINE_COLORS, norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
 import type { AiEntry, AiResult, AiSection, Measure, Settings } from '../types';
 import {
   humanizeError,
@@ -146,7 +146,6 @@ export function findAiSection(S: State, pattern: RegExp): AiSection | undefined 
 export const r1 = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',');
 
 export const DAY_COLOR: Record<string, string> = { Push: '#A855F7', Pull: '#3B82F6', Leg: '#10B981' };
-const LEGACY_ROUTINE_COLORS = new Set(['#F43F5E', '#EC4899']);
 
 /** Devuelve la lista ordenada de rutinas definidas en los ajustes (o PPL por defecto). */
 export function routineNames(s: Settings): string[] {

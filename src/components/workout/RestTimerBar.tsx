@@ -1,4 +1,5 @@
-import { fmtMMSS, useRestTimer } from '../../hooks/useRestTimer';
+import { useRestTimer } from '../../hooks/useRestTimer';
+import { fmtMMSS } from '../../ui/restAudio';
 import { Icon } from '../common/Icon';
 
 const REST_PRESETS = [60, 90, 120, 180] as const;

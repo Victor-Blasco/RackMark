@@ -8,6 +8,25 @@ function resolveNavIndex(key: string, idx: number, length: number, vertical: boo
   return null;
 }
 
+function refocusFreshItem(
+  root: HTMLElement,
+  container: HTMLElement,
+  containerRole: 'tablist' | 'listbox',
+  itemRole: 'tab' | 'option',
+  candidate: HTMLElement,
+  idx: number,
+): HTMLElement | undefined {
+  const lbl = container.getAttribute('aria-label');
+  const listSel = lbl ? `[role="${containerRole}"][aria-label="${CSS.escape(lbl)}"]` : `[role="${containerRole}"]`;
+  const freshList = root.querySelector<HTMLElement>(listSel);
+  const byId = candidate.id ? freshList?.querySelector<HTMLElement>(`#${CSS.escape(candidate.id)}`) : undefined;
+  const fresh = (candidate.isConnected ? candidate : undefined)
+    ?? byId
+    ?? freshList?.querySelectorAll<HTMLElement>(`[role="${itemRole}"]`)[idx];
+  fresh?.focus({ preventScroll: true });
+  return fresh;
+}
+
 function handleTabNav(root: HTMLElement, e: KeyboardEvent, target: HTMLElement | null): boolean {
   const tab = target?.closest<HTMLElement>('[role="tab"]');
   const tablist = tab?.closest<HTMLElement>('[role="tablist"]');
@@ -21,14 +40,7 @@ function handleTabNav(root: HTMLElement, e: KeyboardEvent, target: HTMLElement |
   if (!nextTab) return false;
   e.preventDefault();
   nextTab.click();
-  const lbl = tablist.getAttribute('aria-label');
-  const listSel = lbl ? `[role="tablist"][aria-label="${CSS.escape(lbl)}"]` : '[role="tablist"]';
-  const freshList = root.querySelector<HTMLElement>(listSel);
-  const byId = nextTab.id ? freshList?.querySelector<HTMLElement>(`#${CSS.escape(nextTab.id)}`) : undefined;
-  const freshTab = (nextTab.isConnected ? nextTab : undefined)
-    ?? byId
-    ?? freshList?.querySelectorAll<HTMLElement>('[role="tab"]')[nextIdx];
-  freshTab?.focus({ preventScroll: true });
+  refocusFreshItem(root, tablist, 'tablist', 'tab', nextTab, nextIdx);
   return true;
 }
 
@@ -49,15 +61,7 @@ function handleListboxNav(root: HTMLElement, e: KeyboardEvent, target: HTMLEleme
   e.preventDefault();
   nextOpt.focus({ preventScroll: true });
   nextOpt.click();
-  const lbl = listbox.getAttribute('aria-label');
-  const listSel = lbl ? `[role="listbox"][aria-label="${CSS.escape(lbl)}"]` : '[role="listbox"]';
-  const freshListbox = root.querySelector<HTMLElement>(listSel);
-  const byId = nextOpt.id ? freshListbox?.querySelector<HTMLElement>(`#${CSS.escape(nextOpt.id)}`) : undefined;
-  const freshOpt = (nextOpt.isConnected ? nextOpt : undefined)
-    ?? byId
-    ?? freshListbox?.querySelectorAll<HTMLElement>('[role="option"]')[nextIdx];
-  freshOpt?.focus({ preventScroll: true });
-  freshOpt?.scrollIntoView({ block: 'nearest' });
+  refocusFreshItem(root, listbox, 'listbox', 'option', nextOpt, nextIdx)?.scrollIntoView({ block: 'nearest' });
   return true;
 }
 

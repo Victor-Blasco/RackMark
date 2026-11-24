@@ -21,6 +21,24 @@ function getSortItems(list: HTMLElement): HTMLElement[] {
   );
 }
 
+const isReducedMotion = (): boolean =>
+  typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
+/** Aplica desplazamiento invertido FLIP a los pares `[elemento, rectOriginal]` que han cambiado de posición. */
+function invertFlipMoves(entries: ReadonlyArray<readonly [HTMLElement, DOMRect]>): HTMLElement[] {
+  const animated: HTMLElement[] = [];
+  for (const [el, first] of entries) {
+    const last = el.getBoundingClientRect();
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+    el.style.transition = 'none';
+    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+    animated.push(el);
+  }
+  return animated;
+}
+
 /** Captura las posiciones actuales de los hijos `[data-sort-item]` con `data-sort-key` antes de reordenarlos. */
 export function captureFlipRects(list: HTMLElement | null): Map<string, DOMRect> {
   const rects = new Map<string, DOMRect>();
@@ -38,34 +56,28 @@ export function captureFlipRects(list: HTMLElement | null): Map<string, DOMRect>
 /** Anima el desplazamiento FLIP de elementos reordenados y asegura la visibilidad del elemento movido. */
 export function playFlipRects(list: HTMLElement | null, prevRects: Map<string, DOMRect>, movedKey?: string): void {
   if (!list || !prevRects.size) return;
-  const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = isReducedMotion();
   let movedEl: HTMLElement | null = null;
   let movedLast: DOMRect | null = null;
-  const animated: HTMLElement[] = [];
+  const candidates: Array<readonly [HTMLElement, DOMRect]> = [];
 
   for (const el of getSortItems(list)) {
     const key = el.dataset?.sortKey;
     if (!key) continue;
     const first = prevRects.get(key);
     if (!first) continue;
-    const last = el.getBoundingClientRect();
     if (key === movedKey) {
       movedEl = el;
-      movedLast = last;
+      movedLast = el.getBoundingClientRect();
     }
-    if (reducedMotion) continue;
-    const dx = first.left - last.left;
-    const dy = first.top - last.top;
-    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
-    el.style.transition = 'none';
-    el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-    if (key === movedKey) el.classList?.add(...FLIP_HIGHLIGHT_CLASSES);
-    animated.push(el);
+    if (!reducedMotion) candidates.push([el, first]);
   }
 
+  const animated = invertFlipMoves(candidates);
   if (animated.length) {
     void list.offsetHeight;
     for (const el of animated) {
+      if (el === movedEl) el.classList?.add(...FLIP_HIGHLIGHT_CLASSES);
       el.style.transition = FLIP_TRANSITION;
       el.style.transform = '';
       const clear = () => {
@@ -171,20 +183,11 @@ export function initSortableLists(
     item.style.transform = `translate3d(${active.lastX - active.startX}px, ${active.lastY - active.startY}px, 0) scale(1.015)`;
 
     // 3. Last + Invert + Play para los hermanos desplazados
-    const reducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (!reducedMotion) {
-      const moved: HTMLElement[] = [];
-      for (const el of items) {
-        if (el === item) continue;
-        const first = prevRects.get(el)!;
-        const last = el.getBoundingClientRect();
-        const dx = first.left - last.left;
-        const dy = first.top - last.top;
-        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
-        el.style.transition = 'none';
-        el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-        moved.push(el);
-      }
+    if (!isReducedMotion()) {
+      const siblingEntries = items
+        .filter((el) => el !== item)
+        .map((el) => [el, prevRects.get(el)!] as const);
+      const moved = invertFlipMoves(siblingEntries);
       if (moved.length) {
         active.lockUntil = performance.now() + 190;
         void list.offsetHeight;

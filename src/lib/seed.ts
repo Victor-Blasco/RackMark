@@ -1,5 +1,10 @@
 import type { MuscleMap, Settings } from '../types';
 
+export const DRAFT_STORAGE_KEY = 'gymapp_log_draft';
+export const LIVE_WORKOUT_STORAGE_KEY = 'gymapp_live_workout';
+export const UNSAFE_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+export const LEGACY_ROUTINE_COLORS: ReadonlySet<string> = new Set(['#F43F5E', '#EC4899']);
+
 export const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 

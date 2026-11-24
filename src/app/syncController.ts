@@ -1,29 +1,28 @@
-import { clearAiJob, clearSyncJob, loadAiJob, loadSyncJob, sanitizeSettings, saveAiJob, saveSettings, saveSyncJob, wipeAll } from '../lib/db';
+import { clearSyncJob, loadSyncJob, saveSyncJob, wipeAll } from '../lib/db';
 import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from '../lib/firebase';
 import {
   clearSyncMeta,
   hasUnsyncedChanges,
   loadSyncMeta,
-  markSettingsDirty,
   markWipePending,
   syncWithCloud,
 } from '../lib/sync';
 import { maybeOpenInitialWizard, type AppContext } from './context';
 import { humanizeError } from '../store/types';
-import type { AiJob, SyncJob } from '../types';
+import type { SyncJob } from '../types';
 
-const AI_COOLDOWN_MS = 15_000;
-const AI_JOB_MAX_AGE_MS = 30 * 60 * 1000;
 const SYNC_JOB_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const SYNC_RETRY_BASE_MS = 2_000;
 const SYNC_RETRY_MAX_MS = 5 * 60 * 1000;
 
 const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navigator.onLine !== false);
 
+export interface SyncControllerHooks {
+  onUserReady?: () => void;
+  onSessionReset?: () => void;
+}
+
 export interface SyncController {
-  runAi: () => Promise<void>;
-  retryAi: () => Promise<void>;
-  dismissAi: () => Promise<void>;
   cloudLogin: () => Promise<void>;
   cloudSync: () => Promise<void>;
   cloudLogout: () => Promise<void>;
@@ -34,13 +33,14 @@ export interface SyncController {
   getLastSyncAt: () => number | undefined;
 }
 
-export function createSyncController(ctx: AppContext): SyncController {
-  let lastAiAt = 0;
+export function createSyncController(ctx: AppContext, hooks?: SyncControllerHooks): SyncController {
   let syncTimer: ReturnType<typeof setTimeout> | undefined;
   let syncRetryTimer: ReturnType<typeof setTimeout> | undefined;
   let syncInFlight = false;
   let syncPending = false;
   let syncPromise: Promise<void> | null = null;
+  let syncResumeAttempted = false;
+  let syncJobWrite: Promise<void> | undefined;
 
   function clearSyncTimers(): void {
     clearTimeout(syncTimer);
@@ -82,113 +82,6 @@ export function createSyncController(ctx: AppContext): SyncController {
       syncRetryTimer = undefined;
       if (isOnline() && ctx.state.user) void runSync(false);
     }, delay);
-  }
-  let aiResumeAttempted = false;
-  let syncResumeAttempted = false;
-  let syncJobWrite: Promise<void> | undefined;
-
-  const createAiJobId = (): string =>
-    globalThis.crypto?.randomUUID?.() ?? `ai-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-  async function runAiJob(job: AiJob): Promise<void> {
-    const S = ctx.state;
-    if (S.busy) return;
-    const startedAt = Date.now();
-    const running: AiJob = {
-      ...job,
-      status: 'running',
-      attempts: job.attempts + 1,
-      startedAt,
-      updatedAt: startedAt,
-      error: undefined,
-    };
-    try {
-      await saveAiJob(running);
-    } catch (e) {
-      ctx.toast(`No se pudo guardar el estado del informe: ${humanizeError(e)}`);
-      return;
-    }
-    S.aiJob = running;
-    S.busy = 'ai';
-    try {
-      ctx.render();
-      const { generateAnalysisFromPayload } = await import('../lib/ai');
-      const result = await generateAnalysisFromPayload(running.payload, running.tone);
-      const nextSettings = sanitizeSettings({ ...S.settings, ai: result });
-      await saveSettings(nextSettings);
-      S.settings = nextSettings;
-      S.aiTab = 0;
-      markSettingsDirty();
-      try {
-        await clearAiJob();
-      } catch (e) {
-        if (import.meta.env.DEV) console.warn('[ai] could not clear completed job', { error: (e as Error).name });
-      }
-      S.aiJob = undefined;
-      queueSync();
-      ctx.toast('Análisis generado.');
-    } catch (e) {
-      const message = humanizeError(e, 'No se pudo generar el análisis.');
-      const failed: AiJob = { ...running, status: 'error', error: message, updatedAt: Date.now() };
-      try {
-        await saveAiJob(failed);
-        S.aiJob = failed;
-      } catch (persistError) {
-        ctx.toast(`Error de IA: ${message}. Además, no se pudo guardar el estado del error: ${humanizeError(persistError)}`);
-      }
-      ctx.toast(`Error de IA: ${message}`);
-    } finally {
-      S.busy = undefined;
-      ctx.render();
-    }
-  }
-
-  async function resumeAiJob(): Promise<void> {
-    if (aiResumeAttempted || !ctx.state.user) return;
-    aiResumeAttempted = true;
-    const job = await loadAiJob();
-    if (!job) return;
-    const age = Date.now() - job.updatedAt;
-    if (job.status === 'completed') {
-      await clearAiJob();
-      return;
-    }
-    if (age > AI_JOB_MAX_AGE_MS && (job.status === 'pending' || job.status === 'running')) {
-      const expired: AiJob = { ...job, status: 'error', error: 'La generación caducó. Puedes reintentarlo.', updatedAt: Date.now() };
-      await saveAiJob(expired);
-      ctx.state.aiJob = expired;
-      ctx.render();
-      return;
-    }
-    if (job.status === 'error' || job.attempts >= 2) {
-      const failed = job.status === 'error'
-        ? job
-        : { ...job, status: 'error' as const, error: 'La generación se interrumpió tras varios intentos. Pulsa reintentar.', updatedAt: Date.now() };
-      if (failed !== job) await saveAiJob(failed);
-      ctx.state.aiJob = failed;
-      ctx.render();
-      return;
-    }
-    lastAiAt = Date.now();
-    await runAiJob(job);
-  }
-
-  async function retryAiJob(): Promise<void> {
-    const job = ctx.state.aiJob ?? await loadAiJob();
-    if (!job || job.status !== 'error') return;
-    const now = Date.now();
-    const retry: AiJob = {
-      ...job,
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now,
-      attempts: 0,
-      error: undefined,
-      startedAt: undefined,
-      finishedAt: undefined,
-    };
-    lastAiAt = now;
-    await runAiJob(retry);
   }
 
   async function runSync(showToast = false): Promise<void> {
@@ -381,74 +274,9 @@ export function createSyncController(ctx: AppContext): SyncController {
       } else if (user) {
         void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${humanizeError(e)}`));
       }
-      if (user) void resumeAiJob().catch((e) => ctx.toast(`No se pudo recuperar el informe IA: ${humanizeError(e)}`));
+      if (user) hooks?.onUserReady?.();
     });
   }
-
-  const getLastSyncAt = (): number | undefined => loadSyncMeta().lastSyncAt;
-
-  const runAi = async (): Promise<void> => {
-    const S = ctx.state;
-    if (!S.user) {
-      ctx.toast('Inicia sesión con Google para generar análisis con IA.');
-      return;
-    }
-    const waitSec = Math.ceil((AI_COOLDOWN_MS - (Date.now() - lastAiAt)) / 1000);
-    if (waitSec > 0) {
-      ctx.toast(`Espera ${waitSec}s antes de generar otro análisis.`);
-      return;
-    }
-    if (S.busy) return;
-    let buildPayload: typeof import('../lib/ai').buildPayload;
-    try {
-      ({ buildPayload } = await import('../lib/ai'));
-    } catch (e) {
-      ctx.toast(`No se pudo cargar el módulo IA: ${humanizeError(e)}`);
-      return;
-    }
-    const now = Date.now();
-    const job: AiJob = {
-      id: createAiJobId(),
-      status: 'pending',
-      tone: S.settings.aiTone === 'simple' ? 'simple' : 'technical',
-      payload: buildPayload(S.analysis, S.measures, S.settings, S.cardio, S.wellbeing),
-      createdAt: now,
-      updatedAt: now,
-      attempts: 0,
-    };
-    S.aiJob = job;
-    try {
-      await saveAiJob(job);
-    } catch (e) {
-      S.aiJob = undefined;
-      ctx.toast(`No se pudo guardar el estado del informe: ${humanizeError(e)}`);
-      return;
-    }
-    lastAiAt = now;
-    await runAiJob(job);
-  };
-
-  const retryAi = async (): Promise<void> => {
-    const S = ctx.state;
-    if (S.busy) return;
-    try {
-      await retryAiJob();
-    } catch (e) {
-      ctx.toast(`No se pudo reintentar el informe IA: ${humanizeError(e)}`);
-    }
-  };
-
-  const dismissAi = async (): Promise<void> => {
-    const S = ctx.state;
-    if (S.busy) return;
-    try {
-      await clearAiJob();
-      S.aiJob = undefined;
-      ctx.render();
-    } catch (e) {
-      ctx.toast(`No se pudo descartar el estado del informe: ${humanizeError(e)}`);
-    }
-  };
 
   const cloudLogin = async (): Promise<void> => {
     try {
@@ -457,10 +285,6 @@ export function createSyncController(ctx: AppContext): SyncController {
       const code = (e as { code?: string })?.code;
       if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${humanizeError(e)}`);
     }
-  };
-
-  const cloudSync = async (): Promise<void> => {
-    await runSync(true);
   };
 
   const cloudLogout = async (): Promise<void> => {
@@ -485,7 +309,7 @@ export function createSyncController(ctx: AppContext): SyncController {
       if (syncPromise) await syncPromise;
       await wipeAll();
       clearSyncMeta();
-      aiResumeAttempted = false;
+      hooks?.onSessionReset?.();
       syncResumeAttempted = false;
       ctx.clearActiveWorkouts();
       resetSessionUiState(S);
@@ -531,5 +355,14 @@ export function createSyncController(ctx: AppContext): SyncController {
     }
   };
 
-  return { runAi, retryAi, dismissAi, cloudLogin, cloudSync, cloudLogout, wipe, runSync, queueSync, initAuth, getLastSyncAt };
+  return {
+    cloudLogin,
+    cloudSync: () => runSync(true),
+    cloudLogout,
+    wipe,
+    runSync,
+    queueSync,
+    initAuth,
+    getLastSyncAt: () => loadSyncMeta().lastSyncAt,
+  };
 }

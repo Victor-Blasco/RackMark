@@ -37,7 +37,7 @@ export function filterExByRange(e: ExStats, bounds: DateBounds): ExStats {
   if (sessions.length === e.sessions.length) return e;
   const hrs = sessions.map((s) => s.avgHr).filter((h): h is number => h != null);
   const maxHrs = sessions.map((s) => s.maxHr).filter((h): h is number => h != null);
-  const verdict = sessions.length ? judge(e.name, sessions, e.target) : { status: 'Sin datos', statusColor: 'gray' as const, prescription: 'Sin registros en este periodo.' };
+  const verdict = sessions.length ? judge(sessions, e.target) : { status: 'Sin datos', statusColor: 'gray' as const, prescription: 'Sin registros en este periodo.' };
   return {
     ...e,
     sessions,

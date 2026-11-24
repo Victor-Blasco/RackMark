@@ -27,7 +27,7 @@ import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { PrevCompletedBanner } from '../src/components/workout/LiveStatusBanners';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
-import { fmtMMSS } from '../src/hooks/useRestTimer';
+import { fmtMMSS } from '../src/ui/restAudio';
 import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
 import { buildAdherenceViewModel } from '../src/store/adherenceSelectors';
 import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';
@@ -462,7 +462,7 @@ describe('live logger draft, judge & ai freshness (P0)', () => {
   });
 
   it('interpola last.top en judge() y detecta informes IA obsoletos', () => {
-    const verdict = judge('Press de banca', [
+    const verdict = judge([
       { date: '2026-11-01', sets: [{ w: 80, r: 8 }], top: 80, repsAtTop: 8, volume: 640, e1rm: 101.3 },
       { date: '2026-11-15', sets: [{ w: 30, r: 10 }], top: 30, repsAtTop: 10, volume: 300, e1rm: 40 },
     ]);
@@ -2594,14 +2594,14 @@ describe('Bloque 3: analítica, peso corporal, alias, calculadora e IA', () => {
       { date: '2026-11-01', sets: [{ w: 0, r: 10 }], top: 0, repsAtTop: 10, volume: 0, e1rm: 0 },
       { date: '2026-11-08', sets: [{ w: 0, r: 12 }], top: 0, repsAtTop: 12, volume: 0, e1rm: 0 },
     ];
-    const bwVerdict = judge('Dominadas', bwSessions, { name: 'Dominadas', sets: 3, reps: 15 });
+    const bwVerdict = judge(bwSessions, { name: 'Dominadas', sets: 3, reps: 15 });
     expect(bwVerdict.status).toBe('Récord personal (reps)');
     expect(bwVerdict.prescription).not.toContain('0 kg');
 
-    const bwHit = judge('Dominadas', bwSessions, { name: 'Dominadas', sets: 1, reps: 12 });
+    const bwHit = judge(bwSessions, { name: 'Dominadas', sets: 1, reps: 12 });
     expect(bwHit.status).toBe('Añadir lastre o reps');
 
-    const weightedTransition = judge('Dominadas', [
+    const weightedTransition = judge([
       ...bwSessions,
       { date: '2026-11-15', sets: [{ w: 10, r: 8 }], top: 10, repsAtTop: 8, volume: 80, e1rm: 12.7 },
     ], { name: 'Dominadas', sets: 3, reps: 10 });
@@ -3448,21 +3448,21 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
 
   it('judge usa salto +2,5 kg <80 kg y +5 kg >=80 kg, reconoce Progresando (+X reps) y renderiza desplegables info', () => {
     // < 80 kg sube +2,5 kg
-    const sub80 = judge('Press de banca', [
+    const sub80 = judge([
       { date: '2026-11-10', sets: [{ w: 60, r: 8 }, { w: 60, r: 8 }], top: 60, repsAtTop: 8, volume: 960, e1rm: 76 },
     ], { name: 'Press de banca', sets: 2, reps: 8 });
     expect(sub80.status).toBe('Subir carga');
     expect(sub80.prescription).toContain('62.5 kg');
 
     // >= 80 kg sube +5 kg
-    const over80 = judge('Press de banca', [
+    const over80 = judge([
       { date: '2026-11-10', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }], top: 80, repsAtTop: 8, volume: 1280, e1rm: 101.3 },
     ], { name: 'Press de banca', sets: 2, reps: 8 });
     expect(over80.status).toBe('Subir carga');
     expect(over80.prescription).toContain('85 kg');
 
     // Progresando (+1 rep) al mismo peso sin llegar al objetivo ni récord e1RM
-    const repProg = judge('Press de banca', [
+    const repProg = judge([
       { date: '2026-11-01', sets: [{ w: 70, r: 9 }, { w: 70, r: 8 }], top: 70, repsAtTop: 9, volume: 1190, e1rm: 91 },
       { date: '2026-11-05', sets: [{ w: 70, r: 6 }, { w: 70, r: 6 }], top: 70, repsAtTop: 6, volume: 840, e1rm: 84 },
       { date: '2026-11-10', sets: [{ w: 70, r: 7 }, { w: 70, r: 7 }], top: 70, repsAtTop: 7, volume: 980, e1rm: 86.3 },

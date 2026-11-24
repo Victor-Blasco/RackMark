@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'preact/hooks';
-import { fmtMMSS, useRestTimer } from '../../hooks/useRestTimer';
+import { useRestTimer } from '../../hooks/useRestTimer';
+import { fmtMMSS } from '../../ui/restAudio';
 
 interface RestTimerBadgeProps {
   /** Marca temporal objetivo en milisegundos epoch. */

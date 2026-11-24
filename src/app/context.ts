@@ -1,28 +1,19 @@
+import { DRAFT_STORAGE_KEY, LIVE_WORKOUT_STORAGE_KEY } from '../lib/seed';
 import type { ConfirmModalOpts, ToastAction } from '../store/types';
 import { createWizardDraft } from '../store/wizardSelectors';
-import type { DayName, LiveWorkout, LogDraft } from '../types';
+import type { LiveWorkout, LogDraft } from '../types';
 import type { State } from '../ui/shared';
-
-export const DRAFT_KEY = 'gymapp_log_draft';
-export const LIVE_WORKOUT_KEY = 'gymapp_live_workout';
 
 export interface AppContext {
   readonly state: State;
   render: () => void;
   reload: () => Promise<void>;
-  persist: () => Promise<void>;
   toast: (msg: string, action?: ToastAction) => void;
-  setTab: (tab: string) => void;
-  getLastRoutine: () => DayName;
-  setLastRoutine: (day: DayName) => void;
-  queueSync: () => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   clearActiveWorkouts: () => void;
-  addExToDraft: (name: string, fallbackSets?: number, fallbackReps?: number) => void;
-  syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
 }
 
-export function loadJson<T>(key: string): T | undefined {
+function loadJson<T>(key: string): T | undefined {
   if (typeof localStorage === 'undefined') return undefined;
   try {
     const raw = localStorage.getItem(key);
@@ -32,7 +23,7 @@ export function loadJson<T>(key: string): T | undefined {
   }
 }
 
-export function saveJson(key: string, val?: unknown): void {
+function saveJson(key: string, val?: unknown): void {
   if (typeof localStorage === 'undefined') return;
   try {
     if (val !== undefined) localStorage.setItem(key, JSON.stringify(val));
@@ -42,10 +33,10 @@ export function saveJson(key: string, val?: unknown): void {
   }
 }
 
-export const loadDraft = (): LogDraft | undefined => loadJson<LogDraft>(DRAFT_KEY);
-export const saveDraft = (d?: LogDraft): void => saveJson(DRAFT_KEY, d);
-export const loadLive = (): LiveWorkout | undefined => loadJson<LiveWorkout>(LIVE_WORKOUT_KEY);
-export const saveLive = (w?: LiveWorkout): void => saveJson(LIVE_WORKOUT_KEY, w);
+export const loadDraft = (): LogDraft | undefined => loadJson<LogDraft>(DRAFT_STORAGE_KEY);
+export const saveDraft = (d?: LogDraft): void => saveJson(DRAFT_STORAGE_KEY, d);
+export const loadLive = (): LiveWorkout | undefined => loadJson<LiveWorkout>(LIVE_WORKOUT_STORAGE_KEY);
+export const saveLive = (w?: LiveWorkout): void => saveJson(LIVE_WORKOUT_STORAGE_KEY, w);
 
 export function maybeOpenInitialWizard(S: State): boolean {
   if (

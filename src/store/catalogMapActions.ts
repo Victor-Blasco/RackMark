@@ -48,6 +48,91 @@ function removeFromLiveWorkout(live: LiveWorkout | undefined, targetNorm: string
   return { next, changed: true };
 }
 
+function buildRenamedSettings(
+  settings: State['settings'],
+  oldName: string,
+  newName: string,
+  oldNorm: string,
+  newNorm: string,
+  nextRefNames: Record<string, string>,
+): State['settings'] {
+  const nextRoutines: State['settings']['routines'] = {};
+  for (const [day, list] of Object.entries(settings.routines)) {
+    nextRoutines[day] = list.map((r) => (norm(r.name) === oldNorm ? { ...r, name: newName } : r));
+  }
+  let foundNote: string | undefined;
+  const nextNotes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(settings.notes)) {
+    if (norm(k) === oldNorm) foundNote ??= v;
+    else nextNotes[k] = v;
+  }
+  if (foundNote !== undefined) nextNotes[newName] = foundNote;
+
+  const curMuscle = musclesOf(oldName, settings);
+  const nextMuscles = { ...settings.muscles };
+  if (oldNorm !== newNorm) delete nextMuscles[oldNorm];
+  if (curMuscle) nextMuscles[newNorm] = curMuscle;
+
+  const nextCustomNames: Record<string, string> = {};
+  for (const [k, v] of Object.entries(settings.customNames)) {
+    if (oldNorm !== newNorm && k === `manual:${oldNorm}`) continue;
+    nextCustomNames[k] = norm(v) === oldNorm ? newName : v;
+  }
+  const alreadyNamed =
+    Object.values(nextCustomNames).some((v) => norm(v) === newNorm) ||
+    Object.values(nextRefNames).some((v) => norm(v) === newNorm);
+  if (!CATALOG_NORM_SET.has(newNorm) && !alreadyNamed) nextCustomNames[`manual:${newNorm}`] = newName;
+
+  const nextAliases: Record<string, string> = {};
+  for (const [k, v] of Object.entries(settings.aliases)) {
+    const nk = norm(k) === oldNorm ? newName : k;
+    const nv = norm(v) === oldNorm ? newName : v;
+    if (norm(nk) !== norm(nv)) nextAliases[nk] = nv;
+  }
+  const hiddenSet = new Set((settings.hiddenExercises ?? []).map((h) => norm(h)).filter((h) => h && h !== newNorm));
+  if (oldNorm !== newNorm && CATALOG_NORM_SET.has(oldNorm)) hiddenSet.add(oldNorm);
+
+  let nextAi = settings.ai;
+  if (settings.ai) {
+    const nextByEx: typeof settings.ai.byExercise = {};
+    for (const [k, v] of Object.entries(settings.ai.byExercise)) {
+      nextByEx[k === oldName || norm(k) === oldNorm ? newName : k] = v;
+    }
+    nextAi = { ...settings.ai, byExercise: nextByEx };
+  }
+  const nextSettings: State['settings'] = {
+    ...settings,
+    routines: nextRoutines, notes: nextNotes, muscles: nextMuscles,
+    customNames: nextCustomNames, refNames: nextRefNames, aliases: nextAliases,
+    ...(nextAi ? { ai: nextAi } : {}),
+  };
+  if (hiddenSet.size) nextSettings.hiddenExercises = [...hiddenSet];
+  else delete nextSettings.hiddenExercises;
+  return nextSettings;
+}
+
+function buildDeletedSettings(settings: State['settings'], targetNorm: string): State['settings'] {
+  const nextRoutines: State['settings']['routines'] = {};
+  for (const [day, list] of Object.entries(settings.routines)) {
+    nextRoutines[day] = list.filter((r) => norm(r.name) !== targetNorm);
+  }
+  const hiddenSet = new Set((settings.hiddenExercises ?? []).map((h) => norm(h)).filter(Boolean));
+  if (CATALOG_NORM_SET.has(targetNorm)) hiddenSet.add(targetNorm);
+  const nextSettings: State['settings'] = {
+    ...settings,
+    routines: nextRoutines,
+    notes: omitMatchingEntries(settings.notes, (_v, k) => norm(k) === targetNorm),
+    muscles: omitMatchingEntries(settings.muscles, (_v, k) => norm(k) === targetNorm),
+    customNames: omitMatchingEntries(settings.customNames, (v) => norm(v) === targetNorm),
+    refNames: omitMatchingEntries(settings.refNames, (v) => norm(v) === targetNorm),
+    aliases: omitMatchingEntries(settings.aliases, (v, k) => norm(k) === targetNorm || norm(v) === targetNorm),
+    ...(settings.ai ? { ai: { ...settings.ai, byExercise: omitMatchingEntries(settings.ai.byExercise, (_v, k) => norm(k) === targetNorm) } } : {}),
+  };
+  if (hiddenSet.size) nextSettings.hiddenExercises = [...hiddenSet];
+  else delete nextSettings.hiddenExercises;
+  return nextSettings;
+}
+
 /**
  * Crea acciones inmutables de mapeo muscular, renombrado/borrado de ejercicios, unificación de alias y fases.
  *
@@ -103,29 +188,6 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
         if (conflict) return `Ya existe «${conflict}». Usa "Unificar ejercicios duplicados" si quieres fusionarlos.`;
       }
 
-      const nextRoutines: typeof S.settings.routines = {};
-      for (const [day, list] of Object.entries(S.settings.routines)) {
-        nextRoutines[day] = list.map((r) => (norm(r.name) === oldNorm ? { ...r, name: newName } : r));
-      }
-
-      let foundNote: string | undefined;
-      const nextNotes: Record<string, string> = {};
-      for (const [k, v] of Object.entries(S.settings.notes)) {
-        if (norm(k) === oldNorm) foundNote ??= v;
-        else nextNotes[k] = v;
-      }
-      if (foundNote !== undefined) nextNotes[newName] = foundNote;
-
-      const curMuscle = musclesOf(oldName, S.settings);
-      const nextMuscles = { ...S.settings.muscles };
-      if (oldNorm !== newNorm) delete nextMuscles[oldNorm];
-      if (curMuscle) nextMuscles[newNorm] = curMuscle;
-
-      const nextCustomNames: Record<string, string> = {};
-      for (const [k, v] of Object.entries(S.settings.customNames)) {
-        if (oldNorm !== newNorm && k === `manual:${oldNorm}`) continue;
-        nextCustomNames[k] = norm(v) === oldNorm ? newName : v;
-      }
       const nextRefNames: Record<string, string> = {};
       for (const [k, v] of Object.entries(S.settings.refNames)) {
         nextRefNames[k] = norm(v) === oldNorm ? newName : v;
@@ -148,45 +210,7 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
         S.strength = nextStrength;
       }
 
-      const alreadyNamed =
-        Object.values(nextCustomNames).some((v) => norm(v) === newNorm) ||
-        Object.values(nextRefNames).some((v) => norm(v) === newNorm);
-      if (!CATALOG_NORM_SET.has(newNorm) && !alreadyNamed) {
-        nextCustomNames[`manual:${newNorm}`] = newName;
-      }
-
-      const nextAliases: Record<string, string> = {};
-      for (const [k, v] of Object.entries(S.settings.aliases)) {
-        const nk = norm(k) === oldNorm ? newName : k;
-        const nv = norm(v) === oldNorm ? newName : v;
-        if (norm(nk) !== norm(nv)) nextAliases[nk] = nv;
-      }
-
-      const hiddenSet = new Set((S.settings.hiddenExercises ?? []).map((h) => norm(h)).filter((h) => h && h !== newNorm));
-      if (oldNorm !== newNorm && CATALOG_NORM_SET.has(oldNorm)) hiddenSet.add(oldNorm);
-
-      let nextAi = S.settings.ai;
-      if (S.settings.ai) {
-        const nextByEx: typeof S.settings.ai.byExercise = {};
-        for (const [k, v] of Object.entries(S.settings.ai.byExercise)) {
-          nextByEx[k === oldName || norm(k) === oldNorm ? newName : k] = v;
-        }
-        nextAi = { ...S.settings.ai, byExercise: nextByEx };
-      }
-
-      const nextSettings: typeof S.settings = {
-        ...S.settings,
-        routines: nextRoutines,
-        notes: nextNotes,
-        muscles: nextMuscles,
-        customNames: nextCustomNames,
-        refNames: nextRefNames,
-        aliases: nextAliases,
-        ...(nextAi ? { ai: nextAi } : {}),
-      };
-      if (hiddenSet.size) nextSettings.hiddenExercises = [...hiddenSet];
-      else delete nextSettings.hiddenExercises;
-      S.settings = nextSettings;
+      S.settings = buildRenamedSettings(S.settings, oldName, newName, oldNorm, newNorm, nextRefNames);
 
       for (const [day, ex] of Object.entries(S.sel)) {
         if (norm(ex) === oldNorm) S.sel = { ...S.sel, [day]: newName };
@@ -250,44 +274,7 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
         curS.strength = curS.strength.filter((r) => !delIds.has(r.id));
       }
 
-      const nextRoutines: typeof curS.settings.routines = {};
-      for (const [day, list] of Object.entries(curS.settings.routines)) {
-        nextRoutines[day] = list.filter((r) => norm(r.name) !== targetNorm);
-      }
-
-      const nextNotes = omitMatchingEntries(curS.settings.notes, (_v, k) => norm(k) === targetNorm);
-      const nextMuscles = omitMatchingEntries(curS.settings.muscles, (_v, k) => norm(k) === targetNorm);
-      const nextCustomNames = omitMatchingEntries(curS.settings.customNames, (v) => norm(v) === targetNorm);
-      const nextRefNames = omitMatchingEntries(curS.settings.refNames, (v) => norm(v) === targetNorm);
-      const nextAliases = omitMatchingEntries(
-        curS.settings.aliases,
-        (v, k) => norm(k) === targetNorm || norm(v) === targetNorm,
-      );
-
-      let nextAi = curS.settings.ai;
-      if (curS.settings.ai) {
-        nextAi = {
-          ...curS.settings.ai,
-          byExercise: omitMatchingEntries(curS.settings.ai.byExercise, (_v, k) => norm(k) === targetNorm),
-        };
-      }
-
-      const hiddenSet = new Set((curS.settings.hiddenExercises ?? []).map((h) => norm(h)).filter(Boolean));
-      if (CATALOG_NORM_SET.has(targetNorm)) hiddenSet.add(targetNorm);
-
-      const nextSettings: typeof curS.settings = {
-        ...curS.settings,
-        routines: nextRoutines,
-        notes: nextNotes,
-        muscles: nextMuscles,
-        customNames: nextCustomNames,
-        refNames: nextRefNames,
-        aliases: nextAliases,
-        ...(nextAi ? { ai: nextAi } : {}),
-      };
-      if (hiddenSet.size) nextSettings.hiddenExercises = [...hiddenSet];
-      else delete nextSettings.hiddenExercises;
-      curS.settings = nextSettings;
+      curS.settings = buildDeletedSettings(curS.settings, targetNorm);
 
       const cleanSel: typeof curS.sel = {};
       for (const [day, ex] of Object.entries(curS.sel)) {

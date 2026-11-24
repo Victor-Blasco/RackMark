@@ -2,11 +2,9 @@ import { MEASURE_FIELDS } from '../types';
 import type {
   AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DataKind, DataRecord, DayName, Measure, MuscleMap, RoutineEx, RoutineMeta, Settings, StrengthRow, SyncJob,
 } from '../types';
-import { DEFAULT_SETTINGS, isValidIsoDate, norm } from './seed';
+import { DEFAULT_SETTINGS, isValidIsoDate, LEGACY_ROUTINE_COLORS, norm, UNSAFE_KEYS } from './seed';
 
 const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
-const LEGACY_CORAL_COLORS = new Set(['#F43F5E', '#EC4899']);
-const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
 const MAX_AUX_MAP_ENTRIES = 500;
 const MAX_PHASES = 100;
@@ -184,68 +182,108 @@ export async function exportBackup(): Promise<Backup> {
   };
 }
 
+function sanitizeProfile(raw: unknown, base: Settings['profile']): void {
+  if (!isObj(raw)) return;
+  if (typeof raw.sex === 'string' && raw.sex.trim()) base.sex = raw.sex.trim().slice(0, 64);
+  const age = fin(raw.age);
+  if (age !== undefined && age > 0 && age < 130) base.age = age;
+  const height = fin(raw.height);
+  if (height !== undefined && height > 40 && height < 270) base.height = height;
+  if (raw.goal === 'bulk' || raw.goal === 'cut' || raw.goal === 'recomp' || raw.goal === 'strength') {
+    base.goal = raw.goal;
+  }
+  if (raw.experience === 'beginner' || raw.experience === 'intermediate' || raw.experience === 'advanced') {
+    base.experience = raw.experience;
+  }
+  const dpw = fin(raw.daysPerWeek);
+  if (dpw !== undefined && dpw >= 1 && dpw <= 7) base.daysPerWeek = Math.round(dpw);
+}
+
+function sanitizeRoutines(raw: unknown): Record<DayName, RoutineEx[]> | null {
+  if (!isObj(raw)) return null;
+  const cleanRoutines: Record<DayName, RoutineEx[]> = {};
+  for (const [rawDay, list] of Object.entries(raw)) {
+    const day = rawDay.trim();
+    if (!day || day.length > 40 || UNSAFE_KEYS.has(day) || !Array.isArray(list)) continue;
+    if (Object.keys(cleanRoutines).length >= 20) break;
+    cleanRoutines[day] = list.flatMap((ex): RoutineEx[] => {
+      if (!isObj(ex) || typeof ex.name !== 'string' || !ex.name.trim()) return [];
+      const sets = fin(ex.sets);
+      const reps = fin(ex.reps);
+      if (!sets || sets <= 0 || !reps || reps <= 0) return [];
+      return [{ name: ex.name.trim(), sets, reps }];
+    });
+  }
+  return Object.keys(cleanRoutines).length > 0 ? cleanRoutines : null;
+}
+
+function sanitizeRoutineMeta(raw: unknown): Record<DayName, RoutineMeta> | null {
+  if (!isObj(raw)) return null;
+  const cleanMeta: Record<DayName, RoutineMeta> = {};
+  for (const [rawDay, val] of Object.entries(raw)) {
+    const day = rawDay.trim();
+    if (!day || day.length > 40 || UNSAFE_KEYS.has(day) || !isObj(val)) continue;
+    if (Object.keys(cleanMeta).length >= 20) break;
+    const meta: RoutineMeta = {};
+    if (typeof val.color === 'string' && HEX_COLOR_RE.test(val.color)) {
+      const up = val.color.toUpperCase();
+      meta.color = LEGACY_ROUTINE_COLORS.has(up) ? '#A855F7' : val.color;
+    }
+    if (typeof val.sub === 'string' && val.sub.trim()) meta.sub = val.sub.trim().slice(0, 40);
+    if (meta.color || meta.sub) cleanMeta[day] = meta;
+  }
+  return cleanMeta;
+}
+
+function sanitizePhases(raw: unknown): Settings['phases'] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw.flatMap((p) =>
+    isObj(p) && typeof p.name === 'string' && p.name.trim() && isValidIsoDate(p.start)
+      ? [{ name: p.name.trim().slice(0, 80), start: p.start }]
+      : [],
+  ).slice(0, MAX_PHASES);
+}
+
+function sanitizeAiResult(raw: unknown): AiResult | undefined {
+  if (!isObj(raw) || !isValidIsoDate(raw.date) || !isObj(raw.byExercise)) return undefined;
+  const byExercise: Record<string, AiEntry> = {};
+  for (const [k, v] of Object.entries(raw.byExercise)) {
+    if (Object.keys(byExercise).length >= MAX_AUX_MAP_ENTRIES) break;
+    if (UNSAFE_KEYS.has(k) || !isObj(v)) continue;
+    const entry: AiEntry = {};
+    if (typeof v.status === 'string') entry.status = v.status.slice(0, 500);
+    if (typeof v.prescription === 'string') entry.prescription = v.prescription.slice(0, 1000);
+    if (typeof v.biomech === 'string') entry.biomech = v.biomech.slice(0, 1000);
+    byExercise[k] = entry;
+  }
+  const ai: AiResult = { date: raw.date, byExercise };
+  if (raw.tone === 'simple' || raw.tone === 'technical') ai.tone = raw.tone;
+  if (typeof raw.summary === 'string') ai.summary = raw.summary.slice(0, 20000);
+  if (isObj(raw.overview) && typeof raw.overview.overallStatus === 'string') {
+    const highlights = Array.isArray(raw.overview.highlights)
+      ? raw.overview.highlights.filter((h): h is string => typeof h === 'string')
+      : [];
+    const sections: AiSection[] = Array.isArray(raw.overview.sections)
+      ? raw.overview.sections.flatMap((s) =>
+          isObj(s) && typeof s.title === 'string' && typeof s.text === 'string'
+            ? [{ title: s.title, verdict: s.verdict === 'good' || s.verdict === 'warning' ? s.verdict : 'neutral', text: s.text }]
+            : [],
+        )
+      : [];
+    ai.overview = { overallStatus: raw.overview.overallStatus, highlights, sections };
+  }
+  return ai;
+}
+
 export function sanitizeSettings(raw: unknown): Settings {
   const base = structuredClone(DEFAULT_SETTINGS);
   if (!isObj(raw)) return base;
 
-  if (isObj(raw.profile)) {
-    if (typeof raw.profile.sex === 'string' && raw.profile.sex.trim()) base.profile.sex = raw.profile.sex.trim().slice(0, 64);
-    const age = fin(raw.profile.age);
-    if (age !== undefined && age > 0 && age < 130) base.profile.age = age;
-    const height = fin(raw.profile.height);
-    if (height !== undefined && height > 40 && height < 270) base.profile.height = height;
-    if (
-      raw.profile.goal === 'bulk' ||
-      raw.profile.goal === 'cut' ||
-      raw.profile.goal === 'recomp' ||
-      raw.profile.goal === 'strength'
-    ) {
-      base.profile.goal = raw.profile.goal;
-    }
-    if (
-      raw.profile.experience === 'beginner' ||
-      raw.profile.experience === 'intermediate' ||
-      raw.profile.experience === 'advanced'
-    ) {
-      base.profile.experience = raw.profile.experience;
-    }
-    const dpw = fin(raw.profile.daysPerWeek);
-    if (dpw !== undefined && dpw >= 1 && dpw <= 7) base.profile.daysPerWeek = Math.round(dpw);
-  }
-
-  if (isObj(raw.routines)) {
-    const cleanRoutines: Record<DayName, RoutineEx[]> = {};
-    for (const [rawDay, list] of Object.entries(raw.routines)) {
-      const day = rawDay.trim();
-      if (!day || day.length > 40 || UNSAFE_KEYS.has(day) || !Array.isArray(list)) continue;
-      if (Object.keys(cleanRoutines).length >= 20) break;
-      cleanRoutines[day] = list.flatMap((ex): RoutineEx[] => {
-        if (!isObj(ex) || typeof ex.name !== 'string' || !ex.name.trim()) return [];
-        const sets = fin(ex.sets);
-        const reps = fin(ex.reps);
-        if (!sets || sets <= 0 || !reps || reps <= 0) return [];
-        return [{ name: ex.name.trim(), sets, reps }];
-      });
-    }
-    if (Object.keys(cleanRoutines).length > 0) base.routines = cleanRoutines;
-  }
-
-  if (isObj(raw.routineMeta)) {
-    const cleanMeta: Record<DayName, RoutineMeta> = {};
-    for (const [rawDay, val] of Object.entries(raw.routineMeta)) {
-      const day = rawDay.trim();
-      if (!day || day.length > 40 || UNSAFE_KEYS.has(day) || !isObj(val)) continue;
-      if (Object.keys(cleanMeta).length >= 20) break;
-      const meta: RoutineMeta = {};
-      if (typeof val.color === 'string' && HEX_COLOR_RE.test(val.color)) {
-        const up = val.color.toUpperCase();
-        meta.color = LEGACY_CORAL_COLORS.has(up) ? '#A855F7' : val.color;
-      }
-      if (typeof val.sub === 'string' && val.sub.trim()) meta.sub = val.sub.trim().slice(0, 40);
-      if (meta.color || meta.sub) cleanMeta[day] = meta;
-    }
-    base.routineMeta = cleanMeta;
-  }
+  sanitizeProfile(raw.profile, base.profile);
+  const routines = sanitizeRoutines(raw.routines);
+  if (routines) base.routines = routines;
+  const routineMeta = sanitizeRoutineMeta(raw.routineMeta);
+  if (routineMeta) base.routineMeta = routineMeta;
 
   base.customNames = { ...base.customNames, ...sanitizeStringMap(raw.customNames) };
   base.refNames = { ...base.refNames, ...sanitizeStringMap(raw.refNames) };
@@ -271,52 +309,13 @@ export function sanitizeSettings(raw: unknown): Settings {
     if (cleanHidden.length) base.hiddenExercises = cleanHidden;
   }
 
-  if (Array.isArray(raw.phases)) {
-    base.phases = raw.phases.flatMap((p) =>
-      isObj(p) && typeof p.name === 'string' && p.name.trim() && isValidIsoDate(p.start)
-        ? [{ name: p.name.trim().slice(0, 80), start: p.start }]
-        : [],
-    ).slice(0, MAX_PHASES);
-  }
-
+  const phases = sanitizePhases(raw.phases);
+  if (phases) base.phases = phases;
   if (typeof raw.onboardingCompleted === 'boolean') base.onboardingCompleted = raw.onboardingCompleted;
-
   if (raw.aiTone === 'simple' || raw.aiTone === 'technical') base.aiTone = raw.aiTone;
   if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'system') base.theme = raw.theme;
-
-  if (isObj(raw.ai) && isValidIsoDate(raw.ai.date) && isObj(raw.ai.byExercise)) {
-    const byExercise: Record<string, AiEntry> = {};
-    for (const [k, v] of Object.entries(raw.ai.byExercise)) {
-      if (Object.keys(byExercise).length >= MAX_AUX_MAP_ENTRIES) break;
-      if (UNSAFE_KEYS.has(k) || !isObj(v)) continue;
-      const entry: AiEntry = {};
-      if (typeof v.status === 'string') entry.status = v.status.slice(0, 500);
-      if (typeof v.prescription === 'string') entry.prescription = v.prescription.slice(0, 1000);
-      if (typeof v.biomech === 'string') entry.biomech = v.biomech.slice(0, 1000);
-      byExercise[k] = entry;
-    }
-    const ai: AiResult = { date: raw.ai.date, byExercise };
-    if (raw.ai.tone === 'simple' || raw.ai.tone === 'technical') ai.tone = raw.ai.tone;
-    if (typeof raw.ai.summary === 'string') ai.summary = raw.ai.summary.slice(0, 20000);
-    if (isObj(raw.ai.overview) && typeof raw.ai.overview.overallStatus === 'string') {
-      const highlights = Array.isArray(raw.ai.overview.highlights)
-        ? raw.ai.overview.highlights.filter((h): h is string => typeof h === 'string')
-        : [];
-      const sections: AiSection[] = Array.isArray(raw.ai.overview.sections)
-        ? raw.ai.overview.sections.flatMap((s) =>
-            isObj(s) && typeof s.title === 'string' && typeof s.text === 'string'
-              ? [{
-                  title: s.title,
-                  verdict: s.verdict === 'good' || s.verdict === 'warning' ? s.verdict : 'neutral',
-                  text: s.text,
-                }]
-              : [],
-          )
-        : [];
-      ai.overview = { overallStatus: raw.ai.overview.overallStatus, highlights, sections };
-    }
-    base.ai = ai;
-  }
+  const ai = sanitizeAiResult(raw.ai);
+  if (ai) base.ai = ai;
 
   return base;
 }

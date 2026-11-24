@@ -6,7 +6,7 @@ import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { AiJobStatusBanner } from '../src/components/home/AiJobStatusBanner';
 import { ModalHost } from '../src/components/modals/ModalHost';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
-import { fmtMMSS } from '../src/hooks/useRestTimer';
+import { fmtMMSS } from '../src/ui/restAudio';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
 import { analyze } from '../src/lib/analysis';
 import { parseBackup, sanitizeDataRecord, sanitizeSettings } from '../src/lib/db';

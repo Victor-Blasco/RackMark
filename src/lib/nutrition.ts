@@ -57,7 +57,6 @@ export function calculateNutrition(
   const proteinKcal = proteinG * 4;
   const fatKcal = fatG * 9;
   const carbsG = Math.max(0, Math.round((target - proteinKcal - fatKcal) / 4));
-  const carbsKcal = carbsG * 4;
   const mealCount = [3, 4, 5].includes(meals) ? meals : 4;
 
   return {

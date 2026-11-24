@@ -65,7 +65,7 @@ function targetOf(name: string, s: Settings): { day: DayName; t: RoutineEx } | n
   return null;
 }
 
-export function judge(name: string, sessions: ExSession[], t?: RoutineEx): Pick<ExStats, 'status' | 'statusColor' | 'prescription'> {
+export function judge(sessions: ExSession[], t?: RoutineEx): Pick<ExStats, 'status' | 'statusColor' | 'prescription'> {
   const last = sessions[sessions.length - 1];
   if (!last) return { status: 'Sin datos', statusColor: 'gray', prescription: 'Importa tus sesiones para ver recomendaciones.' };
   const minReps = t?.reps ?? 10;
@@ -264,7 +264,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       };
     });
     const tgt = targetOf(name, s);
-    const verdict = judge(name, sessions, tgt?.t);
+    const verdict = judge(sessions, tgt?.t);
     const hrs = sessions.map((x) => x.avgHr).filter((h): h is number => h != null);
     const maxHrs = sessions.map((x) => x.maxHr).filter((h): h is number => h != null);
     exercises.set(name, {
@@ -297,7 +297,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       const base = [...exercises.values()].find((e) => norm(e.name) === norm(r.name));
       if (!base) continue;
       added.add(norm(base.name));
-      byDay[d].push({ ...base, day: d, target: r, ...judge(base.name, base.sessions, r) });
+      byDay[d].push({ ...base, day: d, target: r, ...judge(base.sessions, r) });
     }
     for (const [name, day] of manualDays) {
       if (day !== d || added.has(norm(name))) continue;
@@ -363,10 +363,6 @@ export function weeklyVolume(
     }
   }
   return out;
-}
-
-export function latestWith<K extends keyof Measure>(ms: Measure[], key: K): Measure | undefined {
-  return [...ms].reverse().find((m) => m[key] != null);
 }
 
 export function currentPhase(s: Settings, today = todayIso()) {

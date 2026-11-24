@@ -1,5 +1,4 @@
 export type DayName = string;
-export const DAYS: DayName[] = ['Push', 'Pull', 'Leg'];
 
 export interface SetRec { w: number; r: number; done?: boolean; restSec?: number; rir?: number }
 

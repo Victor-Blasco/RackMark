@@ -2,7 +2,7 @@ import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, writeBatch } from 
 import type { CardioRow, DailyWellbeing, DataKind, DataRecord, Measure, Settings, StrengthRow } from '../types';
 import { deleteKey, getAll, loadSettings, putMany, sanitizeDataRecord, sanitizeSettings, saveSettings, wipeAll } from './db';
 import { fs } from './firebase';
-import { DEFAULT_SETTINGS } from './seed';
+import { DEFAULT_SETTINGS, DRAFT_STORAGE_KEY, LIVE_WORKOUT_STORAGE_KEY, UNSAFE_KEYS } from './seed';
 
 export type { DataKind, DataRecord };
 
@@ -36,8 +36,8 @@ const KINDS: DataKind[] = ['strength', 'cardio', 'measures', 'wellbeing'];
 
 function clearLocalDrafts(): void {
   if (typeof localStorage === 'undefined') return;
-  localStorage.removeItem('gymapp_log_draft');
-  localStorage.removeItem('gymapp_live_workout');
+  localStorage.removeItem(DRAFT_STORAGE_KEY);
+  localStorage.removeItem(LIVE_WORKOUT_STORAGE_KEY);
 }
 
 const emptyMeta = (uid?: string): SyncMeta => ({
@@ -93,8 +93,6 @@ export function recordKey(kind: DataKind, item: DataRecord): string {
     ? (item as StrengthRow | CardioRow).id
     : (item as Measure | DailyWellbeing).date;
 }
-
-const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 export function stripUndefined<T>(val: T): T {
   if (typeof val === 'number') return (Number.isFinite(val) ? val : undefined) as T;
@@ -355,77 +353,55 @@ function mergeConcurrentSyncMeta(baseMeta: SyncMeta, sinceTs: number): SyncMeta 
   return out;
 }
 
-export async function syncWithCloud(uid: string): Promise<SyncReport> {
-  const syncStartedAt = Date.now();
-  let meta = loadSyncMeta();
-  let accountSwitched = false;
-  if (meta.uid && meta.uid !== uid) {
-    // Impide fugar datos locales de una cuenta anterior hacia la nueva cuenta.
-    await wipeAll();
-    clearLocalDrafts();
-    meta = emptyMeta(uid);
-    saveSyncMeta(meta);
-    accountSwitched = true;
+async function handlePendingWipe(
+  uid: string,
+  meta: SyncMeta,
+  settingsRef: ReturnType<typeof doc>,
+  bucketDocs: { ref: ReturnType<typeof doc> }[],
+  now: number,
+  syncStartedAt: number,
+  accountSwitched: boolean,
+): Promise<SyncReport> {
+  for (let i = 0; i < bucketDocs.length; i += MAX_BATCH_OPS) {
+    const batch = writeBatch(fs);
+    bucketDocs.slice(i, i + MAX_BATCH_OPS).forEach((d) => batch.delete(d.ref));
+    await batch.commit();
   }
-  meta.uid = uid;
-  const now = Date.now();
+  const localSettings = await loadSettings();
+  const docBody: RemoteSettingsDoc = { data: stripUndefined(localSettings), updatedAt: now, wipedAt: meta.pendingWipeAt };
+  await setDoc(settingsRef, docBody);
+  meta.pendingWipeAt = undefined;
+  meta.settingsDirtyAt = undefined;
+  meta.dirtyKeys = {};
+  meta.deleted = {};
+  meta.remoteUpdated = { settings: now };
+  meta.lastSyncAt = now;
+  saveSyncMeta(mergeConcurrentSyncMeta(meta, syncStartedAt));
+  return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed', accountSwitched };
+}
 
-  const settingsRef = doc(fs, 'users', uid, 'sync', 'settings');
-  const bucketsCol = collection(fs, 'users', uid, 'buckets');
+async function handleRemoteWipe(
+  uid: string,
+  remoteSettings: RemoteSettingsDoc,
+  now: number,
+  accountSwitched: boolean,
+): Promise<SyncReport> {
+  await wipeAll();
+  clearLocalDrafts();
+  await saveSettings(sanitizeSettings(remoteSettings.data));
+  const nextMeta = emptyMeta(uid);
+  nextMeta.remoteUpdated.settings = remoteSettings.updatedAt;
+  nextMeta.lastSyncAt = now;
+  saveSyncMeta(nextMeta);
+  return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled', accountSwitched, remoteWiped: true };
+}
 
-  const [settingsSnap, bucketsSnap] = await Promise.all([getDoc(settingsRef), getDocs(bucketsCol)]);
-  const rawRemoteSettings = settingsSnap.exists() ? (settingsSnap.data() as Partial<RemoteSettingsDoc> | undefined) : null;
-  const remoteSettings: RemoteSettingsDoc | null =
-    rawRemoteSettings && typeof rawRemoteSettings === 'object'
-      ? {
-          data: rawRemoteSettings.data as Settings,
-          updatedAt: typeof rawRemoteSettings.updatedAt === 'number' && Number.isFinite(rawRemoteSettings.updatedAt) ? rawRemoteSettings.updatedAt : 0,
-          ...(typeof rawRemoteSettings.wipedAt === 'number' && Number.isFinite(rawRemoteSettings.wipedAt) ? { wipedAt: rawRemoteSettings.wipedAt } : {}),
-        }
-      : null;
-
-  // Handle pending local wipe first if newer than any cloud update
-  if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
-    const bucketDocs = bucketsSnap.docs;
-    for (let i = 0; i < bucketDocs.length; i += MAX_BATCH_OPS) {
-      const batch = writeBatch(fs);
-      bucketDocs.slice(i, i + MAX_BATCH_OPS).forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-    }
-    const localSettings = await loadSettings();
-    const docBody: RemoteSettingsDoc = {
-      data: stripUndefined(localSettings),
-      updatedAt: now,
-      wipedAt: meta.pendingWipeAt,
-    };
-    await setDoc(settingsRef, docBody);
-    meta.pendingWipeAt = undefined;
-    meta.settingsDirtyAt = undefined;
-    meta.dirtyKeys = {};
-    meta.deleted = {};
-    meta.remoteUpdated = { settings: now };
-    meta.lastSyncAt = now;
-    saveSyncMeta(mergeConcurrentSyncMeta(meta, syncStartedAt));
-    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pushed', accountSwitched };
-  }
-
-  // Handle remote wipe triggered on another device
-  if (
-    remoteSettings?.wipedAt &&
-    remoteSettings.wipedAt > (meta.lastSyncAt ?? 0) &&
-    remoteSettings.wipedAt > (meta.settingsDirtyAt ?? 0)
-  ) {
-    await wipeAll();
-    clearLocalDrafts();
-    await saveSettings(sanitizeSettings(remoteSettings.data));
-    meta = emptyMeta(uid);
-    meta.remoteUpdated.settings = remoteSettings.updatedAt;
-    meta.lastSyncAt = now;
-    saveSyncMeta(meta);
-    return { pushedBuckets: 0, pulledItems: 0, deletedItems: 0, settingsDirection: 'pulled', accountSwitched, remoteWiped: true };
-  }
-
-  // Sync settings (if local had rich settings prior to first cloud link and remote is bare default, push local)
+async function syncSettingsDoc(
+  meta: SyncMeta,
+  settingsRef: ReturnType<typeof doc>,
+  remoteSettings: RemoteSettingsDoc | null,
+  now: number,
+): Promise<{ direction: SyncReport['settingsDirection']; conflict: boolean }> {
   const localSettings = await loadSettings();
   const localWinsInitial =
     !meta.remoteUpdated.settings &&
@@ -433,23 +409,21 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     remoteSettings != null &&
     hasCustomSettings(localSettings) &&
     !hasCustomSettings(remoteSettings.data);
-  let settingsDirection: SyncReport['settingsDirection'] = 'none';
-  let settingsConflict = false;
   if (!remoteSettings || localWinsInitial || (meta.settingsDirtyAt ?? 0) > remoteSettings.updatedAt) {
     const updatedAt = Math.max(now, meta.settingsDirtyAt ?? now);
     await setDoc(settingsRef, { data: stripUndefined(localSettings), updatedAt } satisfies RemoteSettingsDoc);
     meta.settingsDirtyAt = undefined;
     meta.remoteUpdated.settings = updatedAt;
-    settingsDirection = 'pushed';
-  } else if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
+    return { direction: 'pushed', conflict: false };
+  }
+  if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
     const cleanRemote = sanitizeSettings(remoteSettings.data);
     const hadLocalDirty = (meta.settingsDirtyAt ?? 0) > 0;
-    const nextSettings = hadLocalDirty
-      ? mergeSyncSettings(localSettings, cleanRemote)
-      : cleanRemote;
+    const nextSettings = hadLocalDirty ? mergeSyncSettings(localSettings, cleanRemote) : cleanRemote;
     await saveSettings(nextSettings);
+    let conflict = false;
     if (hadLocalDirty) {
-      settingsConflict = true;
+      conflict = true;
       if (JSON.stringify(stripUndefined(nextSettings)) !== JSON.stringify(stripUndefined(cleanRemote))) {
         await setDoc(settingsRef, { data: stripUndefined(nextSettings), updatedAt: now } satisfies RemoteSettingsDoc);
         meta.remoteUpdated.settings = now;
@@ -460,31 +434,24 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
       meta.remoteUpdated.settings = remoteSettings.updatedAt;
     }
     meta.settingsDirtyAt = undefined;
-    settingsDirection = 'pulled';
+    return { direction: 'pulled', conflict };
   }
+  return { direction: 'none', conflict: false };
+}
 
-  // Load local collections and index remote buckets
-  const remoteMap: Record<string, RemoteBucket> = {};
-  bucketsSnap.forEach((d) => {
-    const raw = d.data() as Partial<RemoteBucket> | undefined;
-    if (!raw || typeof raw !== 'object') return;
-    remoteMap[d.id] = {
-      kind: raw.kind as DataKind,
-      items: raw.items && typeof raw.items === 'object' ? raw.items : {},
-      ...(raw.deleted && typeof raw.deleted === 'object' ? { deleted: raw.deleted } : {}),
-      updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
-    };
-  });
-
+async function syncDataBuckets(
+  uid: string,
+  meta: SyncMeta,
+  remoteMap: Record<string, RemoteBucket>,
+  now: number,
+): Promise<{ pushedBuckets: number; pulledItems: number; deletedItems: number }> {
   const allLocalBuckets: { kind: DataKind; id: string; items: Record<string, DataRecord> }[] = [];
   for (const kind of KINDS) {
     const rows = await getAll<DataRecord>(kind);
-    const grouped = groupRecordsByBucket(kind, rows);
-    for (const [bId, items] of Object.entries(grouped)) {
+    for (const [bId, items] of Object.entries(groupRecordsByBucket(kind, rows))) {
       allLocalBuckets.push({ kind, id: bId, items });
     }
   }
-
   const localBucketById = new Map(allLocalBuckets.map((b) => [b.id, b]));
   const allBucketIds = new Set([
     ...localBucketById.keys(),
@@ -533,13 +500,10 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
           pushedBuckets++;
         }
       } else {
-        const nextDoc: RemoteBucket = {
-          kind,
-          items: stripUndefined(res.merged),
-          deleted: res.deleted,
-          updatedAt: now,
-        };
-        toWriteRemote.push({ id: bId, doc: nextDoc });
+        toWriteRemote.push({
+          id: bId,
+          doc: { kind, items: stripUndefined(res.merged), deleted: res.deleted, updatedAt: now },
+        });
         meta.remoteUpdated[bId] = now;
         pushedBuckets++;
       }
@@ -558,13 +522,67 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     }
     await batch.commit();
   }
+  return { pushedBuckets, pulledItems, deletedItems };
+}
 
+export async function syncWithCloud(uid: string): Promise<SyncReport> {
+  const syncStartedAt = Date.now();
+  let meta = loadSyncMeta();
+  let accountSwitched = false;
+  if (meta.uid && meta.uid !== uid) {
+    // Impide fugar datos locales de una cuenta anterior hacia la nueva cuenta.
+    await wipeAll();
+    clearLocalDrafts();
+    meta = emptyMeta(uid);
+    saveSyncMeta(meta);
+    accountSwitched = true;
+  }
+  meta.uid = uid;
+  const now = Date.now();
+
+  const settingsRef = doc(fs, 'users', uid, 'sync', 'settings');
+  const bucketsCol = collection(fs, 'users', uid, 'buckets');
+  const [settingsSnap, bucketsSnap] = await Promise.all([getDoc(settingsRef), getDocs(bucketsCol)]);
+  const rawRemoteSettings = settingsSnap.exists() ? (settingsSnap.data() as Partial<RemoteSettingsDoc> | undefined) : null;
+  const remoteSettings: RemoteSettingsDoc | null =
+    rawRemoteSettings && typeof rawRemoteSettings === 'object'
+      ? {
+          data: rawRemoteSettings.data as Settings,
+          updatedAt: typeof rawRemoteSettings.updatedAt === 'number' && Number.isFinite(rawRemoteSettings.updatedAt) ? rawRemoteSettings.updatedAt : 0,
+          ...(typeof rawRemoteSettings.wipedAt === 'number' && Number.isFinite(rawRemoteSettings.wipedAt) ? { wipedAt: rawRemoteSettings.wipedAt } : {}),
+        }
+      : null;
+
+  if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
+    return handlePendingWipe(uid, meta, settingsRef, bucketsSnap.docs, now, syncStartedAt, accountSwitched);
+  }
+  if (
+    remoteSettings?.wipedAt &&
+    remoteSettings.wipedAt > (meta.lastSyncAt ?? 0) &&
+    remoteSettings.wipedAt > (meta.settingsDirtyAt ?? 0)
+  ) {
+    return handleRemoteWipe(uid, remoteSettings, now, accountSwitched);
+  }
+
+  const { direction: settingsDirection, conflict: settingsConflict } = await syncSettingsDoc(meta, settingsRef, remoteSettings, now);
+
+  const remoteMap: Record<string, RemoteBucket> = {};
+  bucketsSnap.forEach((d) => {
+    const raw = d.data() as Partial<RemoteBucket> | undefined;
+    if (!raw || typeof raw !== 'object') return;
+    remoteMap[d.id] = {
+      kind: raw.kind as DataKind,
+      items: raw.items && typeof raw.items === 'object' ? raw.items : {},
+      ...(raw.deleted && typeof raw.deleted === 'object' ? { deleted: raw.deleted } : {}),
+      updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
+    };
+  });
+
+  const bucketStats = await syncDataBuckets(uid, meta, remoteMap, now);
   meta.lastSyncAt = now;
   saveSyncMeta(mergeConcurrentSyncMeta(meta, syncStartedAt));
   return {
-    pushedBuckets,
-    pulledItems,
-    deletedItems,
+    ...bucketStats,
     settingsDirection,
     accountSwitched,
     ...(settingsConflict ? { settingsConflict: true } : {}),

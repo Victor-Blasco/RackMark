@@ -23,11 +23,10 @@ const firebaseConfig = {
 };
 
 export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const auth = getAuth(app);
 export const fs = getFirestore(app);
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim() || '';
-export const isAppCheckConfigured = Boolean(recaptchaSiteKey);
 
 let appCheckInstance: AppCheck | undefined;
 if (typeof window !== 'undefined' && recaptchaSiteKey) {
@@ -40,11 +39,10 @@ if (typeof window !== 'undefined' && recaptchaSiteKey) {
     isTokenAutoRefreshEnabled: true,
   });
 }
-export { appCheckInstance as appCheck };
 
 export type CloudUser = Pick<User, 'uid' | 'email' | 'displayName' | 'photoURL'>;
 
-export function toCloudUser(u: User | null): CloudUser | null {
+function toCloudUser(u: User | null): CloudUser | null {
   return u ? { uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL } : null;
 }
 

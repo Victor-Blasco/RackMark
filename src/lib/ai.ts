@@ -443,18 +443,6 @@ function parseAndValidateAiResponse(raw: string, tone: AiTone): AiResult {
   };
 }
 
-export async function generateAnalysis(
-  a: Analysis,
-  ms: Measure[],
-  s: Settings,
-  cardio: CardioRow[] = [],
-  wellbeing: DailyWellbeing[] = [],
-): Promise<AiResult> {
-  const tone: AiTone = s.aiTone === 'simple' ? 'simple' : 'technical';
-  const payload = buildPayload(a, ms, s, cardio, wellbeing);
-  return generateAnalysisFromPayload(payload, tone);
-}
-
 export async function generateAnalysisFromPayload(payload: Record<string, unknown>, tone: AiTone): Promise<AiResult> {
   const prompt = buildPrompt(payload, tone);
   const ai = getAiBackend();
