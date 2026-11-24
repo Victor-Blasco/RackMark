@@ -63,6 +63,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         targetRestSec={targetRestSec}
         onSelectTab={store.setTab}
         onSelectPlanTab={store.plan.openPlanTab}
+        onNewRoutine={store.plan.openRoutineModalNew}
         onCloudLogin={store.cloudLogin}
       />
       <MobileHeader

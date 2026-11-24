@@ -19,24 +19,33 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
   const dayColor = routineColor(day, state.settings, Math.max(0, routines.indexOf(day)));
 
   const analyzedByDay = (state.analysis.byDay[day] ?? []).map((e) => filterExByRange(e, bounds));
-  const analyzedNorms = new Set(analyzedByDay.map((e) => norm(e.name)));
-  const plannedOnly: ExStats[] = (state.settings.routines[day] ?? [])
-    .filter((r) => r.name.trim() && !analyzedNorms.has(norm(r.name)))
-    .map((r) => ({
-      name: r.name,
-      day,
-      target: r,
-      sessions: [],
-      last: undefined,
-      n: 0,
-      maxWeight: 0,
-      maxE1rm: 0,
-      status: 'Pendiente de estrenar',
-      statusColor: 'electricBlue' as const,
-      prescription: `Estrena este ejercicio hoy: objetivo ${r.sets} series de ${r.reps} repeticiones con un peso que controles dejando 1–2 repeticiones en reserva.`,
-    }));
-
-  const primary = [...analyzedByDay, ...plannedOnly];
+  const analyzedByNorm = new Map(analyzedByDay.map((e) => [norm(e.name), e]));
+  const seenPrimary = new Set<string>();
+  const plannedPrimary: ExStats[] = [];
+  for (const r of state.settings.routines[day] ?? []) {
+    const k = norm(r.name);
+    if (!k || seenPrimary.has(k)) continue;
+    seenPrimary.add(k);
+    const existing = analyzedByNorm.get(k);
+    if (existing) {
+      plannedPrimary.push(existing);
+    } else {
+      plannedPrimary.push({
+        name: r.name,
+        day,
+        target: r,
+        sessions: [],
+        last: undefined,
+        n: 0,
+        maxWeight: 0,
+        maxE1rm: 0,
+        status: 'Pendiente de estrenar',
+        statusColor: 'electricBlue' as const,
+        prescription: `Estrena este ejercicio hoy: objetivo ${r.sets} series de ${r.reps} repeticiones con un peso que controles dejando 1–2 repeticiones en reserva.`,
+      });
+    }
+  }
+  const primary = [...plannedPrimary, ...analyzedByDay.filter((e) => !seenPrimary.has(norm(e.name)))];
   const primaryNorms = new Set(primary.map((e) => norm(e.name)));
   const extraAll = [...state.analysis.exercises.values()]
     .filter((e) => !primaryNorms.has(norm(e.name)) && !e.name.startsWith('Samsung #') && (e.day === day || e.day == null))

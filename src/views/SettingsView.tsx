@@ -94,8 +94,8 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
           <p class="text-xs text-gray-400">La configuración de rutinas e importación de archivos tienen sus propias secciones dedicadas.</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button type="button" class="btn-sm" onClick={() => setTab('plan')}>
-            Planificación
+          <button type="button" class="btn-sm" onClick={() => plan.openPlanTab('exercises')}>
+            Catálogo y músculos
           </button>
           <button type="button" class="btn-sm" onClick={() => setTab('data')}>
             Datos y copias

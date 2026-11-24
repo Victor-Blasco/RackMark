@@ -55,8 +55,8 @@ export function OnboardingHome({
               <button type="button" class="btn-sm min-h-[44px] sm:min-h-0" onClick={onOpenWizard}>
                 {onboarded ? 'Editar perfil y objetivo' : 'Configurar perfil y objetivo (1 min)'}
               </button>
-              <button type="button" class="btn-sm min-h-[44px] sm:min-h-0" onClick={() => onNavigateTab('plan')}>
-                Personalizar en Plan
+              <button type="button" class="btn-sm min-h-[44px] sm:min-h-0" onClick={() => onNavigateTab(routines[0] ?? 'plan')}>
+                Ver y editar rutinas
               </button>
             </div>
           </div>

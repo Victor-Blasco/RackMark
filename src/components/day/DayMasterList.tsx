@@ -1,8 +1,9 @@
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
-import { STATUS_STYLE } from '../../store/homeSelectors';
-import type { AiEntry } from '../../types';
+import { norm } from '../../lib/seed';
+import type { AiEntry, RoutineEx } from '../../types';
 import { short } from '../../ui/shared';
+import { DayDesktopOption } from './DayDesktopOption';
 import { DayExerciseDetail } from './DayExerciseDetail';
 import { DayMobileAccordion } from './DayMobileAccordion';
 
@@ -11,6 +12,10 @@ interface DayMasterListProps {
   day: string;
   /** Lista de ejercicios visibles según el ámbito seleccionado. */
   exercises: ExStats[];
+  /** Filas planificadas reales de `settings.routines[day]` para edición directa. */
+  routineRows?: RoutineEx[];
+  /** Muestra botones de reordenamiento y borrado por fila. */
+  organizeMode?: boolean;
   /** Ejercicio seleccionado actualmente en escritorio. */
   desktopCur?: string;
   /** Ejercicio desplegado actualmente en el acordeón móvil. */
@@ -35,6 +40,12 @@ interface DayMasterListProps {
   onStartWorkout: () => void;
   /** Abre el modal de nota permanente. */
   onEditNote: (exName: string) => void;
+  /** Guarda series × reps objetivo editadas in-situ. */
+  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
+  /** Mueve una fila arriba (`-1`) o abajo (`+1`). */
+  onMoveRow?: (idx: number, dir: number) => void;
+  /** Elimina una fila de la rutina. */
+  onDeleteRow?: (idx: number) => void;
 }
 
 const lastSummary = (x: ExStats, rangeLabel: string) => {
@@ -47,9 +58,17 @@ const lastSummary = (x: ExStats, rangeLabel: string) => {
  * Maestro-detalle adaptable: acordeón vertical en móvil y `role="listbox"` + panel fijo en escritorio.
  */
 export function DayMasterList(props: DayMasterListProps) {
-  const { day, exercises, desktopCur, desktopEx, desktopChartCfg, rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote } = props;
+  const {
+    day, exercises, routineRows = [], organizeMode = false, desktopCur, desktopEx, desktopChartCfg,
+    rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote, onUpdateTarget, onMoveRow, onDeleteRow,
+  } = props;
 
-  const onOptionKeyDown = (e: KeyboardEvent, idx: number) => {
+  const onOptionKeyDown = (e: KeyboardEvent, idx: number, name: string) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+      e.preventDefault();
+      onSelectEx(name);
+      return;
+    }
     if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key) || !exercises.length) return;
     e.preventDefault();
     e.stopPropagation();
@@ -76,38 +95,31 @@ export function DayMasterList(props: DayMasterListProps) {
           role="listbox"
           aria-orientation="vertical"
           aria-label={`Ejercicios de ${day}`}
-          onKeyDown={(ev) => onOptionKeyDown(ev, Math.max(0, exercises.findIndex((x) => x.name === desktopCur)))}
+          onKeyDown={(ev) => {
+            const curIdx = Math.max(0, exercises.findIndex((x) => x.name === desktopCur));
+            onOptionKeyDown(ev, curIdx, exercises[curIdx]?.name ?? '');
+          }}
         >
           {exercises.map((x, idx) => {
-            const sel = x.name === desktopCur;
-            const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
-            const advice = aiFor(x);
-            const rightMeta = x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`;
+            const rIdx = routineRows.findIndex((r) => norm(r.name) === norm(x.name));
             return (
-              <button
-                type="button"
+              <DayDesktopOption
                 key={x.name}
-                id={`day-opt-${idx}`}
-                role="option"
-                tabIndex={sel ? 0 : -1}
-                aria-selected={sel ? 'true' : 'false'}
-                class={`w-full rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}`}
-                onClick={() => onSelectEx(x.name)}
-                onKeyDown={(ev) => onOptionKeyDown(ev, idx)}
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-sm font-bold text-white truncate">{x.name}</span>
-                  <span class={`inline-flex shrink-0 items-center gap-1 text-[11px] font-bold ${st.text}`} title={advice?.status ?? x.status}>
-                    <span class={`h-2 w-2 rounded-full ${st.dot}`} aria-hidden="true" />
-                    <span aria-hidden="true">{st.glyph}</span>
-                    <span class="sr-only">{advice?.status ?? x.status}</span>
-                  </span>
-                </div>
-                <div class="mt-1 flex items-center justify-between gap-2 text-[13px] text-gray-300">
-                  <span class="font-medium tabular-nums truncate">{lastSummary(x, rangeLabel)}</span>
-                  <span class="shrink-0 font-semibold text-gray-200 tabular-nums">{rightMeta}</span>
-                </div>
-              </button>
+                idx={idx}
+                exercise={x}
+                selected={x.name === desktopCur}
+                summary={lastSummary(x, rangeLabel)}
+                advice={aiFor(x)}
+                routineRow={rIdx >= 0 ? routineRows[rIdx] : undefined}
+                routineIdx={rIdx}
+                routineTotal={routineRows.length}
+                organizeMode={organizeMode}
+                onSelect={() => onSelectEx(x.name)}
+                onKeyDown={(ev) => onOptionKeyDown(ev, idx, x.name)}
+                onUpdateTarget={onUpdateTarget}
+                onMoveRow={onMoveRow}
+                onDeleteRow={onDeleteRow}
+              />
             );
           })}
         </div>

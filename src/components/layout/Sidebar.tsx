@@ -1,4 +1,4 @@
-import { ANALYTICS_TABS, PLAN_TABS } from '../../store/navigation';
+import { ANALYTICS_TABS } from '../../store/navigation';
 import { routineColor, routineNames, type PlanTab, type State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { RestTimerBadge } from './RestTimerPill';
@@ -25,13 +25,15 @@ interface SidebarProps {
   onSelectTab: (tab: string) => void;
   /** Navega a una subpestaña concreta dentro de `Planificación`. */
   onSelectPlanTab?: (tab: PlanTab) => void;
+  /** Abre el modal de creación de rutina nueva. */
+  onNewRoutine?: () => void;
   /** Callback para iniciar sesión con Google desde la barra lateral. */
   onCloudLogin: () => void;
 }
 
-/** Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, planificación, análisis y cuenta. */
+/** Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, análisis, herramientas y cuenta. */
 export function Sidebar({
-  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onCloudLogin,
+  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onNewRoutine, onCloudLogin,
 }: SidebarProps) {
   const unmappedCount = state.analysis.unmapped.length;
   const activePlanTab = state.planTab ?? 'routines';
@@ -95,22 +97,12 @@ export function Sidebar({
                 </button>
               );
             })}
-          </div>
-        </div>
-
-        <div>
-          <p class="nav-sec-lbl">Planificación</p>
-          <div class="space-y-1">
-            {PLAN_TABS.map((p) => {
-              const active = state.tab === 'plan' && activePlanTab === p.id;
-              return (
-                <button key={p.id} type="button" aria-current={active ? 'page' : undefined} class={`nav-item ${active ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab(p.id) : onSelectTab('plan'))}>
-                  <Icon name={p.icon} className="h-4 w-4" />
-                  <span class="flex-1 truncate text-left">{p.label}</span>
-                  {p.id === 'exercises' && unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
-                </button>
-              );
-            })}
+            {onNewRoutine && (
+              <button type="button" class="nav-item text-gray-300" onClick={onNewRoutine}>
+                <Icon name="plus" className="h-4 w-4" />
+                <span>+ Nueva rutina</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -127,11 +119,22 @@ export function Sidebar({
         </div>
 
         <div>
-          <p class="nav-sec-lbl">Datos</p>
-          <button type="button" aria-current={state.tab === 'data' ? 'page' : undefined} class={`nav-item ${state.tab === 'data' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('data')}>
-            <Icon name="upload" className="h-4 w-4" />
-            <span>Datos y copias</span>
-          </button>
+          <p class="nav-sec-lbl">Datos y herramientas</p>
+          <div class="space-y-1">
+            <button type="button" aria-current={state.tab === 'data' ? 'page' : undefined} class={`nav-item ${state.tab === 'data' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('data')}>
+              <Icon name="upload" className="h-4 w-4" />
+              <span>Datos y copias</span>
+            </button>
+            <button type="button" aria-current={state.tab === 'plan' && activePlanTab === 'exercises' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' && activePlanTab === 'exercises' ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab('exercises') : onSelectTab('plan'))}>
+              <Icon name="barbell" className="h-4 w-4" />
+              <span class="flex-1 truncate text-left">Catálogo y músculos</span>
+              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
+            </button>
+            <button type="button" aria-current={state.tab === 'plan' && activePlanTab === 'phases' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' && activePlanTab === 'phases' ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab('phases') : onSelectTab('plan'))}>
+              <Icon name="calendar" className="h-4 w-4" />
+              <span class="flex-1 truncate text-left">Fases del bloque</span>
+            </button>
+          </div>
         </div>
       </nav>
 

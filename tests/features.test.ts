@@ -17,9 +17,11 @@ import { Sidebar } from '../src/components/layout/Sidebar';
 import { ModalHost } from '../src/components/modals/ModalHost';
 import { WizardModal } from '../src/components/modals/WizardModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { PlanSidebarWidgets } from '../src/components/plan/PlanSidebarWidgets';
 import { ChartCanvas } from '../src/components/common/ChartCanvas';
 import { RangePicker } from '../src/components/common/RangePicker';
 import { DayMobileAccordion } from '../src/components/day/DayMobileAccordion';
+import { DayOrganizeBar } from '../src/components/day/DayOrganizeBar';
 import { ExercisePickerSheet } from '../src/components/workout/ExercisePickerSheet';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
@@ -2031,18 +2033,17 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         onSelectTab: () => {},
       }),
     );
-    expect(navRoutineHtml).toContain('grid-cols-5');
+    expect(navRoutineHtml).toContain('grid-cols-4');
     expect(navRoutineHtml).not.toContain('Rutinas · Plan');
+    expect(navRoutineHtml).not.toContain('<span>Plan</span>');
     expect(navRoutineHtml).toContain('<span>Rutinas</span>');
     const idxResumen = navRoutineHtml.indexOf('<span>Resumen</span>');
     const idxRutinas = navRoutineHtml.indexOf('<span>Rutinas</span>');
     const idxEntrenar = navRoutineHtml.indexOf('>Entrenar</span>');
-    const idxPlan = navRoutineHtml.indexOf('<span>Plan</span>');
     const idxAnalisis = navRoutineHtml.indexOf('<span>Análisis</span>');
     expect(idxResumen).toBeLessThan(idxRutinas);
     expect(idxRutinas).toBeLessThan(idxEntrenar);
-    expect(idxEntrenar).toBeLessThan(idxPlan);
-    expect(idxPlan).toBeLessThan(idxAnalisis);
+    expect(idxEntrenar).toBeLessThan(idxAnalisis);
     expect(navRoutineHtml).toMatch(/aria-current="page"[^>]*bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
 
     const navPlanHtml = renderToString(
@@ -2055,8 +2056,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         onSelectTab: () => {},
       }),
     );
-    expect(navPlanHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Plan<\/span>/s);
-    expect(navPlanHtml).not.toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
+    expect(navPlanHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
 
     // 2. MobileHeader: solo rutinas en Push (sin botón Plan) y 3 subpestañas en Plan
     const headPush = renderToString(
@@ -2087,7 +2087,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(headPlan).toContain('Fases');
     expect(headPlan).toContain('grid-cols-3');
 
-    // 3. Sidebar: sección Planificación separada de Rutinas sin "Plan y rutinas"
+    // 3. Sidebar: rutinas + "+ Nueva rutina" y herramientas (Catálogo y Fases) sin duplicar Editor de rutinas
     const sideHtml = renderToString(
       h(Sidebar, {
         state: { ...baseState, tab: 'plan', planTab: 'phases' },
@@ -2097,13 +2097,14 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
         unsynced: false,
         onSelectTab: () => {},
         onSelectPlanTab: () => {},
+        onNewRoutine: () => {},
         onCloudLogin: () => {},
       }),
     );
-    expect(sideHtml).toContain('Planificación');
     expect(sideHtml).not.toContain('Plan y rutinas');
-    expect(sideHtml).toContain('Editor de rutinas');
-    expect(sideHtml).toContain('Ejercicios y músculos');
+    expect(sideHtml).not.toContain('Editor de rutinas');
+    expect(sideHtml).toContain('+ Nueva rutina');
+    expect(sideHtml).toContain('Catálogo y músculos');
     expect(sideHtml).toContain('Fases del bloque');
     expect(sideHtml).toMatch(/aria-current="page"[^>]*>.*?Fases del bloque/s);
 
@@ -3711,5 +3712,59 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(renderToString(h(HomeView, { state: { ...activeState, settings: { ...settings, ai: undefined } } }))).toContain(
       'Inicia sesión con Google para generar análisis IA',
     );
+  });
+
+  it('Bloque 5 Opción B: edición inline, Organizar/Ver volumen en Rutinas y menú de 4 destinos sin Plan', () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({
+      routines: {
+        Push: [
+          { name: 'Press inclinado con mancuernas', sets: 3, reps: 10 },
+          { name: 'Press de banca', sets: 3, reps: 8 },
+        ],
+      },
+    });
+    const strength = [
+      { id: 's1', sessionId: 'sess-b5', ts: Date.now(), date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const state: State = {
+      tab: 'Push',
+      strength,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const vm = buildDayRoutineViewModel(state, 'Push');
+    expect(vm.primary.map((e) => e.name)).toEqual(['Press inclinado con mancuernas', 'Press de banca']);
+
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state }));
+    expect(dayHtml).toContain('Organizar');
+    expect(dayHtml).toContain('Ver volumen');
+    expect(dayHtml).toContain('Editar series y reps objetivo de Press de banca: 3×8');
+
+    const orgHtml = renderToString(
+      h(DayOrganizeBar, {
+        day: 'Push',
+        routineCount: 2,
+        onAddExercise: () => {},
+        onApplyTemplate: () => {},
+        onNewRoutine: () => {},
+        onEditRoutine: () => {},
+        onDeleteRoutine: () => {},
+        onOpenCatalog: () => {},
+      }),
+    );
+    expect(orgHtml).toContain('+ Añadir ejercicio');
+    expect(orgHtml).toContain('Catálogo y músculos →');
+
+    const simInlineHtml = renderToString(h(PlanSidebarWidgets, { state, inline: true }));
+    expect(simInlineHtml).toContain('Simulador de volumen semanal');
+    expect(simInlineHtml).not.toContain('<aside');
   });
 });
