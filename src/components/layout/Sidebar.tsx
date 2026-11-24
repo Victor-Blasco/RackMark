@@ -41,11 +41,9 @@ export function Sidebar({
   return (
     <aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-borderDark/80 bg-navDark">
       <div class="flex items-center gap-3 border-b border-borderDark/80 px-4 py-4">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-electricBlue text-white shadow-sm">
-          <Icon name="barbell" className="h-5 w-5" />
-        </div>
+        <img src="/logo.svg" alt="" aria-hidden="true" class="h-9 w-9 shrink-0 rounded-xl border border-white/10 shadow-sm" />
         <div class="min-w-0">
-          <p class="truncate text-sm font-extrabold text-white">GymApp</p>
+          <p class="truncate text-sm font-extrabold text-white">RackMark</p>
           <p class="truncate text-[11px] text-gray-400 tabular-nums">{statsText}</p>
         </div>
       </div>

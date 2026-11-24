@@ -46,11 +46,11 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
   return {
     async exportBackupFile() {
       const data = JSON.stringify(await exportBackup());
-      deps.downloadFile?.(`gymapp-backup-${todayIso()}.json`, data, 'application/json');
+      deps.downloadFile?.(`rackmark-backup-${todayIso()}.json`, data, 'application/json');
     },
 
     downloadMeasuresTemplate() {
-      deps.downloadFile?.('plantilla-medidas-gymapp.csv', MEASURES_CSV_TEMPLATE, 'text/csv;charset=utf-8');
+      deps.downloadFile?.('plantilla-medidas-rackmark.csv', MEASURES_CSV_TEMPLATE, 'text/csv;charset=utf-8');
     },
 
     async importFiles(kind: 'samsung' | 'measures' | 'backup', fileList: FileList | null) {

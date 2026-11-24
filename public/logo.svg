@@ -1,0 +1,7 @@
+<svg width="800" height="800" viewBox="112 112 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect id="Background" x="112" y="112" width="800" height="800" fill="#0A0D0E"/>
+  <path id="R" d="M 286 399 H 372 A 52 52 0 0 1 372 503 H 286 Z M 205 326 H 381.5 A 124 124 0 0 1 433.66 562.5 L 531.02 698 L 433.81 698 L 347.95 575 H 286 V 698 H 205 V 616 H 234 V 594.5 H 205 V 522.5 H 234 V 501 H 205 V 429 H 234 V 407.5 H 205 Z" fill="#F3F7F8" fill-rule="evenodd"/>
+  <path id="M-Left" d="M 479 326 L 561.54 326 L 644.54 456.03 L 598.1 521.69 L 559 461.54 L 559 697.81 L 479 585.99 L 479 560.28 A 147.2 147.2 0 0 0 479 339.72 Z" fill="#F3F7F8"/>
+  <path id="M-Arrow" d="M 710.6 326 L 819 326 L 819 443.86 L 792.09 415.01 L 654.74 608.26 L 611.67 542.3 L 741.22 359.73 Z" fill="#2DD4BF"/>
+  <path id="M-Right" d="M 793.72 452.02 L 819 481.13 L 819 698 L 739 698 L 739 529.95 Z" fill="#F3F7F8"/>
+</svg>

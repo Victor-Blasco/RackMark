@@ -90,7 +90,7 @@ interface AppStoreProviderProps {
 }
 
 /**
- * Proveedor raíz del store de GymApp para componentes `.tsx`.
+ * Proveedor raíz del store de RackMark para componentes `.tsx`.
  */
 export function AppStoreProvider({ value, children }: AppStoreProviderProps) {
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;

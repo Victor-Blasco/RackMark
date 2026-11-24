@@ -1303,20 +1303,22 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
       muscleSel: 'Pecho',
     };
     expect(activeTabTitle(state)).toBe('Cuerpo');
+    expect(activeTabTitle({ ...state, tab: 'desconocida' })).toBe('RackMark');
     expect(syncStatusInfo(state, false, true).text).toBe('En este dispositivo');
-    expect(
-      renderToString(
-        h(Sidebar, {
-          state,
-          statsText: 'sin datos',
-          liveCount: 0,
-          draftCount: 0,
-          unsynced: false,
-          onSelectTab: () => {},
-          onCloudLogin: () => {},
-        }),
-      ),
-    ).toContain('bg-navDark');
+    const sidebarHtml = renderToString(
+      h(Sidebar, {
+        state,
+        statsText: 'sin datos',
+        liveCount: 0,
+        draftCount: 0,
+        unsynced: false,
+        onSelectTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(sidebarHtml).toContain('bg-navDark');
+    expect(sidebarHtml).toContain('RackMark');
+    expect(sidebarHtml).toContain('src="/logo.svg"');
     const mobHead = renderToString(
       h(MobileHeader, {
         state,
@@ -1327,6 +1329,7 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
       }),
     );
     expect(mobHead).not.toContain('<h1');
+    expect(mobHead).toContain('src="/logo.svg"');
     expect(mobHead).toContain('<p class="truncate text-sm font-extrabold leading-tight text-white">');
     expect(mobHead).toContain('role="tablist"');
     expect(

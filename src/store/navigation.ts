@@ -50,7 +50,7 @@ export const isValidTab = (state: State, tab: string): boolean => FIXED_TAB_IDS.
 
 /** Devuelve el título visible y accesible para la pestaña actual. */
 export function activeTabTitle(state: State): string {
-  return TAB_TITLES[state.tab] ?? (isRoutineTab(state, state.tab) ? `Rutina ${state.tab}` : 'GymApp');
+  return TAB_TITLES[state.tab] ?? (isRoutineTab(state, state.tab) ? `Rutina ${state.tab}` : 'RackMark');
 }
 
 /**
