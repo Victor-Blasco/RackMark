@@ -49,14 +49,25 @@ export function applyToggleLiveSet(
   const wasAllDone = isAllDone(live);
   const nextDone = !s.done;
   let workingLive = nextDone ? finalizePendingRest(live) : live;
+  const maxExTs = workingLive.exercises.reduce((m, item) => Math.max(m, item.meta?.ts ?? 0), 0);
 
   const nextExercises = workingLive.exercises.map((item, idx) => {
     if (idx !== ei) return item;
     const nextSets = item.sets.map((set, setIdx) => (setIdx === si ? { ...set, done: nextDone } : set));
+    const hasDone = nextSets.some((x) => Boolean(x.done && x.r > 0));
+    let nextMeta = item.meta;
+    if (nextDone && !nextMeta?.ts) {
+      nextMeta = { ...nextMeta, ts: Math.max(Date.now(), maxExTs + 1) };
+    } else if (!hasDone && nextMeta?.ts != null) {
+      const { ts: _t, ...restMeta } = nextMeta;
+      nextMeta = Object.keys(restMeta).length ? restMeta : undefined;
+    }
+    const { meta: _prevMeta, ...itemBase } = item;
     return {
-      ...item,
+      ...itemBase,
       sets: nextSets,
-      done: nextSets.some((x) => Boolean(x.done && x.r > 0)),
+      done: hasDone,
+      ...(nextMeta ? { meta: nextMeta } : {}),
     };
   });
 

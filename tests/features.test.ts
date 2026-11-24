@@ -4016,4 +4016,69 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(dayHtml2).toContain('Pulso medio');
     expect(dayHtml2).not.toContain('FC media');
   });
+
+  it('guarda y conserva el orden real de ejecución de los ejercicios en En vivo, análisis y Registrar hecho', () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'workout',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const live = initLiveWorkout(state, 'Push');
+    const ex0 = live.exercises[0].name;
+    const ex1 = live.exercises[1].name;
+
+    // Completa primero el ejercicio 1 y luego el ejercicio 0
+    const step1 = applyToggleLiveSet(live, 1, 0, () => {}).nextLive;
+    const step2 = applyToggleLiveSet(step1, 0, 0, () => {}).nextLive;
+    expect(step2.exercises[1].meta?.ts).toBeTypeOf('number');
+    expect(step2.exercises[0].meta?.ts).toBeGreaterThan(step2.exercises[1].meta!.ts!);
+
+    // Desmarcar todas las series de ex0 borra su ts; al volver a marcarlo obtiene un ts posterior
+    const uncheck = applyToggleLiveSet(step2, 0, 0, () => {}).nextLive;
+    expect(uncheck.exercises[0].meta?.ts).toBeUndefined();
+
+    // analyze() e initLogDraft() preservan el orden cronológico real (ts ascendente)
+    const savedRows = [
+      {
+        id: `live-${today}-0`,
+        sessionId: `live-${today}-push`,
+        ts: step2.exercises[0].meta!.ts!,
+        date: today,
+        ref: `name:${ex0}`,
+        day: 'Push' as const,
+        sets: [{ w: 60, r: 8, done: true }],
+      },
+      {
+        id: `live-${today}-1`,
+        sessionId: `live-${today}-push`,
+        ts: step2.exercises[1].meta!.ts!,
+        date: today,
+        ref: `name:${ex1}`,
+        day: 'Push' as const,
+        sets: [{ w: 20, r: 10, done: true }],
+      },
+    ];
+    const analyzed = analyze(savedRows, settings);
+    expect(analyzed.sessions[0]?.exercises).toEqual([ex1, ex0]);
+
+    const reopened = initLogDraft({ ...state, strength: savedRows, analysis: analyzed }, 'Push', today, `live-${today}-push`);
+    expect(reopened.exercises.slice(0, 2).map((e) => e.name)).toEqual([ex1, ex0]);
+
+    // Reordenar en Registrar hecho actualiza los ts para persistir el nuevo orden
+    let draft = reopened;
+    const setActions = createLogSetActions(() => draft, (d) => { if (d) draft = d; }, () => {});
+    setActions.moveExercise(0, 1);
+    expect(draft.exercises.slice(0, 2).map((e) => e.name)).toEqual([ex0, ex1]);
+    expect(draft.exercises[0].meta!.ts!).toBeLessThan(draft.exercises[1].meta!.ts!);
+  });
 });

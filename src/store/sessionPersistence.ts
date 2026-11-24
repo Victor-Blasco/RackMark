@@ -36,7 +36,8 @@ export async function persistCompletedSession(
   const rows: StrengthRow[] = [];
   const usedIds = new Set<string>();
   const fallbackTs = opts.tsBase ?? (Date.parse(`${opts.date}T12:00:00Z`) || Date.now());
-  for (const ex of opts.exercises) {
+  for (let i = 0; i < opts.exercises.length; i++) {
+    const ex = opts.exercises[i];
     const sets = ex.sets
       .filter((s) => s.done && s.r > 0)
       .map((s) => ({
@@ -58,7 +59,7 @@ export async function persistCompletedSession(
     rows.push({
       id: rowId,
       sessionId: opts.sessionId,
-      ts: ex.meta?.ts ?? fallbackTs,
+      ts: ex.meta?.ts ?? fallbackTs + i * 1000,
       date: opts.date,
       ref: `name:${ex.name.trim()}`,
       sets,

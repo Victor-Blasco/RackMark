@@ -222,7 +222,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
     }
   }
 
-  for (const row of rows) {
+  for (const row of [...rows].sort((a, b) => a.ts - b.ts)) {
     const validSets = row.sets.filter((x) => Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0);
     if (!validSets.length || !isValidIsoDate(row.date)) continue;
     const rawName = resolveName(row.ref, s);
@@ -326,7 +326,7 @@ export function weeklyVolume(
   to: string | null = null,
 ): Map<string, Map<string, number>> {
   const out = new Map<string, Map<string, number>>();
-  for (const row of rows) {
+  for (const row of [...rows].sort((a, b) => a.ts - b.ts)) {
     if (!row || !isValidIsoDate(row.date) || !Array.isArray(row.sets)) continue;
     if (from && row.date < from) continue;
     if (to && row.date > to) continue;

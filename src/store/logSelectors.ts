@@ -32,8 +32,9 @@ export function initLogDraft(
         return rowDay === day && (r.sessionId === legacySid || !r.id.startsWith('manual-'));
       });
 
+  const sortedOnDate = [...onDate].sort((a, b) => a.ts - b.ts);
   const savedByNorm = new Map<string, { name: string; sets: SetRec[]; notes: string[]; meta?: LogExMeta }>();
-  for (const r of onDate) {
+  for (const r of sortedOnDate) {
     const name = resolveName(r.ref, state.settings);
     const k = norm(name);
     const cur = savedByNorm.get(k) ?? {
@@ -65,18 +66,11 @@ export function initLogDraft(
 
   const exercises: LogExDraft[] = [];
   const used = new Set<string>();
-
+  const routineNameByNorm = new Map<string, string>();
   if (day !== 'Libre') {
     for (const r of state.settings.routines[day] ?? []) {
       const k = norm(r.name);
-      if (used.has(k)) continue;
-      used.add(k);
-      const saved = savedByNorm.get(k);
-      if (saved) {
-        exercises.push({ name: r.name, done: true, sets: saved.sets, note: [...new Set(saved.notes)].join(' · '), ...(saved.meta ? { meta: saved.meta } : {}) });
-      } else {
-        exercises.push({ name: r.name, done: false, sets: defaultSetsForEx(state, r.name, r.sets, r.reps, false), note: '' });
-      }
+      if (!routineNameByNorm.has(k)) routineNameByNorm.set(k, r.name);
     }
   }
 
@@ -84,12 +78,21 @@ export function initLogDraft(
     if (used.has(k)) continue;
     used.add(k);
     exercises.push({
-      name: saved.name,
+      name: routineNameByNorm.get(k) ?? saved.name,
       done: true,
       sets: saved.sets,
       note: [...new Set(saved.notes)].join(' · '),
       ...(saved.meta ? { meta: saved.meta } : {}),
     });
+  }
+
+  if (day !== 'Libre') {
+    for (const r of state.settings.routines[day] ?? []) {
+      const k = norm(r.name);
+      if (used.has(k)) continue;
+      used.add(k);
+      exercises.push({ name: r.name, done: false, sets: defaultSetsForEx(state, r.name, r.sets, r.reps, false), note: '' });
+    }
   }
 
   return {
