@@ -1,4 +1,5 @@
 import { currentPhase } from '../lib/analysis';
+import { daysAgoIso, diffIsoDays } from '../lib/seed';
 import type { AiTone, DayName, Measure } from '../types';
 import {
   findAiExercise,
@@ -40,7 +41,6 @@ export {
 };
 
 const delta = (a?: number, b?: number, u = '') => (a != null && b != null ? `${a - b >= 0 ? '+' : ''}${r1(a - b)}${u}` : '');
-const fmtComma = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 const mean = (vals: (number | undefined)[]) => {
   const nums = vals.filter((v): v is number => v != null && Number.isFinite(v));
   return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : undefined;
@@ -62,8 +62,8 @@ function buildExVerdict(state: State, cur: string | undefined, bounds: DateBound
     return 'Repeticiones estables en este periodo';
   }
   const dW = Math.round((last.top - first.top) * 10) / 10;
-  if (dW > 0) return `+${fmtComma(dW)} kg en tu máximo en este periodo`;
-  if (dW < 0) return `−${fmtComma(Math.abs(dW))} kg en tu máximo en este periodo`;
+  if (dW > 0) return `+${r1(dW)} kg en tu máximo en este periodo`;
+  if (dW < 0) return `−${r1(Math.abs(dW))} kg en tu máximo en este periodo`;
   const dR = last.repsAtTop - first.repsAtTop;
   if (dR !== 0) return `Mismo peso (${dR > 0 ? `+${dR}` : dR} reps) en este periodo`;
   return 'Carga estable en este periodo';
@@ -72,15 +72,15 @@ function buildExVerdict(state: State, cur: string | undefined, bounds: DateBound
 function buildBodyVerdict(ms: Measure[]): string | undefined {
   const ws = ms.filter((m): m is Measure & { weight: number } => m.weight != null);
   if (!ws.length) return undefined;
-  if (ws.length === 1) return `Último peso registrado: ${fmtComma(ws[0].weight)} kg`;
+  if (ws.length === 1) return `Último peso registrado: ${r1(ws[0].weight)} kg`;
   const dW = Math.round((ws[ws.length - 1].weight - ws[0].weight) * 10) / 10;
   if (dW === 0) return 'Peso corporal estable en este periodo';
-  return `${dW > 0 ? '+' : '−'}${fmtComma(Math.abs(dW))} kg de peso en este periodo`;
+  return `${dW > 0 ? '+' : '−'}${r1(Math.abs(dW))} kg de peso en este periodo`;
 }
 
 function resolveFourthMetric(state: State, ms: Measure[], rangeLabel: string, hasFilter: boolean, bounds: DateBounds) {
-  const since28 = todayIso(new Date(Date.now() - 28 * 864e5));
-  const since7 = todayIso(new Date(Date.now() - 7 * 864e5));
+  const since28 = daysAgoIso(28);
+  const since7 = daysAgoIso(7);
   const wScope = hasFilter ? state.wellbeing.filter((w) => inRange(w.date, bounds)) : state.wellbeing.filter((w) => w.date >= since7);
   const wBaseline = hasFilter ? wScope : state.wellbeing.filter((w) => w.date >= since28);
   const sessScope = hasFilter ? state.analysis.sessions.filter((x) => inRange(x.date, bounds)) : state.analysis.sessions.filter((x) => x.date >= since28);
@@ -115,10 +115,10 @@ export function buildHomeViewModel(state: State) {
   const sessAll = state.analysis.sessions;
   const sess = hasFilter ? sessAll.filter((x) => inRange(x.date, bounds)) : sessAll;
   const lastS = sess[sess.length - 1];
-  const since28 = todayIso(new Date(Date.now() - 28 * 864e5));
+  const since28 = daysAgoIso(28);
   const activeDays = new Set((hasFilter ? sess : sess.filter((x) => x.date >= since28)).map((x) => x.date)).size;
   const rangeEnd = bounds.to ?? todayIso();
-  const diffDays = bounds.days ?? (hasFilter && bounds.from ? Math.max(7, Math.round((Date.parse(`${rangeEnd}T00:00:00Z`) - Date.parse(`${bounds.from}T00:00:00Z`)) / 864e5) + 1) : 28);
+  const diffDays = bounds.days ?? (hasFilter && bounds.from ? Math.max(7, diffIsoDays(bounds.from, rangeEnd)) : 28);
   const weeks = Math.max(1, diffDays / 7);
   const phase = currentPhase(state.settings);
   const fourthMetric = resolveFourthMetric(state, ms, bounds.label, hasFilter, bounds);

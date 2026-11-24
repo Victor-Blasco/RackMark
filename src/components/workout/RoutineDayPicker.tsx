@@ -1,4 +1,5 @@
 import type { DayPickerRoutineItem } from '../../store/workoutSelectors';
+import { fmtDate } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 
 interface RoutineDayPickerProps {
@@ -9,8 +10,6 @@ interface RoutineDayPickerProps {
   /** Redirige a la vista de registro histórico (`Registrar hecho`). */
   onGoToLog: () => void;
 }
-
-const fmtDate = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 
 /**
  * Pantalla inicial de `En vivo` para elegir la rutina del día o comenzar un entreno libre.

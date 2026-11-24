@@ -94,12 +94,14 @@ export interface Measure {
   bf?: number; weight?: number; muscle?: number; note?: string;
 }
 
+export type NumericMeasureKey = Exclude<keyof Measure, 'date' | 'note'>;
+
 export type DataKind = 'strength' | 'cardio' | 'measures' | 'wellbeing';
 export type DataRecord = StrengthRow | CardioRow | Measure | DailyWellbeing;
 
-export const BASIC_MEASURE_KEYS: (keyof Measure)[] = ['weight', 'bf', 'muscle', 'waist'];
+export const BASIC_MEASURE_KEYS: NumericMeasureKey[] = ['weight', 'bf', 'muscle', 'waist'];
 
-export const MEASURE_FIELDS: { key: keyof Measure; label: string; unit: string }[] = [
+export const MEASURE_FIELDS: { key: NumericMeasureKey; label: string; unit: string }[] = [
   { key: 'weight', label: 'Peso', unit: 'kg' },
   { key: 'bf', label: '% Grasa', unit: '%' },
   { key: 'muscle', label: 'Masa muscular', unit: 'kg' },

@@ -1,22 +1,23 @@
 import type { ChartConfiguration } from 'chart.js';
-import { MEASURE_FIELDS, type Measure } from '../types';
+import { MEASURE_FIELDS, type Measure, type NumericMeasureKey } from '../types';
 import { inRange, movingAverage7dFor, resolveRange, short, type State } from '../ui/shared';
 import { chartAccentColor } from '../ui/theme';
 
-export const PERIM: Record<string, { label: string; keys: (keyof Measure)[] }> = {
+export const PERIM: Record<string, { label: string; keys: NumericMeasureKey[] }> = {
   arms: { label: 'Brazos', keys: ['armL', 'armR'] },
   thighs: { label: 'Muslos', keys: ['thighL', 'thighR'] },
   trunk: { label: 'Torso / Cintura / Hombros / Glúteo', keys: ['torso', 'waist', 'shoulders', 'glute'] },
   calves: { label: 'Gemelos y rodillas', keys: ['calfL', 'calfR', 'kneeL', 'kneeR'] },
 };
 
-export const PERIM_GROUPS: { title: string; keys: (keyof Measure)[] }[] = [
+export const PERIM_GROUPS: { title: string; keys: NumericMeasureKey[] }[] = [
   { title: 'Torso y cadera', keys: ['torso', 'shoulders', 'glute'] },
   { title: 'Brazos', keys: ['armL', 'armR'] },
   { title: 'Piernas', keys: ['thighL', 'thighR', 'kneeL', 'kneeR', 'calfL', 'calfR'] },
 ];
 
-export const PERIM_ALL_KEYS: (keyof Measure)[] = PERIM_GROUPS.flatMap((g) => g.keys);
+export const PERIM_ALL_KEYS: NumericMeasureKey[] = PERIM_GROUPS.flatMap((g) => g.keys);
+const MEASURE_LABEL = new Map<NumericMeasureKey, string>(MEASURE_FIELDS.map((f) => [f.key, f.label]));
 const PAL = ['#2DD4BF', '#22C55E', '#F59E0B', '#A78BFA', '#38BDF8', '#94A3A8'];
 
 /** Construye la configuración de Composición Corporal separando Peso y Masa muscular. */
@@ -112,8 +113,8 @@ export function buildPerimChartConfig(state: State, msInRange?: Measure[]): Char
     data: {
       labels: perimRows.map((m) => short(m.date)),
       datasets: pk.keys.map((k, i) => ({
-        label: MEASURE_FIELDS.find((f) => f.key === k)!.label,
-        data: perimRows.map((m) => (m[k] as number | undefined) ?? null),
+        label: MEASURE_LABEL.get(k) ?? k,
+        data: perimRows.map((m) => m[k] ?? null),
         borderColor: PAL[i],
         tension: 0.25,
         spanGaps: true,

@@ -1,7 +1,7 @@
 import type { ChartConfiguration } from 'chart.js';
 import type { AthleteProfile } from '../types';
 import { isoWeekStart, weeklyVolume } from '../lib/analysis';
-import { MUSCLES } from '../lib/seed';
+import { diffIsoDays, MUSCLES } from '../lib/seed';
 import { resolveRange, short, todayIso, type DateBounds, type State } from '../ui/shared';
 import { chartAccentColor } from '../ui/theme';
 
@@ -24,12 +24,10 @@ export function weeksForBounds(
   const wk0 = isoWeekStart(endIso);
   let count = bounds.days ? Math.ceil(bounds.days / 7) : defaultWeeks;
   if (!bounds.days && bounds.from) {
-    const diff = Math.round((Date.parse(`${endIso}T00:00:00Z`) - Date.parse(`${bounds.from}T00:00:00Z`)) / 864e5) + 1;
-    if (Number.isFinite(diff) && diff > 0) count = Math.ceil(diff / 7);
+    count = Math.ceil(diffIsoDays(bounds.from, endIso) / 7);
   } else if (!bounds.from && !bounds.to && dates.length) {
     const earliest = dates.reduce((min, d) => (d < min ? d : min), dates[0]);
-    const diff = Math.round((Date.parse(`${endIso}T00:00:00Z`) - Date.parse(`${earliest}T00:00:00Z`)) / 864e5) + 1;
-    if (Number.isFinite(diff) && diff > 0) count = Math.ceil(diff / 7);
+    count = Math.ceil(diffIsoDays(earliest, endIso) / 7);
   }
   const n = Math.max(minW, Math.min(maxW, count));
   const weeks: string[] = [];

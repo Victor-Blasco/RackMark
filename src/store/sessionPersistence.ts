@@ -1,9 +1,10 @@
-import { epley } from '../lib/analysis';
+import { epley, findAnalyzedExercise } from '../lib/analysis';
 import { deleteKey, putMany } from '../lib/db';
 import { isValidIsoDate, norm } from '../lib/seed';
 import { markBucketDeletes, markBucketUpserts } from '../lib/sync';
 import type { DayName, LiveWorkout, LogExDraft, StrengthRow } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
+import { isCompletedSet } from './draftSetHelpers';
 
 /** Parámetros para persistir una sesión completada en IndexedDB y cola de sync. */
 export interface PersistSessionOpts {
@@ -39,7 +40,7 @@ export async function persistCompletedSession(
   for (let i = 0; i < opts.exercises.length; i++) {
     const ex = opts.exercises[i];
     const sets = ex.sets
-      .filter((s) => s.done && s.r > 0)
+      .filter(isCompletedSet)
       .map((s) => ({
         w: Math.max(0, Number(s.w) || 0),
         r: Math.max(1, Math.round(Number(s.r) || 0)),
@@ -100,16 +101,16 @@ export async function persistCompletedSession(
  * @returns Resumen listo para mostrar en `<WorkoutSummaryModal />`.
  */
 export function buildWorkoutSummary(state: State, live: LiveWorkout, savedExercises: number): WorkoutSummary {
-  const validEx = live.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
+  const validEx = live.exercises.filter((e) => e.sets.some(isCompletedSet));
   const durationMin = Math.max(1, Math.round((Date.now() - live.startedAt) / 60000));
   let sets = 0;
   let tonnageKg = 0;
   const prNames: string[] = [];
   for (const ex of validEx) {
-    const doneSets = ex.sets.filter((s) => s.done && s.r > 0);
+    const doneSets = ex.sets.filter(isCompletedSet);
     sets += doneSets.length;
     for (const s of doneSets) tonnageKg += Math.max(0, s.w) * s.r;
-    const prev = [...state.analysis.exercises.values()].find((e) => norm(e.name) === norm(ex.name));
+    const prev = findAnalyzedExercise(state.analysis, ex.name);
     if (prev && prev.n > 0) {
       const bestW = Math.max(...doneSets.map((s) => s.w));
       const bestE1rm = Math.max(...doneSets.map((s) => epley(s.w, s.r)));

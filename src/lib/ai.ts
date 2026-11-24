@@ -1,6 +1,6 @@
 import { AIError, getAI, getGenerativeModel, GoogleAIBackend, type AI } from 'firebase/ai';
 import type { AiResult, AiTone, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
-import { currentPhase, musclesOf, type Analysis, type ExStats } from './analysis';
+import { currentPhase, effectiveMuscleCredits, musclesOf, type Analysis, type ExStats } from './analysis';
 import { app } from './firebase';
 import { todayIso } from './seed';
 
@@ -156,9 +156,8 @@ function buildWeeklyVolume(a: Analysis, s: Settings, since28: string) {
       .reduce((sum, x) => sum + x.sets.filter((st) => st.r > 0).length, 0);
     if (!validSets) continue;
 
-    totals[map.p] = (totals[map.p] ?? 0) + validSets;
-    for (const sec of map.s ?? []) {
-      totals[sec] = (totals[sec] ?? 0) + validSets * 0.5;
+    for (const [muscle, factor] of effectiveMuscleCredits(map)) {
+      totals[muscle] = (totals[muscle] ?? 0) + validSets * factor;
     }
   }
 

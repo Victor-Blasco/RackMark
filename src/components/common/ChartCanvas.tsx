@@ -1,6 +1,6 @@
 import { Chart, type ChartConfiguration } from 'chart.js';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { normalizeChartConfig } from '../../ui/shared';
+import { normalizeChartConfig } from '../../ui/charts';
 
 interface ChartCanvasProps {
   /** Configuración de Chart.js a normalizar y dibujar en el lienzo. */

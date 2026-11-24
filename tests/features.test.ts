@@ -3,11 +3,11 @@ import renderToString from 'preact-render-to-string';
 import { describe, expect, it, vi } from 'vitest';
 import type { ChartConfiguration } from 'chart.js';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
-import { analyze, describeStatus, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
+import { analyze, describeStatus, effectiveMuscleCredits, findAnalyzedExercise, isoWeekStart, judge, musclesOf, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { ACTIVITY_OPTIONS, NUTRITION_PHASES, calculateNutrition, recommendActivityFactor } from '../src/lib/nutrition';
 import { importSamsungInWorker } from '../src/lib/samsung';
-import { CATALOG_EXERCISES, DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, norm } from '../src/lib/seed';
+import { CATALOG_EXERCISES, DEFAULT_MUSCLES, DEFAULT_SETTINGS, ROUTINE_COLORS, daysAgoIso, diffIsoDays, norm, parseDecimal } from '../src/lib/seed';
 import { AiInsightBanner } from '../src/components/common/AiInsightBanner';
 import { ToastBanner, SwUpdateBanner } from '../src/components/common/ToastBanner';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
@@ -69,6 +69,7 @@ import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
 import { captureFlipRects, moveItem, playFlipRects } from '../src/ui/reorder';
 import { filterSelectionOptions, groupSelectionOptions, normalizeSelectionText, sortRecentSelectionOptions } from '../src/ui/selection';
+import { normalizeChartConfig } from '../src/ui/charts';
 import {
   DAY_COLOR,
   findAiExercise,
@@ -77,7 +78,6 @@ import {
   isAiFreshForEx,
   movingAverage7d,
   movingAverage7dFor,
-  normalizeChartConfig,
   resolveRange,
   routineColor,
   routineShort,
@@ -4086,5 +4086,43 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     setActions.moveExercise(0, 1);
     expect(draft.exercises.slice(0, 2).map((e) => e.name)).toEqual([ex0, ex1]);
     expect(draft.exercises[0].meta!.ts!).toBeLessThan(draft.exercises[1].meta!.ts!);
+  });
+
+  it('lote 2 DRY y tipos: effectiveMuscleCredits, parseDecimal, diffIsoDays, cleanIso estricto y findAnalyzedExercise', () => {
+    expect(effectiveMuscleCredits({ p: 'Pecho', s: ['Tríceps', 'Pecho', 'Tríceps', 'Hombros'] })).toEqual([
+      ['Pecho', 1],
+      ['Tríceps', 0.5],
+      ['Hombros', 0.5],
+    ]);
+
+    expect(parseDecimal('72,5')).toBe(72.5);
+    expect(parseDecimal('   ')).toBeUndefined();
+    expect(diffIsoDays('2026-11-20', '2026-11-24')).toBe(5);
+    expect(daysAgoIso(0, Date.parse('2026-11-24T12:00:00Z'))).toBe('2026-11-24');
+
+    const settings = sanitizeSettings({});
+    const today = todayIso();
+    const strength = [
+      { id: 'f1', sessionId: 'fs1', ts: 1000, date: today, ref: 'name:Press de banca', day: 'Push' as const, sets: [{ w: 80, r: 8, done: true }] },
+    ];
+    const analysis = analyze(strength, settings);
+    expect(findAnalyzedExercise(analysis, 'Press de banca')?.n).toBe(1);
+    expect(findAnalyzedExercise(analysis, '  press   de banca ')?.n).toBe(1);
+
+    const invalidRangeState: State = {
+      tab: 'home',
+      strength,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis,
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+      ranges: { home: 'Custom' },
+      customRanges: { home: { from: '2026-02-31', to: today } },
+    };
+    expect(resolveRange(invalidRangeState, 'home').from).toBeNull();
   });
 });

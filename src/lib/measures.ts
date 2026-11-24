@@ -1,12 +1,12 @@
 import Papa from 'papaparse';
-import type { Measure } from '../types';
+import type { Measure, NumericMeasureKey } from '../types';
 import { isValidIsoDate } from './seed';
 
 const nk = (h: string) => h.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '');
 
-function fieldFor(h: string): keyof Measure | null {
+function fieldFor(h: string): NumericMeasureKey | null {
   const k = nk(h);
-  const table: [string, keyof Measure][] = [
+  const table: [string, NumericMeasureKey][] = [
     ['brazoizq', 'armL'], ['brazoder', 'armR'], ['torso', 'torso'], ['cintura', 'waist'],
     ['musloizq', 'thighL'], ['musloder', 'thighR'],
     ['sobrelarodillaizq', 'kneeL'], ['sobrelarodillader', 'kneeR'],
@@ -74,9 +74,9 @@ export function parseMeasuresCsv(text: string): MeasuresImport {
     if (!date) continue;
     const m: Measure = { date };
     cols.forEach((f, i) => {
-      if (!f || f === 'note' || f === 'date') return;
+      if (!f) return;
       const v = num(row[i]);
-      if (v != null) (m as unknown as Record<string, number>)[f] = v;
+      if (v != null) m[f] = v;
     });
     const note = noteCol >= 0 ? (row[noteCol] ?? '').trim() : '';
     if (note) m.note = note.replace(/^#\s*/, '');

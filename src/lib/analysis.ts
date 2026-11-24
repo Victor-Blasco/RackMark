@@ -318,6 +318,24 @@ export function isoWeekStart(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Devuelve créditos semanales únicos por músculo: principal = 1, secundarios (únicos y distintos de p) = 0,5. */
+export function effectiveMuscleCredits(m: MuscleMap): [string, number][] {
+  const p = m.p.trim();
+  const out: [string, number][] = p ? [[p, 1]] : [];
+  for (const s of new Set(m.s.map((x) => x.trim()).filter((x) => x && x !== p))) {
+    out.push([s, 0.5]);
+  }
+  return out;
+}
+
+/** Busca estadísticas analizadas por nombre exacto o normalizado. */
+export function findAnalyzedExercise(analysis: Analysis, name: string): ExStats | undefined {
+  const direct = analysis.exercises.get(name);
+  if (direct) return direct;
+  const k = norm(name);
+  return [...analysis.exercises.values()].find((e) => norm(e.name) === k);
+}
+
 /** Series efectivas por músculo y semana: principal = 1, secundario = 0,5. */
 export function weeklyVolume(
   rows: StrengthRow[],
@@ -338,15 +356,11 @@ export function weeklyVolume(
     if (!m) continue;
     const wk = isoWeekStart(row.date);
     const sets = validSets.length;
-    const add = (muscle: string, v: number) => {
-      muscle = muscle.trim();
-      if (!muscle) return;
+    for (const [muscle, factor] of effectiveMuscleCredits(m)) {
       const w = out.get(muscle) ?? new Map<string, number>();
-      w.set(wk, (w.get(wk) ?? 0) + v);
+      w.set(wk, (w.get(wk) ?? 0) + sets * factor);
       out.set(muscle, w);
-    };
-    add(m.p, sets);
-    new Set(m.s.map((x) => x.trim()).filter((x) => x && x !== m.p.trim())).forEach((x) => add(x, sets * 0.5));
+    }
   }
   return out;
 }

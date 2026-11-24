@@ -1,7 +1,8 @@
 import { isValidIsoDate, norm } from '../lib/seed';
 import type { DayName, LogDraft, LogExDraft } from '../types';
 import { routineNames, todayIso, type State } from '../ui/shared';
-import { defaultSetsForEx, manualSessionId } from './exerciseCatalog';
+import { defaultSetsForEx } from './exerciseCatalog';
+import { confirmSwitchLogDraft } from './draftSetHelpers';
 import { createLogHistoryActions } from './logHistoryActions';
 import { createLogInputActions } from './logInputActions';
 import { initLogDraft } from './logSelectors';
@@ -38,20 +39,8 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
     return state.logDraft ?? initLogDraft(state, routineNames(state.settings)[0] ?? 'Libre', todayIso());
   };
 
-  async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string, nextSessionId?: string): Promise<boolean> {
-    const cur = deps.getState().logDraft;
-    if (!cur?.dirty) return true;
-    const targetSid = nextSessionId ?? manualSessionId(nextDate, nextDay);
-    if (cur.day === nextDay && cur.date === nextDate && (cur.sessionId ?? manualSessionId(cur.date, cur.day)) === targetSid) {
-      return true;
-    }
-    return deps.askConfirm({
-      title: 'Cambiar de sesión sin guardar',
-      message: 'Tienes series o cambios sin guardar en el entrenamiento actual. Si cambias ahora se descartarán.',
-      confirmLabel: 'Descartar cambios',
-      danger: true,
-    });
-  }
+  const confirmSwitchDraft = (nextDay: DayName | 'Libre', nextDate: string, nextSessionId?: string) =>
+    confirmSwitchLogDraft(deps.getState().logDraft, nextDay, nextDate, deps.askConfirm, nextSessionId);
 
   return {
     ...createLogSetActions(ensureDraft, deps.commitDraft, deps.toast),

@@ -1,4 +1,5 @@
 import type { LiveWorkout } from '../types';
+import { isCompletedSet } from './draftSetHelpers';
 import { finalizePendingRest } from './workoutRestActions';
 
 const clearRestFields = (live: LiveWorkout): LiveWorkout => {
@@ -7,16 +8,16 @@ const clearRestFields = (live: LiveWorkout): LiveWorkout => {
 };
 
 const countDoneSets = (live: LiveWorkout) =>
-  live.exercises.reduce((sum, item) => sum + item.sets.filter((x) => x.done && x.r > 0).length, 0);
+  live.exercises.reduce((sum, item) => sum + item.sets.filter(isCompletedSet).length, 0);
 
 const isAllDone = (live: LiveWorkout) =>
   live.exercises.length > 0 &&
-  live.exercises.every((e) => e.sets.length > 0 && e.sets.every((x) => Boolean(x.done && x.r > 0)));
+  live.exercises.every((e) => e.sets.length > 0 && e.sets.every(isCompletedSet));
 
 const nextPendingExIdx = (live: LiveWorkout, ei: number) => {
-  const after = live.exercises.findIndex((e, i) => i > ei && e.sets.some((x) => !(x.done && x.r > 0)));
+  const after = live.exercises.findIndex((e, i) => i > ei && e.sets.some((x) => !isCompletedSet(x)));
   if (after >= 0) return after;
-  return live.exercises.findIndex((e, i) => i !== ei && e.sets.some((x) => !(x.done && x.r > 0)));
+  return live.exercises.findIndex((e, i) => i !== ei && e.sets.some((x) => !isCompletedSet(x)));
 };
 
 /**
@@ -54,7 +55,7 @@ export function applyToggleLiveSet(
   const nextExercises = workingLive.exercises.map((item, idx) => {
     if (idx !== ei) return item;
     const nextSets = item.sets.map((set, setIdx) => (setIdx === si ? { ...set, done: nextDone } : set));
-    const hasDone = nextSets.some((x) => Boolean(x.done && x.r > 0));
+    const hasDone = nextSets.some(isCompletedSet);
     let nextMeta = item.meta;
     if (nextDone && !nextMeta?.ts) {
       nextMeta = { ...nextMeta, ts: Math.max(Date.now(), maxExTs + 1) };
@@ -81,7 +82,7 @@ export function applyToggleLiveSet(
       /* vibración opcional según navegador */
     }
 
-    const hasMore = nextExercises.some((e) => e.sets.some((x) => !(x.done && x.r > 0)));
+    const hasMore = nextExercises.some((e) => e.sets.some((x) => !isCompletedSet(x)));
     if (hasMore) {
       const restStartedAt = Date.now();
       workingLive = {
@@ -94,7 +95,7 @@ export function applyToggleLiveSet(
       workingLive = clearRestFields(workingLive);
     }
 
-    const exDone = nextExercises[ei].sets.every((x) => Boolean(x.done && x.r > 0));
+    const exDone = nextExercises[ei].sets.every(isCompletedSet);
     const nextIdx = exDone ? nextPendingExIdx(workingLive, ei) : -1;
     if (exDone) {
       advanced = nextIdx >= 0;

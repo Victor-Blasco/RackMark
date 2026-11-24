@@ -1,110 +1,32 @@
+import type { ExStats } from '../lib/analysis';
+import { daysAgoIso, diffIsoDays, isValidIsoDate, norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
+import type { AiEntry, AiResult, AiSection, Measure, Settings } from '../types';
 import {
-  BarController,
-  BarElement,
-  CategoryScale,
-  Chart,
-  Filler,
-  Legend,
-  LinearScale,
-  LineController,
-  LineElement,
-  PointElement,
-  Tooltip,
-  type ChartConfiguration,
-} from 'chart.js';
-import type { Analysis, ExStats } from '../lib/analysis';
-import type { CloudUser } from '../lib/firebase';
-import { norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiEntry, AiJob, AiResult, AiSection, CardioRow, DailyWellbeing, DayName, LiveWorkout, LogDraft, Measure, Settings, StrengthRow, SyncJob } from '../types';
-import { humanizeError, RANGES, type ActiveModal, type RangeKey, type ToastAction } from '../store/types';
+  humanizeError,
+  RANGES,
+  type DateBounds,
+  type PlanTab,
+  type RangeKey,
+  type State,
+  type ToastAction,
+  type WorkoutSummary,
+} from '../store/types';
 
-export { humanizeError, RANGES, todayIso, type RangeKey, type ToastAction };
-
-Chart.register(
-  LineController,
-  LineElement,
-  PointElement,
-  BarController,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  Tooltip,
-  Legend,
-  Filler,
-);
-Chart.defaults.color = '#94A3A8';
-Chart.defaults.borderColor = 'rgba(238,243,245,0.07)';
-Chart.defaults.maintainAspectRatio = false;
+export {
+  humanizeError,
+  RANGES,
+  todayIso,
+  type DateBounds,
+  type PlanTab,
+  type RangeKey,
+  type State,
+  type ToastAction,
+  type WorkoutSummary,
+};
 
 export function rangeCutoff(r: RangeKey): string | null {
   const days = RANGES.find((x) => x.key === r)?.days;
-  return days ? todayIso(new Date(Date.now() - days * 864e5)) : null;
-}
-
-export interface WorkoutSummary {
-  day: DayName | 'Libre';
-  durationMin: number;
-  exercises: number;
-  sets: number;
-  tonnageKg: number;
-  prNames: string[];
-}
-
-/** Subpestañas disponibles dentro de `Planificación`. */
-export type PlanTab = 'routines' | 'exercises' | 'phases';
-
-/** Estado global de la aplicación en memoria. */
-export interface State {
-  tab: string;
-  strength: StrengthRow[];
-  cardio: CardioRow[];
-  measures: Measure[];
-  wellbeing: DailyWellbeing[];
-  settings: Settings;
-  analysis: Analysis;
-  sel: Record<string, string>;
-  perimeter: string;
-  muscleSel: string;
-  logDraft?: LogDraft;
-  liveWorkout?: LiveWorkout;
-  planTab?: PlanTab;
-  aiTab?: number;
-  dayExtra?: Record<string, boolean>;
-  ranges?: Record<string, RangeKey>;
-  customRanges?: Record<string, { from?: string; to?: string }>;
-  measureDate?: string;
-  measurePerimOpen?: boolean;
-  measureDraft?: Record<string, string>;
-  measureScrollTs?: number;
-  bodyMetric?: 'weight' | 'muscle';
-  calcDraft?: {
-    w?: string;
-    r?: string;
-    rir?: string;
-    bodyW?: string;
-    bodyBf?: string;
-    act?: string;
-    goal?: string;
-    protein?: string;
-    fat?: string;
-    meals?: string;
-  };
-  activeModal?: ActiveModal;
-  exerciseMapSearch?: string;
-  exerciseMapMuscle?: string;
-  showAllExerciseMap?: boolean;
-  mergeFrom?: string;
-  mergeTo?: string;
-  planRoutine?: string;
-  authReady?: boolean;
-  user?: CloudUser | null;
-  syncing?: boolean;
-  syncJob?: SyncJob;
-  lastSync?: number;
-  busy?: string;
-  aiJob?: AiJob;
-  toast?: string;
-  toastAction?: ToastAction;
+  return days ? daysAgoIso(days) : null;
 }
 
 const safeDateSlice = (d: string, a: number, b: number) => d.replace(/[<>&"']/g, '').slice(a, b);
@@ -115,16 +37,10 @@ export const fmtDate = (d: string) => `${safeDateSlice(d, 8, 10)}/${safeDateSlic
 /** Formatea una fecha ISO (`YYYY-MM-DD`) a formato corto `DD/MM`. */
 export const short = (d: string) => `${safeDateSlice(d, 8, 10)}/${safeDateSlice(d, 5, 7)}`;
 
-export interface DateBounds {
-  key: RangeKey;
-  from: string | null;
-  to: string | null;
-  label: string;
-  days?: number;
-}
-
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const cleanIso = (v?: string) => (v && ISO_DATE_RE.test(v.trim()) ? v.trim() : null);
+const cleanIso = (v?: string) => {
+  const t = v?.trim();
+  return t && isValidIsoDate(t) ? t : null;
+};
 
 /** Resuelve los límites de fecha activos (`from`, `to`, `label` y días) para un ámbito dado. */
 export function resolveRange(S: State, scope: string, fallback: RangeKey = '1M'): DateBounds {
@@ -134,9 +50,7 @@ export function resolveRange(S: State, scope: string, fallback: RangeKey = '1M')
     let from = cleanIso(raw.from);
     let to = cleanIso(raw.to);
     if (from && to && from > to) [from, to] = [to, from];
-    const days = from && to
-      ? Math.max(1, Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1)
-      : undefined;
+    const days = from && to ? diffIsoDays(from, to) : undefined;
     const label = from && to
       ? `${short(from)}–${short(to)}`
       : from
@@ -260,76 +174,4 @@ export function routineShort(name: string): string {
   const sig = words.filter((w) => !skip.has(w.toLowerCase()));
   const pool = sig.length >= 2 ? sig : words;
   return pool.slice(0, 3).map((w) => (/^\d+$/.test(w) ? w[0] : w[0].toUpperCase())).join('');
-}
-
-/** Añade offset, ticks legibles en móvil, leyenda compacta y puntos adaptativos sin pisar opciones explícitas. */
-export function normalizeChartConfig(cfg: ChartConfiguration): ChartConfiguration {
-  const opts = { ...(cfg.options ?? {}) } as Record<string, unknown>;
-  const reducedMotion =
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const rawScales = (opts.scales as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const scales: Record<string, Record<string, unknown>> = { ...rawScales };
-  const rawPlugins = (opts.plugins as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const rawLegend = rawPlugins.legend ?? {};
-  const datasets = (cfg.data?.datasets ?? []) as unknown as Record<string, unknown>[];
-  const pointCount = cfg.data?.labels?.length ?? 0;
-
-  if (cfg.type === 'line') {
-    const xScale = scales.x ?? {};
-    const xTicks = (xScale.ticks as Record<string, unknown> | undefined) ?? {};
-    scales.x = {
-      offset: true,
-      ...xScale,
-      ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 }, ...xTicks },
-    };
-    const yKeys = Object.keys(scales).filter((k) => k.startsWith('y'));
-    if (!yKeys.length) yKeys.push('y');
-    for (const k of yKeys) {
-      const yScale = scales[k] ?? {};
-      const yTicks = (yScale.ticks as Record<string, unknown> | undefined) ?? {};
-      scales[k] = { offset: true, ...yScale, ticks: { maxTicksLimit: 6, font: { size: 11 }, ...yTicks } };
-    }
-  } else if (cfg.type === 'bar') {
-    const xScale = scales.x ?? {};
-    const xTicks = (xScale.ticks as Record<string, unknown> | undefined) ?? {};
-    scales.x = { ...xScale, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6, font: { size: 10 }, ...xTicks } };
-    scales.y = { beginAtZero: true, grace: '8%', ...scales.y };
-  }
-
-  const nextDatasets = cfg.type === 'line'
-    ? datasets.map((ds) => ({
-        borderWidth: 2,
-        pointRadius: pointCount > 24 ? 0 : 2.5,
-        pointHoverRadius: 5,
-        pointHitRadius: 18,
-        ...ds,
-      }))
-    : datasets;
-
-  const legend = {
-    display: datasets.length > 1,
-    ...rawLegend,
-    labels: {
-      usePointStyle: true,
-      boxWidth: 8,
-      boxHeight: 8,
-      padding: 12,
-      font: { size: 11 },
-      ...((rawLegend.labels as Record<string, unknown> | undefined) ?? {}),
-    },
-  };
-
-  return {
-    ...cfg,
-    data: { ...cfg.data, datasets: nextDatasets },
-    options: {
-      interaction: { mode: 'index', intersect: false },
-      ...opts,
-      animation: reducedMotion ? false : (opts.animation ?? false),
-      plugins: { ...rawPlugins, legend },
-      scales,
-    },
-  } as ChartConfiguration;
 }

@@ -1,4 +1,4 @@
-import { musclesOf } from '../lib/analysis';
+import { findAnalyzedExercise, musclesOf } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
 import type { DayName, LogExDraft, SetRec } from '../types';
 import { findAiExercise, isAiFreshForEx, routineNames, short, type State } from '../ui/shared';
@@ -60,8 +60,7 @@ export function defaultSetsForEx(
   fallbackReps = 10,
   done = false,
 ): SetRec[] {
-  const k = norm(name);
-  const ex = [...state.analysis.exercises.values()].find((e) => norm(e.name) === k);
+  const ex = findAnalyzedExercise(state.analysis, name);
   if (ex?.last?.sets.length) return ex.last.sets.map((s) => ({ w: s.w, r: s.r, done }));
   return Array.from({ length: fallbackSets }, () => ({ w: 0, r: fallbackReps, done }));
 }
@@ -90,7 +89,7 @@ export function extractTargetWeight(text: string): number | null {
  */
 export function exerciseContext(state: State, day: DayName | 'Libre', ex: LogExDraft) {
   const k = norm(ex.name);
-  const hist = [...state.analysis.exercises.values()].find((e) => norm(e.name) === k);
+  const hist = findAnalyzedExercise(state.analysis, ex.name);
   const tgt = day !== 'Libre' ? (state.settings.routines[day] ?? []).find((r) => norm(r.name) === k) : hist?.target;
   const lastRef = hist?.last
     ? `Última (${short(hist.last.date)}): ${hist.last.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}`

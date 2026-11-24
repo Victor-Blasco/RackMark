@@ -1,4 +1,6 @@
+import { parseDecimal } from '../lib/seed';
 import type { LiveWorkout, LogExDraft, SetRec } from '../types';
+import { clampOptionalInt, isCompletedSet } from './draftSetHelpers';
 
 export const mapExercise = (live: LiveWorkout, ei: number, updater: (ex: LogExDraft) => LogExDraft): LiveWorkout => ({
   ...live,
@@ -8,14 +10,8 @@ export const mapExercise = (live: LiveWorkout, ei: number, updater: (ex: LogExDr
 export const mapSet = (live: LiveWorkout, ei: number, si: number, updater: (s: SetRec) => SetRec): LiveWorkout =>
   mapExercise(live, ei, (ex) => {
     const sets = ex.sets.map((s, j) => (j === si ? updater(s) : s));
-    return { ...ex, sets, done: sets.some((x) => Boolean(x.done && x.r > 0)) };
+    return { ...ex, sets, done: sets.some(isCompletedSet) };
   });
-
-const parseOptionalInt = (raw: string, max: number): number | undefined => {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  return Math.min(max, Math.max(0, Math.round(Number(trimmed) || 0)));
-};
 
 /**
  * Crea las acciones de edición numérica y notas para la sesión en vivo.
@@ -33,7 +29,7 @@ export function createWorkoutSetInputs(
   const updateOptionalInt = (ei: number, si: number, raw: string, key: 'rir' | 'restSec', max: number) => {
     const live = getLive();
     if (!live?.exercises[ei]?.sets[si]) return;
-    const val = parseOptionalInt(raw, max);
+    const val = clampOptionalInt(raw, max);
     saveOnly(
       mapSet(live, ei, si, (set) => {
         if (val == null) {
@@ -52,7 +48,7 @@ export function createWorkoutSetInputs(
       if (!live || !s) return;
       const trimmed = raw.trim();
       if (!finalize && (!trimmed || /[.,]$/.test(trimmed))) return;
-      const nextW = Math.max(0, parseFloat(trimmed.replace(',', '.')) || 0);
+      const nextW = Math.max(0, parseDecimal(trimmed) ?? 0);
       const nextLive = mapSet(live, ei, si, (set) => ({ ...set, w: nextW }));
       if (finalize || s.done) commit(nextLive);
       else saveOnly(nextLive);

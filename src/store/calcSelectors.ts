@@ -1,7 +1,7 @@
 import { epley } from '../lib/analysis';
 import { calculateNutrition, recommendActivityFactor } from '../lib/nutrition';
-import { norm } from '../lib/seed';
-import { r1, routineNames, todayIso, type State } from '../ui/shared';
+import { daysAgoIso, norm, parseDecimal } from '../lib/seed';
+import { r1, routineNames, type State } from '../ui/shared';
 import { daysActivityFactor, goalCalorieDelta } from './wizardSelectors';
 
 function formatWeeklyProjection(projection: number): string {
@@ -17,16 +17,15 @@ function formatWeeklyProjection(projection: number): string {
  * @returns Presets, métricas de 1RM, factor recomendado, calorías y reparto de macros.
  */
 export function buildCalcViewModel(state: State) {
-  const parseDec = (v: string) => parseFloat(v.replace(',', '.'));
   const latestW = [...state.measures].reverse().find((m) => m.weight != null)?.weight;
   const latestBf = [...state.measures].reverse().find((m) => m.bf != null)?.bf;
   const usingSampleMeasures = latestW == null || latestBf == null;
   const cBodyW = state.calcDraft?.bodyW;
   const cBodyBf = state.calcDraft?.bodyBf;
-  const parsedBodyW = cBodyW != null ? parseDec(cBodyW) : undefined;
-  const parsedBodyBf = cBodyBf != null ? parseDec(cBodyBf) : undefined;
-  const w = parsedBodyW != null && Number.isFinite(parsedBodyW) && parsedBodyW >= 25 && parsedBodyW <= 300 ? parsedBodyW : (latestW ?? 70);
-  const bf = parsedBodyBf != null && Number.isFinite(parsedBodyBf) && parsedBodyBf >= 2 && parsedBodyBf <= 65 ? parsedBodyBf : (latestBf ?? 15);
+  const parsedBodyW = cBodyW != null ? parseDecimal(cBodyW) : undefined;
+  const parsedBodyBf = cBodyBf != null ? parseDecimal(cBodyBf) : undefined;
+  const w = parsedBodyW != null && parsedBodyW >= 25 && parsedBodyW <= 300 ? parsedBodyW : (latestW ?? 70);
+  const bf = parsedBodyBf != null && parsedBodyBf >= 2 && parsedBodyBf <= 65 ? parsedBodyBf : (latestBf ?? 15);
   const hasBodyOverride = cBodyW != null || cBodyBf != null;
   const ffm = w * (1 - bf / 100);
 
@@ -53,7 +52,7 @@ export function buildCalcViewModel(state: State) {
   const cFat = state.calcDraft?.fat ?? '1.0';
   const cMeals = state.calcDraft?.meals ?? '4';
 
-  const cutoff = todayIso(new Date(Date.now() - 7 * 864e5));
+  const cutoff = daysAgoIso(7);
   const strengthSessions7d = state.analysis.sessions.filter((session) => session.date >= cutoff).length;
   const recentSteps = state.wellbeing
     .filter((day) => day.date >= cutoff)
@@ -64,7 +63,7 @@ export function buildCalcViewModel(state: State) {
     : 0;
   const recommendedAct = recommendActivityFactor(strengthSessions7d, avgSteps7d);
 
-  const numW = Math.max(0, parseDec(cW) || 0);
+  const numW = Math.max(0, parseDecimal(cW) ?? 0);
   const numR = Math.max(1, Math.min(30, parseInt(cR, 10) || 1));
   const numRir = Math.max(0, Math.min(10, parseInt(cRir, 10) || 0));
   const oneRm = epley(numW, numR);

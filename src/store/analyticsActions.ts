@@ -5,6 +5,7 @@ import { BASIC_MEASURE_KEYS, MEASURE_FIELDS } from '../types';
 import { todayIso, type State } from '../ui/shared';
 import { parseMeasureFormData } from './bodySelectors';
 import { createProfileActions } from './profileActions';
+import type { ConfirmModalOpts } from './types';
 
 /** Dependencias para acciones de Cuerpo, Volumen, Calculadoras y Perfil. */
 export interface AnalyticsActionDeps {
@@ -14,7 +15,7 @@ export interface AnalyticsActionDeps {
   render: () => void;
   queueSync: () => void;
   toast: (msg: string) => void;
-  askConfirm: (opts: { title: string; message: string; confirmLabel?: string; danger?: boolean }) => Promise<boolean>;
+  askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
 }
 
 /** Tipo de retorno completo de las acciones analíticas y biométricas. */

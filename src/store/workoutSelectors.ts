@@ -1,7 +1,8 @@
+import { findAnalyzedExercise } from '../lib/analysis';
 import type { DayName, LiveWorkout, LogExDraft } from '../types';
-import { norm } from '../lib/seed';
 import { defaultSetsForEx, exerciseContext } from './exerciseCatalog';
-import { routineColor, routineNames, todayIso, type State } from '../ui/shared';
+import { isCompletedSet } from './draftSetHelpers';
+import { r1, routineColor, routineNames, todayIso, type State } from '../ui/shared';
 
 /** Sugiere la siguiente rutina en rotación respecto a la última sesión registrada. */
 export function suggestedNextRoutine(state: State, routines: DayName[]): DayName | undefined {
@@ -124,22 +125,13 @@ export interface ExerciseCompletionSummary {
   tone: 'emerald' | 'amber' | 'blue';
 }
 
-const fmtDeltaNum = (v: number) => String(Math.round(Math.abs(v) * 10) / 10).replace('.', ',');
-
-/**
- * Resume el trabajo completado hoy en un ejercicio y calcula la diferencia frente a su sesión previa.
- *
- * @param state - Estado global con historial analizado.
- * @param ex - Ejercicio recién completado en la sesión viva.
- * @returns Totales de hoy, texto humano de comparativa y tono semántico.
- */
 export function buildExerciseCompletionSummary(state: State, ex: LogExDraft): ExerciseCompletionSummary {
-  const doneSets = ex.sets.filter((s) => s.done && s.r > 0);
+  const doneSets = ex.sets.filter(isCompletedSet);
   const setsCount = doneSets.length;
   const topWeight = setsCount ? Math.max(...doneSets.map((s) => s.w)) : 0;
   const totalReps = doneSets.reduce((sum, s) => sum + s.r, 0);
   const totalVolume = Math.round(doneSets.reduce((sum, s) => sum + s.w * s.r, 0));
-  const hist = [...state.analysis.exercises.values()].find((e) => norm(e.name) === norm(ex.name));
+  const hist = findAnalyzedExercise(state.analysis, ex.name);
   const prev = hist?.last;
 
   if (!prev) {
@@ -156,7 +148,7 @@ export function buildExerciseCompletionSummary(state: State, ex: LogExDraft): Ex
   }
 
   const parts: string[] = [];
-  if (dW !== 0) parts.push(`${dW > 0 ? '+' : '−'}${fmtDeltaNum(dW)} kg máx`);
+  if (dW !== 0) parts.push(`${dW > 0 ? '+' : '−'}${r1(Math.abs(dW))} kg máx`);
   if (dR !== 0 && parts.length < 2) parts.push(`${dR > 0 ? '+' : '−'}${Math.abs(dR)} reps`);
   if (dV !== 0 && parts.length < 2) parts.push(`${dV > 0 ? '+' : '−'}${Math.abs(dV)} kg vol.`);
   const improved = dW > 0 || (dW === 0 && (dV > 0 || (dV === 0 && dR > 0)));

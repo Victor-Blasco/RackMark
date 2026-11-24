@@ -1,4 +1,4 @@
-import type { Measure, MEASURE_FIELDS } from '../../types';
+import type { MEASURE_FIELDS, NumericMeasureKey } from '../../types';
 
 export type MeasureFieldDef = (typeof MEASURE_FIELDS)[number];
 
@@ -40,7 +40,7 @@ interface MeasurePerimGroupsProps {
   /** Grupos de campos de perímetros organizados por zona corporal. */
   groups: { title: string; fields: MeasureFieldDef[] }[];
   /** Resuelve valor actual, placeholder y última referencia de cada campo métrico. */
-  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string; lastLabel?: string };
+  getFieldInputMeta: (key: NumericMeasureKey) => { value: string; placeholder: string; lastLabel?: string };
   /** Actualiza el borrador al escribir en cualquier campo. */
   onUpdateDraft: (field: string, value: string) => void;
 }

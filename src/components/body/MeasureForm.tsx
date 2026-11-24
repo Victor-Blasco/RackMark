@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'preact/hooks';
-import type { Measure } from '../../types';
+import type { Measure, NumericMeasureKey } from '../../types';
 import { fmtDate } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
@@ -23,7 +23,7 @@ interface MeasureFormProps {
   /** Marca temporal emitida al pulsar editar en el historial para desplazar el formulario a la vista. */
   scrollSignal?: number;
   /** Resuelve valor actual, placeholder y referencia previa de cada campo métrico. */
-  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string; lastLabel?: string };
+  getFieldInputMeta: (key: NumericMeasureKey) => { value: string; placeholder: string; lastLabel?: string };
   /** Cambia la fecha activa del formulario. */
   onChangeDate: (date: string) => void;
   /** Restablece el formulario a la fecha de hoy. */

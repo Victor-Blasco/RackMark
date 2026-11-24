@@ -1,7 +1,8 @@
 import type { ChartConfiguration } from 'chart.js';
 import { judge, type ExSession, type ExStats } from '../lib/analysis';
-import type { Measure } from '../types';
+import type { Measure, NumericMeasureKey } from '../types';
 import {
+  fmtDate,
   inRange,
   movingAverage7dFor,
   r1,
@@ -51,13 +52,13 @@ export function filterExByRange(e: ExStats, bounds: DateBounds): ExStats {
 }
 
 /** Obtiene el último valor y el anterior comparable para una métrica corporal. */
-export function lastMetric(ms: Measure[], hasFilter: boolean, key: keyof Measure) {
+export function lastMetric(ms: Measure[], hasFilter: boolean, key: NumericMeasureKey) {
   const vals = ms.filter((m) => typeof m[key] === 'number');
   const cur = vals[vals.length - 1];
   const prev = hasFilter ? (vals.length > 1 ? vals[0] : undefined) : vals[vals.length - 2];
   return {
-    val: cur?.[key] as number | undefined,
-    prev: prev?.[key] as number | undefined,
+    val: cur?.[key],
+    prev: prev?.[key],
     date: cur?.date,
   };
 }
@@ -86,7 +87,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
           callbacks: {
             title: (items) => {
               const s = items[0] ? sessions[items[0].dataIndex] : undefined;
-              return s ? `${s.date.slice(8, 10)}/${s.date.slice(5, 7)}/${s.date.slice(0, 4)}` : '';
+              return s ? fmtDate(s.date) : '';
             },
             label: (ctx) => {
               const s = sessions[ctx.dataIndex];
@@ -141,6 +142,7 @@ export function buildHomeExChartConfig(state: State): ChartConfiguration<'line'>
   const bounds = resolveRange(state, 'home');
   const ex = homeExercises(state);
   const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : ex[0]?.name;
-  const curEx = cur ? filterExByRange(state.analysis.exercises.get(cur)!, bounds) : undefined;
+  const found = cur ? state.analysis.exercises.get(cur) : undefined;
+  const curEx = found ? filterExByRange(found, bounds) : undefined;
   return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, chartAccentColor()) : null;
 }

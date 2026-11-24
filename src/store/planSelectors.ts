@@ -1,4 +1,4 @@
-import { musclesOf } from '../lib/analysis';
+import { effectiveMuscleCredits, musclesOf } from '../lib/analysis';
 import { MUSCLES, norm } from '../lib/seed';
 import type { Settings } from '../types';
 import { normalizeSelectionText } from '../ui/selection';
@@ -33,13 +33,18 @@ export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
       if (!item.name || !(item.sets > 0)) continue;
       const m = musclesOf(item.name, settings);
       if (!m) continue;
-      out.set(m.p, (out.get(m.p) ?? 0) + item.sets);
-      for (const sec of m.s) {
-        out.set(sec, (out.get(sec) ?? 0) + item.sets * 0.5);
+      for (const [muscle, factor] of effectiveMuscleCredits(m)) {
+        out.set(muscle, (out.get(muscle) ?? 0) + item.sets * factor);
       }
     }
   }
   return out;
+}
+
+function matchesExerciseQuery(name: string, m: ReturnType<typeof musclesOf>, tokens: string[]): boolean {
+  if (!tokens.length) return true;
+  const hay = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
+  return tokens.every((t) => hay.includes(t));
 }
 
 /**
@@ -64,9 +69,7 @@ export function getPlanCatalogData(
     .filter((name) => {
       const m = musclesOf(name, state.settings);
       if (muscleSet && !muscleSet.has(m?.p ?? '') && !(m?.s ?? []).some((s) => muscleSet.has(s))) return false;
-      if (!tokens.length) return true;
-      const hay = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
-      return tokens.every((t) => hay.includes(t));
+      return matchesExerciseQuery(name, m, tokens);
     })
     .sort((a, b) => {
       if (muscleSet) {
@@ -102,11 +105,11 @@ function getExerciseMapCandidates(state: State): string[] {
 export function getExerciseMapFacets(state: State): Array<{ name: string; count: number }> {
   const candidates = getExerciseMapCandidates(state);
   const q = normalizeSelectionText(state.exerciseMapSearch ?? '');
+  const tokens = q ? q.split(/\s+/) : [];
   const counts = new Map<string, number>();
   for (const name of candidates) {
     const m = musclesOf(name, state.settings);
-    const haystack = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
-    if (q && !q.split(/\s+/).every((token) => haystack.includes(token))) continue;
+    if (!matchesExerciseQuery(name, m, tokens)) continue;
     for (const group of new Set([m?.p ?? '', ...(m?.s ?? [])].filter(Boolean))) {
       counts.set(group, (counts.get(group) ?? 0) + 1);
     }
@@ -125,15 +128,14 @@ export function getExerciseMapFacets(state: State): Array<{ name: string; count:
 export function getExerciseMapData(state: State): { countText: string; items: ExerciseMapItem[] } {
   const names = allExerciseNames(state);
   const q = normalizeSelectionText(state.exerciseMapSearch ?? '');
+  const tokens = q ? q.split(/\s+/) : [];
   const muscle = state.exerciseMapMuscle ?? '';
   const candidates = getExerciseMapCandidates(state);
   const matches = candidates
     .filter((name) => {
       const m = musclesOf(name, state.settings);
       if (muscle && m?.p !== muscle && !m?.s.includes(muscle)) return false;
-      if (!q) return true;
-      const haystack = normalizeSelectionText([name, m?.p ?? '', ...(m?.s ?? [])].join(' '));
-      return q.split(/\s+/).every((token) => haystack.includes(token));
+      return matchesExerciseQuery(name, m, tokens);
     })
     .sort((a, b) => {
       const aMapped = musclesOf(a, state.settings)?.p ? 1 : 0;

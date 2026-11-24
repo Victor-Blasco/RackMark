@@ -3,7 +3,7 @@ import { deleteKey, putMany } from '../lib/db';
 import { CATALOG_NORM_SET, isValidIsoDate, norm } from '../lib/seed';
 import { markBucketDeletes, markBucketUpserts } from '../lib/sync';
 import type { LiveWorkout, LogDraft, StrengthRow } from '../types';
-import type { State } from '../ui/shared';
+import { fmtDate, type State } from '../ui/shared';
 import { allExerciseNames } from './exerciseCatalog';
 import type { ConfirmModalOpts } from './types';
 
@@ -396,10 +396,9 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
       const sortedBefore = [...S.settings.phases].sort((a, b) => a.start.localeCompare(b.start));
       const target = sortedBefore[sortedIdx];
       if (!target) return;
-      const d = target.start;
       const confirmed = await deps.askConfirm({
         title: `Eliminar fase "${target.name}"`,
-        message: `Se eliminará la fase "${target.name}" (desde ${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}). Esta acción no se puede deshacer.`,
+        message: `Se eliminará la fase "${target.name}" (desde ${fmtDate(target.start)}). Esta acción no se puede deshacer.`,
         confirmLabel: 'Eliminar fase',
         danger: true,
       });

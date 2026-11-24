@@ -18,6 +18,16 @@ export function createLogSetActions(
   commitDraft: (draft?: LogDraft) => void,
   toast: (msg: string, action?: ToastAction) => void,
 ) {
+  const reorderExercises = (from: number, to: number) => {
+    const draft = ensureDraft();
+    const exercises = [...draft.exercises];
+    if (!moveItem(exercises, from, to)) return;
+    const baseTs = exercises.reduce((min, e) => (e.meta?.ts != null ? Math.min(min, e.meta.ts) : min), Infinity);
+    const startTs = Number.isFinite(baseTs) ? baseTs : (Date.parse(`${draft.date}T12:00:00Z`) || Date.now());
+    const reindexed = exercises.map((e, i) => (e.meta?.ts != null ? { ...e, meta: { ...e.meta, ts: startTs + i * 1000 } } : e));
+    commitDraft({ ...draft, dirty: true, exercises: reindexed });
+  };
+
   return {
     toggleExercise(ei: number) {
       const draft = ensureDraft();
@@ -147,24 +157,7 @@ export function createLogSetActions(
       });
     },
 
-    moveExercise(ei: number, dir: number) {
-      const draft = ensureDraft();
-      const exercises = [...draft.exercises];
-      if (!moveItem(exercises, ei, ei + dir)) return;
-      const baseTs = exercises.reduce((min, e) => (e.meta?.ts != null ? Math.min(min, e.meta.ts) : min), Infinity);
-      const startTs = Number.isFinite(baseTs) ? baseTs : (Date.parse(`${draft.date}T12:00:00Z`) || Date.now());
-      const reindexed = exercises.map((e, i) => (e.meta?.ts != null ? { ...e, meta: { ...e.meta, ts: startTs + i * 1000 } } : e));
-      commitDraft({ ...draft, dirty: true, exercises: reindexed });
-    },
-
-    reorderExercises(from: number, to: number) {
-      const draft = ensureDraft();
-      const exercises = [...draft.exercises];
-      if (!moveItem(exercises, from, to)) return;
-      const baseTs = exercises.reduce((min, e) => (e.meta?.ts != null ? Math.min(min, e.meta.ts) : min), Infinity);
-      const startTs = Number.isFinite(baseTs) ? baseTs : (Date.parse(`${draft.date}T12:00:00Z`) || Date.now());
-      const reindexed = exercises.map((e, i) => (e.meta?.ts != null ? { ...e, meta: { ...e.meta, ts: startTs + i * 1000 } } : e));
-      commitDraft({ ...draft, dirty: true, exercises: reindexed });
-    },
+    moveExercise: (ei: number, dir: number) => reorderExercises(ei, ei + dir),
+    reorderExercises,
   };
 }

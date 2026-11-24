@@ -1,5 +1,5 @@
-import { isValidIsoDate } from '../lib/seed';
-import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type Measure } from '../types';
+import { isValidIsoDate, parseDecimal } from '../lib/seed';
+import { BASIC_MEASURE_KEYS, MEASURE_FIELDS, type Measure, type NumericMeasureKey } from '../types';
 import { inRange, r1, resolveRange, todayIso, type State } from '../ui/shared';
 import {
   PERIM,
@@ -11,20 +11,20 @@ import {
 
 export { PERIM, PERIM_ALL_KEYS, PERIM_GROUPS, buildCompChartConfig, buildPerimChartConfig };
 
-function buildLastKnownMap(measures: Measure[]): Partial<Record<keyof Measure, number>> {
-  const found: Partial<Record<keyof Measure, number>> = {};
+const FIELD_BY_KEY = new Map(MEASURE_FIELDS.map((f) => [f.key, f]));
+
+function buildLastKnownMap(measures: Measure[]): Partial<Record<NumericMeasureKey, number>> {
+  const found: Partial<Record<NumericMeasureKey, number>> = {};
   for (let i = measures.length - 1; i >= 0; i--) {
     const m = measures[i];
     for (const { key } of MEASURE_FIELDS) {
       if (found[key] === undefined && typeof m[key] === 'number') {
-        found[key] = m[key] as number;
+        found[key] = m[key];
       }
     }
   }
   return found;
 }
-
-const fmtBodyComma = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 
 function buildCompVerdict(comp: Measure[], mode: 'weight' | 'muscle'): string | undefined {
   const mainKey = mode === 'muscle' ? 'muscle' : 'weight';
@@ -34,16 +34,16 @@ function buildCompVerdict(comp: Measure[], mode: 'weight' | 'muscle'): string | 
   if (mainPts.length === 0 && bfPts.length === 0) return undefined;
   if (mainPts.length <= 1 && bfPts.length <= 1) {
     const first = mainPts[0]?.[mainKey];
-    return first != null ? `Último registro: ${fmtBodyComma(first)} kg de ${mainLabel}` : 'Solo 1 registro en este rango';
+    return first != null ? `Último registro: ${r1(first)} kg de ${mainLabel}` : 'Solo 1 registro en este rango';
   }
   const parts: string[] = [];
   if (mainPts.length >= 2) {
     const dMain = Math.round(((mainPts[mainPts.length - 1][mainKey] ?? 0) - (mainPts[0][mainKey] ?? 0)) * 10) / 10;
-    parts.push(dMain === 0 ? `${mainLabel} estable` : `${dMain > 0 ? '+' : '−'}${fmtBodyComma(Math.abs(dMain))} kg ${mainLabel}`);
+    parts.push(dMain === 0 ? `${mainLabel} estable` : `${dMain > 0 ? '+' : '−'}${r1(Math.abs(dMain))} kg ${mainLabel}`);
   }
   if (bfPts.length >= 2) {
     const dBf = Math.round(((bfPts[bfPts.length - 1].bf ?? 0) - (bfPts[0].bf ?? 0)) * 10) / 10;
-    if (dBf !== 0) parts.push(`${dBf > 0 ? '+' : '−'}${fmtBodyComma(Math.abs(dBf))}% grasa`);
+    if (dBf !== 0) parts.push(`${dBf > 0 ? '+' : '−'}${r1(Math.abs(dBf))}% grasa`);
   }
   return `${parts.join(' · ')} en este periodo`;
 }
@@ -76,14 +76,14 @@ export function buildBodyViewModel(state: State) {
   const perimOpen = state.measurePerimOpen ?? hasPerimsInCurrent;
   const perimGroups = PERIM_GROUPS.map((g) => ({
     title: g.title,
-    fields: g.keys.map((k) => MEASURE_FIELDS.find((f) => f.key === k)!),
+    fields: g.keys.map((k) => FIELD_BY_KEY.get(k)!),
   }));
 
   const visibleCols = MEASURE_FIELDS.filter((f) => msInRange.some((m) => m[f.key] != null));
   const tableCols = visibleCols.length ? visibleCols : basicFields;
   const lastKnownByKey = buildLastKnownMap(ms);
 
-  const getFieldInputMeta = (key: keyof Measure): { value: string; placeholder: string; lastLabel?: string } => {
+  const getFieldInputMeta = (key: NumericMeasureKey): { value: string; placeholder: string; lastLabel?: string } => {
     const draftVal = state.measureDraft?.[key];
     const entryVal = currentEntry?.[key];
     const value = draftVal ?? (entryVal != null ? String(entryVal) : '');
@@ -120,11 +120,6 @@ export function buildBodyViewModel(state: State) {
   };
 }
 
-const parseMeasureDecimal = (v: string): number | undefined => {
-  const n = parseFloat(v.replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-};
-
 /**
  * Extrae y valida un registro `Measure` a partir de un `FormData` preservando campos ocultos previos.
  *
@@ -143,12 +138,12 @@ export function parseMeasureFormData(
   let metricCount = 0;
   for (const { key } of MEASURE_FIELDS) {
     const val = fd.has(key)
-      ? parseMeasureDecimal(String(fd.get(key) ?? ''))
+      ? parseDecimal(String(fd.get(key) ?? ''))
       : typeof existing?.[key] === 'number'
         ? existing[key]
         : undefined;
     if (val != null) {
-      (measure as unknown as Record<string, number>)[key] = val;
+      measure[key] = val;
       metricCount++;
     }
   }

@@ -1,7 +1,8 @@
 import type { DayName, LiveWorkout, LogDraft } from '../types';
 import { routineNames, todayIso, type State } from '../ui/shared';
-import { manualSessionId } from './exerciseCatalog';
+import { confirmSwitchLogDraft } from './draftSetHelpers';
 import { initLogDraft } from './logSelectors';
+import type { ConfirmModalOpts } from './types';
 import { initLiveWorkout } from './workoutSelectors';
 
 /** Dependencias para lanzar entrenos, limpiar borradores y sincronizar nombres de rutina. */
@@ -11,7 +12,7 @@ export interface WorkoutLaunchDeps {
   render: () => void;
   saveDraft: (draft?: LogDraft) => void;
   saveLive: (live?: LiveWorkout) => void;
-  askConfirm: (opts: { title: string; message: string; confirmLabel?: string; danger?: boolean }) => Promise<boolean>;
+  askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
 }
 
 /** Tipo de retorno del lanzador de sesiones en vivo y registro manual. */
@@ -34,19 +35,8 @@ export function activeWorkoutWarning(state: State, removedNames: string[]): stri
 export function createWorkoutLaunchActions(deps: WorkoutLaunchDeps) {
   const state = () => deps.getState();
 
-  async function confirmSwitchDraft(nextDay: DayName | 'Libre', nextDate: string): Promise<boolean> {
-    const cur = state().logDraft;
-    if (!cur?.dirty) return true;
-    const targetSid = manualSessionId(nextDate, nextDay);
-    const curSid = cur.sessionId ?? manualSessionId(cur.date, cur.day);
-    if (cur.day === nextDay && cur.date === nextDate && curSid === targetSid) return true;
-    return deps.askConfirm({
-      title: 'Cambiar de sesión sin guardar',
-      message: 'Tienes series o cambios sin guardar en el entrenamiento actual. Si cambias ahora se descartarán.',
-      confirmLabel: 'Descartar cambios',
-      danger: true,
-    });
-  }
+  const confirmSwitchDraft = (nextDay: DayName | 'Libre', nextDate: string) =>
+    confirmSwitchLogDraft(state().logDraft, nextDay, nextDate, deps.askConfirm);
 
   return {
     clearActiveWorkouts() {

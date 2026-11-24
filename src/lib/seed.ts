@@ -20,6 +20,25 @@ export function todayIso(d: Date = new Date()): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Parsea texto decimal admitiendo coma o punto español (`"72,5"` -> `72.5`). */
+export function parseDecimal(raw: string): number | undefined {
+  const trimmed = raw.trim().replace(',', '.');
+  if (!trimmed) return undefined;
+  const n = parseFloat(trimmed);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Devuelve la fecha local `YYYY-MM-DD` correspondiente a hace `days` días. */
+export function daysAgoIso(days: number, now = Date.now()): string {
+  return todayIso(new Date(now - days * 864e5));
+}
+
+/** Calcula los días naturales inclusivos entre dos fechas ISO `YYYY-MM-DD` (`>= 1`). */
+export function diffIsoDays(from: string, to: string): number {
+  const diff = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1;
+  return Number.isFinite(diff) && diff > 0 ? diff : 1;
+}
+
 /** Tipos predefinidos de fuerza de Samsung Health (EXERCISE_TYPE 10004–10027) para importaciones ZIP. */
 export const BUILTIN_REF_NAMES: Record<string, string> = {
   'type:10004': 'Flexiones',

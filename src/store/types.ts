@@ -1,6 +1,17 @@
 import type { Analysis } from '../lib/analysis';
 import type { CloudUser } from '../lib/firebase';
-import type { State, WorkoutSummary } from '../ui/shared';
+import type {
+  AiJob,
+  CardioRow,
+  DailyWellbeing,
+  DayName,
+  LiveWorkout,
+  LogDraft,
+  Measure,
+  Settings,
+  StrengthRow,
+  SyncJob,
+} from '../types';
 import type { WizardDraft } from './wizardSelectors';
 
 export type RangeKey = '1M' | '3M' | '6M' | '1A' | 'Todo' | 'Custom';
@@ -12,6 +23,80 @@ export const RANGES: { key: RangeKey; label: string; days?: number }[] = [
   { key: 'Todo', label: 'Todo' },
   { key: 'Custom', label: 'Fechas' },
 ];
+
+export interface WorkoutSummary {
+  day: DayName | 'Libre';
+  durationMin: number;
+  exercises: number;
+  sets: number;
+  tonnageKg: number;
+  prNames: string[];
+}
+
+/** Subpestañas disponibles dentro de `Planificación`. */
+export type PlanTab = 'routines' | 'exercises' | 'phases';
+
+export interface DateBounds {
+  key: RangeKey;
+  from: string | null;
+  to: string | null;
+  label: string;
+  days?: number;
+}
+
+/** Estado global de la aplicación en memoria. */
+export interface State {
+  tab: string;
+  strength: StrengthRow[];
+  cardio: CardioRow[];
+  measures: Measure[];
+  wellbeing: DailyWellbeing[];
+  settings: Settings;
+  analysis: Analysis;
+  sel: Record<string, string>;
+  perimeter: string;
+  muscleSel: string;
+  logDraft?: LogDraft;
+  liveWorkout?: LiveWorkout;
+  planTab?: PlanTab;
+  aiTab?: number;
+  dayExtra?: Record<string, boolean>;
+  ranges?: Record<string, RangeKey>;
+  customRanges?: Record<string, { from?: string; to?: string }>;
+  measureDate?: string;
+  measurePerimOpen?: boolean;
+  measureDraft?: Record<string, string>;
+  measureScrollTs?: number;
+  bodyMetric?: 'weight' | 'muscle';
+  calcDraft?: {
+    w?: string;
+    r?: string;
+    rir?: string;
+    bodyW?: string;
+    bodyBf?: string;
+    act?: string;
+    goal?: string;
+    protein?: string;
+    fat?: string;
+    meals?: string;
+  };
+  activeModal?: ActiveModal;
+  exerciseMapSearch?: string;
+  exerciseMapMuscle?: string;
+  showAllExerciseMap?: boolean;
+  mergeFrom?: string;
+  mergeTo?: string;
+  planRoutine?: string;
+  authReady?: boolean;
+  user?: CloudUser | null;
+  syncing?: boolean;
+  syncJob?: SyncJob;
+  lastSync?: number;
+  busy?: 'ai';
+  aiJob?: AiJob;
+  toast?: string;
+  toastAction?: ToastAction;
+}
 
 /** Acción opcional embebida dentro de un toast (p. ej. `Deshacer`). */
 export interface ToastAction {

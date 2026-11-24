@@ -1,3 +1,4 @@
+import { parseDecimal, ROUTINE_TEMPLATES } from '../lib/seed';
 import type { AiTone, ExperienceLevel, Settings, TrainingGoal } from '../types';
 import type { State } from '../ui/shared';
 
@@ -113,10 +114,7 @@ export function createWizardDraft(state: State): WizardDraft {
 }
 
 /** Parsea texto decimal aceptando coma o punto en campos numéricos del asistente. */
-export const parseWizardNum = (v: string): number | undefined => {
-  const n = parseFloat(v.replace(',', '.'));
-  return Number.isFinite(n) ? n : undefined;
-};
+export const parseWizardNum = parseDecimal;
 
 /** Calcula las fases de entrenamiento resultantes al completar el asistente inicial. */
 export function resolveWizardPhases(

@@ -1,4 +1,6 @@
+import { parseDecimal } from '../lib/seed';
 import type { LogDraft, LogExDraft, SetRec } from '../types';
+import { clampOptionalInt, isCompletedSet } from './draftSetHelpers';
 
 export const mapDraftEx = (
   draft: LogDraft,
@@ -21,15 +23,9 @@ export const mapDraftSet = (
     return {
       ...ex,
       sets,
-      done: sets.some((x) => Boolean(x.done && x.r > 0)),
+      done: sets.some(isCompletedSet),
     };
   });
-
-const clampOptionalInt = (raw: string, max: number): number | undefined => {
-  const trimmed = raw.trim();
-  if (!trimmed) return undefined;
-  return Math.min(max, Math.max(0, Math.round(Number(trimmed) || 0)));
-};
 
 /**
  * Crea las acciones de edición numérica (`kg`, `reps`, `descanso`, `RIR`) y notas de `Registrar hecho`.
@@ -74,7 +70,7 @@ export function createLogInputActions(
       if (!s) return;
       const trimmed = raw.trim();
       if (!finalize && (!trimmed || /[.,]$/.test(trimmed))) return;
-      const nextW = Math.max(0, parseFloat(trimmed.replace(',', '.')) || 0);
+      const nextW = Math.max(0, parseDecimal(trimmed) ?? 0);
       const nextDone = s.r > 0;
       const nextDraft = mapDraftSet(draft, ei, si, (set) => ({ ...set, w: nextW, done: nextDone }));
       if (finalize || nextDone || Boolean(s.done) !== nextDone) commitDraft(nextDraft);
