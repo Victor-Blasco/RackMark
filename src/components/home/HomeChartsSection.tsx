@@ -7,6 +7,10 @@ interface HomeChartsSectionProps {
   selectedEx?: string;
   /** Etiqueta legible del rango temporal activo. */
   rangeLabel: string;
+  /** Veredicto de 1 línea para la tendencia del ejercicio. */
+  exVerdict?: string;
+  /** Veredicto de 1 línea para la tendencia de peso corporal. */
+  bodyVerdict?: string;
   /** Configuración Chart.js de progresión del ejercicio (o `null`). */
   exChartCfg: ChartConfiguration | null;
   /** Configuración Chart.js de peso y % grasa (o `null`). */
@@ -21,6 +25,8 @@ interface HomeChartsSectionProps {
 export function HomeChartsSection({
   selectedEx,
   rangeLabel,
+  exVerdict,
+  bodyVerdict,
   exChartCfg,
   bodyChartCfg,
   onOpenPicker,
@@ -43,6 +49,7 @@ export function HomeChartsSection({
             <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
           </button>
         </div>
+        {exVerdict && <p class="text-xs font-semibold text-gray-200 num-col">{exVerdict}</p>}
         {exChartCfg ? (
           <div class="chart-box"><ChartCanvas id="c-home-ex" config={exChartCfg} /></div>
         ) : (
@@ -55,6 +62,7 @@ export function HomeChartsSection({
           <h2 class="text-base font-bold text-white">Peso y % de grasa</h2>
           <p class="text-xs text-gray-400">Tendencia media 7 días + registros ({rangeLabel})</p>
         </div>
+        {bodyVerdict && <p class="text-xs font-semibold text-gray-200 num-col">{bodyVerdict}</p>}
         {bodyChartCfg ? (
           <div class="chart-box"><ChartCanvas id="c-home-body" config={bodyChartCfg} /></div>
         ) : (

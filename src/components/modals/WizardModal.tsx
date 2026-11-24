@@ -61,7 +61,7 @@ export function WizardModal({
 
   return (
     <div id="wizard-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="wizardTitle" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
-      <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} aria-hidden="true" onClick={() => void onSkip()} />
+      <div class={`fixed inset-0 bg-black/80 ${backdropAnim}`} aria-hidden="true" />
       <form
         id="f-wizard"
         class={`relative z-10 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-modalDark shadow-2xl max-h-[90dvh] ${modalAnim}`}

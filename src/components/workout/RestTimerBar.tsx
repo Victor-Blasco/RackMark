@@ -1,4 +1,5 @@
 import { fmtMMSS, useRestTimer } from '../../hooks/useRestTimer';
+import { Icon } from '../common/Icon';
 
 const REST_PRESETS = [60, 90, 120, 180] as const;
 
@@ -69,7 +70,16 @@ export function RestTimerBar({
 
   return (
     <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
-      <span class="text-gray-400">Descanso auto entre series: <b class="text-white tabular-nums">{restSec}s</b></span>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-gray-400">Descanso auto: <b class="text-white tabular-nums">{restSec}s</b></span>
+        <button
+          type="button"
+          class="btn min-h-[44px] sm:min-h-[36px] px-2.5 text-xs font-semibold text-blue-300"
+          onClick={() => onStart?.(restSec)}
+        >
+          <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {restSec}s
+        </button>
+      </div>
       <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
         {REST_PRESETS.map((p) => (
           <button

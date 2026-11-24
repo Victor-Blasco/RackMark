@@ -1,4 +1,5 @@
 import type { DayName, LiveWorkout, LogExDraft } from '../types';
+import { norm } from '../lib/seed';
 import { defaultSetsForEx, exerciseContext } from './exerciseCatalog';
 import { routineColor, routineNames, todayIso, type State } from '../ui/shared';
 
@@ -113,6 +114,62 @@ export function buildDayPickerItems(state: State): DayPickerRoutineItem[] {
   });
 }
 
+/** Resumen y comparativa vs la sesión anterior tras completar todas las series de un ejercicio. */
+export interface ExerciseCompletionSummary {
+  setsCount: number;
+  topWeight: number;
+  totalReps: number;
+  totalVolume: number;
+  comparisonText: string;
+  tone: 'emerald' | 'amber' | 'blue';
+}
+
+const fmtDeltaNum = (v: number) => String(Math.round(Math.abs(v) * 10) / 10).replace('.', ',');
+
+/**
+ * Resume el trabajo completado hoy en un ejercicio y calcula la diferencia frente a su sesión previa.
+ *
+ * @param state - Estado global con historial analizado.
+ * @param ex - Ejercicio recién completado en la sesión viva.
+ * @returns Totales de hoy, texto humano de comparativa y tono semántico.
+ */
+export function buildExerciseCompletionSummary(state: State, ex: LogExDraft): ExerciseCompletionSummary {
+  const doneSets = ex.sets.filter((s) => s.done && s.r > 0);
+  const setsCount = doneSets.length;
+  const topWeight = setsCount ? Math.max(...doneSets.map((s) => s.w)) : 0;
+  const totalReps = doneSets.reduce((sum, s) => sum + s.r, 0);
+  const totalVolume = Math.round(doneSets.reduce((sum, s) => sum + s.w * s.r, 0));
+  const hist = [...state.analysis.exercises.values()].find((e) => norm(e.name) === norm(ex.name));
+  const prev = hist?.last;
+
+  if (!prev) {
+    return { setsCount, topWeight, totalReps, totalVolume, comparisonText: 'Primera sesión registrada', tone: 'blue' };
+  }
+
+  const prevReps = prev.sets.reduce((sum, s) => sum + s.r, 0);
+  const dW = Math.round((topWeight - prev.top) * 10) / 10;
+  const dR = totalReps - prevReps;
+  const dV = totalVolume - Math.round(prev.volume);
+
+  if (dW === 0 && dR === 0 && dV === 0) {
+    return { setsCount, topWeight, totalReps, totalVolume, comparisonText: 'Igual que tu sesión anterior', tone: 'blue' };
+  }
+
+  const parts: string[] = [];
+  if (dW !== 0) parts.push(`${dW > 0 ? '+' : '−'}${fmtDeltaNum(dW)} kg máx`);
+  if (dR !== 0 && parts.length < 2) parts.push(`${dR > 0 ? '+' : '−'}${Math.abs(dR)} reps`);
+  if (dV !== 0 && parts.length < 2) parts.push(`${dV > 0 ? '+' : '−'}${Math.abs(dV)} kg vol.`);
+  const improved = dW > 0 || (dW === 0 && (dV > 0 || (dV === 0 && dR > 0)));
+  return {
+    setsCount,
+    topWeight,
+    totalReps,
+    totalVolume,
+    comparisonText: `${parts.join(' · ')} vs anterior`,
+    tone: improved ? 'emerald' : 'amber',
+  };
+}
+
 /**
  * Calcula el modelo completo derivado para la sesión activa de `<LiveWorkoutView />`.
  *
@@ -128,6 +185,7 @@ export function buildLiveWorkoutViewModel(state: State, live: LiveWorkout) {
   const totalSetsCount = live.exercises.reduce((acc, e) => acc + e.sets.length, 0);
   const routines = routineNames(state.settings);
   const rIdx = routines.indexOf(live.day);
+  const prevBannerEx = live.lastCompletedExIdx != null ? live.exercises[live.lastCompletedExIdx] : undefined;
   return {
     total,
     curIdx,
@@ -136,7 +194,9 @@ export function buildLiveWorkoutViewModel(state: State, live: LiveWorkout) {
     doneSetsCount,
     totalSetsCount,
     allDone: total > 0 && doneExCount === total,
-    prevBannerEx: live.lastCompletedExIdx != null ? live.exercises[live.lastCompletedExIdx] : undefined,
+    prevIdx: live.lastCompletedExIdx,
+    prevBannerEx,
+    prevSummary: prevBannerEx ? buildExerciseCompletionSummary(state, prevBannerEx) : undefined,
     dayColor: rIdx >= 0 ? routineColor(live.day, state.settings, rIdx) : '#9CA3AF',
     activeCtx: currentEx ? exerciseContext(state, live.day, currentEx) : undefined,
     elapsedLabel: fmtElapsed(live.startedAt),

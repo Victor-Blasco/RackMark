@@ -33,7 +33,7 @@ export function LoadControlSection({ rows, onOpenDetail, onGoLog }: LoadControlS
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-1.5">
-          <h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>
+          <h2 class="text-base font-bold text-white">Tu progreso por ejercicio</h2>
           <button
             type="button"
             aria-expanded={legendOpen ? 'true' : 'false'}

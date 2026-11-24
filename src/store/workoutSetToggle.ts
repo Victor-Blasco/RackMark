@@ -85,14 +85,12 @@ export function applyToggleLiveSet(
 
     const exDone = nextExercises[ei].sets.every((x) => Boolean(x.done && x.r > 0));
     const nextIdx = exDone ? nextPendingExIdx(workingLive, ei) : -1;
-    if (nextIdx >= 0) {
-      advanced = true;
+    if (exDone) {
+      advanced = nextIdx >= 0;
       workingLive = {
         ...workingLive,
         lastCompletedExIdx: ei,
-        curIdx: nextIdx,
-        exMenuOpen: undefined,
-        pickerMode: undefined,
+        ...(nextIdx >= 0 ? { curIdx: nextIdx, exMenuOpen: undefined, pickerMode: undefined } : {}),
       };
     } else {
       workingLive = {

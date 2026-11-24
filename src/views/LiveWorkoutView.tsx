@@ -61,6 +61,7 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
           menuOpen={Boolean(live.exMenuOpen)}
           secondarySave={secondarySave}
           onToggleMenu={actions.toggleMenu}
+          onDiscard={() => void actions.discard()}
           onSave={() => void actions.save()}
         />
 
@@ -72,14 +73,15 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
           onToggleMenu={actions.toggleMenu}
           onSelectExercise={actions.selectExercise}
           onOpenAddPicker={() => actions.openPicker('add')}
-          onDiscard={() => void actions.discard()}
         />
       </div>
 
-      {vm.prevBannerEx && live.lastCompletedExIdx != null && (
+      {vm.prevBannerEx && vm.prevIdx != null && (
         <PrevCompletedBanner
+          prevIdx={vm.prevIdx}
           prevName={vm.prevBannerEx.name}
-          onGoBack={() => actions.selectExercise(live.lastCompletedExIdx!)}
+          summary={vm.prevSummary}
+          onGoBack={() => actions.selectExercise(vm.prevIdx!)}
           onAddExtraSet={actions.addExtraSetPrev}
           onDismiss={actions.clearPrevBanner}
         />

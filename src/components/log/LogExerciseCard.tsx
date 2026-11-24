@@ -63,7 +63,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
               )}
             </div>
           )}
-          {ctx.fixedNote && <p class="text-gray-300"><span class="font-semibold text-white">Fija:</span> {ctx.fixedNote}</p>}
+          {ctx.fixedNote && <p class="text-gray-300"><span class="font-semibold text-white">Nota fija:</span> {ctx.fixedNote}</p>}
         </div>
       )}
 

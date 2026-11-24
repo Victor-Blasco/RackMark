@@ -96,15 +96,15 @@ export function MacroDistributionPanel({ nutrition, carbWarning }: MacroDistribu
         )}
         <div class="grid grid-cols-3 divide-x divide-white/10 rounded-xl border border-white/10 py-2 text-center">
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">Por comida · P</span>
+            <span class="block text-[11px] text-gray-400">Por comida · Proteína</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-emerald-300">{nutrition.perMeal.proteinG} g</span>
           </div>
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">Por comida · G</span>
+            <span class="block text-[11px] text-gray-400">Por comida · Grasas</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-amberGold">{nutrition.perMeal.fatG} g</span>
           </div>
           <div class="px-2">
-            <span class="block text-[11px] text-gray-400">Por comida · C</span>
+            <span class="block text-[11px] text-gray-400">Por comida · Carbos</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-blue-300">{nutrition.perMeal.carbsG} g</span>
           </div>
         </div>

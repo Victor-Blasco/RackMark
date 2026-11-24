@@ -14,10 +14,10 @@ interface VolumeViewProps {
 const MUSCLE_BTN_BASE =
   'inline-flex min-h-[44px] sm:min-h-0 items-center rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
-function cellColor(v: number, isCurrentWeek: boolean): string {
+function cellColor(v: number, isCurrentWeek: boolean, min: number, max: number): string {
   if (v === 0) return 'text-gray-400';
-  if (v < 8) return isCurrentWeek ? 'text-gray-300' : 'text-coralRed';
-  if (v <= 20) return 'text-emeraldGreen';
+  if (v < min) return isCurrentWeek ? 'text-gray-300' : 'text-coralRed';
+  if (v <= max) return 'text-emeraldGreen';
   return 'text-amberGold';
 }
 
@@ -62,10 +62,9 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
         <h2 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h2>
         <p class="text-xs sm:text-sm font-medium text-gray-200">{vm.summaryText}</p>
         <p class="mb-2 text-xs text-gray-400">
-          <span title="Músculo principal = 1 serie, músculo de apoyo = 0,5 series" class="cursor-help underline decoration-dotted underline-offset-2">
-            Series directas y de apoyo
-          </span>. <span class="text-coralRed">&lt;8↓ bajo</span> ·{' '}
-          <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.
+          Principal = 1 · Apoyo = 0,5. <span class="text-coralRed">&lt;{vm.range.min}↓ bajo</span> ·{' '}
+          <span class="text-emeraldGreen">{vm.range.min}–{vm.range.max} óptimo</span> · <span class="text-amberGold">&gt;{vm.range.max}↑ alto</span>
+          {vm.range.isLightPlan && ' (plan ligero)'}. Toca un músculo para ver su tendencia.
           {vm.weeks.length > 5 && ` · Desliza para ver las ${vm.weeks.length} semanas.`}
         </p>
         <div
@@ -110,17 +109,17 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
                       const v = vm.vol.get(m)?.get(w) ?? 0;
                       const isCurrentWeek = w === vm.curWeek;
                       return (
-                        <td key={w} class={`min-w-[3.25rem] sm:min-w-[3.75rem] px-2 tabular-nums font-bold whitespace-nowrap ${cellColor(v, isCurrentWeek)}`}>
+                        <td key={w} class={`min-w-[3.25rem] sm:min-w-[3.75rem] px-2 tabular-nums font-bold whitespace-nowrap ${cellColor(v, isCurrentWeek, vm.range.min, vm.range.max)}`}>
                           {v ? (
                             <>
                               {r1(v)}
-                              {!isCurrentWeek && v < 8 && (
+                              {!isCurrentWeek && v < vm.range.min && (
                                 <>
                                   <span class="sr-only"> (bajo)</span>
                                   <span aria-hidden="true">↓</span>
                                 </>
                               )}
-                              {v > 20 && (
+                              {v > vm.range.max && (
                                 <>
                                   <span class="sr-only"> (alto)</span>
                                   <span aria-hidden="true">↑</span>

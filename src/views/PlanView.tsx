@@ -12,12 +12,12 @@ interface PlanViewProps {
 }
 
 /**
- * Vista `Planificación`: edita rutinas de una en una, catálogo muscular y fases del bloque.
+ * Vista `Planificación`: catálogo muscular, mapeos y fases nutricionales y de entrenamiento.
  */
 export function PlanView({ state: propState }: PlanViewProps) {
   const { state: storeState, plan: actions, setTab } = useAppStore();
   const state = propState ?? storeState;
-  const tab = state.planTab ?? 'routines';
+  const tab = state.planTab ?? 'exercises';
   const allNames = allExerciseNames(state);
   const knownNames = [...new Set([...allNames, ...state.analysis.exercises.keys()])].sort((a, b) => a.localeCompare(b, 'es'));
   const unmappedCount = state.analysis.unmapped.length;
@@ -27,7 +27,7 @@ export function PlanView({ state: propState }: PlanViewProps) {
       <div class="sr-only lg:not-sr-only lg:flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
           <h1 class="text-lg font-extrabold text-white">Planificación</h1>
-          <p class="text-xs text-gray-400">Edita tus rutinas de una en una, gestiona los músculos del catálogo y define las fases del bloque.</p>
+          <p class="text-xs text-gray-400">Gestiona los músculos del catálogo, resuelve mapeos pendientes y define las fases del bloque.</p>
         </div>
         <div role="tablist" aria-label="Secciones de planificación" class="inline-flex rounded-xl border border-white/10 bg-gray-900/70 p-1 gap-1">
           {PLAN_TABS.map((t) => (

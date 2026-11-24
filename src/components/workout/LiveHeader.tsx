@@ -21,12 +21,14 @@ interface LiveHeaderProps {
   onToggleMenu: () => void;
   /** Degrada el botón Terminar a acento secundario cuando otro CTA domina la vista. */
   secondarySave?: boolean;
+  /** Descarta el entrenamiento en curso previa confirmación. */
+  onDiscard: () => void;
   /** Guarda el entrenamiento en IndexedDB. */
   onSave: () => void;
 }
 
 /**
- * Cabecera compacta de la sesión en vivo con menú de ejercicios, tiempo y guardar.
+ * Cabecera compacta de la sesión en vivo con menú de ejercicios, descarte y guardar.
  */
 export function LiveHeader({
   day,
@@ -39,8 +41,10 @@ export function LiveHeader({
   menuOpen,
   onToggleMenu,
   secondarySave = false,
+  onDiscard,
   onSave,
 }: LiveHeaderProps) {
+  const finishCls = doneSetsCount === 0 ? 'btn' : secondarySave ? 'btn btn-accent' : 'btn-primary';
   return (
     <div class="flex items-center justify-between gap-1.5 sm:gap-2 pb-2.5 border-b border-white/10">
       <div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
@@ -66,8 +70,18 @@ export function LiveHeader({
           </p>
         </div>
       </div>
-      <div class="flex shrink-0 items-center">
-        <button type="button" class={`${secondarySave ? 'btn btn-accent' : 'btn-primary'} min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm`} onClick={onSave}>
+      <div class="flex shrink-0 items-center gap-1.5">
+        <button
+          type="button"
+          aria-label="Descartar entrenamiento"
+          title="Descartar entrenamiento"
+          class="btn min-h-[44px] px-2.5 text-xs text-coralRed hover:border-coralRed/40"
+          onClick={onDiscard}
+        >
+          <Icon name="trash" className="h-4 w-4" />
+          <span class="hidden min-[380px]:inline">Descartar</span>
+        </button>
+        <button type="button" class={`${finishCls} min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm`} onClick={onSave}>
           <Icon name="save" className="h-4 w-4" /> <span id="liveFinishLabel" class="tabular-nums">Terminar ({doneSetsCount})</span>
         </button>
       </div>

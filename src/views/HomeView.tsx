@@ -68,6 +68,8 @@ export function HomeView({ state: propState }: HomeViewProps) {
       <HomeChartsSection
         selectedEx={vm.cur}
         rangeLabel={vm.bounds.label}
+        exVerdict={vm.exVerdict}
+        bodyVerdict={vm.bodyVerdict}
         exChartCfg={vm.homeExCfg}
         bodyChartCfg={vm.bodyHomeCfg}
         onOpenPicker={plan.openHomeExercisePicker}

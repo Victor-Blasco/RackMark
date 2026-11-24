@@ -89,6 +89,7 @@ export function LogSetRow({ ei, si, exName, set: s, showMobileDetails, actions }
               <input class={`${MOBILE_NUM_INP} w-20`} type="number" step="5" min="0" max="1800" inputMode="numeric" enterKeyHint="done" value={s.restSec ?? ''} placeholder="—" aria-label={`Descanso móvil en segundos serie ${n} de ${exName}`} onInput={(e) => actions.updateRest(ei, si, e.currentTarget.value)} />
             </label>
           </div>
+          <p class="pl-6 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
         </div>
       </div>
     </div>

@@ -1,8 +1,14 @@
+import { useEffect } from 'preact/hooks';
+import type { ExerciseCompletionSummary } from '../../store/workoutSelectors';
 import { Icon } from '../common/Icon';
 
 interface PrevCompletedBannerProps {
+  /** Índice del ejercicio recién completado (reinicia el temporizador al cambiar). */
+  prevIdx?: number;
   /** Nombre del ejercicio recién terminado. */
   prevName: string;
+  /** Resumen de hoy y comparativa frente a la sesión previa del ejercicio. */
+  summary?: ExerciseCompletionSummary;
   /** Regresa al ejercicio anterior. */
   onGoBack: () => void;
   /** Añade una serie extra al ejercicio terminado y vuelve a él. */
@@ -11,20 +17,64 @@ interface PrevCompletedBannerProps {
   onDismiss: () => void;
 }
 
-/** Aviso contextual tras avanzar automáticamente al terminar todas las series de un ejercicio. */
-export function PrevCompletedBanner({ prevName, onGoBack, onAddExtraSet, onDismiss }: PrevCompletedBannerProps) {
+const TONE_CLS: Record<ExerciseCompletionSummary['tone'], string> = {
+  emerald: 'text-emeraldGreen',
+  amber: 'text-amberGold',
+  blue: 'text-blue-300',
+};
+
+/** Pop-up flotante con resumen y comparativa que se cierra automáticamente a los 5 segundos. */
+export function PrevCompletedBanner({ prevIdx, prevName, summary, onGoBack, onAddExtraSet, onDismiss }: PrevCompletedBannerProps) {
+  useEffect(() => {
+    const t = window.setTimeout(onDismiss, 5000);
+    return () => window.clearTimeout(t);
+  }, [prevIdx, prevName, onDismiss]);
+
   return (
-    <div class="flex flex-wrap items-center justify-between gap-2 border-l-4 border-emeraldGreen bg-emeraldGreen/10 px-3 py-2 rounded-r-xl text-xs">
-      <span class="font-semibold text-emerald-200">{prevName} completado · siguiente</span>
-      <div class="flex flex-wrap items-center gap-1.5">
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold text-gray-200 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onGoBack}>
+    <div
+      role="status"
+      aria-live="polite"
+      class="fixed inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:bottom-6 sm:left-auto sm:right-6 sm:w-[24rem] z-40 rounded-2xl border border-emeraldGreen/45 bg-modalDark p-4 shadow-2xl space-y-2.5"
+    >
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex min-w-0 items-center gap-2">
+          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emeraldGreen/20 text-emeraldGreen">
+            <Icon name="check" className="h-4 w-4" />
+          </span>
+          <div class="min-w-0">
+            <p class="truncate text-sm font-extrabold text-white">{prevName} completado</p>
+            <p class="text-[11px] text-gray-400">Resumen automático · se oculta en 5 s</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="flex h-11 w-11 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+          aria-label="Cerrar resumen"
+          onClick={onDismiss}
+        >
+          <Icon name="close" className="h-4 w-4" />
+        </button>
+      </div>
+
+      {summary && (
+        <div class="space-y-0.5 rounded-xl bg-white/[0.04] px-3 py-2 text-xs">
+          <p class="text-gray-200 num-col">
+            {summary.setsCount} {summary.setsCount === 1 ? 'serie' : 'series'} · máx {summary.topWeight} kg · {summary.totalReps} reps · {summary.totalVolume} kg vol.
+          </p>
+          <p class={`font-bold num-col ${TONE_CLS[summary.tone]}`}>{summary.comparisonText}</p>
+        </div>
+      )}
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" class="btn min-h-[44px] sm:min-h-[36px] px-3 text-xs font-semibold" onClick={onGoBack}>
           Volver
         </button>
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] rounded-lg border border-emeraldGreen/40 px-2.5 text-xs font-bold text-emerald-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onAddExtraSet}>
-          + Serie extra en {prevName}
-        </button>
-        <button type="button" class="flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-lg text-gray-300 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" aria-label="Cerrar aviso" onClick={onDismiss}>
-          <Icon name="close" className="h-4 w-4" />
+        <button
+          type="button"
+          class="min-h-[44px] sm:min-h-[36px] flex-1 rounded-xl border border-emeraldGreen/40 px-3 text-xs font-bold text-emerald-200 hover:bg-emeraldGreen/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+          onClick={onAddExtraSet}
+        >
+          + Serie extra
         </button>
       </div>
     </div>

@@ -40,10 +40,43 @@ export {
 };
 
 const delta = (a?: number, b?: number, u = '') => (a != null && b != null ? `${a - b >= 0 ? '+' : ''}${r1(a - b)}${u}` : '');
+const fmtComma = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
 const mean = (vals: (number | undefined)[]) => {
   const nums = vals.filter((v): v is number => v != null && Number.isFinite(v));
   return nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : undefined;
 };
+
+function buildExVerdict(state: State, cur: string | undefined, bounds: DateBounds): string | undefined {
+  if (!cur) return undefined;
+  const ex = state.analysis.exercises.get(cur);
+  if (!ex) return undefined;
+  const sessions = filterExByRange(ex, bounds).sessions;
+  if (!sessions.length) return undefined;
+  if (sessions.length === 1) return 'Solo 1 sesión en este rango';
+  const first = sessions[0];
+  const last = sessions[sessions.length - 1];
+  if (first.top === 0 && last.top === 0) {
+    const dR = last.repsAtTop - first.repsAtTop;
+    if (dR > 0) return `+${dR} reps al inicio de serie en este periodo`;
+    if (dR < 0) return `${dR} reps respecto al inicio del periodo`;
+    return 'Repeticiones estables en este periodo';
+  }
+  const dW = Math.round((last.top - first.top) * 10) / 10;
+  if (dW > 0) return `+${fmtComma(dW)} kg en tu máximo en este periodo`;
+  if (dW < 0) return `−${fmtComma(Math.abs(dW))} kg en tu máximo en este periodo`;
+  const dR = last.repsAtTop - first.repsAtTop;
+  if (dR !== 0) return `Mismo peso (${dR > 0 ? `+${dR}` : dR} reps) en este periodo`;
+  return 'Carga estable en este periodo';
+}
+
+function buildBodyVerdict(ms: Measure[]): string | undefined {
+  const ws = ms.filter((m): m is Measure & { weight: number } => m.weight != null);
+  if (!ws.length) return undefined;
+  if (ws.length === 1) return `Último peso registrado: ${fmtComma(ws[0].weight)} kg`;
+  const dW = Math.round((ws[ws.length - 1].weight - ws[0].weight) * 10) / 10;
+  if (dW === 0) return 'Peso corporal estable en este periodo';
+  return `${dW > 0 ? '+' : '−'}${fmtComma(Math.abs(dW))} kg de peso en este periodo`;
+}
 
 function resolveFourthMetric(state: State, ms: Measure[], rangeLabel: string, hasFilter: boolean, bounds: DateBounds) {
   const since28 = todayIso(new Date(Date.now() - 28 * 864e5));
@@ -119,6 +152,8 @@ export function buildHomeViewModel(state: State) {
     lastBadge: lastS ? routineShort(lastS.day ?? 'Sesión') : '—',
     fourthMetric,
     cur,
+    exVerdict: buildExVerdict(state, cur, bounds),
+    bodyVerdict: buildBodyVerdict(ms),
     homeExCfg: buildHomeExChartConfig(state),
     bodyHomeCfg: buildBodyHomeChartConfig(ms, state.measures),
     rows,

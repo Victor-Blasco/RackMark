@@ -82,7 +82,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
               <div ref={menuRef} role="menu" aria-label={`Acciones de ${ex.name}`} class="absolute right-0 top-11 z-30 w-52 rounded-xl border border-white/10 bg-modalDark p-1.5 shadow-2xl space-y-0.5">
                 <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openPicker('swap'))}><Icon name="refresh" className="h-3.5 w-3.5 text-blue-300" /> Cambiar ejercicio</button>
                 <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openPicker('add'))}><Icon name="plus" className="h-3.5 w-3.5 text-blue-300" /> Añadir ejercicio</button>
-                <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openFixedNote(ex.name))}><Icon name="edit" className="h-3.5 w-3.5 text-gray-400" /> Nota permanente</button>
+                <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openFixedNote(ex.name))}><Icon name="edit" className="h-3.5 w-3.5 text-gray-400" /> Nota fija (siempre)</button>
               </div>
             )}
           </div>
@@ -127,7 +127,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
           </div>
           <div class="flex items-center gap-1.5">
             <button type="button" aria-expanded={showDetails ? 'true' : 'false'} class={`${PILL_BTN} tabular-nums ${showDetails ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`} onClick={() => setShowDetails((v) => !v)}>RIR · Desc.{detailsCount > 0 ? ` · ${detailsCount}` : ''}</button>
-            <button type="button" aria-expanded={noteOpen ? 'true' : 'false'} class={`${PILL_BTN} ${noteOpen || hasNote ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`} onClick={() => setNoteOpen((v) => !v)}>{hasNote ? 'Nota' : '+ Nota'}</button>
+            <button type="button" aria-expanded={noteOpen ? 'true' : 'false'} class={`${PILL_BTN} ${noteOpen || hasNote ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`} onClick={() => setNoteOpen((v) => !v)}>{hasNote ? 'Nota de hoy' : '+ Nota de hoy'}</button>
           </div>
         </div>
         <div class={`grid transition-[grid-template-rows] duration-200 motion-reduce:transition-none ${noteOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>

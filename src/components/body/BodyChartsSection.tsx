@@ -11,6 +11,8 @@ interface BodyChartsSectionProps {
   hasCompMuscle: boolean;
   /** Métrica principal seleccionada en la gráfica de composición. */
   activeCompMode: 'weight' | 'muscle';
+  /** Veredicto de 1 línea para composición corporal. */
+  compVerdict?: string;
   /** Indica si existe al menos un registro de perímetros con cinta en el historial. */
   hasAnyPerim: boolean;
   /** Configuración de Chart.js para composición corporal o `null`. */
@@ -43,6 +45,7 @@ export function BodyChartsSection({
   hasCompWeight,
   hasCompMuscle,
   activeCompMode,
+  compVerdict,
   hasAnyPerim,
   compCfg,
   perimCfg,
@@ -84,13 +87,14 @@ export function BodyChartsSection({
             </div>
           )}
         </div>
+        {compVerdict && <p class="text-xs font-semibold text-gray-200 num-col">{compVerdict}</p>}
         {compCount > 0 && compCfg ? (
           <div class="chart-box"><ChartCanvas id="c-comp" config={compCfg} /></div>
         ) : (
           <p class="py-12 text-center text-sm text-gray-400">
             {totalMeasures > 0
               ? `Sin mediciones en ${rangeLabel}.`
-              : 'Añade tu peso o % de grasa abajo para ver la evolución.'}
+              : 'Añade tu peso o % de grasa arriba para ver la evolución.'}
           </p>
         )}
       </div>
@@ -115,7 +119,7 @@ export function BodyChartsSection({
           ) : (
             <p class="py-12 text-center text-sm text-gray-400">
               Sin registros en {perimeterLabel.toLowerCase()}
-              {hasFilter ? ` (${rangeLabel})` : ''}. Puedes añadir medidas con cinta abajo si las controlas.
+              {hasFilter ? ` (${rangeLabel})` : ''}. Puedes añadir medidas con cinta arriba si las controlas.
             </p>
           )}
         </div>

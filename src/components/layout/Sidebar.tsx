@@ -36,7 +36,7 @@ export function Sidebar({
   state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onNewRoutine, onCloudLogin,
 }: SidebarProps) {
   const unmappedCount = state.analysis.unmapped.length;
-  const activePlanTab = state.planTab ?? 'routines';
+  const activePlanTab = state.planTab ?? 'exercises';
 
   return (
     <aside aria-label="Navegación de escritorio" class="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:w-64 lg:flex-col border-r border-borderDark/80 bg-navDark">

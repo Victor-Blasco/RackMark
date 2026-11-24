@@ -24,6 +24,30 @@ function buildLastKnownMap(measures: Measure[]): Partial<Record<keyof Measure, n
   return found;
 }
 
+const fmtBodyComma = (v: number) => String(Math.round(v * 10) / 10).replace('.', ',');
+
+function buildCompVerdict(comp: Measure[], mode: 'weight' | 'muscle'): string | undefined {
+  const mainKey = mode === 'muscle' ? 'muscle' : 'weight';
+  const mainLabel = mode === 'muscle' ? 'masa muscular' : 'peso';
+  const mainPts = comp.filter((m) => m[mainKey] != null);
+  const bfPts = comp.filter((m) => m.bf != null);
+  if (mainPts.length === 0 && bfPts.length === 0) return undefined;
+  if (mainPts.length <= 1 && bfPts.length <= 1) {
+    const first = mainPts[0]?.[mainKey];
+    return first != null ? `Último registro: ${fmtBodyComma(first)} kg de ${mainLabel}` : 'Solo 1 registro en este rango';
+  }
+  const parts: string[] = [];
+  if (mainPts.length >= 2) {
+    const dMain = Math.round(((mainPts[mainPts.length - 1][mainKey] ?? 0) - (mainPts[0][mainKey] ?? 0)) * 10) / 10;
+    parts.push(dMain === 0 ? `${mainLabel} estable` : `${dMain > 0 ? '+' : '−'}${fmtBodyComma(Math.abs(dMain))} kg ${mainLabel}`);
+  }
+  if (bfPts.length >= 2) {
+    const dBf = Math.round(((bfPts[bfPts.length - 1].bf ?? 0) - (bfPts[0].bf ?? 0)) * 10) / 10;
+    if (dBf !== 0) parts.push(`${dBf > 0 ? '+' : '−'}${fmtBodyComma(Math.abs(dBf))}% grasa`);
+  }
+  return `${parts.join(' · ')} en este periodo`;
+}
+
 /**
  * Calcula los datos base, tabla inversa y formulario derivado para `<BodyView />`.
  *
@@ -43,6 +67,7 @@ export function buildBodyViewModel(state: State) {
   const hasCompWeight = comp.some((m) => m.weight != null);
   const hasCompMuscle = comp.some((m) => m.muscle != null);
   const activeCompMode: 'weight' | 'muscle' = state.bodyMetric === 'muscle' && hasCompMuscle ? 'muscle' : 'weight';
+  const compVerdict = buildCompVerdict(comp, activeCompMode);
 
   const pk = PERIM[state.perimeter] ?? PERIM.arms;
   const basicFields = MEASURE_FIELDS.filter((f) => BASIC_MEASURE_KEYS.includes(f.key));
@@ -83,6 +108,7 @@ export function buildBodyViewModel(state: State) {
     hasCompWeight,
     hasCompMuscle,
     activeCompMode,
+    compVerdict,
     hasAnyPerim,
     pk,
     basicFields,

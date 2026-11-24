@@ -20,8 +20,7 @@ export const TRAIN_TABS = [
 ];
 
 export const PLAN_TABS: { id: PlanTab; label: string; shortLabel: string; icon: IconName }[] = [
-  { id: 'routines', label: 'Editor de rutinas', shortLabel: 'Rutinas', icon: 'edit' },
-  { id: 'exercises', label: 'Ejercicios y músculos', shortLabel: 'Ejercicios', icon: 'barbell' },
+  { id: 'exercises', label: 'Catálogo y músculos', shortLabel: 'Catálogo', icon: 'barbell' },
   { id: 'phases', label: 'Fases del bloque', shortLabel: 'Fases', icon: 'calendar' },
 ];
 

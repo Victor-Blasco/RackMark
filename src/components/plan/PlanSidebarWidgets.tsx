@@ -1,5 +1,6 @@
 import { MUSCLES } from '../../lib/seed';
 import { plannedWeeklyVolume } from '../../store/planSelectors';
+import { volumeRangeForProfile } from '../../store/volumeSelectors';
 import { routineNames, type State } from '../../ui/shared';
 
 interface PlanSidebarWidgetsProps {
@@ -20,9 +21,7 @@ export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgets
     (acc, d) => acc + (s.routines[d] ?? []).reduce((sum, item) => sum + (item.name ? item.sets : 0), 0),
     0,
   );
-  const isLightPlan = s.profile.experience === 'beginner' || (s.profile.daysPerWeek != null && s.profile.daysPerWeek <= 3);
-  const minSets = isLightPlan ? 6 : 8;
-  const maxSets = isLightPlan ? 16 : 20;
+  const { min: minSets, max: maxSets, isLightPlan } = volumeRangeForProfile(s.profile);
 
   const card = (
     <div class="rounded-2xl border border-white/10 bg-cardDark p-4 space-y-3">
@@ -33,9 +32,7 @@ export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgets
         </span>
       </div>
       <p class="text-[11px] text-gray-400">
-        <span title="Músculo principal = 1 serie, músculo de apoyo = 0,5 series" class="cursor-help underline decoration-dotted underline-offset-2">
-          Directas y de apoyo
-        </span> · <span class="text-coralRed">↓ &lt;{minSets}</span> · <span class="text-emeraldGreen">✓ {minSets}–{maxSets}</span> · <span class="text-amberGold">↑ &gt;{maxSets}</span>
+        Principal = 1 · Apoyo = 0,5 · <span class="text-coralRed">↓ &lt;{minSets}</span> · <span class="text-emeraldGreen">✓ {minSets}–{maxSets}</span> · <span class="text-amberGold">↑ &gt;{maxSets}</span>
         {isLightPlan && ' (plan ligero)'}
       </p>
       <div class="space-y-1.5">

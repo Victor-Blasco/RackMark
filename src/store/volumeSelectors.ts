@@ -1,8 +1,15 @@
 import type { ChartConfiguration } from 'chart.js';
+import type { AthleteProfile } from '../types';
 import { isoWeekStart, weeklyVolume } from '../lib/analysis';
 import { MUSCLES } from '../lib/seed';
 import { resolveRange, short, todayIso, type DateBounds, type State } from '../ui/shared';
 import { chartAccentColor } from '../ui/theme';
+
+/** Rango semanal óptimo de series efectivas según experiencia y días por semana del atleta. */
+export function volumeRangeForProfile(profile?: Partial<AthleteProfile>): { min: number; max: number; isLightPlan: boolean } {
+  const isLightPlan = profile?.experience === 'beginner' || (profile?.daysPerWeek != null && profile.daysPerWeek <= 3);
+  return isLightPlan ? { min: 6, max: 16, isLightPlan: true } : { min: 8, max: 20, isLightPlan: false };
+}
 
 /** Genera el listado de inicios de semana ISO comprendidos en el rango temporal activo. */
 export function weeksForBounds(
@@ -51,17 +58,18 @@ export function buildVolumeViewModel(state: State) {
     hasCompletedHistory && weeks.length > 1 && weeks[weeks.length - 1] === curWeek
       ? weeks[weeks.length - 2]
       : weeks[weeks.length - 1];
+  const range = volumeRangeForProfile(state.settings.profile);
   const trained = MUSCLES.filter((m) => (vol.get(m)?.get(summaryWeek) ?? 0) > 0);
   let summaryText = `Semana del ${short(summaryWeek)}: sin sesiones registradas.`;
   if (trained.length > 0) {
     const optCount = trained.filter((m) => {
       const v = vol.get(m)?.get(summaryWeek) ?? 0;
-      return v >= 8 && v <= 20;
+      return v >= range.min && v <= range.max;
     }).length;
-    const lowMuscles = trained.filter((m) => (vol.get(m)?.get(summaryWeek) ?? 0) < 8);
-    const highMuscles = trained.filter((m) => (vol.get(m)?.get(summaryWeek) ?? 0) > 20);
+    const lowMuscles = trained.filter((m) => (vol.get(m)?.get(summaryWeek) ?? 0) < range.min);
+    const highMuscles = trained.filter((m) => (vol.get(m)?.get(summaryWeek) ?? 0) > range.max);
     const prefix = summaryWeek === curWeek ? 'Esta semana (en curso)' : `Última semana completa (${short(summaryWeek)})`;
-    summaryText = `${prefix}: ${optCount} de ${trained.length} grupos en rango óptimo (8–20)`;
+    summaryText = `${prefix}: ${optCount} de ${trained.length} grupos en rango óptimo (${range.min}–${range.max})`;
     if (lowMuscles.length) summaryText += ` · por debajo: ${lowMuscles.slice(0, 4).join(', ')}${lowMuscles.length > 4 ? '…' : ''}`;
     if (highMuscles.length) summaryText += ` · muy alto: ${highMuscles.join(', ')}`;
     summaryText += '.';
@@ -88,6 +96,7 @@ export function buildVolumeViewModel(state: State) {
     vol,
     weeks,
     curWeek,
+    range,
     summaryText,
     sel,
     volChartCfg,

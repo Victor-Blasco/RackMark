@@ -97,6 +97,9 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
           <button type="button" class="btn-sm" onClick={() => plan.openPlanTab('exercises')}>
             Catálogo y músculos
           </button>
+          <button type="button" class="btn-sm" onClick={() => plan.openPlanTab('phases')}>
+            Fases del bloque
+          </button>
           <button type="button" class="btn-sm" onClick={() => setTab('data')}>
             Datos y copias
           </button>

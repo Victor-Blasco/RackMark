@@ -45,7 +45,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
   const kpis = [
     { lbl: 'Peso máx', val: e.n ? `${e.maxWeight} kg` : '—', cls: 'text-white' },
     { lbl: 'Kilos totales máx', val: e.n ? `${maxVol} kg` : '—', cls: 'text-white' },
-    { lbl: 'FC media', val: e.avgHr ? `${e.avgHr} lpm` : '—', cls: 'text-cyan-300' },
+    { lbl: 'Pulso medio', val: e.avgHr ? `${e.avgHr} lpm` : '—', cls: 'text-cyan-300' },
   ];
 
   return (

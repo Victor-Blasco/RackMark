@@ -23,7 +23,9 @@ import { RangePicker } from '../src/components/common/RangePicker';
 import { DayMobileAccordion } from '../src/components/day/DayMobileAccordion';
 import { DayOrganizeBar } from '../src/components/day/DayOrganizeBar';
 import { ExercisePickerSheet } from '../src/components/workout/ExercisePickerSheet';
+import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
+import { PrevCompletedBanner } from '../src/components/workout/LiveStatusBanners';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/hooks/useRestTimer';
 import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
@@ -49,7 +51,7 @@ import { createProfileActions } from '../src/store/profileActions';
 import { createRoutineEditActions } from '../src/store/routineEditActions';
 import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
 import { buildWorkoutSummary } from '../src/store/sessionPersistence';
-import { buildVolumeViewModel, weeksForBounds } from '../src/store/volumeSelectors';
+import { buildVolumeViewModel, volumeRangeForProfile, weeksForBounds } from '../src/store/volumeSelectors';
 import {
   createWizardDraft,
   daysActivityFactor,
@@ -61,7 +63,8 @@ import { createLiveWorkoutActions } from '../src/store/workoutActions';
 import { createWorkoutLaunchActions } from '../src/store/workoutLaunchActions';
 import { createWorkoutPickerActions } from '../src/store/workoutPickerActions';
 import { createWorkoutRestActions } from '../src/store/workoutRestActions';
-import { initLiveWorkout } from '../src/store/workoutSelectors';
+import { buildExerciseCompletionSummary, initLiveWorkout } from '../src/store/workoutSelectors';
+import { applyToggleLiveSet } from '../src/store/workoutSetToggle';
 import { createWorkoutSetActions } from '../src/store/workoutSetActions';
 import { ICON_PATHS } from '../src/ui/icons';
 import { captureFlipRects, moveItem, playFlipRects } from '../src/ui/reorder';
@@ -743,7 +746,7 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
       activeModal: { type: 'note', exName: 'Press Banca X', value: 'Pausa 1s abajo' },
     };
 
-    const planHtml = renderToString(h(PlanView, { state }));
+    const planHtml = renderToString(h(PlanView, { state: { ...state, planTab: 'routines' } }));
     expect(planHtml).toContain('lg:grid-cols-12');
     expect(planHtml).toContain('Simulador de volumen semanal');
     expect(planHtml).toContain('+ Añadir ejercicio');
@@ -777,7 +780,7 @@ describe('P2 desktop lab, routineShort & planned volume', () => {
 
     const homeHtml = renderToString(h(HomeView, { state }));
     expect(homeHtml).not.toContain('role="button"');
-    expect(homeHtml).toContain('Control de cargas del bloque');
+    expect(homeHtml).toContain('Tu progreso por ejercicio');
     expect(homeHtml).toContain('Torso');
     expect(homeHtml).toContain('Press Banca X');
 
@@ -1107,7 +1110,8 @@ describe('live workout & manual rest separation', () => {
     );
     expect(step2Html).toContain(`aria-label="Nota para ${ex1Name}"`);
     expect(step2Html).not.toContain(`aria-label="Nota para ${ex0Name}"`);
-    expect(step2Html).toContain(`+ Serie extra en ${ex0Name}`);
+    expect(step2Html).toContain(`${ex0Name} completado`);
+    expect(step2Html).toContain('+ Serie extra');
 
     const swapHtml = renderToString(
       h(LiveWorkoutView, {
@@ -1546,7 +1550,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(homeWithAi).toContain('<h2 class="text-base sm:text-lg font-extrabold text-white">Informe IA</h2>');
     expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Evolución de cargas</h2>');
     expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Peso y % de grasa</h2>');
-    expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Control de cargas del bloque</h2>');
+    expect(homeWithAi).toContain('<h2 class="text-base font-bold text-white">Tu progreso por ejercicio</h2>');
     expect(homeWithAi).not.toContain('<h4');
 
     const homeNoAi = renderToString(
@@ -1980,8 +1984,8 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     expect(currentTab).toBe('plan');
     expect(baseState.planTab).toBe('routines');
 
-    // 7. Animaciones colapsables presentes en MeasureForm y DayRoutineView
-    const bodyHtml = renderToString(h(BodyView, { state: baseState }));
+    // 7. Animaciones colapsables presentes en MeasureForm (abierto cuando se edita) y DayRoutineView
+    const bodyHtml = renderToString(h(BodyView, { state: { ...baseState, measureDate: '2026-11-15' } }));
     expect(bodyHtml).toContain('grid-rows-[0fr]');
 
     // 8. Gráfica de cargas sin e1RM ni switch, con leyenda Peso máx + Kilos totales y tooltip mínimo
@@ -2082,10 +2086,10 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
       }),
     );
     expect(headPlan).toContain('aria-label="Secciones de planificación"');
-    expect(headPlan).toContain('Rutinas');
-    expect(headPlan).toContain('Ejercicios');
+    expect(headPlan).not.toContain('>Rutinas<');
+    expect(headPlan).toContain('Catálogo');
     expect(headPlan).toContain('Fases');
-    expect(headPlan).toContain('grid-cols-3');
+    expect(headPlan).toContain('grid-cols-2');
 
     // 3. Sidebar: rutinas + "+ Nueva rutina" y herramientas (Catálogo y Fases) sin duplicar Editor de rutinas
     const sideHtml = renderToString(
@@ -2193,7 +2197,7 @@ describe('Fase 4 M1: accesibilidad WCAG, contraste y limpieza CSS !important', (
     };
 
     // 1. PlanView solo muestra un botón "+ Añadir ejercicio" y "Simulador de volumen semanal" sin "Catálogo rápido"
-    const planHtml = renderToString(h(PlanView, { state }));
+    const planHtml = renderToString(h(PlanView, { state: { ...state, planTab: 'routines' } }));
     expect(planHtml).toContain('+ Añadir ejercicio');
     expect(planHtml).not.toContain('+ Añadir fila');
     expect(planHtml).not.toContain('> + Crear ejercicio<');
@@ -2955,7 +2959,7 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
       h(LiveHeader, {
         day: 'Push', dayColor: '#A855F7', curIdx: 0, total: 2,
         doneSetsCount: 1, totalSetsCount: 4, elapsedLabel: '5 min',
-        menuOpen: true, onToggleMenu: () => {}, onSave: () => {},
+        menuOpen: true, onToggleMenu: () => {}, onDiscard: () => {}, onSave: () => {},
       }),
     );
     expect(openHdrHtml).toContain('aria-label="Cerrar lista de ejercicios"');
@@ -3674,10 +3678,10 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(adhVm.targetDays).toBe(2);
     expect(adhVm.streak).toBe(3);
 
-    // 4. Cuerpo pone MeasureForm antes de gráficas y oculta cinta vacía; Volumen etiqueta En curso; Plan ligero usa 6-16
+    // 4. Cuerpo colapsa MeasureForm si hay registros previos y lo sitúa antes de gráficas; Volumen etiqueta En curso; Plan ligero usa 6-16
     expect(buildBodyViewModel(activeState).hasAnyPerim).toBe(false);
     const bodyHtml = renderToString(h(BodyView, { state: activeState }));
-    expect(bodyHtml.indexOf('Registrar medidas')).toBeLessThan(bodyHtml.indexOf('Composición corporal'));
+    expect(bodyHtml.indexOf('+ Registrar peso / medidas de hoy')).toBeLessThan(bodyHtml.indexOf('Composición corporal'));
     expect(bodyHtml).not.toContain('Medidas con cinta (cm)');
 
     const volHtml = renderToString(h(VolumeView, { state: activeState }));
@@ -3803,10 +3807,12 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(simState.calcDraft?.bodyW).toBeUndefined();
     expect(buildCalcViewModel(simState).w).toBe(78);
 
-    // A2: placeholder '—' y lastLabel fuera + guía de perímetros en Cuerpo
+    // A2: placeholder '—' y lastLabel fuera + guía de perímetros en Cuerpo (abierto al editar y colapsado por defecto con registros)
     const bodyVm = buildBodyViewModel(base);
     expect(bodyVm.getFieldInputMeta('weight')).toEqual({ value: '78', placeholder: '—', lastLabel: 'Últ: 78' });
-    const bodyHtml = renderToString(h(BodyView, { state: base }));
+    const bodyClosedHtml = renderToString(h(BodyView, { state: base }));
+    expect(bodyClosedHtml).toContain('+ Registrar peso / medidas de hoy');
+    const bodyHtml = renderToString(h(BodyView, { state: { ...base, measureDate: today } }));
     expect(bodyHtml).toContain('Referencia rápida: Cintura a la altura del ombligo');
 
     // B: Unificar con placeholders claros y vista previa + plantilla CSV
@@ -3827,6 +3833,187 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(dayHtml).toContain('Nota fija');
     expect(dayHtml).toContain('Nota de la última sesión:');
     const volHtml = renderToString(h(VolumeView, { state: { ...base, tab: 'volume' } }));
-    expect(volHtml).toContain('Series directas y de apoyo');
+    expect(volHtml).toContain('Principal = 1 · Apoyo = 0,5');
+  });
+
+  it('auditoría 2 y requisitos de En vivo: descartar en cabecera, pop-up 5s con comparativa, descanso manual, volumen unificado y veredictos', () => {
+    const today = todayIso();
+    const prevDate = todayIso(new Date(Date.now() - 14 * 864e5));
+    const settings = sanitizeSettings({
+      profile: { experience: 'beginner', daysPerWeek: 3, goal: 'maintain', sex: 'male', age: 28, heightCm: 176 },
+      notes: { 'Press de banca': 'Escápulas atrás' },
+    });
+    const strength = [
+      {
+        id: 's-prev-1',
+        sessionId: 'sess-prev-1',
+        ts: Date.parse(`${prevDate}T10:00:00Z`),
+        date: prevDate,
+        ref: 'name:Press de banca',
+        day: 'Push' as const,
+        avgHr: 128,
+        sets: [
+          { w: 70, r: 8, done: true },
+          { w: 70, r: 8, done: true },
+        ],
+      },
+      {
+        id: 's-cur-2',
+        sessionId: 'sess-cur-2',
+        ts: Date.parse(`${today}T10:00:00Z`),
+        date: today,
+        ref: 'name:Press de banca',
+        day: 'Push' as const,
+        avgHr: 132,
+        sets: [
+          { w: 75, r: 8, done: true },
+          { w: 75, r: 8, done: true },
+        ],
+      },
+    ];
+    const measures = [
+      { date: prevDate, weight: 76, bf: 18 },
+      { date: today, weight: 75.2, bf: 17.4 },
+    ];
+    const state: State = {
+      tab: 'workout',
+      strength,
+      cardio: [],
+      measures,
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. LiveHeader tiene Descartar entrenamiento y Terminar (0) neutro; LiveExerciseMenu ya no incluye Descartar
+    const liveIdle = initLiveWorkout(state, 'Push');
+    const hdrZero = renderToString(
+      h(LiveHeader, {
+        day: 'Push',
+        dayColor: '#2DD4BF',
+        curIdx: 0,
+        total: liveIdle.exercises.length,
+        doneSetsCount: 0,
+        totalSetsCount: 6,
+        elapsedLabel: '2 min',
+        menuOpen: false,
+        onToggleMenu: () => {},
+        onDiscard: () => {},
+        onSave: () => {},
+      }),
+    );
+    expect(hdrZero).toContain('Descartar entrenamiento');
+    expect(hdrZero).toContain('Terminar (0)');
+    expect(hdrZero).not.toContain('btn-primary');
+
+    const hdrDone = renderToString(
+      h(LiveHeader, {
+        day: 'Push',
+        dayColor: '#2DD4BF',
+        curIdx: 0,
+        total: liveIdle.exercises.length,
+        doneSetsCount: 2,
+        totalSetsCount: 6,
+        elapsedLabel: '8 min',
+        menuOpen: false,
+        onToggleMenu: () => {},
+        onDiscard: () => {},
+        onSave: () => {},
+      }),
+    );
+    expect(hdrDone).toContain('btn-primary');
+
+    const menuHtml = renderToString(
+      h(LiveExerciseMenu, {
+        open: true,
+        curIdx: 0,
+        doneExCount: 0,
+        items: [],
+        onToggleMenu: () => {},
+        onSelectExercise: () => {},
+        onOpenAddPicker: () => {},
+      }),
+    );
+    expect(menuHtml).not.toContain('Descartar entrenamiento');
+
+    // 2. Comparativa frente a sesión anterior y cierre automático del pop-up (5s) + último ejercicio también marca lastCompletedExIdx
+    const cmpUp = buildExerciseCompletionSummary(state, {
+      name: 'Press de banca',
+      done: true,
+      note: '',
+      sets: [
+        { w: 77.5, r: 8, done: true },
+        { w: 77.5, r: 8, done: true },
+      ],
+    });
+    expect(cmpUp.comparisonText).toContain('+2,5 kg máx');
+    expect(cmpUp.tone).toBe('emerald');
+
+    const cmpFirst = buildExerciseCompletionSummary(state, {
+      name: 'Fondos',
+      done: true,
+      note: '',
+      sets: [{ w: 0, r: 10, done: true }],
+    });
+    expect(cmpFirst.comparisonText).toBe('Primera sesión registrada');
+    expect(cmpFirst.tone).toBe('blue');
+
+    const singleExLive = {
+      ...liveIdle,
+      exercises: [{ name: 'Press de banca', done: false, note: '', sets: [{ w: 77.5, r: 8, done: false }] }],
+    };
+    const toggledFinal = applyToggleLiveSet(singleExLive, 0, 0, () => {});
+    expect(toggledFinal.nextLive.lastCompletedExIdx).toBe(0);
+
+    const popupHtml = renderToString(
+      h(PrevCompletedBanner, {
+        prevIdx: 0,
+        prevName: 'Press de banca',
+        summary: cmpUp,
+        onGoBack: () => {},
+        onAddExtraSet: () => {},
+        onDismiss: () => {},
+      }),
+    );
+    expect(popupHtml).toContain('Press de banca completado');
+    expect(popupHtml).toContain('se oculta en 5 s');
+    expect(popupHtml).toContain('+2,5 kg máx');
+    expect(popupHtml).toContain('+ Serie extra');
+
+    // 3. RestTimerBar en espera permite inicio manual; RIR explicado en móvil en En vivo y Registrar hecho
+    expect(renderToString(h(RestTimerBar, { targetRestSec: 90 }))).toContain('Iniciar 90s');
+    const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: liveIdle } }));
+    expect(liveHtml).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
+    expect(liveHtml).toContain('aria-label="Opciones de Press de banca"');
+    expect(liveHtml).toContain('+ Nota de hoy');
+    const logHtml2 = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', today) } }));
+    expect(logHtml2).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
+    expect(logHtml2).toContain('Nota fija:');
+
+    // 4. Volumen unificado (6-16 para principiante / <=3d y 8-20 en general) + veredictos en gráficas + Settings Fases del bloque
+    expect(volumeRangeForProfile({ experience: 'beginner', daysPerWeek: 4 })).toEqual({ min: 6, max: 16, isLightPlan: true });
+    expect(volumeRangeForProfile({ experience: 'intermediate', daysPerWeek: 4 })).toEqual({ min: 8, max: 20, isLightPlan: false });
+    const volLightHtml = renderToString(h(VolumeView, { state: { ...state, tab: 'volume' } }));
+    expect(volLightHtml).toContain('6–16 óptimo');
+    expect(volLightHtml).toContain('(plan ligero)');
+    expect(volLightHtml).toContain('Principal = 1 · Apoyo = 0,5');
+
+    const homeHtml2 = renderToString(h(HomeView, { state: { ...state, tab: 'home' } }));
+    expect(homeHtml2).toContain('+5 kg en tu máximo en este periodo');
+    expect(homeHtml2).toContain('−0,8 kg de peso en este periodo');
+
+    const bodyEmptyHtml = renderToString(h(BodyView, { state: { ...state, tab: 'body', measures: [] } }));
+    expect(bodyEmptyHtml).toContain('Añade tu peso o % de grasa arriba para ver la evolución.');
+    expect(bodyEmptyHtml).not.toContain('abajo');
+
+    const settingsHtml2 = renderToString(h(SettingsView, { state }));
+    expect(settingsHtml2).toContain('Fases del bloque');
+
+    const dayHtml2 = renderToString(h(DayRoutineView, { day: 'Push', state }));
+    expect(dayHtml2).toContain('Pulso medio');
+    expect(dayHtml2).not.toContain('FC media');
   });
 });
