@@ -1,3 +1,4 @@
+import { MEASURES_CSV_TEMPLATE } from '../../lib/measures';
 import { Icon } from '../common/Icon';
 
 interface DataImportSectionProps {
@@ -29,6 +30,9 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
             <p class="text-xs text-gray-400 mt-0.5">
               Sube el archivo ZIP o los CSV exportados desde Samsung Health. Puedes volver a importar cuando quieras sin duplicar sesiones.
             </p>
+            <p class="text-[11px] text-gray-400 mt-1">
+              En tu móvil: Samsung Health → Ajustes → Descargar datos personales → sube aquí el ZIP.
+            </p>
           </div>
           <div class="space-y-1.5">
             <p class="lbl">Archivo ZIP o CSV (máx. 50 MB por archivo)</p>
@@ -59,15 +63,31 @@ export function DataImportSection({ onImportFiles, onGoBody, onExportBackup }: D
           </div>
           <div class="space-y-1.5">
             <p class="lbl">Archivo CSV de medidas</p>
-            <label class="btn cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-electricBlue">
-              <Icon name="upload" className="h-4 w-4" /> Seleccionar CSV de medidas
-              <input
-                class="sr-only"
-                type="file"
-                accept=".csv"
-                onChange={(e) => handleFile('measures', e.currentTarget)}
-              />
-            </label>
+            <div class="flex flex-wrap gap-2">
+              <label class="btn cursor-pointer focus-within:outline-none focus-within:ring-2 focus-within:ring-electricBlue">
+                <Icon name="upload" className="h-4 w-4" /> Seleccionar CSV de medidas
+                <input
+                  class="sr-only"
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => handleFile('measures', e.currentTarget)}
+                />
+              </label>
+              <button
+                type="button"
+                class="btn"
+                onClick={() => {
+                  const url = URL.createObjectURL(new Blob([MEASURES_CSV_TEMPLATE], { type: 'text/csv;charset=utf-8' }));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'plantilla-medidas-gymapp.csv';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <Icon name="download" className="h-4 w-4" /> Descargar plantilla CSV
+              </button>
+            </div>
           </div>
         </div>
       </div>

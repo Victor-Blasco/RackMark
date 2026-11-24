@@ -119,11 +119,19 @@ export function createProfileActions(deps: ProfileActionDeps) {
     },
 
     updateCalcField(
-      field: 'w' | 'r' | 'rir' | 'act' | 'goal' | 'protein' | 'fat' | 'meals',
+      field: 'w' | 'r' | 'rir' | 'bodyW' | 'bodyBf' | 'act' | 'goal' | 'protein' | 'fat' | 'meals',
       value: string,
     ) {
       const S = state();
       S.calcDraft = { ...S.calcDraft, [field]: value };
+      deps.render();
+    },
+
+    resetCalcBody() {
+      const S = state();
+      if (!S.calcDraft) return;
+      const { bodyW: _bw, bodyBf: _bf, ...rest } = S.calcDraft;
+      S.calcDraft = rest;
       deps.render();
     },
   };

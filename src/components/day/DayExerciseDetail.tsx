@@ -71,7 +71,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="btn-sm btn-accent" onClick={onStartWorkout}>Entrenar hoy</button>
-          <button type="button" class="btn-sm" onClick={onEditNote}><Icon name="edit" className="h-3.5 w-3.5" /> Nota</button>
+          <button type="button" class="btn-sm" onClick={onEditNote}><Icon name="edit" className="h-3.5 w-3.5" /> Nota fija</button>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
       {e.last?.note && (
         <p class="flex items-start gap-2 text-xs sm:text-sm text-amberGold">
           <Icon name="note" className="h-4 w-4 mt-0.5" />
-          <span>Última nota: {e.last.note}</span>
+          <span>Nota de la última sesión: {e.last.note}</span>
         </p>
       )}
       {userNote && (

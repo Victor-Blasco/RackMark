@@ -62,7 +62,9 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
         <h2 class="mb-1 font-bold text-white">Series efectivas por músculo y semana</h2>
         <p class="text-xs sm:text-sm font-medium text-gray-200">{vm.summaryText}</p>
         <p class="mb-2 text-xs text-gray-400">
-          Músculo principal = 1 serie, secundario = 0,5. <span class="text-coralRed">&lt;8↓ bajo</span> ·{' '}
+          <span title="Músculo principal = 1 serie, músculo de apoyo = 0,5 series" class="cursor-help underline decoration-dotted underline-offset-2">
+            Series directas y de apoyo
+          </span>. <span class="text-coralRed">&lt;8↓ bajo</span> ·{' '}
           <span class="text-emeraldGreen">8–20 óptimo</span> · <span class="text-amberGold">&gt;20↑ alto</span>. Toca un músculo para ver su tendencia.
           {vm.weeks.length > 5 && ` · Desliza para ver las ${vm.weeks.length} semanas.`}
         </p>

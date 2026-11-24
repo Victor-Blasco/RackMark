@@ -26,9 +26,15 @@ const num = (v: string | undefined): number | undefined => {
   return Number.isFinite(n) ? n : undefined;
 };
 
-/** d/m/yyyy -> yyyy-mm-dd */
+/** Plantilla CSV descargable con cabecera y ejemplo compatible. */
+export const MEASURES_CSV_TEMPLATE =
+  'Fecha,Peso,% Grasa,Masa muscular,Cintura\n24/11/2026,75.0,15.5,35.2,80.0\n';
+
+/** `d/m/yyyy` o `yyyy-mm-dd` -> `yyyy-mm-dd` */
 export function parseEsDate(s: string): string | null {
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s.trim());
+  const trimmed = s.trim();
+  if (isValidIsoDate(trimmed)) return trimmed;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
   if (!m) return null;
   const iso = `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   return isValidIsoDate(iso) ? iso : null;

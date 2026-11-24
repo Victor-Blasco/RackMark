@@ -58,14 +58,15 @@ export function buildBodyViewModel(state: State) {
   const tableCols = visibleCols.length ? visibleCols : basicFields;
   const lastKnownByKey = buildLastKnownMap(ms);
 
-  const getFieldInputMeta = (key: keyof Measure): { value: string; placeholder: string } => {
+  const getFieldInputMeta = (key: keyof Measure): { value: string; placeholder: string; lastLabel?: string } => {
     const draftVal = state.measureDraft?.[key];
     const entryVal = currentEntry?.[key];
     const value = draftVal ?? (entryVal != null ? String(entryVal) : '');
     const lastKnown = lastKnownByKey[key];
     return {
       value,
-      placeholder: lastKnown != null ? `Últ: ${r1(lastKnown)}` : '—',
+      placeholder: '—',
+      ...(lastKnown != null ? { lastLabel: `Últ: ${r1(lastKnown)}` } : {}),
     };
   };
 

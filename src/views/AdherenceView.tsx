@@ -82,7 +82,10 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-2 pb-5 border-b border-white/10">
           {vm.sleepChartCfg && (
             <div class="min-w-0 space-y-2">
-              <h3 class="mb-2 font-bold text-white">Sueño y recuperación · HRV ({vm.bounds.label})</h3>
+              <div>
+                <h3 class="font-bold text-white">Sueño y recuperación · HRV ({vm.bounds.label})</h3>
+                <p class="text-xs text-gray-400 mt-0.5">HRV (variabilidad cardíaca): valores más altos suelen indicar mejor recuperación.</p>
+              </div>
               <div class="chart-box"><ChartCanvas id="c-well-sleep" config={vm.sleepChartCfg} /></div>
             </div>
           )}

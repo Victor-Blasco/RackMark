@@ -111,7 +111,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
               class={`${TOGGLE_PILL} ${noteOpen || hasNote ? 'border-electricBlue bg-electricBlue/15 text-blue-300' : 'border-white/10 text-gray-300 hover:text-white'}`}
               onClick={() => setNoteOpen((v) => !v)}
             >
-              {hasNote ? 'Nota' : '+ Nota'}
+              {hasNote ? 'Nota de hoy' : '+ Nota de hoy'}
             </button>
           </div>
         </div>

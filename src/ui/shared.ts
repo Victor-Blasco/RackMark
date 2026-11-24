@@ -81,6 +81,8 @@ export interface State {
     w?: string;
     r?: string;
     rir?: string;
+    bodyW?: string;
+    bodyBf?: string;
     act?: string;
     goal?: string;
     protein?: string;

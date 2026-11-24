@@ -10,6 +10,12 @@ interface MacroCalculatorProps {
   bf: number;
   /** Masa libre de grasa estimada en kg. */
   ffm: number;
+  /** Valor editable del simulador de peso corporal. */
+  cBodyW: string;
+  /** Valor editable del simulador de % grasa. */
+  cBodyBf: string;
+  /** Indica si el usuario está probando un peso o % grasa temporal. */
+  hasBodyOverride: boolean;
   /** Indica si se están usando peso/grasa de ejemplo por falta de medidas. */
   usingSampleMeasures: boolean;
   /** Factor de actividad seleccionado. */
@@ -35,41 +41,45 @@ interface MacroCalculatorProps {
   /** Indica si proteína + grasa superan las calorías objetivo. */
   carbWarning: boolean;
   /** Actualiza cualquier parámetro del planificador nutricional. */
-  onUpdateField: (field: 'act' | 'goal' | 'protein' | 'fat' | 'meals', val: string) => void;
+  onUpdateField: (field: 'bodyW' | 'bodyBf' | 'act' | 'goal' | 'protein' | 'fat' | 'meals', val: string) => void;
+  /** Restablece peso y % grasa a la última medición guardada. */
+  onResetBody: () => void;
 }
 
 /**
  * Planificador calórico y reparto de macronutrientes basado en Katch-McArdle.
  */
 export function MacroCalculator({
-  w,
-  bf,
-  ffm,
-  usingSampleMeasures,
-  cAct,
-  cGoal,
-  cProtein,
-  cFat,
-  cMeals,
-  recommendedAct,
-  nutrition,
-  deltaNum,
-  deltaSign,
-  projectionText,
-  carbWarning,
-  onUpdateField,
+  w, bf, ffm, cBodyW, cBodyBf, hasBodyOverride, usingSampleMeasures,
+  cAct, cGoal, cProtein, cFat, cMeals, recommendedAct, nutrition, deltaNum, deltaSign, projectionText, carbWarning, onUpdateField, onResetBody,
 }: MacroCalculatorProps) {
   return (
     <div class="min-w-0 space-y-4">
-      <div>
-        <h2 class="font-bold text-white">Planificador nutricional (<span class="tabular-nums">{r1(w)} kg · {r1(bf)}%</span> grasa)</h2>
-        {usingSampleMeasures ? (
-          <p class="text-xs text-amberGold mt-0.5">Valores de ejemplo (añade una medida para personalizar)</p>
-        ) : (
-          <p class="text-xs text-gray-400">
-            Calculado según tu peso y masa libre de grasa (<span class="tabular-nums">{r1(ffm)} kg</span>). Usa tu última medición.
+      <div class="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 class="font-bold text-white">Planificador nutricional (<span class="tabular-nums">{r1(w)} kg · {r1(bf)}%</span> grasa)</h2>
+          <p class={`text-xs mt-0.5 ${usingSampleMeasures && !hasBodyOverride ? 'text-amberGold' : 'text-gray-400'}`}>
+            {hasBodyOverride
+              ? `Simulación temporal · masa magra estimada ${r1(ffm)} kg`
+              : usingSampleMeasures
+                ? 'Valores de ejemplo: edita peso o % grasa abajo para simular.'
+                : `Calculado con tu última medición (masa magra ${r1(ffm)} kg).`}
           </p>
+        </div>
+        {hasBodyOverride && (
+          <button type="button" class="btn-sm text-xs" onClick={onResetBody}>Usar mi última medida</button>
         )}
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <label class="block">
+          <span class="lbl">Peso simulación (kg)</span>
+          <input class="inp tabular-nums font-medium" inputMode="decimal" enterKeyHint="next" value={cBodyW} aria-label="Peso de simulación en kg" onInput={(e) => onUpdateField('bodyW', e.currentTarget.value)} />
+        </label>
+        <label class="block">
+          <span class="lbl">% Grasa simulación</span>
+          <input class="inp tabular-nums font-medium" inputMode="decimal" enterKeyHint="done" value={cBodyBf} aria-label="Porcentaje de grasa de simulación" onInput={(e) => onUpdateField('bodyBf', e.currentTarget.value)} />
+        </label>
       </div>
 
       <MacroPhaseSelectors cAct={cAct} cGoal={cGoal} recommendedAct={recommendedAct} onUpdateField={onUpdateField} />

@@ -111,7 +111,7 @@ export function LogExerciseHeader({
         {menuOpen && (
           <div ref={menuRef} role="menu" aria-label={`Acciones de ${ex.name}`} class="absolute right-0 top-12 sm:top-10 z-30 w-52 rounded-xl border border-white/10 bg-modalDark p-1.5 shadow-2xl space-y-0.5">
             <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(onOpenFixedNote)}>
-              <Icon name="edit" className="h-3.5 w-3.5" /> Nota biomecánica fija
+              <Icon name="edit" className="h-3.5 w-3.5" /> Nota fija (siempre)
             </button>
             <div class="my-1 border-t border-white/10" role="separator" />
             <button type="button" role="menuitem" class={`${MENU_ITEM} text-coralRed hover:bg-coralRed/10`} onClick={() => act(onRemoveExercise)}>

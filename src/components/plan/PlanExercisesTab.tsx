@@ -56,7 +56,7 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
             onClick={() => actions.openMergeExercisePicker('from')}
           >
             <span class={`truncate ${mergeFrom ? 'font-semibold text-white' : 'text-gray-400'}`}>
-              {mergeFrom || 'Elegir origen…'}
+              {mergeFrom || 'Duplicado a eliminar…'}
             </span>
             <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
           </button>
@@ -69,7 +69,7 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
             onClick={() => actions.openMergeExercisePicker('to')}
           >
             <span class={`truncate ${mergeTo ? 'font-semibold text-white' : 'text-gray-400'}`}>
-              {mergeTo || 'Elegir destino…'}
+              {mergeTo || 'Ejercicio que se conserva…'}
             </span>
             <Icon name="caretDown" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
           </button>
@@ -82,6 +82,12 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
             Fusionar
           </button>
         </div>
+        {mergeFrom && mergeTo && mergeFrom !== mergeTo && (
+          <p class="text-xs text-gray-300">
+            Todo el historial de <b class="text-white">{mergeFrom}</b> pasará a <b class="text-white">{mergeTo}</b> y{' '}
+            <b class="text-coralRed">{mergeFrom}</b> se eliminará.
+          </p>
+        )}
         {Object.entries(state.settings.aliases).map(([a, b]) => (
           <div key={a} class="flex items-center gap-2 text-xs text-gray-400">
             <span>{a} → {b}</span>

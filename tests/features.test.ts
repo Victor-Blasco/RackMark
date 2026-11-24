@@ -3767,4 +3767,66 @@ describe('Bloque 4: selectores 50+, accesibilidad completa y limpieza', () => {
     expect(simInlineHtml).toContain('Simulador de volumen semanal');
     expect(simInlineHtml).not.toContain('<aside');
   });
+
+  it('Bloques A, B y C: simulador temporal en Calculadoras, referencias limpias en Cuerpo, CSV/Unificar y textos claros', () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({
+      routines: { Push: [{ name: 'Press de banca', sets: 3, reps: 8 }] },
+    });
+    const base: State = {
+      tab: 'calc',
+      strength: [{ id: 's1', sessionId: 'sess-abc', ts: Date.now(), date: today, ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8, done: true }], note: 'Hombro OK' }],
+      cardio: [{ id: 'c1', ts: Date.now(), date: today, type: 1001, distKm: 4, durMin: 25, avgHr: 140, kcal: 210, vo2: 47 }],
+      wellbeing: [{ date: today, sleepMin: 450, hrv: 65, steps: 8000 }],
+      measures: [{ date: today, weight: 78, bf: 16 }],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    base.analysis = analyze(base.strength, settings);
+
+    // A1: simulación temporal en Calc sin modificar measures
+    const simState: State = { ...base, calcDraft: { bodyW: '72,5', bodyBf: '12' } };
+    const calcVm = buildCalcViewModel(simState);
+    expect(calcVm.w).toBe(72.5);
+    expect(calcVm.bf).toBe(12);
+    expect(calcVm.hasBodyOverride).toBe(true);
+    const calcHtml = renderToString(h(CalcView, { state: simState }));
+    expect(calcHtml).toContain('Peso simulación (kg)');
+    expect(calcHtml).toContain('% Grasa simulación');
+    expect(calcHtml).toContain('Usar mi última medida');
+
+    const calcActions = createProfileActions({ getState: () => simState, persist: async () => {}, render: () => {}, toast: () => {} });
+    calcActions.resetCalcBody();
+    expect(simState.calcDraft?.bodyW).toBeUndefined();
+    expect(buildCalcViewModel(simState).w).toBe(78);
+
+    // A2: placeholder '—' y lastLabel fuera + guía de perímetros en Cuerpo
+    const bodyVm = buildBodyViewModel(base);
+    expect(bodyVm.getFieldInputMeta('weight')).toEqual({ value: '78', placeholder: '—', lastLabel: 'Últ: 78' });
+    const bodyHtml = renderToString(h(BodyView, { state: base }));
+    expect(bodyHtml).toContain('Referencia rápida: Cintura a la altura del ombligo');
+
+    // B: Unificar con placeholders claros y vista previa + plantilla CSV
+    const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises', mergeFrom: 'Sóleo Sentado', mergeTo: 'Elevación de gemelos sentado' } }));
+    expect(planExHtml).toContain('Todo el historial de');
+    expect(planExHtml).toContain('se eliminará');
+    const dataHtml = renderToString(h(DataView, { state: { ...base, tab: 'data' } }));
+    expect(dataHtml).toContain('Descargar plantilla CSV');
+    expect(dataHtml).toContain('Samsung Health → Ajustes');
+
+    // C: HRV/VO2, notas diferenciadas y texto suavizado de volumen
+    const adhHtml = renderToString(h(AdherenceView, { state: { ...base, tab: 'adherence' } }));
+    expect(adhHtml).toContain('HRV (variabilidad cardíaca)');
+    expect(adhHtml).toContain('VO2 máx: capacidad aeróbica estimada');
+    const logHtml = renderToString(h(LogWorkoutView, { state: { ...base, tab: 'log', logDraft: initLogDraft(base, 'Push', today) } }));
+    expect(logHtml).toContain('Nota de hoy');
+    const dayHtml = renderToString(h(DayRoutineView, { day: 'Push', state: { ...base, tab: 'Push' } }));
+    expect(dayHtml).toContain('Nota fija');
+    expect(dayHtml).toContain('Nota de la última sesión:');
+    const volHtml = renderToString(h(VolumeView, { state: { ...base, tab: 'volume' } }));
+    expect(volHtml).toContain('Series directas y de apoyo');
+  });
 });

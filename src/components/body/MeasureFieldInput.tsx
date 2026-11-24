@@ -7,17 +7,22 @@ interface MeasureFieldInputProps {
   field: MeasureFieldDef;
   /** Valor actual del borrador o registro activo. */
   value: string;
-  /** Último valor conocido como referencia placeholder. */
+  /** Placeholder neutro del campo. */
   placeholder: string;
+  /** Último valor conocido como referencia fuera del input. */
+  lastLabel?: string;
   /** Actualiza el campo en el borrador en memoria. */
   onUpdateDraft: (field: string, value: string) => void;
 }
 
 /** Campo numérico compacto para peso, porcentaje graso o perímetro corporal. */
-export function MeasureFieldInput({ field, value, placeholder, onUpdateDraft }: MeasureFieldInputProps) {
+export function MeasureFieldInput({ field, value, placeholder, lastLabel, onUpdateDraft }: MeasureFieldInputProps) {
   return (
     <label class="block">
-      <span class="lbl">{field.label} ({field.unit})</span>
+      <span class="lbl flex items-baseline justify-between gap-1">
+        <span>{field.label} ({field.unit})</span>
+        {lastLabel && <span class="text-[10px] font-normal text-gray-400 tabular-nums">{lastLabel}</span>}
+      </span>
       <input
         class="inp tabular-nums font-medium"
         inputMode="decimal"
@@ -34,8 +39,8 @@ export function MeasureFieldInput({ field, value, placeholder, onUpdateDraft }: 
 interface MeasurePerimGroupsProps {
   /** Grupos de campos de perímetros organizados por zona corporal. */
   groups: { title: string; fields: MeasureFieldDef[] }[];
-  /** Resuelve valor actual y placeholder histórico de cada campo métrico. */
-  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string };
+  /** Resuelve valor actual, placeholder y última referencia de cada campo métrico. */
+  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string; lastLabel?: string };
   /** Actualiza el borrador al escribir en cualquier campo. */
   onUpdateDraft: (field: string, value: string) => void;
 }
@@ -44,6 +49,9 @@ interface MeasurePerimGroupsProps {
 export function MeasurePerimGroups({ groups, getFieldInputMeta, onUpdateDraft }: MeasurePerimGroupsProps) {
   return (
     <div class="space-y-3 pt-3 border-t border-white/10">
+      <p class="text-[11px] text-gray-400">
+        Referencia rápida: Cintura a la altura del ombligo · Torso a la altura del pecho · Brazos/Muslos en su punto más ancho · Sobre rodilla a 2 cm sobre la rótula.
+      </p>
       {groups.map((g) => (
         <div key={g.title} class="space-y-2">
           <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">{g.title}</p>
@@ -56,6 +64,7 @@ export function MeasurePerimGroups({ groups, getFieldInputMeta, onUpdateDraft }:
                   field={f}
                   value={meta.value}
                   placeholder={meta.placeholder}
+                  lastLabel={meta.lastLabel}
                   onUpdateDraft={onUpdateDraft}
                 />
               );

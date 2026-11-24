@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { importSamsungFiles, parseExerciseCsv, parseCustomExerciseCsv, parseSleepCsv, parseStepsCsv, parseVitalityCsv } from '../src/lib/samsung';
-import { parseMeasuresCsv } from '../src/lib/measures';
+import { parseMeasuresCsv, parseEsDate, MEASURES_CSV_TEMPLATE } from '../src/lib/measures';
 import { analyze } from '../src/lib/analysis';
 import { buildPayload } from '../src/lib/ai';
 import { DEFAULT_SETTINGS, todayIso } from '../src/lib/seed';
@@ -11,8 +11,12 @@ describe('parseo de CSV de medidas y cruce de ejercicios Samsung', () => {
     const meCsv = [
       'Fecha,Peso (kg),% Grasa (%),Cintura (cm),Columna 1,Sexo,Hombre',
       '10/11/2026,71.0,15.2,82.0,inicio,Edad,25',
-      '11/11/2026,70.4,14.8,81.5,defi,Altura,167',
+      '2026-11-11,70.4,14.8,81.5,defi,Altura,167',
     ].join('\n');
+    expect(parseEsDate('2026-11-11')).toBe('2026-11-11');
+    expect(parseEsDate('10/11/2026')).toBe('2026-11-10');
+    expect(parseEsDate('2026-02-31')).toBeNull();
+    expect(parseMeasuresCsv(MEASURES_CSV_TEMPLATE).measures).toHaveLength(1);
     const r = parseMeasuresCsv(meCsv);
     expect(r.measures.length).toBe(2);
     const last = r.measures[r.measures.length - 1];

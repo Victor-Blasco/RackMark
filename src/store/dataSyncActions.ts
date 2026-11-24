@@ -87,13 +87,17 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
           deps.toast(
             `Importado: ${parts.join(', ')}.${
               unresolvedCustomIds.length
-                ? ` Faltan nombres personalizados para ${unresolvedCustomIds.length} ejercicios. Incluye el CSV exercise.custom_exercise en la exportación.`
+                ? ` Faltan nombres personalizados para ${unresolvedCustomIds.length} ejercicios. Puedes asignarles nombre desde Catálogo y músculos o volver a exportar el ZIP completo desde Samsung Health.`
                 : ''
             }`,
           );
         } else if (kind === 'measures') {
           if (files[0].size > MAX_SINGLE_FILE_BYTES) throw new Error('Archivo demasiado grande (máx. 50 MB).');
           const m = parseMeasuresCsv(await files[0].text());
+          if (!m.measures.length && !Object.keys(m.profile).length) {
+            deps.toast('No se encontraron filas válidas. Usa fecha DD/MM/AAAA o AAAA-MM-DD y columnas como Fecha, Peso, % Grasa o Cintura.');
+            return;
+          }
           await putMany('measures', m.measures);
           S.settings = sanitizeSettings({
             ...S.settings,

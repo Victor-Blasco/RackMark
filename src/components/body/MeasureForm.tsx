@@ -22,8 +22,8 @@ interface MeasureFormProps {
   noteValue: string;
   /** Marca temporal emitida al pulsar editar en el historial para desplazar el formulario a la vista. */
   scrollSignal?: number;
-  /** Resuelve valor actual y placeholder histórico de cada campo métrico. */
-  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string };
+  /** Resuelve valor actual, placeholder y referencia previa de cada campo métrico. */
+  getFieldInputMeta: (key: keyof Measure) => { value: string; placeholder: string; lastLabel?: string };
   /** Cambia la fecha activa del formulario. */
   onChangeDate: (date: string) => void;
   /** Restablece el formulario a la fecha de hoy. */
@@ -81,7 +81,7 @@ export function MeasureForm(props: MeasureFormProps) {
         </label>
         {basicFields.map((f) => {
           const meta = getFieldInputMeta(f.key);
-          return <MeasureFieldInput key={f.key} field={f} value={meta.value} placeholder={meta.placeholder} onUpdateDraft={onUpdateDraft} />;
+          return <MeasureFieldInput key={f.key} field={f} value={meta.value} placeholder={meta.placeholder} lastLabel={meta.lastLabel} onUpdateDraft={onUpdateDraft} />;
         })}
         <label class="col-span-2 sm:col-span-1 lg:col-span-1 block">
           <span class="lbl">Nota (opcional)</span>

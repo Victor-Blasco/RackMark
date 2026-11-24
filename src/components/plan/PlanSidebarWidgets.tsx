@@ -33,7 +33,9 @@ export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgets
         </span>
       </div>
       <p class="text-[11px] text-gray-400">
-        Principal = 1, secundario = 0,5 · <span class="text-coralRed">↓ &lt;{minSets}</span> · <span class="text-emeraldGreen">✓ {minSets}–{maxSets}</span> · <span class="text-amberGold">↑ &gt;{maxSets}</span>
+        <span title="Músculo principal = 1 serie, músculo de apoyo = 0,5 series" class="cursor-help underline decoration-dotted underline-offset-2">
+          Directas y de apoyo
+        </span> · <span class="text-coralRed">↓ &lt;{minSets}</span> · <span class="text-emeraldGreen">✓ {minSets}–{maxSets}</span> · <span class="text-amberGold">↑ &gt;{maxSets}</span>
         {isLightPlan && ' (plan ligero)'}
       </p>
       <div class="space-y-1.5">

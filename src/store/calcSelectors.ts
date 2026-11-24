@@ -17,11 +17,17 @@ function formatWeeklyProjection(projection: number): string {
  * @returns Presets, métricas de 1RM, factor recomendado, calorías y reparto de macros.
  */
 export function buildCalcViewModel(state: State) {
+  const parseDec = (v: string) => parseFloat(v.replace(',', '.'));
   const latestW = [...state.measures].reverse().find((m) => m.weight != null)?.weight;
   const latestBf = [...state.measures].reverse().find((m) => m.bf != null)?.bf;
   const usingSampleMeasures = latestW == null || latestBf == null;
-  const w = latestW ?? 70;
-  const bf = latestBf ?? 15;
+  const cBodyW = state.calcDraft?.bodyW;
+  const cBodyBf = state.calcDraft?.bodyBf;
+  const parsedBodyW = cBodyW != null ? parseDec(cBodyW) : undefined;
+  const parsedBodyBf = cBodyBf != null ? parseDec(cBodyBf) : undefined;
+  const w = parsedBodyW != null && Number.isFinite(parsedBodyW) && parsedBodyW >= 25 && parsedBodyW <= 300 ? parsedBodyW : (latestW ?? 70);
+  const bf = parsedBodyBf != null && Number.isFinite(parsedBodyBf) && parsedBodyBf >= 2 && parsedBodyBf <= 65 ? parsedBodyBf : (latestBf ?? 15);
+  const hasBodyOverride = cBodyW != null || cBodyBf != null;
   const ffm = w * (1 - bf / 100);
 
   const seenPresets = new Set<string>();
@@ -58,7 +64,6 @@ export function buildCalcViewModel(state: State) {
     : 0;
   const recommendedAct = recommendActivityFactor(strengthSessions7d, avgSteps7d);
 
-  const parseDec = (v: string) => parseFloat(v.replace(',', '.'));
   const numW = Math.max(0, parseDec(cW) || 0);
   const numR = Math.max(1, Math.min(30, parseInt(cR, 10) || 1));
   const numRir = Math.max(0, Math.min(10, parseInt(cRir, 10) || 0));
@@ -97,6 +102,9 @@ export function buildCalcViewModel(state: State) {
     cW,
     cR,
     cRir,
+    cBodyW: cBodyW ?? String(r1(w)),
+    cBodyBf: cBodyBf ?? String(r1(bf)),
+    hasBodyOverride,
     cAct,
     cGoal,
     cProtein,

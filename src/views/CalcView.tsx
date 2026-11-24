@@ -23,6 +23,9 @@ export function CalcView({ state: propState }: CalcViewProps) {
         w={vm.w}
         bf={vm.bf}
         ffm={vm.ffm}
+        cBodyW={vm.cBodyW}
+        cBodyBf={vm.cBodyBf}
+        hasBodyOverride={vm.hasBodyOverride}
         usingSampleMeasures={vm.usingSampleMeasures}
         cAct={vm.cAct}
         cGoal={vm.cGoal}
@@ -36,6 +39,7 @@ export function CalcView({ state: propState }: CalcViewProps) {
         projectionText={vm.projectionText}
         carbWarning={vm.carbWarning}
         onUpdateField={analytics.updateCalcField}
+        onResetBody={analytics.resetCalcBody}
       />
 
       <OneRmCalculator

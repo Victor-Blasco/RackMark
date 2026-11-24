@@ -107,7 +107,9 @@ export function AdherenceSessionsList({
                       <span class="text-gray-400" aria-hidden="true">·</span>
                       <span class="shrink-0 text-xs sm:text-sm text-gray-300 tabular-nums">{fmtDate(item.date)}</span>
                     </div>
-                    {meta && <p class="pl-[18px] text-xs text-gray-400 tabular-nums">{meta}</p>}
+                    {meta && (
+                      <p class="pl-[18px] text-xs text-gray-400 tabular-nums" title={item.kind === 'cardio' && item.vo2 ? 'VO2 máx: capacidad aeróbica estimada (más alto = mejor resistencia)' : undefined}>{meta}</p>
+                    )}
                   </div>
 
                   <div class="flex shrink-0 items-center gap-1.5">
