@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "gymapp-vbg"
+  },
+  "targets": {
+    "gymapp-vbg": {
+      "hosting": {
+        "rackmark": [
+          "rackmark"
+        ],
+        "legacy": [
+          "gymapp-vbg"
+        ]
+      }
+    }
   }
 }
