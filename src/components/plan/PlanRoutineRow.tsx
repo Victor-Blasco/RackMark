@@ -66,10 +66,10 @@ export function PlanRoutineRow({
 
       <div class="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
         <div class="flex items-center gap-1.5 text-xs text-gray-400">
-          <input class="inp w-12 sm:w-12 rounded-lg px-1.5 text-center font-bold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={exercise.sets} aria-label={`Series objetivo de ${exLbl}`} onChange={(e) => onChangeSets(e.currentTarget.value)} />
+          <input class="inp w-12 sm:w-12 rounded-lg px-1.5 text-center font-bold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={exercise.sets} aria-label={`Series objetivo de ${exLbl}`} onInput={(e) => { const n = Number(e.currentTarget.value); if (Number.isFinite(n) && n >= 1) onChangeSets(String(Math.round(n))); }} onChange={(e) => onChangeSets(e.currentTarget.value)} />
           <span aria-hidden="true">ser</span>
           <span aria-hidden="true">×</span>
-          <input class="inp w-12 sm:w-12 rounded-lg px-1.5 text-center font-bold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={exercise.reps} aria-label={`Repeticiones objetivo de ${exLbl}`} onChange={(e) => onChangeReps(e.currentTarget.value)} />
+          <input class="inp w-12 sm:w-12 rounded-lg px-1.5 text-center font-bold tabular-nums" type="number" inputMode="numeric" enterKeyHint="done" min="1" value={exercise.reps} aria-label={`Repeticiones objetivo de ${exLbl}`} onInput={(e) => { const n = Number(e.currentTarget.value); if (Number.isFinite(n) && n >= 1) onChangeReps(String(Math.round(n))); }} onChange={(e) => onChangeReps(e.currentTarget.value)} />
           <span aria-hidden="true">reps</span>
         </div>
         <div class="flex shrink-0 items-center gap-0.5">

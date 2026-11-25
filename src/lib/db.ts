@@ -230,7 +230,12 @@ function sanitizeRoutineMeta(raw: unknown): Record<DayName, RoutineMeta> | null 
       meta.color = LEGACY_ROUTINE_COLORS.has(up) ? '#A855F7' : val.color;
     }
     if (typeof val.sub === 'string' && val.sub.trim()) meta.sub = val.sub.trim().slice(0, 40);
-    if (meta.color || meta.sub) cleanMeta[day] = meta;
+    const freq = fin(val.freq);
+    if (freq !== undefined) {
+      const rounded = Math.round(freq);
+      if (rounded >= 0 && rounded <= 7) meta.freq = rounded;
+    }
+    if (meta.color || meta.sub || meta.freq !== undefined) cleanMeta[day] = meta;
   }
   return cleanMeta;
 }

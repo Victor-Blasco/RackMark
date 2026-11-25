@@ -124,7 +124,7 @@ const CATALOG_ENTRIES: [string, MuscleMap][] = [
   ['Zancadas', M('Cuádriceps', 'Glúteo')],
   // Isquios (5)
   ['Peso muerto convencional', M('Isquios', 'Espalda', 'Glúteo')],
-  ['Peso muerto rumano', M('Isquios', 'Glúteo')],
+  ['Peso muerto rumano', M('Isquios', 'Glúteo', 'Espalda')],
   ['Peso muerto sumo', M('Isquios', 'Glúteo', 'Cuádriceps', 'Aductores')],
   ['Curl femoral sentado', M('Isquios')],
   ['Curl femoral tumbado', M('Isquios')],
@@ -176,7 +176,7 @@ const LEGACY_MUSCLE_ENTRIES: [string, MuscleMap][] = [
   ['Extensiones de piernas', M('Cuádriceps')],
   ['Curl de piernas sentado', M('Isquios')],
   ['Curl Femoral De Pie', M('Isquios')],
-  ['RDL', M('Isquios', 'Glúteo')],
+  ['RDL', M('Isquios', 'Glúteo', 'Espalda')],
   ['Peso muerto', M('Isquios', 'Espalda', 'Glúteo')],
   ['Aductores', M('Aductores')],
   ['Adductores', M('Aductores')],

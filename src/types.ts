@@ -166,7 +166,7 @@ export interface SyncJob {
   nextAttemptAt?: number;
 }
 
-export interface RoutineMeta { color?: string; sub?: string }
+export interface RoutineMeta { color?: string; sub?: string; freq?: number }
 
 export type TrainingGoal = 'bulk' | 'cut' | 'recomp' | 'strength';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';

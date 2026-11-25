@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { MUSCLES } from '../../lib/seed';
 import type { SaveExercisePayload } from '../../store/planActions';
+import { suggestPrimaryMuscle } from '../../store/planSelectors';
 import { Icon } from '../common/Icon';
 import { ModalShell } from '../common/ModalShell';
 
@@ -23,8 +24,10 @@ interface ExerciseModalProps {
  * Modal de creación de ejercicio personalizado con asignación de músculo primario y secundarios.
  */
 export function ExerciseModal({ routines, defaultRoutine = '', initialName = '', fromLog, onSave, onClose }: ExerciseModalProps) {
+  const initialSuggested = initialName ? (suggestPrimaryMuscle(initialName) ?? '') : '';
   const [name, setName] = useState(initialName);
-  const [primary, setPrimary] = useState<string>(MUSCLES[0] ?? 'Pecho');
+  const [primary, setPrimary] = useState<string>(initialSuggested);
+  const [primaryTouched, setPrimaryTouched] = useState<boolean>(Boolean(initialSuggested));
   const [sets, setSets] = useState(3);
   const [reps, setReps] = useState(10);
   const [secondary, setSecondary] = useState<string[]>([]);
@@ -41,6 +44,7 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
         class="p-5 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
+          if (!primary) { setError('Selecciona el músculo principal del ejercicio.'); return; }
           setError(null);
           void Promise.resolve(onSave({ name, primary, secondary, sets, reps, routine }))
             .then((err) => { if (typeof err === 'string' && err) setError(err); })
@@ -57,29 +61,39 @@ export function ExerciseModal({ routines, defaultRoutine = '', initialName = '',
           </button>
         </div>
 
-        {error && (
-          <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">{error}</p>
-        )}
+        {error && <p role="alert" class="rounded-xl border border-coralRed/40 bg-coralRed/10 px-3 py-2 text-xs font-medium text-rose-200">{error}</p>}
 
         <label class="block">
           <span class="lbl">Nombre del ejercicio</span>
-          <input id="newExName" class="inp" name="name" maxLength={80} enterKeyHint="next" value={name} placeholder="Ej. Remo en polea gironda" required onInput={(e) => { setName(e.currentTarget.value); setError(null); }} />
+          <input
+            id="newExName" class="inp" name="name" maxLength={80} enterKeyHint="next" value={name} placeholder="Ej. Remo en polea gironda" required
+            onInput={(e) => {
+              const val = e.currentTarget.value;
+              setName(val);
+              setError(null);
+              if (!primaryTouched) {
+                const sug = suggestPrimaryMuscle(val) ?? '';
+                setPrimary(sug);
+                if (sug) setSecondary((prev) => prev.filter((x) => x !== sug));
+              }
+            }}
+          />
         </label>
 
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label class="block sm:col-span-1">
             <span class="lbl">Músculo principal</span>
             <select
-              class="inp"
-              name="primary"
-              value={primary}
-              required
+              class="inp" name="primary" value={primary} required
               onChange={(e) => {
                 const next = e.currentTarget.value;
                 setPrimary(next);
+                setPrimaryTouched(true);
+                setError(null);
                 setSecondary((prev) => prev.filter((x) => x !== next));
               }}
             >
+              <option value="">Selecciona músculo…</option>
               {MUSCLES.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>

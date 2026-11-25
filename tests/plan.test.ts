@@ -14,6 +14,7 @@ import { ToastBanner, SwUpdateBanner } from '../src/components/common/ToastBanne
 import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
 import { Sidebar } from '../src/components/layout/Sidebar';
+import { ExerciseModal } from '../src/components/modals/ExerciseModal';
 import { ModalHost } from '../src/components/modals/ModalHost';
 import { WizardModal } from '../src/components/modals/WizardModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
@@ -31,7 +32,7 @@ import { isValidTab } from '../src/store/navigation';
 import { createPlanActions } from '../src/store/planActions';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { createPlanModalActions } from '../src/store/planModalActions';
-import { getPlanCatalogData, plannedWeeklyVolume } from '../src/store/planSelectors';
+import { getPlanCatalogData, plannedVolumeBreakdown, plannedWeeklyVolume, suggestPrimaryMuscle } from '../src/store/planSelectors';
 import { createRoutineEditActions } from '../src/store/routineEditActions';
 import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
 import {
@@ -1451,5 +1452,120 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     const simInlineHtml = renderToString(h(PlanSidebarWidgets, { state, inline: true }));
     expect(simInlineHtml).toContain('Simulador de volumen semanal');
     expect(simInlineHtml).not.toContain('<aside');
+  });
+
+  it('soporta frecuencia semanal por rutina, desglose, aviso sin músculo, Espalda en RDL y ExerciseModal sin Pecho por defecto', async () => {
+    expect(DEFAULT_MUSCLES[norm('Peso muerto rumano')]?.s).toContain('Espalda');
+    expect(DEFAULT_MUSCLES[norm('RDL')]?.s).toContain('Espalda');
+
+    expect(suggestPrimaryMuscle('Remo en polea gironda')).toBe('Espalda');
+    expect(suggestPrimaryMuscle('Curl femoral tumbado')).toBe('Isquios');
+    expect(suggestPrimaryMuscle('Ejercicio raro XYZ')).toBeUndefined();
+
+    const settings = sanitizeSettings({
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8 }],
+        Pull: [
+          { name: 'Jalón al pecho', sets: 3, reps: 10 },
+          { name: 'Remo fantasma', sets: 3, reps: 10 },
+        ],
+        Leg: [{ name: 'Peso muerto rumano', sets: 4, reps: 8 }],
+      },
+      routineMeta: {
+        Push: { color: '#A855F7' },
+        Pull: { color: '#3B82F6', freq: 2 },
+        Leg: { color: '#10B981', freq: 0 },
+      },
+    });
+
+    const vol = plannedWeeklyVolume(settings);
+    expect(vol.get('Pecho')).toBe(3);
+    expect(vol.get('Espalda')).toBe(6);
+    expect(vol.get('Cuádriceps')).toBe(0);
+
+    const breakdown = plannedVolumeBreakdown(settings);
+    expect(breakdown.totalWeeklySessions).toBe(3);
+    expect(breakdown.totalPlannedSets).toBe(15);
+    expect(breakdown.unmapped).toEqual([{ routine: 'Pull', exercise: 'Remo fantasma' }]);
+    expect(breakdown.byMuscle.get('Espalda')).toEqual([
+      { routine: 'Pull', freq: 2, exercise: 'Jalón al pecho', sets: 3, factor: 1, effective: 6 },
+    ]);
+
+    // Con frecuencia 1 en Leg, Peso muerto rumano suma 2 series efectivas (4 × 0,5) a Espalda
+    const withLegSettings = sanitizeSettings({
+      ...settings,
+      routineMeta: { ...settings.routineMeta, Leg: { color: '#10B981' } },
+    });
+    expect(plannedWeeklyVolume(withLegSettings).get('Espalda')).toBe(8);
+
+    const state: State = {
+      tab: 'plan',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const simHtml = renderToString(h(PlanSidebarWidgets, { state, inline: true }));
+    expect(simHtml).toContain('3 d/sem');
+    expect(simHtml).toContain('Reducir frecuencia semanal de Pull');
+    expect(simHtml).toContain('Aumentar frecuencia semanal de Pull');
+    expect(simHtml).toContain('1 ejercicio sin músculo (Remo fantasma)');
+    expect(simHtml).toContain('Asignar músculo');
+
+    // Actions: changeRoutineFreq con clamp 0..7 y limpieza al volver a 1
+    let persisted = 0;
+    const editActions = createRoutineEditActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      persist: async () => { persisted++; },
+      render: () => {},
+      syncWorkoutRoutineNames: () => {},
+      askConfirm: async () => true,
+      toast: () => {},
+    });
+    await editActions.changeRoutineFreq('Pull', 9);
+    expect(state.settings.routineMeta?.Pull?.freq).toBe(7);
+    await editActions.changeRoutineFreq('Pull', 1);
+    expect(state.settings.routineMeta?.Pull?.freq).toBeUndefined();
+    await editActions.changeRoutineFreq('Pull', -2);
+    expect(state.settings.routineMeta?.Pull?.freq).toBe(0);
+    await editActions.changeRoutineFreq('Pull', 2);
+    expect(state.settings.routineMeta?.Pull?.freq).toBe(2);
+    expect(persisted).toBe(4);
+
+    // saveRoutineModal en modo edit preserva freq
+    state.activeModal = { type: 'routine', mode: 'edit', oldName: 'Pull', name: 'Pull', sub: 'Tirón', color: '#3B82F6' };
+    const modalActions = createPlanModalActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      setTab: () => {},
+      persist: async () => {},
+      syncWorkoutRoutineNames: () => {},
+      addExToDraft: () => {},
+      toast: () => {},
+    });
+    await modalActions.saveRoutineModal({ name: 'Pull', sub: 'Tirón Pro', color: '#3B82F6' });
+    expect(state.settings.routineMeta?.Pull).toEqual({ color: '#3B82F6', sub: 'Tirón Pro', freq: 2 });
+
+    // ExerciseModal no preselecciona Pecho cuando no hay initialName
+    const emptyExModal = renderToString(
+      h(ExerciseModal, { routines: ['Push', 'Pull'], onSave: () => {}, onClose: () => {} }),
+    );
+    expect(emptyExModal).toMatch(/<option[^>]*selected[^>]*>Selecciona músculo…<\/option>/);
+    expect(emptyExModal).not.toMatch(/value="Pecho"[^>]*selected|selected[^>]*value="Pecho"/);
+
+    // ExerciseModal sugiere Espalda cuando initialName contiene "Remo"
+    const rowExModal = renderToString(
+      h(ExerciseModal, { routines: ['Push', 'Pull'], initialName: 'Remo gironda', onSave: () => {}, onClose: () => {} }),
+    );
+    expect(rowExModal).toMatch(/value="Espalda"[^>]*selected|selected[^>]*value="Espalda"/);
   });
 });

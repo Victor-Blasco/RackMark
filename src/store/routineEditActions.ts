@@ -137,5 +137,19 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
 
     changeRoutineExSets: (day: string, idx: number, raw: string) => changeRowNum(day, idx, 'sets', raw),
     changeRoutineExReps: (day: string, idx: number, raw: string) => changeRowNum(day, idx, 'reps', raw),
+
+    async changeRoutineFreq(day: string, nextFreq: number) {
+      const S = state();
+      if (!day || !S.settings.routines[day]) return;
+      const freq = Math.max(0, Math.min(7, Math.round(nextFreq)));
+      const prevMeta = S.settings.routineMeta ?? {};
+      const { [day]: curEntry, ...restMeta } = prevMeta;
+      const { freq: _oldFreq, ...cleanEntry } = curEntry ?? {};
+      const nextEntry = freq === 1 ? cleanEntry : { ...cleanEntry, freq };
+      const hasKeys = Boolean(nextEntry.color || nextEntry.sub || freq !== 1);
+      const routineMeta = hasKeys ? { ...restMeta, [day]: nextEntry } : restMeta;
+      S.settings = { ...S.settings, routineMeta };
+      await deps.persist();
+    },
   };
 }

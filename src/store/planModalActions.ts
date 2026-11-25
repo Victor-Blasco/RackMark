@@ -103,7 +103,12 @@ export function createPlanModalActions(deps: PlanModalDeps) {
       if (conflict) return `Ya existe una rutina llamada "${conflict}".`;
       const sub = payload.sub.trim().slice(0, 40);
       const validColor = ROUTINE_COLORS.includes(payload.color) ? payload.color : rm.color;
-      const entryMeta = { color: validColor, ...(sub ? { sub } : {}) };
+      const prevFreq = rm.mode === 'edit' && rm.oldName ? S.settings.routineMeta?.[rm.oldName]?.freq : undefined;
+      const entryMeta = {
+        color: validColor,
+        ...(sub ? { sub } : {}),
+        ...(prevFreq !== undefined ? { freq: prevFreq } : {}),
+      };
 
       if (rm.mode === 'create') {
         if (existingKeys.length >= 20) return 'Máximo 20 rutinas permitidas.';

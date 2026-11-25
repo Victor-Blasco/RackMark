@@ -12,6 +12,16 @@ export interface PlanCatalogItem {
   secondary: string[];
 }
 
+/** Aportación de un ejercicio de rutina al volumen semanal efectivo de un músculo. */
+export interface PlannedMuscleContribution {
+  routine: string;
+  freq: number;
+  exercise: string;
+  sets: number;
+  factor: number;
+  effective: number;
+}
+
 /** Elemento de ejercicio con su mapa muscular primario y secundario. */
 export interface ExerciseMapItem {
   name: string;
@@ -20,25 +30,96 @@ export interface ExerciseMapItem {
   secondaryText: string;
 }
 
+/** Devuelve la frecuencia semanal configurada para una rutina (`0..7`, por defecto `1`). */
+export function routineFreq(settings: Settings, day: string): number {
+  const raw = settings.routineMeta?.[day]?.freq;
+  return typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(7, Math.round(raw))) : 1;
+}
+
 /**
- * Calcula las series efectivas semanales planificadas por músculo según `settings.routines`.
+ * Calcula las series efectivas semanales planificadas por músculo según `settings.routines` y su frecuencia.
  *
- * @param settings - Configuración del usuario con rutinas y músculos.
+ * @param settings - Configuración del usuario con rutinas, frecuencias y músculos.
  * @returns Mapa músculo -> series semanales ponderadas (1 principal, 0.5 secundario).
  */
 export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
   const out = new Map<string, number>(MUSCLES.map((m) => [m, 0]));
   for (const r of routineNames(settings)) {
+    const freq = routineFreq(settings, r);
+    if (freq <= 0) continue;
     for (const item of settings.routines[r] ?? []) {
       if (!item.name || !(item.sets > 0)) continue;
       const m = musclesOf(item.name, settings);
       if (!m) continue;
       for (const [muscle, factor] of effectiveMuscleCredits(m)) {
-        out.set(muscle, (out.get(muscle) ?? 0) + item.sets * factor);
+        out.set(muscle, (out.get(muscle) ?? 0) + item.sets * factor * freq);
       }
     }
   }
   return out;
+}
+
+/**
+ * Desglosa por músculo las aportaciones planificadas y detecta ejercicios sin músculo asignado.
+ */
+export function plannedVolumeBreakdown(settings: Settings): {
+  byMuscle: Map<string, PlannedMuscleContribution[]>;
+  unmapped: { routine: string; exercise: string }[];
+  totalWeeklySessions: number;
+  totalPlannedSets: number;
+} {
+  const byMuscle = new Map<string, PlannedMuscleContribution[]>(MUSCLES.map((m) => [m, []]));
+  const unmapped: { routine: string; exercise: string }[] = [];
+  let totalWeeklySessions = 0;
+  let totalPlannedSets = 0;
+  for (const r of routineNames(settings)) {
+    const freq = routineFreq(settings, r);
+    totalWeeklySessions += freq;
+    if (freq <= 0) continue;
+    for (const item of settings.routines[r] ?? []) {
+      if (!item.name || !(item.sets > 0)) continue;
+      totalPlannedSets += item.sets * freq;
+      const m = musclesOf(item.name, settings);
+      if (!m?.p) {
+        unmapped.push({ routine: r, exercise: item.name });
+        continue;
+      }
+      for (const [muscle, factor] of effectiveMuscleCredits(m)) {
+        const list = byMuscle.get(muscle);
+        if (!list) continue;
+        list.push({
+          routine: r,
+          freq,
+          exercise: item.name,
+          sets: item.sets,
+          factor,
+          effective: item.sets * factor * freq,
+        });
+      }
+    }
+  }
+  return { byMuscle, unmapped, totalWeeklySessions, totalPlannedSets };
+}
+
+const MUSCLE_HINTS: ReadonlyArray<[RegExp, string]> = [
+  [/\b(peso muerto|rdl|femoral|isquio)\b/, 'Isquios'],
+  [/\b(remo|jalon|jalones|dominada|dominadas|pullover|pull over|dorsal|espalda|lumbar|lumbares)\b/, 'Espalda'],
+  [/\b(banca|pecho|apertura|aperturas|cruce|flexion|flexiones|peck)\b/, 'Pecho'],
+  [/\b(sentadilla|prensa|cuadriceps|zancada|zancadas|bulgara)\b/, 'Cuádriceps'],
+  [/\b(hip thrust|gluteo|gluteos|abductor|abductores)\b/, 'Glúteo'],
+  [/\b(aductor|aductores|adductores)\b/, 'Aductores'],
+  [/\b(gemelo|gemelos|soleo)\b/, 'Gemelos'],
+  [/\b(curl|biceps|martillo|predicador|bayesian)\b/, 'Bíceps'],
+  [/\b(triceps|frances|fondo|fondos)\b/, 'Tríceps'],
+  [/\b(hombro|hombros|militar|lateral|laterales|frontal|frontales|pajaro|pajaros|face pull)\b/, 'Hombros'],
+  [/\b(abdom|abdominal|abdominales|crunch|crunches|plancha|rueda)\b/, 'Abdomen'],
+];
+
+/** Sugiere el músculo principal probable a partir del nombre del ejercicio (sin imponerlo si no coincide). */
+export function suggestPrimaryMuscle(name: string): string | undefined {
+  const k = norm(name);
+  if (!k) return undefined;
+  return MUSCLE_HINTS.find(([re]) => re.test(k))?.[1];
 }
 
 function matchesExerciseQuery(name: string, m: ReturnType<typeof musclesOf>, tokens: string[]): boolean {

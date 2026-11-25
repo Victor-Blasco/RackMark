@@ -16,7 +16,7 @@ service cloud.firestore {
     //   - data: map (required, allowed keys only) - serialized GymApp Settings
     //       Optional typed/bounded subfields inside data:
     //       - routines: map (1..20 entries, dynamic user-defined routine names)
-    //       - routineMeta: map (optional, size <= 20)
+    //       - routineMeta: map (optional, size <= 20, dynamic routine-name keys; optional entry fields: color string, sub string, freq int 0..7)
     //       - profile: map (keys in ['sex', 'age', 'height', 'goal', 'experience', 'daysPerWeek']; sex string <= 64, age 0..150, height 0..300, goal optional in ['bulk', 'cut', 'recomp', 'strength'], experience optional in ['beginner', 'intermediate', 'advanced'], daysPerWeek optional number 1..7)
     //       - customNames: map (size <= 500)
     //       - refNames: map (size <= 500)
@@ -138,6 +138,7 @@ service cloud.firestore {
           'onboardingCompleted', 'geminiKey', 'aiTone', 'ai', 'theme'
         ])
         && (!('routines' in d) || isValidRoutines(d.routines))
+        // Dynamic routine keys cannot be iterated in CEL without risking the 1,000-expression limit; subfields (color, sub, freq) are sanitized client-side
         && isOptionalMapMax(d, 'routineMeta', 20)
         && (!('profile' in d) || isValidProfile(d.profile))
         && isOptionalMapMax(d, 'customNames', 500)

@@ -412,4 +412,18 @@ describe('cloud sync helpers', () => {
     expect(report.pulledItems).toBe(0);
     vi.unstubAllGlobals();
   });
+
+  it('conserva routineMeta.freq válido al fusionar ajustes', () => {
+    const local = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      routineMeta: { Pull: { color: '#3B82F6', freq: 3 } },
+    };
+    const remote = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      routineMeta: { Pull: { color: '#3B82F6', freq: 2 }, Leg: { color: '#10B981', freq: 0 } },
+    };
+    const merged = mergeSyncSettings(local, remote);
+    expect(merged.routineMeta?.Pull?.freq).toBe(2);
+    expect(merged.routineMeta?.Leg?.freq).toBe(0);
+  });
 });

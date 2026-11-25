@@ -180,6 +180,35 @@ describe('security hardening', () => {
     expect(sanitizeSettings({ theme: 'light' }).theme).toBe('light');
     expect(sanitizeSettings({ theme: 'system' }).theme).toBe('system');
     expect(sanitizeSettings({ theme: 'neon-invalid' }).theme).toBe('dark');
+
+    const freqSanitized = sanitizeSettings({
+      routineMeta: {
+        Push: { color: '#A855F7', freq: 2 },
+        Pull: { freq: 0 },
+        BadNeg: { freq: -1 },
+        BadHigh: { freq: 99 },
+        BadStr: { freq: 'bad' },
+      },
+    });
+    expect(freqSanitized.routineMeta?.Push).toEqual({ color: '#A855F7', freq: 2 });
+    expect(freqSanitized.routineMeta?.Pull).toEqual({ freq: 0 });
+    expect(freqSanitized.routineMeta?.BadNeg).toBeUndefined();
+    expect(freqSanitized.routineMeta?.BadHigh).toBeUndefined();
+    expect(freqSanitized.routineMeta?.BadStr).toBeUndefined();
+
+    const backupWithFreq = parseBackup(
+      JSON.stringify({
+        version: 1,
+        strength: [],
+        cardio: [],
+        measures: [],
+        settings: {
+          routineMeta: { Pull: { freq: 2 }, Bad: { freq: 99 } },
+        },
+      }),
+    );
+    expect(backupWithFreq.settings.routineMeta?.Pull?.freq).toBe(2);
+    expect(backupWithFreq.settings.routineMeta?.Bad).toBeUndefined();
   });
 
   it('calcula correctamente el cupo diario de informes IA en UTC y reinicia al cambiar de día', () => {
