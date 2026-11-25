@@ -65,7 +65,7 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onSelect
         </div>
         <div class="flex shrink-0 items-center gap-2">
           {state.authReady && !state.user && (
-            <button type="button" disabled={state.syncing} aria-label="Iniciar sesión con Google" title="Iniciar sesión con Google" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onCloudLogin}>
+            <button type="button" disabled={state.syncing} aria-label="Iniciar sesión" title="Iniciar sesión" class="flex h-11 items-center gap-1.5 rounded-xl border border-electricBlue/40 bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 transition-colors hover:bg-electricBlue/25 active:scale-[0.98] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onCloudLogin}>
               <Icon name="login" className="h-3.5 w-3.5" />
               <span>Entrar</span>
             </button>

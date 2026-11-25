@@ -26,14 +26,16 @@ export interface DataSyncActionDeps {
   toast: (msg: string) => void;
   downloadFile?: (name: string, data: string, type: string) => void;
   wipeAllData: () => Promise<void>;
+  openAuthModal: (mode?: 'login' | 'signup') => void;
   cloudLogin: () => Promise<void>;
   cloudEmailLogin: (email: string, password: string) => Promise<boolean>;
-  cloudEmailSignUp: (email: string, password: string) => Promise<boolean>;
+  cloudEmailSignUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   cloudResetPassword: (email: string) => Promise<boolean>;
   cloudResendVerification: () => Promise<void>;
   cloudCheckEmailVerified: () => Promise<void>;
   cloudSync: () => Promise<void>;
   cloudLogout: () => Promise<void>;
+  cloudDeleteAccount: () => Promise<void>;
 }
 
 /** Tipo de retorno completo de acciones de datos y cuenta en la nube. */
@@ -138,14 +140,17 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
     },
 
     wipeAllData: () => void deps.wipeAllData(),
+    openAuthModal: (mode?: 'login' | 'signup') => deps.openAuthModal(mode),
     cloudLogin: () => void deps.cloudLogin(),
     cloudEmailLogin: (email: string, password: string) => deps.cloudEmailLogin(email, password),
-    cloudEmailSignUp: (email: string, password: string) => deps.cloudEmailSignUp(email, password),
+    cloudEmailSignUp: (email: string, password: string, displayName: string) =>
+      deps.cloudEmailSignUp(email, password, displayName),
     cloudResetPassword: (email: string) => deps.cloudResetPassword(email),
     cloudResendVerification: () => void deps.cloudResendVerification(),
     cloudCheckEmailVerified: () => void deps.cloudCheckEmailVerified(),
     cloudSync: () => void deps.cloudSync(),
     cloudLogout: () => void deps.cloudLogout(),
+    cloudDeleteAccount: () => void deps.cloudDeleteAccount(),
 
     async setAiToneWithToast(tone: AiTone) {
       const S = state();

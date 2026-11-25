@@ -1,6 +1,10 @@
 import { clearSyncJob, loadSyncJob, saveSyncJob, wipeAll } from '../lib/db';
 import {
   consumeRedirectAuth,
+  deleteCurrentUser,
+  isGoogleAuthUser,
+  isRecentSignIn,
+  reauthenticateGoogle,
   reloadCurrentUser,
   resendVerificationEmail,
   resetPasswordEmail,
@@ -12,6 +16,7 @@ import {
 } from '../lib/firebase';
 import {
   clearSyncMeta,
+  deleteCloudUserData,
   hasUnsyncedChanges,
   loadSyncMeta,
   markWipePending,
@@ -36,12 +41,13 @@ export interface SyncControllerHooks {
 export interface SyncController {
   cloudLogin: () => Promise<void>;
   cloudEmailLogin: (email: string, password: string) => Promise<boolean>;
-  cloudEmailSignUp: (email: string, password: string) => Promise<boolean>;
+  cloudEmailSignUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   cloudResetPassword: (email: string) => Promise<boolean>;
   cloudResendVerification: () => Promise<void>;
   cloudCheckEmailVerified: () => Promise<void>;
   cloudSync: () => Promise<void>;
   cloudLogout: () => Promise<void>;
+  cloudDeleteAccount: () => Promise<void>;
   wipe: () => Promise<void>;
   runSync: (showToast?: boolean) => Promise<void>;
   queueSync: () => void;
@@ -296,9 +302,31 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     });
   }
 
+  function closeAuthModalIfOpen(): void {
+    if (ctx.state.activeModal?.type === 'auth') {
+      ctx.state.activeModal = null;
+      ctx.render();
+    }
+  }
+
+  async function clearLocalSession(S: AppContext['state']): Promise<void> {
+    if (syncPromise) await syncPromise;
+    await wipeAll();
+    clearSyncMeta();
+    hooks?.onSessionReset?.();
+    syncResumeAttempted = false;
+    ctx.clearActiveWorkouts();
+    resetSessionUiState(S);
+    S.user = null;
+    S.lastSync = undefined;
+    await ctx.reload();
+    ctx.render();
+  }
+
   const cloudLogin = async (): Promise<void> => {
     try {
       await signInGoogle();
+      closeAuthModalIfOpen();
     } catch (e) {
       const code = (e as { code?: string })?.code;
       if (code !== 'auth/popup-closed-by-user') ctx.toast(`Error al iniciar sesión: ${humanizeError(e)}`);
@@ -308,6 +336,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
   const cloudEmailLogin = async (email: string, password: string): Promise<boolean> => {
     try {
       await signInEmail(email, password);
+      closeAuthModalIfOpen();
       return true;
     } catch (e) {
       ctx.toast(`Error al iniciar sesión: ${humanizeError(e)}`);
@@ -315,9 +344,14 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     }
   };
 
-  const cloudEmailSignUp = async (email: string, password: string): Promise<boolean> => {
+  const cloudEmailSignUp = async (email: string, password: string, displayName: string): Promise<boolean> => {
     try {
-      await signUpEmail(email, password);
+      await signUpEmail(email, password, displayName);
+      const cleanName = displayName.trim().slice(0, 60);
+      if (ctx.state.user && cleanName && !ctx.state.user.displayName) {
+        ctx.state.user = { ...ctx.state.user, displayName: cleanName };
+      }
+      closeAuthModalIfOpen();
       ctx.toast('Cuenta creada. Revisa tu correo para verificarla y activar la sincronización.');
       return true;
     } catch (e) {
@@ -382,20 +416,49 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     }
     try {
       await signOutGoogle();
-      if (syncPromise) await syncPromise;
-      await wipeAll();
-      clearSyncMeta();
-      hooks?.onSessionReset?.();
-      syncResumeAttempted = false;
-      ctx.clearActiveWorkouts();
-      resetSessionUiState(S);
-      S.user = null;
-      S.lastSync = undefined;
-      await ctx.reload();
-      ctx.render();
+      await clearLocalSession(S);
       ctx.toast('Sesión cerrada en este dispositivo.');
     } catch (e) {
       ctx.toast(`No se pudo cerrar la sesión: ${humanizeError(e)}`);
+    }
+  };
+
+  const cloudDeleteAccount = async (): Promise<void> => {
+    const S = ctx.state;
+    if (!S.user) return;
+    if (
+      !(await ctx.askConfirm({
+        title: 'Eliminar cuenta permanentemente',
+        message: 'Se eliminará tu cuenta de RackMark y todos tus datos en la nube y en este dispositivo. Esta acción es irreversible.',
+        confirmLabel: 'Eliminar cuenta',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    try {
+      if (!isRecentSignIn()) {
+        if (isGoogleAuthUser()) {
+          await reauthenticateGoogle();
+        } else {
+          ctx.toast('Por seguridad, cierra sesión y vuelve a iniciar sesión justo antes de eliminar tu cuenta.');
+          return;
+        }
+      }
+      clearSyncTimers();
+      syncPending = false;
+      if (syncPromise) await syncPromise;
+      const uid = S.user.uid;
+      if (isVerifiedUser(S.user) && isOnline()) {
+        await deleteCloudUserData(uid);
+      }
+      await deleteCurrentUser();
+      await clearLocalSession(S);
+      ctx.toast('Tu cuenta y todos tus datos han sido eliminados.');
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+      ctx.toast(`No se pudo eliminar la cuenta: ${humanizeError(e)}`);
     }
   };
 
@@ -440,6 +503,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     cloudCheckEmailVerified,
     cloudSync: () => runSync(true),
     cloudLogout,
+    cloudDeleteAccount,
     wipe,
     runSync,
     queueSync,

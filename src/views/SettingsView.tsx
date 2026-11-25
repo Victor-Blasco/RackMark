@@ -31,14 +31,12 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 pb-5 border-b border-white/10">
         <AccountSyncSection
           state={state}
-          onLogin={dataSync.cloudLogin}
-          onEmailLogin={dataSync.cloudEmailLogin}
-          onEmailSignUp={dataSync.cloudEmailSignUp}
-          onResetPassword={dataSync.cloudResetPassword}
+          onOpenAuth={dataSync.openAuthModal}
           onResendVerification={dataSync.cloudResendVerification}
           onCheckVerified={dataSync.cloudCheckEmailVerified}
           onSync={dataSync.cloudSync}
           onLogout={dataSync.cloudLogout}
+          onDeleteAccount={dataSync.cloudDeleteAccount}
         />
         <AthleteProfileSection
           profile={state.settings.profile}

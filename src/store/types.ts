@@ -119,6 +119,7 @@ export interface ConfirmModalOpts {
 export type ActiveModal =
   | null
   | ({ type: 'confirm' } & ConfirmModalOpts)
+  | { type: 'auth'; mode?: 'login' | 'signup' | 'reset' }
   | { type: 'wizard'; draft: WizardDraft }
   | { type: 'exercise'; routine?: string; rowIdx?: number; fromLog?: boolean; initialName?: string }
   | { type: 'routineExercisePicker'; routine: string; replaceRowIdx?: number }

@@ -2,16 +2,19 @@ import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithPopup,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  updateProfile,
   type User,
 } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -73,8 +76,16 @@ export async function signInEmail(email: string, password: string): Promise<User
   return cred.user;
 }
 
-export async function signUpEmail(email: string, password: string): Promise<User> {
+export async function signUpEmail(email: string, password: string, displayName = ''): Promise<User> {
   const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  const cleanName = displayName.trim().slice(0, 60);
+  if (cleanName) {
+    try {
+      await updateProfile(cred.user, { displayName: cleanName });
+    } catch {
+      /* si falla el perfil inicial, el correo y uid siguen creados */
+    }
+  }
   try {
     await sendEmailVerification(cred.user);
   } catch {
@@ -98,6 +109,27 @@ export async function reloadCurrentUser(): Promise<CloudUser | null> {
   await auth.currentUser.reload();
   await auth.currentUser.getIdToken(true);
   return toCloudUser(auth.currentUser);
+}
+
+export function isRecentSignIn(maxAgeMs = 4 * 60 * 1000): boolean {
+  const raw = auth.currentUser?.metadata.lastSignInTime;
+  const ts = raw ? Date.parse(raw) : Number.NaN;
+  return Number.isFinite(ts) && Date.now() - ts <= maxAgeMs;
+}
+
+export function isGoogleAuthUser(): boolean {
+  return Boolean(auth.currentUser?.providerData.some((p) => p.providerId === 'google.com'));
+}
+
+export async function reauthenticateGoogle(): Promise<void> {
+  if (!auth.currentUser) return;
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  await reauthenticateWithPopup(auth.currentUser, provider);
+}
+
+export async function deleteCurrentUser(): Promise<void> {
+  if (auth.currentUser) await deleteUser(auth.currentUser);
 }
 
 export async function consumeRedirectAuth(): Promise<{ user: User | null; error?: string }> {

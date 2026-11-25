@@ -1105,16 +1105,25 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     });
 
     const loggedOutHtml = renderToString(h(SettingsView, { state: baseState }));
-    expect(loggedOutHtml).toContain('O entra con tu correo');
+    expect(loggedOutHtml).toContain('Iniciar sesión');
     expect(loggedOutHtml).toContain('Crear cuenta');
-    expect(loggedOutHtml).toContain('¿Olvidaste tu contraseña?');
     expect(loggedOutHtml).not.toContain('<h3');
     expect(loggedOutHtml).not.toContain('text-gray-500');
+
+    const authModalHtml = renderToString(
+      h(ModalHost, { state: { ...baseState, activeModal: { type: 'auth', mode: 'signup' } } }),
+    );
+    expect(authModalHtml).toContain('id="auth-modal"');
+    expect(authModalHtml).toContain('Continuar con Google');
+    expect(authModalHtml).toContain('id="email-auth-name"');
+    expect(authModalHtml).toContain('Crear cuenta con correo');
+    expect(authModalHtml).not.toContain('text-gray-500');
 
     const unverifiedHtml = renderToString(h(SettingsView, { state: { ...baseState, user: unverifiedUser } }));
     expect(unverifiedHtml).toContain('Ya lo verifiqué');
     expect(unverifiedHtml).toContain('Reenviar correo');
     expect(unverifiedHtml).toContain('Verifica tu correo');
+    expect(unverifiedHtml).toContain('Eliminar cuenta');
     expect(unverifiedHtml).not.toContain('<h3');
     expect(unverifiedHtml).not.toContain('text-gray-500');
 
@@ -1129,6 +1138,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     );
     expect(verifiedExhaustedHtml).toContain('Informes hoy: 3/3');
     expect(verifiedExhaustedHtml).toContain('Límite diario alcanzado');
+    expect(verifiedExhaustedHtml).toContain('Eliminar cuenta');
     expect(verifiedExhaustedHtml).not.toContain('<h3');
   });
 });

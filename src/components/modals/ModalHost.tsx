@@ -1,6 +1,7 @@
 import { useAppStore } from '../../store/appStore';
 import { resolveActiveModal } from '../../store/types';
 import { routineNames, type State } from '../../ui/shared';
+import { AuthModal } from './AuthModal';
 import { ConfirmModal } from './ConfirmModal';
 import { ExerciseModal } from './ExerciseModal';
 import { ExercisePickerModals } from './ExercisePickerModals';
@@ -24,6 +25,18 @@ export function ModalHost({ state: propState }: ModalHostProps) {
   if (!modal) return null;
 
   switch (modal.type) {
+    case 'auth':
+      return (
+        <AuthModal
+          initialMode={modal.mode}
+          disabled={state.syncing}
+          onGoogleLogin={store.dataSync.cloudLogin}
+          onEmailLogin={store.dataSync.cloudEmailLogin}
+          onEmailSignUp={store.dataSync.cloudEmailSignUp}
+          onResetPassword={store.dataSync.cloudResetPassword}
+          onClose={store.closeModal}
+        />
+      );
     case 'confirm':
       return (
         <ConfirmModal

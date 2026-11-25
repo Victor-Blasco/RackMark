@@ -780,7 +780,7 @@ describe('cuerpo, calculadoras, adherencia y analítica', () => {
       }).aiTone,
     ).toBe('simple');
     expect(renderToString(h(HomeView, { state: { ...activeState, settings: { ...settings, ai: undefined } } }))).toContain(
-      'Inicia sesión con Google para generar análisis IA',
+      'Inicia sesión para generar análisis IA',
     );
   });
 

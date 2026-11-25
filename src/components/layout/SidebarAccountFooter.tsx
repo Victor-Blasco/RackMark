@@ -46,7 +46,7 @@ export function SidebarAccountFooter({ state, unsynced, onOpenSettings, onCloudL
               onClick={onCloudLogin}
             >
               <Icon name="login" className="h-4 w-4" />
-              <span class="flex-1 text-left">Iniciar sesión · Google</span>
+              <span class="flex-1 text-left">Iniciar sesión</span>
             </button>
           )}
           <button

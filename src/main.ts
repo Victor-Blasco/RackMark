@@ -329,6 +329,11 @@ const analyticsActions = createAnalyticsActions({
   askConfirm,
 });
 
+const openAuthModal = (mode: 'login' | 'signup' = 'login') => {
+  S.activeModal = { type: 'auth', mode };
+  renderChrome();
+};
+
 const dataSyncActions = createDataSyncActions({
   getState: () => S,
   persist,
@@ -338,6 +343,7 @@ const dataSyncActions = createDataSyncActions({
   toast,
   downloadFile: downloadBrowserFile,
   wipeAllData: syncCtrl.wipe,
+  openAuthModal,
   cloudLogin: syncCtrl.cloudLogin,
   cloudEmailLogin: syncCtrl.cloudEmailLogin,
   cloudEmailSignUp: syncCtrl.cloudEmailSignUp,
@@ -346,6 +352,7 @@ const dataSyncActions = createDataSyncActions({
   cloudCheckEmailVerified: syncCtrl.cloudCheckEmailVerified,
   cloudSync: syncCtrl.cloudSync,
   cloudLogout: syncCtrl.cloudLogout,
+  cloudDeleteAccount: syncCtrl.cloudDeleteAccount,
 });
 
 function navigateTab(tab: string) {
@@ -368,7 +375,7 @@ function RootShell() {
     unsynced: hasUnsyncedChanges(),
     swUpdatePending,
     setTab: navigateTab,
-    cloudLogin: () => void syncCtrl.cloudLogin(),
+    cloudLogin: () => openAuthModal('login'),
     resolveConfirm,
     closeModal,
     saveNoteModal,

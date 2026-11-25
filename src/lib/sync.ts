@@ -588,3 +588,17 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
     ...(settingsConflict ? { settingsConflict: true } : {}),
   };
 }
+
+/** Elimina permanentemente los datos sincronizados del usuario en Cloud Firestore (`settings` y `buckets`). */
+export async function deleteCloudUserData(uid: string): Promise<void> {
+  const settingsRef = doc(fs, 'users', uid, 'sync', 'settings');
+  const bucketsSnap = await getDocs(collection(fs, 'users', uid, 'buckets'));
+  await deleteDoc(settingsRef);
+  for (let i = 0; i < bucketsSnap.docs.length; i += MAX_BATCH_OPS) {
+    const batch = writeBatch(fs);
+    for (const d of bucketsSnap.docs.slice(i, i + MAX_BATCH_OPS)) {
+      batch.delete(d.ref);
+    }
+    await batch.commit();
+  }
+}

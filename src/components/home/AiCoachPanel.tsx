@@ -50,7 +50,7 @@ export function AiCoachPanel({
         <AiJobStatusBanner job={state.aiJob} onRetry={onRetry} onDismiss={onDismiss} />
         {!state.user ? (
           <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.syncing} onClick={onCloudLogin}>
-            <Icon name="login" className="h-3.5 w-3.5" /> Inicia sesión con Google para generar análisis IA
+            <Icon name="login" className="h-3.5 w-3.5" /> Inicia sesión para generar análisis IA
           </button>
         ) : (
           <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai' || quotaExhausted} onClick={onGenerate}>
