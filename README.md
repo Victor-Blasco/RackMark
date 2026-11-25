@@ -74,6 +74,10 @@ npx firebase-tools deploy --only hosting,firestore:rules
 
 > **Nota de autenticación:** tras activar `https://rackmark.web.app`, asegúrate de tener `rackmark.web.app` añadido en **Firebase Console → Authentication → Settings → Authorized domains** para que funcione el inicio de sesión con Google.
 
+## Privacidad
+
+Consulta la política de privacidad en [https://rackmark.web.app/privacidad](https://rackmark.web.app/privacidad).
+
 ## Licencia
 
 Distribuido bajo la licencia **Apache 2.0**. Consulta el archivo [LICENSE](LICENSE) para más detalles.

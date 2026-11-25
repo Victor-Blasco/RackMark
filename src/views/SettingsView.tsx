@@ -88,6 +88,9 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
           <button type="button" class="btn-sm" onClick={() => setTab('data')}>
             Datos y copias
           </button>
+          <a href="/privacidad" target="_blank" rel="noopener noreferrer" class="btn-sm">
+            Privacidad
+          </a>
         </div>
       </div>
     </div>

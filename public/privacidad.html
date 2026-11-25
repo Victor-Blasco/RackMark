@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0A0D0E" />
+    <title>Política de privacidad — RackMark</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0A0D0E;
+        --surface: #111618;
+        --text: #F3F7F8;
+        --muted: #94A3A8;
+        --accent: #2DD4BF;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.65;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      main {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
+      }
+
+      .brand img {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+      }
+
+      h1 {
+        font-size: 1.375rem;
+        line-height: 1.25;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+
+      .updated {
+        margin: 0.2rem 0 0;
+        font-size: 0.8125rem;
+        color: var(--muted);
+      }
+
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0.5rem 0.875rem;
+        border-radius: 0.625rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .back-link:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      section {
+        padding: 1.25rem 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      section:last-of-type {
+        border-bottom: none;
+      }
+
+      h2 {
+        font-size: 1.05rem;
+        margin: 0 0 0.5rem;
+        color: var(--accent);
+      }
+
+      p, ul {
+        margin: 0.5rem 0;
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+
+      ul {
+        padding-left: 1.25rem;
+      }
+
+      li {
+        margin: 0.35rem 0;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      a {
+        color: var(--accent);
+        text-underline-offset: 3px;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.85em;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.35rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="brand">
+          <img src="/logo.svg" alt="Logo de RackMark" width="40" height="40" />
+          <div>
+            <h1>Política de privacidad — RackMark</h1>
+            <p class="updated">Última actualización: 25 de noviembre de 2026</p>
+          </div>
+        </div>
+        <a class="back-link" href="/">Volver a la app</a>
+      </header>
+
+      <section>
+        <h2>1. Responsable y alcance</h2>
+        <p>
+          Esta política describe cómo trata los datos la aplicación web progresiva (PWA)
+          <strong>RackMark</strong>, disponible en
+          <a href="https://rackmark.web.app">https://rackmark.web.app</a> y mantenida por
+          Víctor Blasco (<a href="https://github.com/Victor-Blasco/RackMark" target="_blank" rel="noopener noreferrer">github.com/Victor-Blasco/RackMark</a>).
+        </p>
+      </section>
+
+      <section>
+        <h2>2. Datos que se tratan</h2>
+        <p>RackMark únicamente procesa la información que introduces o importas de forma voluntaria:</p>
+        <ul>
+          <li><strong>Entrenamiento y planificación:</strong> sesiones, ejercicios, series, cargas, repeticiones, rutinas, fases y notas.</li>
+          <li><strong>Medidas y bienestar:</strong> peso corporal, composición, perímetros, objetivos calóricos y registros opcionales importados desde archivos ZIP/CSV de Samsung Health (cardio, sueño, HRV y pasos).</li>
+          <li><strong>Cuenta de Google (opcional):</strong> si decides iniciar sesión con Google, se utiliza tu identificador de usuario (<code>uid</code>), dirección de correo electrónico, nombre visible y foto de perfil para asociar tu copia en la nube.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>3. Almacenamiento local y sincronización opcional</h2>
+        <p>
+          Por defecto, RackMark funciona sin cuenta: todos tus datos se guardan exclusivamente en tu
+          navegador mediante <strong>IndexedDB</strong> y almacenamiento local del dispositivo.
+        </p>
+        <p>
+          Si activas voluntariamente el inicio de sesión con Google, tus registros se sincronizan
+          con <strong>Google Cloud Firestore</strong> (proyecto <code>gymapp-vbg</code>) bajo reglas
+          de seguridad que restringen el acceso exclusivamente a tu propio usuario autenticado,
+          con protección adicional mediante <strong>Firebase App Check (reCAPTCHA Enterprise)</strong>
+          para prevenir accesos automatizados no autorizados.
+        </p>
+      </section>
+
+      <section>
+        <h2>4. Coach IA (opcional)</h2>
+        <p>
+          Si pulsas manualmente para generar un análisis del Coach IA, RackMark envía un resumen de tus
+          métricas de entrenamiento, medidas recientes y preferencias de tono a
+          <strong>Firebase AI Logic (Gemini)</strong> con el único fin de redactar recomendaciones
+          en pantalla. No se envía ningún dato a este servicio si no ejecutas el análisis.
+        </p>
+      </section>
+
+      <section>
+        <h2>5. Cesión a terceros y publicidad</h2>
+        <p>
+          RackMark no muestra anuncios, no utiliza rastreadores publicitarios ni vende o cede tus datos
+          a terceros. Los únicos proveedores implicados son los servicios de infraestructura de
+          <strong>Google Firebase / Google Cloud</strong> estrictamente necesarios cuando decides usar
+          el inicio de sesión con Google, la sincronización en la nube o el Coach IA.
+        </p>
+      </section>
+
+      <section>
+        <h2>6. Exportación y borrado total</h2>
+        <p>
+          Puedes descargar una copia completa de tus datos en formato JSON o eliminar por completo
+          toda tu información (tanto en el dispositivo como en la nube si estás conectado) en un solo
+          paso desde la aplicación en:
+        </p>
+        <p><code>Datos e importación → Zona de peligro → Borrar todos los datos</code></p>
+        <p class="muted">
+          Además, puedes revocar en cualquier momento el permiso de acceso de RackMark desde los
+          ajustes de seguridad de tu cuenta de Google.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Contacto</h2>
+        <p>
+          Para cualquier consulta sobre privacidad o eliminación de datos, puedes abrir una incidencia
+          o contactar a través del repositorio oficial:
+          <a href="https://github.com/Victor-Blasco/RackMark" target="_blank" rel="noopener noreferrer">https://github.com/Victor-Blasco/RackMark</a>.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

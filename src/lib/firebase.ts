@@ -14,7 +14,7 @@ import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBu-detgpetWeXCyyinNLXmzDR_zDUYF1M',
-  authDomain: 'gymapp-vbg.firebaseapp.com',
+  authDomain: 'rackmark.web.app',
   projectId: 'gymapp-vbg',
   storageBucket: 'gymapp-vbg.firebasestorage.app',
   messagingSenderId: '205930773826',
