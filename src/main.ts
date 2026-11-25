@@ -209,6 +209,7 @@ const ctx: AppContext = {
 
 const syncCtrl = createSyncController(ctx, {
   onUserReady: () => {
+    void aiCtrl.refreshQuota();
     void aiCtrl.resumeAiJob().catch((e) => toast(`No se pudo recuperar el informe IA: ${humanizeError(e)}`));
   },
   onSessionReset: () => aiCtrl.resetResumeFlag(),
@@ -338,6 +339,11 @@ const dataSyncActions = createDataSyncActions({
   downloadFile: downloadBrowserFile,
   wipeAllData: syncCtrl.wipe,
   cloudLogin: syncCtrl.cloudLogin,
+  cloudEmailLogin: syncCtrl.cloudEmailLogin,
+  cloudEmailSignUp: syncCtrl.cloudEmailSignUp,
+  cloudResetPassword: syncCtrl.cloudResetPassword,
+  cloudResendVerification: syncCtrl.cloudResendVerification,
+  cloudCheckEmailVerified: syncCtrl.cloudCheckEmailVerified,
   cloudSync: syncCtrl.cloudSync,
   cloudLogout: syncCtrl.cloudLogout,
 });

@@ -27,6 +27,11 @@ export interface DataSyncActionDeps {
   downloadFile?: (name: string, data: string, type: string) => void;
   wipeAllData: () => Promise<void>;
   cloudLogin: () => Promise<void>;
+  cloudEmailLogin: (email: string, password: string) => Promise<boolean>;
+  cloudEmailSignUp: (email: string, password: string) => Promise<boolean>;
+  cloudResetPassword: (email: string) => Promise<boolean>;
+  cloudResendVerification: () => Promise<void>;
+  cloudCheckEmailVerified: () => Promise<void>;
   cloudSync: () => Promise<void>;
   cloudLogout: () => Promise<void>;
 }
@@ -134,6 +139,11 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
 
     wipeAllData: () => void deps.wipeAllData(),
     cloudLogin: () => void deps.cloudLogin(),
+    cloudEmailLogin: (email: string, password: string) => deps.cloudEmailLogin(email, password),
+    cloudEmailSignUp: (email: string, password: string) => deps.cloudEmailSignUp(email, password),
+    cloudResetPassword: (email: string) => deps.cloudResetPassword(email),
+    cloudResendVerification: () => void deps.cloudResendVerification(),
+    cloudCheckEmailVerified: () => void deps.cloudCheckEmailVerified(),
     cloudSync: () => void deps.cloudSync(),
     cloudLogout: () => void deps.cloudLogout(),
 

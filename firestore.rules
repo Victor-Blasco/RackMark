@@ -41,6 +41,12 @@ service cloud.firestore {
     //   - deleted: map (optional, size <= 5000) - keyed tombstone timestamps
     //   - updatedAt: number (required, 0 <= val <= request.time + 24h) - client epoch ms
     //
+    // Collection: /users/{userId}/usage
+    // Document ID: 'ai' (fixed singleton per user for daily AI Coach quota)
+    // Fields:
+    //   - count: int (required, 1..3; 1 on create or new UTC day, prev + 1 on same UTC day) - daily AI reports used
+    //   - updatedAt: timestamp (required, must equal request.time) - server timestamp of last quota consumption
+    //
     // ===============================================================
 
     // ===============================================================
@@ -172,6 +178,32 @@ service cloud.firestore {
         && isValidEpochMs(docData.updatedAt);
     }
 
+    function isValidAiUsage(docData) {
+      return hasRequiredFields(['count', 'updatedAt'])
+        && hasOnlyAllowedFields(['count', 'updatedAt'])
+        && docData.count is int
+        && docData.count >= 1
+        && docData.count <= 3
+        && docData.updatedAt is timestamp
+        && docData.updatedAt == request.time;
+    }
+
+    function isValidAiUsageUpdate(newData, prevData) {
+      return isValidAiUsage(newData)
+        && 'updatedAt' in prevData
+        && prevData.updatedAt is timestamp
+        && (
+          (prevData.updatedAt.date() == request.time.date()
+            && 'count' in prevData
+            && prevData.count is int
+            && newData.count == prevData.count + 1
+            && newData.count <= 3)
+          ||
+          (prevData.updatedAt.date() < request.time.date()
+            && newData.count == 1)
+        );
+    }
+
     // ===============================================================
     // Collection Rules
     // ===============================================================
@@ -194,6 +226,18 @@ service cloud.firestore {
         && isValidBucketId(bucketId)
         && isValidBucket(bucketId, request.resource.data)
         && areImmutableFieldsUnchanged(['kind']);
+    }
+
+    match /users/{userId}/usage/{docId} {
+      allow get: if isOwner(userId) && docId == 'ai';
+      allow list, delete: if false;
+      allow create: if isOwner(userId)
+        && docId == 'ai'
+        && isValidAiUsage(request.resource.data)
+        && request.resource.data.count == 1;
+      allow update: if isOwner(userId)
+        && docId == 'ai'
+        && isValidAiUsageUpdate(request.resource.data, resource.data);
     }
 
     // Default deny catch-all

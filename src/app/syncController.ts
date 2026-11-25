@@ -1,5 +1,15 @@
 import { clearSyncJob, loadSyncJob, saveSyncJob, wipeAll } from '../lib/db';
-import { consumeRedirectAuth, signInGoogle, signOutGoogle, subscribeAuth } from '../lib/firebase';
+import {
+  consumeRedirectAuth,
+  reloadCurrentUser,
+  resendVerificationEmail,
+  resetPasswordEmail,
+  signInEmail,
+  signInGoogle,
+  signOutGoogle,
+  signUpEmail,
+  subscribeAuth,
+} from '../lib/firebase';
 import {
   clearSyncMeta,
   hasUnsyncedChanges,
@@ -16,6 +26,7 @@ const SYNC_RETRY_BASE_MS = 2_000;
 const SYNC_RETRY_MAX_MS = 5 * 60 * 1000;
 
 const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navigator.onLine !== false);
+const isVerifiedUser = (u: AppContext['state']['user']): boolean => Boolean(u && u.emailVerified);
 
 export interface SyncControllerHooks {
   onUserReady?: () => void;
@@ -24,6 +35,11 @@ export interface SyncControllerHooks {
 
 export interface SyncController {
   cloudLogin: () => Promise<void>;
+  cloudEmailLogin: (email: string, password: string) => Promise<boolean>;
+  cloudEmailSignUp: (email: string, password: string) => Promise<boolean>;
+  cloudResetPassword: (email: string) => Promise<boolean>;
+  cloudResendVerification: () => Promise<void>;
+  cloudCheckEmailVerified: () => Promise<void>;
   cloudSync: () => Promise<void>;
   cloudLogout: () => Promise<void>;
   wipe: () => Promise<void>;
@@ -62,6 +78,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     S.customRanges = undefined;
     S.activeModal = null;
     S.aiJob = undefined;
+    S.aiQuota = undefined;
     S.syncJob = undefined;
     S.planRoutine = undefined;
     S.planTab = undefined;
@@ -80,13 +97,13 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     const delay = Math.max(0, at - Date.now());
     syncRetryTimer = setTimeout(() => {
       syncRetryTimer = undefined;
-      if (isOnline() && ctx.state.user) void runSync(false);
+      if (isOnline() && isVerifiedUser(ctx.state.user)) void runSync(false);
     }, delay);
   }
 
   async function runSync(showToast = false): Promise<void> {
     const S = ctx.state;
-    if (!S.user) return;
+    if (!isVerifiedUser(S.user)) return;
     if (syncInFlight) {
       syncPending = true;
       return;
@@ -209,7 +226,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     await exec;
     if (syncPending) {
       syncPending = false;
-      if (ctx.state.user && isOnline()) void runSync(false);
+      if (isVerifiedUser(ctx.state.user) && isOnline()) void runSync(false);
     }
   }
 
@@ -235,7 +252,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
       .catch((e) => {
         if (import.meta.env.DEV) console.warn('[sync] could not persist pending job', { error: e instanceof Error ? e.name : 'unknown' });
       });
-    if (!ctx.state.user || !isOnline()) return;
+    if (!isVerifiedUser(ctx.state.user) || !isOnline()) return;
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       void runSync(false);
@@ -243,7 +260,7 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
   }
 
   async function resumeSyncJob(): Promise<void> {
-    if (syncResumeAttempted || !ctx.state.user) return;
+    if (syncResumeAttempted || !isVerifiedUser(ctx.state.user)) return;
     syncResumeAttempted = true;
     const job = await loadSyncJob();
     if (!job) return;
@@ -264,17 +281,18 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     return subscribeAuth((user) => {
       const S = ctx.state;
       const wasReady = Boolean(S.authReady);
-      const changed = user?.uid !== S.user?.uid;
+      const changed = user?.uid !== S.user?.uid || user?.emailVerified !== S.user?.emailVerified;
+      const verified = isVerifiedUser(user);
       S.authReady = true;
       S.user = user;
       if (changed || !wasReady) ctx.render();
-      if (user && changed && isOnline()) {
+      if (verified && changed && isOnline()) {
         syncResumeAttempted = true;
         void runSync(false);
-      } else if (user) {
+      } else if (verified) {
         void resumeSyncJob().catch((e) => ctx.toast(`No se pudo recuperar la sincronización: ${humanizeError(e)}`));
       }
-      if (user) hooks?.onUserReady?.();
+      if (verified) hooks?.onUserReady?.();
     });
   }
 
@@ -287,12 +305,70 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
     }
   };
 
+  const cloudEmailLogin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await signInEmail(email, password);
+      return true;
+    } catch (e) {
+      ctx.toast(`Error al iniciar sesión: ${humanizeError(e)}`);
+      return false;
+    }
+  };
+
+  const cloudEmailSignUp = async (email: string, password: string): Promise<boolean> => {
+    try {
+      await signUpEmail(email, password);
+      ctx.toast('Cuenta creada. Revisa tu correo para verificarla y activar la sincronización.');
+      return true;
+    } catch (e) {
+      ctx.toast(`No se pudo crear la cuenta: ${humanizeError(e)}`);
+      return false;
+    }
+  };
+
+  const cloudResetPassword = async (email: string): Promise<boolean> => {
+    try {
+      await resetPasswordEmail(email);
+      ctx.toast('Te hemos enviado un correo para restablecer tu contraseña.');
+      return true;
+    } catch (e) {
+      ctx.toast(`No se pudo enviar el correo: ${humanizeError(e)}`);
+      return false;
+    }
+  };
+
+  const cloudResendVerification = async (): Promise<void> => {
+    try {
+      await resendVerificationEmail();
+      ctx.toast('Correo de verificación reenviado. Revisa también tu carpeta de spam.');
+    } catch (e) {
+      ctx.toast(`No se pudo reenviar la verificación: ${humanizeError(e)}`);
+    }
+  };
+
+  const cloudCheckEmailVerified = async (): Promise<void> => {
+    try {
+      const user = await reloadCurrentUser();
+      ctx.state.user = user;
+      if (user?.emailVerified) {
+        ctx.render();
+        void runSync(true);
+        hooks?.onUserReady?.();
+        ctx.toast('Correo verificado. Sincronización activada.');
+      } else {
+        ctx.toast('Tu correo todavía figura sin verificar. Abre el enlace recibido y vuelve a comprobar.');
+      }
+    } catch (e) {
+      ctx.toast(`No se pudo comprobar la verificación: ${humanizeError(e)}`);
+    }
+  };
+
   const cloudLogout = async (): Promise<void> => {
     const S = ctx.state;
     clearSyncTimers();
     syncPending = false;
     if (syncPromise) await syncPromise;
-    if (S.user && isOnline() && hasUnsyncedChanges()) await runSync(false);
+    if (isVerifiedUser(S.user) && isOnline() && hasUnsyncedChanges()) await runSync(false);
     if (
       hasUnsyncedChanges() &&
       !(await ctx.askConfirm({
@@ -357,6 +433,11 @@ export function createSyncController(ctx: AppContext, hooks?: SyncControllerHook
 
   return {
     cloudLogin,
+    cloudEmailLogin,
+    cloudEmailSignUp,
+    cloudResetPassword,
+    cloudResendVerification,
+    cloudCheckEmailVerified,
     cloudSync: () => runSync(true),
     cloudLogout,
     wipe,

@@ -32,6 +32,11 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
         <AccountSyncSection
           state={state}
           onLogin={dataSync.cloudLogin}
+          onEmailLogin={dataSync.cloudEmailLogin}
+          onEmailSignUp={dataSync.cloudEmailSignUp}
+          onResetPassword={dataSync.cloudResetPassword}
+          onResendVerification={dataSync.cloudResendVerification}
+          onCheckVerified={dataSync.cloudCheckEmailVerified}
           onSync={dataSync.cloudSync}
           onLogout={dataSync.cloudLogout}
         />

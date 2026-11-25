@@ -1,10 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -40,10 +44,12 @@ if (typeof window !== 'undefined' && recaptchaSiteKey) {
   });
 }
 
-export type CloudUser = Pick<User, 'uid' | 'email' | 'displayName' | 'photoURL'>;
+export type CloudUser = Pick<User, 'uid' | 'email' | 'displayName' | 'photoURL' | 'emailVerified'>;
 
 function toCloudUser(u: User | null): CloudUser | null {
-  return u ? { uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL } : null;
+  return u
+    ? { uid: u.uid, email: u.email, displayName: u.displayName, photoURL: u.photoURL, emailVerified: u.emailVerified }
+    : null;
 }
 
 export async function signInGoogle(): Promise<User | null> {
@@ -60,6 +66,38 @@ export async function signInGoogle(): Promise<User | null> {
     }
     throw err;
   }
+}
+
+export async function signInEmail(email: string, password: string): Promise<User> {
+  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+  return cred.user;
+}
+
+export async function signUpEmail(email: string, password: string): Promise<User> {
+  const cred = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  try {
+    await sendEmailVerification(cred.user);
+  } catch {
+    /* El usuario puede reenviar el correo desde Ajustes si falla el envío inicial */
+  }
+  return cred.user;
+}
+
+export async function resetPasswordEmail(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+export async function resendVerificationEmail(): Promise<void> {
+  if (auth.currentUser && !auth.currentUser.emailVerified) {
+    await sendEmailVerification(auth.currentUser);
+  }
+}
+
+export async function reloadCurrentUser(): Promise<CloudUser | null> {
+  if (!auth.currentUser) return null;
+  await auth.currentUser.reload();
+  await auth.currentUser.getIdToken(true);
+  return toCloudUser(auth.currentUser);
 }
 
 export async function consumeRedirectAuth(): Promise<{ user: User | null; error?: string }> {

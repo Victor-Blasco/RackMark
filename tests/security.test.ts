@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
+import { resolveAiQuota } from '../src/lib/aiQuota';
 import { analyze, isoWeekStart, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { parseEsDate, parseMeasuresCsv } from '../src/lib/measures';
@@ -178,5 +180,42 @@ describe('security hardening', () => {
     expect(sanitizeSettings({ theme: 'light' }).theme).toBe('light');
     expect(sanitizeSettings({ theme: 'system' }).theme).toBe('system');
     expect(sanitizeSettings({ theme: 'neon-invalid' }).theme).toBe('dark');
+  });
+
+  it('calcula correctamente el cupo diario de informes IA en UTC y reinicia al cambiar de día', () => {
+    const today = new Date('2026-11-25T12:00:00Z');
+    const yesterday = new Date('2026-11-24T23:59:00Z');
+
+    expect(resolveAiQuota(undefined, today)).toEqual({
+      used: 0,
+      limit: 3,
+      remaining: 3,
+      dayUtc: '2026-11-25',
+    });
+    expect(resolveAiQuota({ count: 2, updatedAt: today }, today)).toEqual({
+      used: 2,
+      limit: 3,
+      remaining: 1,
+      dayUtc: '2026-11-25',
+    });
+    expect(resolveAiQuota({ count: 3, updatedAt: { toDate: () => today } }, today)).toEqual({
+      used: 3,
+      limit: 3,
+      remaining: 0,
+      dayUtc: '2026-11-25',
+    });
+    expect(resolveAiQuota({ count: 3, updatedAt: yesterday }, today)).toEqual({
+      used: 0,
+      limit: 3,
+      remaining: 3,
+      dayUtc: '2026-11-25',
+    });
+    expect(resolveAiQuota({ count: 99, updatedAt: today.getTime() }, today).used).toBe(3);
+    expect(resolveAiQuota({ count: -2, updatedAt: today.getTime() }, today).used).toBe(0);
+
+    const rules = readFileSync('firestore.rules', 'utf8');
+    expect(rules).toContain('match /users/{userId}/usage/{docId}');
+    expect(rules).toContain('allow list, delete: if false;');
+    expect(rules).toContain('<= 3');
   });
 });

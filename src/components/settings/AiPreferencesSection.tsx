@@ -48,6 +48,8 @@ export function AiPreferencesSection({
   onDismissAi,
 }: AiPreferencesSectionProps) {
   const ai = state.settings.ai;
+  const quota = state.user?.emailVerified ? state.aiQuota : undefined;
+  const quotaExhausted = Boolean(quota && quota.remaining <= 0);
 
   return (
     <div class="pb-5 border-b border-white/10 space-y-4">
@@ -58,8 +60,8 @@ export function AiPreferencesSection({
             Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.
           </p>
         </div>
-        <span class={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${state.user ? STATUS_ACTIVE_CLS : STATUS_LOCKED_CLS}`}>
-          {state.user ? 'Coach IA activo' : 'Requiere iniciar sesión'}
+        <span class={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${state.user?.emailVerified ? STATUS_ACTIVE_CLS : STATUS_LOCKED_CLS}`}>
+          {state.user?.emailVerified ? 'Coach IA activo' : state.user ? 'Verifica tu correo' : 'Requiere iniciar sesión'}
         </span>
       </div>
 
@@ -101,9 +103,15 @@ export function AiPreferencesSection({
           ) : (
             <p>Genera resúmenes personalizados cuando registres tus entrenos.</p>
           )}
+          {quota && (
+            <p class={`tabular-nums ${quotaExhausted ? 'text-amberGold font-semibold' : 'text-gray-400'}`}>
+              Informes hoy: {quota.used}/{quota.limit}
+            </p>
+          )}
         </div>
-        <button type="button" class="btn-sm" disabled={state.busy === 'ai'} onClick={onRunAi}>
-          <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}
+        <button type="button" class="btn-sm" disabled={state.busy === 'ai' || quotaExhausted} onClick={onRunAi}>
+          <Icon name="chart" className="h-3.5 w-3.5" />{' '}
+          {quotaExhausted ? 'Límite diario alcanzado' : state.busy === 'ai' ? 'Analizando…' : 'Regenerar informe IA'}
         </button>
       </div>
     </div>

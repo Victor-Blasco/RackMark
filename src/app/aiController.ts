@@ -1,4 +1,5 @@
 import { clearAiJob, loadAiJob, sanitizeSettings, saveAiJob, saveSettings } from '../lib/db';
+import { AI_DAILY_LIMIT, consumeAiQuota, fetchAiQuota } from '../lib/aiQuota';
 import { markSettingsDirty } from '../lib/sync';
 import { humanizeError } from '../store/types';
 import type { AiJob } from '../types';
@@ -19,6 +20,7 @@ export interface AiController {
   retryAi: () => Promise<void>;
   dismissAi: () => Promise<void>;
   resumeAiJob: () => Promise<void>;
+  refreshQuota: () => Promise<void>;
   resetResumeFlag: () => void;
 }
 
@@ -84,7 +86,7 @@ export function createAiController(deps: AiControllerDeps): AiController {
   }
 
   async function resumeAiJob(): Promise<void> {
-    if (aiResumeAttempted || !deps.state.user) return;
+    if (aiResumeAttempted || !deps.state.user?.emailVerified) return;
     aiResumeAttempted = true;
     const job = await loadAiJob();
     if (!job) return;
@@ -113,10 +115,40 @@ export function createAiController(deps: AiControllerDeps): AiController {
     await runAiJob(job);
   }
 
+  async function reserveQuota(uid: string): Promise<boolean> {
+    try {
+      const res = await consumeAiQuota(uid);
+      deps.state.aiQuota = res.quota;
+      deps.render();
+      if (!res.allowed) {
+        deps.toast(`Has alcanzado el límite de ${AI_DAILY_LIMIT} informes de IA por hoy. Mañana se restablecerá tu cupo.`);
+      }
+      return res.allowed;
+    } catch (e) {
+      deps.toast(`No se pudo comprobar tu cupo diario de IA: ${humanizeError(e)}`);
+      return false;
+    }
+  }
+
+  const refreshQuota = async (): Promise<void> => {
+    const user = deps.state.user;
+    if (!user?.emailVerified) return;
+    try {
+      deps.state.aiQuota = await fetchAiQuota(user.uid);
+      deps.render();
+    } catch {
+      /* sin conexión o fallo temporal: se comprobará al generar */
+    }
+  };
+
   const runAi = async (): Promise<void> => {
     const S = deps.state;
     if (!S.user) {
-      deps.toast('Inicia sesión con Google para generar análisis con IA.');
+      deps.toast('Inicia sesión para generar análisis con IA.');
+      return;
+    }
+    if (!S.user.emailVerified) {
+      deps.toast('Verifica tu correo electrónico en Ajustes para usar el Coach IA.');
       return;
     }
     const waitSec = Math.ceil((AI_COOLDOWN_MS - (Date.now() - lastAiAt)) / 1000);
@@ -125,6 +157,7 @@ export function createAiController(deps: AiControllerDeps): AiController {
       return;
     }
     if (S.busy) return;
+    if (!(await reserveQuota(S.user.uid))) return;
     let buildPayload: typeof import('../lib/ai').buildPayload;
     try {
       ({ buildPayload } = await import('../lib/ai'));
@@ -155,10 +188,11 @@ export function createAiController(deps: AiControllerDeps): AiController {
   };
 
   const retryAi = async (): Promise<void> => {
-    if (deps.state.busy) return;
+    if (deps.state.busy || !deps.state.user?.emailVerified) return;
     try {
       const job = deps.state.aiJob ?? await loadAiJob();
       if (!job || job.status !== 'error') return;
+      if (!(await reserveQuota(deps.state.user.uid))) return;
       const now = Date.now();
       lastAiAt = now;
       await runAiJob({
@@ -193,6 +227,7 @@ export function createAiController(deps: AiControllerDeps): AiController {
     retryAi,
     dismissAi,
     resumeAiJob,
+    refreshQuota,
     resetResumeFlag: () => { aiResumeAttempted = false; },
   };
 }

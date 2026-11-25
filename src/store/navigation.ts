@@ -67,6 +67,7 @@ export function syncStatusInfo(
   online = typeof navigator === 'undefined' ? true : navigator.onLine,
 ): { text: string; cls: string } {
   if (!state.user) return { text: online ? 'En este dispositivo' : 'Sin conexión · local', cls: 'text-gray-400' };
+  if (!state.user.emailVerified) return { text: 'Correo pendiente de verificar', cls: 'text-amberGold' };
   if (state.syncing) return { text: 'Sincronizando…', cls: 'text-blue-300' };
   if (state.syncJob?.status === 'error') return { text: 'Error de sincronización · reintentando', cls: 'text-rose-300' };
   if (state.syncJob?.status === 'pending') return { text: 'Guardado local · pendiente de subir', cls: 'text-amberGold' };

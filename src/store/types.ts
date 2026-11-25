@@ -1,4 +1,5 @@
 import type { Analysis } from '../lib/analysis';
+import type { AiQuotaStatus } from '../lib/aiQuota';
 import type { CloudUser } from '../lib/firebase';
 import type {
   AiJob,
@@ -94,6 +95,7 @@ export interface State {
   lastSync?: number;
   busy?: 'ai';
   aiJob?: AiJob;
+  aiQuota?: AiQuotaStatus;
   toast?: string;
   toastAction?: ToastAction;
 }
@@ -133,7 +135,12 @@ const ERROR_PATTERNS: [RegExp, string][] = [
   [/popup-closed-by-user|cancelled-popup-request/i, 'Se cerró la ventana antes de completar el inicio de sesión.'],
   [/popup-blocked/i, 'El navegador bloqueó la ventana emergente. Permite popups e inténtalo de nuevo.'],
   [/quota-exceeded|resource-exhausted|\b429\b/i, 'Límite temporal de peticiones alcanzado. Espera unos minutos y vuelve a intentarlo.'],
-  [/unauthenticated|auth\/|user-token-expired|requires-recent-login/i, 'Tu sesión ha caducado. Vuelve a iniciar sesión con Google.'],
+  [/auth\/invalid-credential|auth\/wrong-password|auth\/user-not-found/i, 'Correo o contraseña incorrectos.'],
+  [/auth\/invalid-email/i, 'El formato del correo electrónico no es válido.'],
+  [/auth\/email-already-in-use/i, 'Ya existe una cuenta con ese correo. Prueba a iniciar sesión o recuperar la contraseña.'],
+  [/auth\/weak-password/i, 'La contraseña debe tener al menos 6 caracteres.'],
+  [/auth\/too-many-requests/i, 'Demasiados intentos seguidos. Espera unos minutos antes de volver a intentarlo.'],
+  [/unauthenticated|auth\/|user-token-expired|requires-recent-login/i, 'Tu sesión ha caducado. Vuelve a iniciar sesión.'],
   [/invalid zip|corrupt|unexpected eof/i, 'El archivo ZIP está dañado o incompleto. Vuelve a exportarlo desde Samsung Health.'],
 ];
 

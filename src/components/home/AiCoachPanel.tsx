@@ -32,6 +32,8 @@ export function AiCoachPanel({
   state, tone, onToneChange = () => {}, onSelectTab = () => {}, onGenerate = () => {}, onRetry, onDismiss, onCloudLogin = () => {},
 }: AiCoachPanelProps) {
   const vm = buildAiReportViewModel(state);
+  const quota = state.user?.emailVerified ? state.aiQuota : undefined;
+  const quotaExhausted = Boolean(quota && quota.remaining <= 0);
 
   if (!vm) {
     return (
@@ -39,7 +41,9 @@ export function AiCoachPanel({
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 class="text-base font-extrabold text-white">Informe IA</h2>
-            <p class="text-xs text-gray-400">Resumen personalizado de tus cargas y recuperación.</p>
+            <p class="text-xs text-gray-400">
+              Resumen personalizado de tus cargas y recuperación.{quota ? ` · Hoy: ${quota.used}/${quota.limit}` : ''}
+            </p>
           </div>
           <AiToneToggle tone={tone} onChange={onToneChange} />
         </div>
@@ -49,8 +53,9 @@ export function AiCoachPanel({
             <Icon name="login" className="h-3.5 w-3.5" /> Inicia sesión con Google para generar análisis IA
           </button>
         ) : (
-          <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai'} onClick={onGenerate}>
-            <Icon name="chart" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
+          <button type="button" class="btn btn-accent w-full text-xs sm:text-sm" disabled={state.busy === 'ai' || quotaExhausted} onClick={onGenerate}>
+            <Icon name="chart" className="h-3.5 w-3.5" />{' '}
+            {quotaExhausted ? `Límite diario (${quota!.used}/${quota!.limit})` : state.busy === 'ai' ? 'Analizando…' : 'Generar análisis IA'}
           </button>
         )}
       </section>
@@ -88,18 +93,21 @@ export function AiCoachPanel({
             Actualizado el {fmtDate(ai.date)} · modo {reportTone === 'simple' ? 'Sencillo' : 'Técnico'}
             {toneChanged && <span class="text-amberGold"> · modo cambiado, pulsa Actualizar</span>}
           </p>
-          <p class="mt-0.5 text-[11px] text-gray-400">{coverage.join(' · ')}</p>
+          <p class="mt-0.5 text-[11px] text-gray-400 tabular-nums">
+            {coverage.join(' · ')}{quota ? ` · Hoy: ${quota.used}/${quota.limit}` : ''}
+          </p>
           {limitedData && <p class="mt-1 text-xs text-amber-200">Confianza limitada: añade más registros para tendencias más fiables.</p>}
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <AiToneToggle tone={activeTone} onChange={onToneChange} />
           <button
             type="button"
-            class={`btn-sm ${toneChanged ? 'border-amberGold/60 bg-amberGold/15 text-amber-200 hover:bg-amberGold/25' : ''}`}
-            disabled={state.busy === 'ai'}
+            class={`btn-sm ${toneChanged && !quotaExhausted ? 'border-amberGold/60 bg-amberGold/15 text-amber-200 hover:bg-amberGold/25' : ''}`}
+            disabled={state.busy === 'ai' || quotaExhausted}
             onClick={onGenerate}
           >
-            <Icon name="refresh" className="h-3.5 w-3.5" /> {state.busy === 'ai' ? 'Analizando…' : 'Actualizar'}
+            <Icon name="refresh" className="h-3.5 w-3.5" />{' '}
+            {quotaExhausted ? `Límite diario (${quota!.used}/${quota!.limit})` : state.busy === 'ai' ? 'Analizando…' : 'Actualizar'}
           </button>
         </div>
       </div>
