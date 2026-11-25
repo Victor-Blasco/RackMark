@@ -103,7 +103,7 @@ export function createWizardActions(deps: WizardActionDeps) {
       const wasOnboarded = Boolean(state.settings.onboardingCompleted);
       const today = todayIso();
       if (w.templateKey !== 'keep') {
-        applyRoutineTemplateToState(state, w.templateKey, deps.getLastRoutine, deps.setLastRoutine, deps.syncWorkoutRoutineNames);
+        applyRoutineTemplateToState(state, w.templateKey, deps.getLastRoutine, deps.setLastRoutine, deps.syncWorkoutRoutineNames, w.daysPerWeek);
       }
 
       state.settings = {

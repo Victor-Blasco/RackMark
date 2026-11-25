@@ -32,7 +32,7 @@ import { isValidTab } from '../src/store/navigation';
 import { createPlanActions } from '../src/store/planActions';
 import { createPlanFilterActions } from '../src/store/planFilterActions';
 import { createPlanModalActions } from '../src/store/planModalActions';
-import { getPlanCatalogData, plannedVolumeBreakdown, plannedWeeklyVolume, suggestPrimaryMuscle } from '../src/store/planSelectors';
+import { distributeWeeklyFreqs, getPlanCatalogData, plannedVolumeBreakdown, plannedWeeklyVolume, suggestPrimaryMuscle } from '../src/store/planSelectors';
 import { createRoutineEditActions } from '../src/store/routineEditActions';
 import { applyRoutineTemplateToState } from '../src/store/routineTemplate';
 import {
@@ -1531,7 +1531,7 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
       toast: () => {},
     });
     await editActions.changeRoutineFreq('Pull', 9);
-    expect(state.settings.routineMeta?.Pull?.freq).toBe(7);
+    expect(state.settings.routineMeta?.Pull?.freq).toBe(6);
     await editActions.changeRoutineFreq('Pull', 1);
     expect(state.settings.routineMeta?.Pull?.freq).toBeUndefined();
     await editActions.changeRoutineFreq('Pull', -2);
@@ -1567,5 +1567,60 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
       h(ExerciseModal, { routines: ['Push', 'Pull'], initialName: 'Remo gironda', onSave: () => {}, onClose: () => {} }),
     );
     expect(rowExModal).toMatch(/value="Espalda"[^>]*selected|selected[^>]*value="Espalda"/);
+  });
+
+  it('conecta profile.daysPerWeek con reparto de plantillas, acciones rápidas y aviso en Simulador', async () => {
+    expect(distributeWeeklyFreqs(['Push', 'Pull', 'Leg'], 6)).toEqual({ Push: 2, Pull: 2, Leg: 2 });
+    expect(distributeWeeklyFreqs(['Push', 'Pull', 'Leg'], 5)).toEqual({ Push: 2, Pull: 2, Leg: 1 });
+
+    const settings = sanitizeSettings({
+      profile: { sex: 'hombre', age: 28, height: 178, daysPerWeek: 5 },
+    });
+    const state: State = {
+      tab: 'plan',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // Desajuste inicial: PPL por defecto suma 3 d/sem frente a perfil = 5 d/sem
+    const mismatchHtml = renderToString(h(PlanSidebarWidgets, { state, inline: true }));
+    expect(mismatchHtml).toContain('3/5 d/sem');
+    expect(mismatchHtml).toContain('Repartir 5 d/sem');
+    expect(mismatchHtml).toContain('Usar 3 en perfil');
+
+    // applyRoutineTemplateToState reparte automáticamente según targetDays = 5
+    applyRoutineTemplateToState(state, 'ppl', () => 'Push', () => {}, () => {}, 5);
+    expect(state.settings.routineMeta?.Push?.freq).toBe(2);
+    expect(state.settings.routineMeta?.Pull?.freq).toBe(2);
+    expect(state.settings.routineMeta?.Leg?.freq).toBeUndefined();
+
+    // Acciones distributeFreqsToProfileDays y syncProfileDaysToPlan
+    const toasts: string[] = [];
+    const actions = createRoutineEditActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      persist: async () => {},
+      render: () => {},
+      syncWorkoutRoutineNames: () => {},
+      askConfirm: async () => true,
+      toast: (m) => toasts.push(m),
+    });
+
+    await actions.syncProfileDaysToPlan(4);
+    expect(state.settings.profile.daysPerWeek).toBe(4);
+    expect(toasts.at(-1)).toContain('4 d/sem');
+
+    await actions.distributeFreqsToProfileDays();
+    expect(state.settings.routineMeta?.Push?.freq).toBe(2);
+    expect(state.settings.routineMeta?.Pull?.freq).toBeUndefined();
+    expect(state.settings.routineMeta?.Leg?.freq).toBeUndefined();
   });
 });

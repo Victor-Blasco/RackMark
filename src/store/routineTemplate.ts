@@ -1,6 +1,7 @@
 import { ROUTINE_TEMPLATES } from '../lib/seed';
 import { routineNames, type State } from '../ui/shared';
 import { isRoutineTab } from './navigation';
+import { distributeWeeklyFreqs } from './planSelectors';
 import type { ConfirmModalOpts } from './types';
 import { activeWorkoutWarning } from './workoutLaunchActions';
 
@@ -51,13 +52,21 @@ export function applyRoutineTemplateToState(
   getLastRoutine: () => string,
   setLastRoutine: (day: string) => void,
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void,
+  targetDays: number | undefined = state.settings.profile.daysPerWeek,
 ): string | undefined {
   const tpl = ROUTINE_TEMPLATES[tplKey];
   if (!tpl) return undefined;
+  const routineMeta = structuredClone(tpl.meta);
+  if (targetDays != null) {
+    const freqs = distributeWeeklyFreqs(Object.keys(tpl.routines), targetDays);
+    for (const [day, freq] of Object.entries(freqs)) {
+      if (freq !== 1) routineMeta[day] = { ...(routineMeta[day] ?? {}), freq };
+    }
+  }
   state.settings = {
     ...state.settings,
     routines: structuredClone(tpl.routines),
-    routineMeta: structuredClone(tpl.meta),
+    routineMeta,
   };
   const remaining = routineNames(state.settings);
   if (!isRoutineTab(state, getLastRoutine())) setLastRoutine(remaining[0] ?? 'Push');

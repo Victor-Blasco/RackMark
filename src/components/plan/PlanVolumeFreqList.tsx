@@ -11,20 +11,41 @@ interface PlanVolumeFreqListProps {
   routines: string[];
   /** Suma total de sesiones semanales entre todas las rutinas. */
   totalSessions: number;
+  /** Días de entreno semanales configurados en el perfil del atleta. */
+  profileDays?: number;
   /** Actualiza la frecuencia semanal (`0..7`) de una rutina. */
   onChangeFreq: (day: string, freq: number) => void;
+  /** Reparte los días del perfil entre las rutinas activas. */
+  onDistributeProfileDays?: () => void;
+  /** Actualiza `profile.daysPerWeek` al total simulado. */
+  onSyncProfileDays?: (days: number) => void;
 }
 
 const STEP_BTN_CLS =
-  'inline-flex min-h-[44px] min-w-[44px] sm:min-h-[30px] sm:min-w-[30px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-bold text-gray-200 hover:border-white/25 hover:text-white disabled:opacity-35 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+  'inline-flex min-h-[44px] min-w-[44px] sm:min-h-[30px] sm:min-w-[30px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-bold text-gray-200 transition-all duration-150 hover:border-white/25 hover:text-white active:scale-95 disabled:opacity-35 disabled:pointer-events-none motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+
+const SYNC_BTN_CLS =
+  'inline-flex min-h-[36px] sm:min-h-[28px] items-center rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold text-gray-200 hover:border-electricBlue/50 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Selector de frecuencia semanal por rutina (`0×..7×`) mediante stepper táctil.
  */
-export function PlanVolumeFreqList({ state, routines, totalSessions, onChangeFreq }: PlanVolumeFreqListProps) {
+export function PlanVolumeFreqList({
+  state,
+  routines,
+  totalSessions,
+  profileDays,
+  onChangeFreq,
+  onDistributeProfileDays,
+  onSyncProfileDays,
+}: PlanVolumeFreqListProps) {
   const collapsible = routines.length > 4;
   const [open, setOpen] = useState(!collapsible);
   const s = state.settings;
+  const headerLabel = profileDays != null
+    ? `Frecuencia semanal · ${totalSessions}/${profileDays} d/sem`
+    : `Frecuencia semanal · ${totalSessions} d/sem`;
+  const mismatch = profileDays != null && totalSessions !== profileDays;
 
   const listNode = (
     <div class="space-y-1.5 pt-1">
@@ -41,30 +62,35 @@ export function PlanVolumeFreqList({ state, routines, totalSessions, onChangeFre
             </div>
             <div class="flex shrink-0 items-center gap-1">
               <button
-                type="button"
-                class={STEP_BTN_CLS}
-                disabled={freq <= 0}
-                aria-label={`Reducir frecuencia semanal de ${d}`}
-                onClick={() => onChangeFreq(d, freq - 1)}
-              >
-                −
-              </button>
+                type="button" class={STEP_BTN_CLS} disabled={freq <= 0}
+                aria-label={`Reducir frecuencia semanal de ${d}`} onClick={() => onChangeFreq(d, freq - 1)}
+              >−</button>
               <span class="min-w-[2.25rem] text-center tabular-nums font-bold text-white" aria-live="polite">
                 {freq}×
               </span>
               <button
-                type="button"
-                class={STEP_BTN_CLS}
-                disabled={freq >= 7}
-                aria-label={`Aumentar frecuencia semanal de ${d}`}
-                onClick={() => onChangeFreq(d, freq + 1)}
-              >
-                +
-              </button>
+                type="button" class={STEP_BTN_CLS} disabled={freq >= 7 || totalSessions >= 7}
+                aria-label={`Aumentar frecuencia semanal de ${d}`} onClick={() => onChangeFreq(d, freq + 1)}
+              >+</button>
             </div>
           </div>
         );
       })}
+      {mismatch && (
+        <div class="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-amber-200">
+          <span>Perfil: {profileDays} d/sem</span>
+          {onDistributeProfileDays && (
+            <button type="button" class={SYNC_BTN_CLS} onClick={onDistributeProfileDays}>
+              Repartir {profileDays} d/sem
+            </button>
+          )}
+          {onSyncProfileDays && totalSessions >= 1 && (
+            <button type="button" class={SYNC_BTN_CLS} onClick={() => onSyncProfileDays(totalSessions)}>
+              Usar {totalSessions} en perfil
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -77,13 +103,11 @@ export function PlanVolumeFreqList({ state, routines, totalSessions, onChangeFre
           aria-expanded={open ? 'true' : 'false'}
           onClick={() => setOpen((v) => !v)}
         >
-          <span>Frecuencia semanal · {totalSessions} d/sem</span>
+          <span>{headerLabel}</span>
           <Icon name="caretDown" className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
       ) : (
-        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-          Frecuencia semanal · {totalSessions} d/sem
-        </p>
+        <p class="text-[11px] font-bold uppercase tracking-wider text-gray-400">{headerLabel}</p>
       )}
       <Collapsible open={open}>{listNode}</Collapsible>
     </div>

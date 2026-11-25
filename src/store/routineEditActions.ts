@@ -3,6 +3,7 @@ import type { DayName, RoutineEx } from '../types';
 import { moveItem } from '../ui/reorder';
 import { humanizeError, routineNames, type State } from '../ui/shared';
 import type { ConfirmModalOpts, ToastAction } from './types';
+import { distributeWeeklyFreqs, routineFreq } from './planSelectors';
 import { applyRoutineTemplateToState, confirmRemoveRoutineOpts, confirmTemplateOpts } from './routineTemplate';
 
 /** Dependencias para editar días de rutina, ejercicios de cada día y plantillas. */
@@ -141,7 +142,11 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
     async changeRoutineFreq(day: string, nextFreq: number) {
       const S = state();
       if (!day || !S.settings.routines[day]) return;
-      const freq = Math.max(0, Math.min(7, Math.round(nextFreq)));
+      const otherSum = routineNames(S.settings)
+        .filter((r) => r !== day)
+        .reduce((sum, r) => sum + routineFreq(S.settings, r), 0);
+      const maxForDay = Math.max(0, 7 - otherSum);
+      const freq = Math.max(0, Math.min(maxForDay, Math.round(nextFreq)));
       const prevMeta = S.settings.routineMeta ?? {};
       const { [day]: curEntry, ...restMeta } = prevMeta;
       const { freq: _oldFreq, ...cleanEntry } = curEntry ?? {};
@@ -150,6 +155,31 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       const routineMeta = hasKeys ? { ...restMeta, [day]: nextEntry } : restMeta;
       S.settings = { ...S.settings, routineMeta };
       await deps.persist();
+    },
+
+    async distributeFreqsToProfileDays() {
+      const S = state();
+      const dpw = S.settings.profile.daysPerWeek;
+      if (dpw == null) return;
+      const freqs = distributeWeeklyFreqs(routineNames(S.settings), dpw);
+      const nextMeta: NonNullable<typeof S.settings.routineMeta> = {};
+      for (const [day, entry] of Object.entries(S.settings.routineMeta ?? {})) {
+        const { freq: _oldFreq, ...clean } = entry;
+        if (clean.color || clean.sub) nextMeta[day] = clean;
+      }
+      for (const [day, freq] of Object.entries(freqs)) {
+        if (freq !== 1) nextMeta[day] = { ...(nextMeta[day] ?? {}), freq };
+      }
+      S.settings = { ...S.settings, routineMeta: nextMeta };
+      await deps.persist();
+    },
+
+    async syncProfileDaysToPlan(days: number) {
+      const S = state();
+      const val = Math.max(1, Math.min(7, Math.round(days)));
+      S.settings = { ...S.settings, profile: { ...S.settings.profile, daysPerWeek: val } };
+      await deps.persist();
+      deps.toast(`Días de entreno del perfil actualizados a ${val} d/sem.`);
     },
   };
 }

@@ -50,7 +50,15 @@ export function PlanSidebarWidgets({ state, inline = false, onChangeFreq, onOpen
         {isLightPlan && ' (plan ligero)'}. Toca un músculo para ver qué suma.
       </p>
 
-      <PlanVolumeFreqList state={state} routines={routines} totalSessions={totalWeeklySessions} onChangeFreq={handleFreq} />
+      <PlanVolumeFreqList
+        state={state}
+        routines={routines}
+        totalSessions={totalWeeklySessions}
+        profileDays={s.profile.daysPerWeek}
+        onChangeFreq={handleFreq}
+        onDistributeProfileDays={() => void plan.distributeFreqsToProfileDays()}
+        onSyncProfileDays={(d) => void plan.syncProfileDaysToPlan(d)}
+      />
 
       {unmapped.length > 0 && (
         <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2.5 text-xs text-amber-200">
@@ -84,10 +92,10 @@ export function PlanSidebarWidgets({ state, inline = false, onChangeFreq, onOpen
               >
                 <span class="truncate text-gray-200">{m}</span>
                 <div class="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                  <div class={`h-full rounded-full ${barCol}`} style={{ width: `${pct}%` }} />
+                  <div class={`h-full rounded-full transition-[width] duration-300 ease-out motion-reduce:transition-none ${barCol}`} style={{ width: `${pct}%` }} />
                 </div>
                 <span class="inline-flex items-center gap-1 tabular-nums font-bold">
-                  <span class={textCol}>{cue}{fmtSets(v)}<span class="sr-only">{srLabel}</span></span>
+                  <span class={`transition-colors duration-200 ${textCol}`}>{cue}{fmtSets(v)}<span class="sr-only">{srLabel}</span></span>
                   <Icon name="caretDown" className={`h-3 w-3 text-gray-400 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`} />
                 </span>
               </button>

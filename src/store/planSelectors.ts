@@ -36,6 +36,19 @@ export function routineFreq(settings: Settings, day: string): number {
   return typeof raw === 'number' && Number.isFinite(raw) ? Math.max(0, Math.min(7, Math.round(raw))) : 1;
 }
 
+/** Reparte un total de días/semana (`1..7`) de forma equilibrada entre las rutinas dadas. */
+export function distributeWeeklyFreqs(routines: string[], targetDays: number): Record<string, number> {
+  if (!routines.length) return {};
+  const days = Math.max(1, Math.min(7, Math.round(targetDays)));
+  const base = Math.floor(days / routines.length);
+  const rem = days % routines.length;
+  const out: Record<string, number> = {};
+  routines.forEach((r, i) => {
+    out[r] = base + (i < rem ? 1 : 0);
+  });
+  return out;
+}
+
 /**
  * Calcula las series efectivas semanales planificadas por músculo según `settings.routines` y su frecuencia.
  *
