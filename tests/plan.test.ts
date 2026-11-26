@@ -1623,4 +1623,84 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     expect(state.settings.routineMeta?.Pull?.freq).toBeUndefined();
     expect(state.settings.routineMeta?.Leg?.freq).toBeUndefined();
   });
+
+  it('separa En rutina de Fuera de rutina (incluyendo extras cruzados), infiere series×reps en quickAddToRoutine y ofrece + Añadir', async () => {
+    const today = todayIso();
+    const settings = sanitizeSettings({
+      routines: {
+        Push: [
+          { name: 'Press de banca', sets: 3, reps: 8 },
+          { name: 'Elevaciones laterales', sets: 4, reps: 15 },
+        ],
+        Pull: [{ name: 'Jalón al pecho', sets: 3, reps: 10 }],
+      },
+    });
+    const strength = [
+      // Press horizontal guardado con day='Push' aunque ya no está en settings.routines.Push
+      {
+        id: 'h1',
+        sessionId: 'sess-push-old',
+        ts: Date.now() - 864e5 * 2,
+        date: today,
+        ref: 'name:Press horizontal en máquina',
+        day: 'Push' as const,
+        sets: [{ w: 50, r: 9, done: true }, { w: 50, r: 7, done: true }],
+      },
+      // Elevaciones laterales (que pertenece a Push) hecho como extra puntual dentro de una sesión Pull
+      {
+        id: 'h2',
+        sessionId: 'sess-pull-extra',
+        ts: Date.now() - 864e5,
+        date: today,
+        ref: 'name:Elevaciones laterales',
+        day: 'Pull' as const,
+        sets: [{ w: 12.5, r: 14, done: true }, { w: 12.5, r: 12, done: true }, { w: 12.5, r: 12, done: true }],
+      },
+    ];
+    const state: State = {
+      tab: 'Push',
+      strength,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze(strength, settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    // 1. En Push, solo los 2 de la plantilla están en primary; Press horizontal va a Fuera de rutina (extraAll)
+    const pushVm = buildDayRoutineViewModel(state, 'Push');
+    expect(pushVm.primary.map((e) => e.name)).toEqual(['Press de banca', 'Elevaciones laterales']);
+    expect(pushVm.extraAll.some((e) => e.name === 'Press horizontal en máquina')).toBe(true);
+    expect(pushVm.primary.some((e) => e.name === 'Press horizontal en máquina')).toBe(false);
+
+    const pushHeaderHtml = renderToString(h(DayRoutineView, { day: 'Push', state: { ...state, dayExtra: { Push: true } } }));
+    expect(pushHeaderHtml).toContain('Fuera de rutina');
+    expect(pushHeaderHtml).toContain('+ Añadir');
+
+    // 2. En Pull, Elevaciones laterales hecho en sess-pull-extra aparece en extraAll sin contaminar settings.routines.Pull
+    const pullVm = buildDayRoutineViewModel(state, 'Pull');
+    expect(pullVm.primary.map((e) => e.name)).toEqual(['Jalón al pecho']);
+    expect(pullVm.extraAll[0]?.name).toBe('Elevaciones laterales');
+    expect(state.settings.routines.Pull.map((r) => r.name)).toEqual(['Jalón al pecho']);
+
+    // 3. quickAddToRoutine infiere sets×reps desde la última sesión si se omiten
+    const toasts: string[] = [];
+    const edits = createRoutineEditActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      persist: async () => {},
+      render: () => {},
+      syncWorkoutRoutineNames: () => {},
+      askConfirm: async () => true,
+      toast: (m) => toasts.push(m),
+    });
+    await edits.quickAddToRoutine('Push', 'Press horizontal en máquina');
+    const added = state.settings.routines.Push.find((r) => r.name === 'Press horizontal en máquina');
+    expect(added).toEqual({ name: 'Press horizontal en máquina', sets: 2, reps: 9 });
+    expect(toasts.at(-1)).toContain('2×9');
+  });
 });

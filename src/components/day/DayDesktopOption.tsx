@@ -19,12 +19,13 @@ interface DayDesktopOptionProps {
   onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
   onMoveRow?: (idx: number, dir: number) => void;
   onDeleteRow?: (idx: number) => void;
+  onAddToRoutine?: (exName: string) => void;
 }
 
 /** Fila seleccionable del listbox de escritorio con edición `3×8 ✎` y controles de orden. */
 export function DayDesktopOption({
   idx, exercise: x, selected: sel, summary, advice, routineRow: rRow, routineIdx: rIdx,
-  routineTotal, organizeMode, onSelect, onKeyDown, onUpdateTarget, onMoveRow, onDeleteRow,
+  routineTotal, organizeMode, onSelect, onKeyDown, onUpdateTarget, onMoveRow, onDeleteRow, onAddToRoutine,
 }: DayDesktopOptionProps) {
   const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
 
@@ -52,7 +53,22 @@ export function DayDesktopOption({
           {rRow && onUpdateTarget ? (
             <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} onSave={(s, r) => onUpdateTarget(rIdx, s, r)} />
           ) : (
-            <span class="shrink-0 font-semibold text-gray-200 tabular-nums">{x.target ? `${x.target.sets}×${x.target.reps}` : `${x.n} ses.`}</span>
+            <div class="flex shrink-0 items-center">
+              <span class="shrink-0 text-xs text-gray-400 tabular-nums">{x.n} ses.</span>
+              {onAddToRoutine && (
+                <button
+                  type="button"
+                  aria-label={`Añadir ${x.name} a la rutina`}
+                  class="ml-1.5 rounded-lg border border-electricBlue/40 bg-electricBlue/10 px-2 py-1 text-xs font-semibold text-electricBlue hover:bg-electricBlue/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    onAddToRoutine(x.name);
+                  }}
+                >
+                  + Añadir
+                </button>
+              )}
+            </div>
           )}
           {organizeMode && rRow && onMoveRow && onDeleteRow && (
             <DayOrganizeControls exName={x.name} idx={rIdx} total={routineTotal} onMoveRow={onMoveRow} onDeleteRow={onDeleteRow} />

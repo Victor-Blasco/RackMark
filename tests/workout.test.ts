@@ -5,6 +5,7 @@ import { buildPayload } from '../src/lib/ai';
 import { analyze, describeStatus, judge } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
+import { WorkoutSummaryModal } from '../src/components/modals/WorkoutSummaryModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
 import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
@@ -16,6 +17,7 @@ import { createLogInputActions } from '../src/store/logInputActions';
 import { initLogDraft } from '../src/store/logSelectors';
 import { createLogSetActions } from '../src/store/logSetActions';
 import { getPlanCatalogData } from '../src/store/planSelectors';
+import { buildWorkoutSummary } from '../src/store/sessionPersistence';
 import { volumeRangeForProfile } from '../src/store/volumeSelectors';
 import { createWorkoutPickerActions } from '../src/store/workoutPickerActions';
 import { createWorkoutRestActions } from '../src/store/workoutRestActions';
@@ -842,5 +844,57 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     setActions.moveExercise(0, 1);
     expect(draft.exercises.slice(0, 2).map((e) => e.name)).toEqual([ex0, ex1]);
     expect(draft.exercises[0].meta!.ts!).toBeLessThan(draft.exercises[1].meta!.ts!);
+  });
+
+  it('buildWorkoutSummary y WorkoutSummaryModal detectan extras de En vivo sin alterar la rutina y permiten fijarlos', async () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'workout',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    const baseLive = initLiveWorkout(state, 'Push');
+    const toasts: string[] = [];
+    let currentState: State = { ...state, liveWorkout: { ...baseLive, pickerMode: 'add' } };
+    const picker = createWorkoutPickerActions(
+      () => currentState,
+      () => currentState.liveWorkout,
+      (next) => {
+        currentState = { ...currentState, liveWorkout: next };
+      },
+      (msg) => toasts.push(msg),
+    );
+    await picker.pickExercise('Face pull');
+    expect(toasts.at(-1)).toContain('solo a la sesión de hoy');
+
+    const withDoneExtra = {
+      ...currentState.liveWorkout!,
+      exercises: currentState.liveWorkout!.exercises.map((ex) =>
+        ex.name === 'Face pull'
+          ? { ...ex, sets: [{ w: 20, r: 15, done: true }, { w: 20, r: 15, done: true }] }
+          : ex,
+      ),
+    };
+    const summary = buildWorkoutSummary(currentState, withDoneExtra, 1);
+    expect(summary.extraExercises).toEqual([{ name: 'Face pull', sets: 2, reps: 15 }]);
+    expect(currentState.settings.routines.Push.some((r) => r.name === 'Face pull')).toBe(false);
+
+    const modalHtml = renderToString(
+      h(WorkoutSummaryModal, {
+        summary,
+        routineExNames: currentState.settings.routines.Push.map((r) => r.name),
+        onAddExtraToRoutine: () => {},
+        onClose: () => {},
+      }),
+    );
+    expect(modalHtml).toContain('Guardado solo en el historial de hoy');
+    expect(modalHtml).toContain('+ Fijar en Push');
   });
 });

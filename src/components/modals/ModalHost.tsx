@@ -61,7 +61,14 @@ export function ModalHost({ state: propState }: ModalHostProps) {
         />
       );
     case 'workoutSummary':
-      return <WorkoutSummaryModal summary={modal.summary} onClose={store.closeWorkoutSummary} />;
+      return (
+        <WorkoutSummaryModal
+          summary={modal.summary}
+          routineExNames={modal.summary.day !== 'Libre' ? (state.settings.routines[modal.summary.day] ?? []).map((r) => r.name) : []}
+          onAddExtraToRoutine={(day, name, sets, reps) => void store.plan.quickAddToRoutine(day, name, sets, reps)}
+          onClose={store.closeWorkoutSummary}
+        />
+      );
     case 'wizard':
       return (
         <WizardModal

@@ -11,42 +11,28 @@ import { DayOrganizeControls } from './DayOrganizeControls';
 import { InlineTargetEditor } from './InlineTargetEditor';
 
 interface DayMobileAccordionProps {
-  /** Lista de ejercicios visibles en la vista móvil. */
   exercises: ExStats[];
-  /** Filas planificadas reales de `settings.routines[day]` para edición directa. */
   routineRows?: RoutineEx[];
-  /** Muestra botones de reordenamiento y borrado por fila. */
   organizeMode?: boolean;
-  /** Nombre del ejercicio actualmente expandido. */
   mobileCur?: string;
-  /** Etiqueta del rango temporal activo. */
   rangeLabel: string;
-  /** Fecha del informe IA vigente. */
   aiDate?: string;
-  /** Notas biomecánicas por ejercicio. */
   userNotes: Record<string, string>;
-  /** Configuración Chart.js del detalle móvil abierto. */
   mobileChartCfg: ChartConfiguration | null;
-  /** Resuelve consejo IA para un ejercicio. */
   aiFor: (ex: ExStats) => AiEntry | undefined;
-  /** Selecciona o repliega un ejercicio en el acordeón. */
   onSelectEx: (name: string) => void;
-  /** Inicia entreno en vivo de la rutina. */
   onStartWorkout: () => void;
-  /** Abre el modal de nota fija. */
   onEditNote: (exName: string) => void;
-  /** Guarda series × reps objetivo editadas in-situ. */
   onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
-  /** Mueve una fila arriba (`-1`) o abajo (`+1`). */
   onMoveRow?: (idx: number, dir: number) => void;
-  /** Elimina una fila de la rutina. */
   onDeleteRow?: (idx: number) => void;
+  onAddToRoutine?: (exName: string) => void;
 }
 
 /** Acordeón móvil de ejercicios para pantallas pequeñas (`< lg`). */
 export function DayMobileAccordion({
   exercises, routineRows = [], organizeMode = false, mobileCur, rangeLabel, aiDate, userNotes,
-  mobileChartCfg, aiFor, onSelectEx, onStartWorkout, onEditNote, onUpdateTarget, onMoveRow, onDeleteRow,
+  mobileChartCfg, aiFor, onSelectEx, onStartWorkout, onEditNote, onUpdateTarget, onMoveRow, onDeleteRow, onAddToRoutine,
 }: DayMobileAccordionProps) {
   return (
     <div class="lg:hidden space-y-3">
@@ -82,9 +68,18 @@ export function DayMobileAccordion({
                 </span>
               </button>
               <div class="shrink-0 flex items-center gap-1">
-                {rRow && onUpdateTarget && (
+                {rRow && onUpdateTarget ? (
                   <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} onSave={(s, r) => onUpdateTarget(rIdx, s, r)} />
-                )}
+                ) : !rRow && onAddToRoutine ? (
+                  <button
+                    type="button"
+                    aria-label={`Añadir ${x.name} a la rutina`}
+                    class="inline-flex min-h-[44px] items-center rounded-xl border border-electricBlue/40 bg-electricBlue/10 px-2.5 text-xs font-semibold text-electricBlue hover:bg-electricBlue/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+                    onClick={() => onAddToRoutine(x.name)}
+                  >
+                    + Añadir
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   aria-label={`${open ? 'Contraer' : 'Expandir'} ${x.name}`}

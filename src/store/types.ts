@@ -32,6 +32,7 @@ export interface WorkoutSummary {
   sets: number;
   tonnageKg: number;
   prNames: string[];
+  extraExercises?: { name: string; sets: number; reps: number }[];
 }
 
 /** Subpestañas disponibles dentro de `Planificación`. */

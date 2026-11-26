@@ -1,3 +1,4 @@
+import { findAnalyzedExercise } from '../lib/analysis';
 import { ROUTINE_TEMPLATES, norm } from '../lib/seed';
 import type { DayName, RoutineEx } from '../types';
 import { moveItem } from '../ui/reorder';
@@ -79,15 +80,18 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       deps.toast(`Plantilla "${tpl.label}" aplicada.`);
     },
 
-    async quickAddToRoutine(day: string, name: string) {
+    async quickAddToRoutine(day: string, name: string, customSets?: number, customReps?: number) {
       if (!day || !name) return;
       const S = state();
       if ((S.settings.routines[day] ?? []).some((x) => norm(x.name) === norm(name))) {
         deps.toast(`«${name}» ya está en ${day}.`);
         return;
       }
-      await updateRoutineRows(day, (list) => [...list, { name, sets: 3, reps: 10 }]);
-      deps.toast(`Añadido «${name}» a ${day}`);
+      const last = findAnalyzedExercise(S.analysis, name)?.last;
+      const sets = Math.max(1, Math.min(20, Math.round(customSets ?? (last ? last.sets.length : 3))));
+      const reps = Math.max(1, Math.min(100, Math.round(customReps ?? (last?.sets[0]?.r || 10))));
+      await updateRoutineRows(day, (list) => [...list, { name, sets, reps }]);
+      deps.toast(`Añadido «${name}» (${sets}×${reps}) a ${day}`);
     },
 
     async removeRoutineExByName(day: string, name: string) {

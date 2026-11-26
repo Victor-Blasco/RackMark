@@ -103,7 +103,7 @@ export function createWorkoutPickerActions(
       if (latestLive.pickerMode === 'swap' && latestLive.exercises[latestLive.curIdx]) {
         nextExercises = latestLive.exercises.map((ex, i) => (i === latestLive.curIdx ? exDraft : ex));
         if (nextRestRef?.ei === latestLive.curIdx) nextRestRef = undefined;
-        toast(`Cambiado a ${name}.`);
+        toast(latestLive.day !== 'Libre' ? `Cambiado a ${name} (solo hoy).` : `Cambiado a ${name}.`);
       } else {
         nextIdx = latestLive.exercises.length ? Math.min(latestLive.curIdx + 1, latestLive.exercises.length) : 0;
         nextExercises = [
@@ -112,7 +112,7 @@ export function createWorkoutPickerActions(
           ...latestLive.exercises.slice(nextIdx),
         ];
         if (nextRestRef && nextRestRef.ei >= nextIdx) nextRestRef = { ...nextRestRef, ei: nextRestRef.ei + 1 };
-        toast(`${name} añadido al entreno.`);
+        toast(latestLive.day !== 'Libre' ? `${name} añadido solo a la sesión de hoy.` : `${name} añadido al entreno.`);
       }
 
       commitLive({

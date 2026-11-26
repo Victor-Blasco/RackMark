@@ -85,7 +85,7 @@ export function DayRoutineHeader({
             role="tablist"
             options={[
               { id: 'routine' as const, label: `En rutina (${primaryCount})` },
-              { id: 'extra' as const, label: `Anteriores (${extraCount})` },
+              { id: 'extra' as const, label: `Fuera de rutina (${extraCount})` },
             ]}
             value={showingExtra ? 'extra' : 'routine'}
             ariaLabel="Filtro de ejercicios"
@@ -93,6 +93,8 @@ export function DayRoutineHeader({
             buttonClassName="min-h-[44px] sm:min-h-[34px] px-3 py-1.5 text-xs tabular-nums"
             onChange={onSetScope}
           />
+        ) : primaryCount === 0 && extraCount > 0 ? (
+          <span class="text-xs font-semibold text-amberGold tabular-nums">Sin ejercicios fijos en rutina · {extraCount} fuera de rutina</span>
         ) : <span />}
         <RangePicker
           active={bounds.key}

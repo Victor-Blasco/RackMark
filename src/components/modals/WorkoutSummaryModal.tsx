@@ -1,3 +1,4 @@
+import { norm } from '../../lib/seed';
 import type { WorkoutSummary } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { ModalShell } from '../common/ModalShell';
@@ -5,17 +6,23 @@ import { ModalShell } from '../common/ModalShell';
 interface WorkoutSummaryModalProps {
   /** Datos agregados del entrenamiento recién guardado. */
   summary: WorkoutSummary;
+  /** Ejercicios ya presentes en la rutina del día para marcar estado. */
+  routineExNames?: string[];
+  /** Fija un ejercicio extra en la rutina del día. */
+  onAddExtraToRoutine?: (day: string, name: string, sets: number, reps: number) => void;
   /** Cierra la ventana de resumen para volver a la navegación normal. */
   onClose: () => void;
 }
 
 /**
- * Modal de resumen post-entrenamiento con duración, volumen total y marcas personales.
+ * Modal de resumen post-entrenamiento con duración, volumen total, marcas personales y extras opcionales.
  */
-export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalProps) {
+export function WorkoutSummaryModal({ summary, routineExNames = [], onAddExtraToRoutine, onClose }: WorkoutSummaryModalProps) {
   const tonnageLabel = summary.tonnageKg >= 1000
     ? `${(summary.tonnageKg / 1000).toFixed(1).replace('.', ',')} t`
     : `${Math.round(summary.tonnageKg)} kg`;
+  const routineSet = new Set(routineExNames.map((n) => norm(n)));
+  const extras = summary.day !== 'Libre' ? (summary.extraExercises ?? []) : [];
 
   return (
     <ModalShell
@@ -64,6 +71,32 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
         </div>
       ) : (
         <p class="text-xs text-gray-400">Buen trabajo: sesión guardada en tu historial y lista para analizar tu progreso.</p>
+      )}
+
+      {extras.length > 0 && (
+        <div class="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2">
+          <div>
+            <p class="text-xs font-bold text-white">Fuera de la rutina {summary.day}</p>
+            <p class="text-[11px] text-gray-400">Guardado solo en el historial de hoy (tu rutina no ha cambiado).</p>
+          </div>
+          <div class="space-y-1.5">
+            {extras.map((ex) => {
+              const inRoutine = routineSet.has(norm(ex.name));
+              return (
+                <div key={ex.name} class="flex items-center justify-between gap-2 text-xs">
+                  <span class="min-w-0 truncate text-gray-200">{ex.name} <span class="text-gray-400 tabular-nums">({ex.sets}×{ex.reps})</span></span>
+                  {inRoutine ? (
+                    <span class="shrink-0 font-semibold text-emeraldGreen">En rutina ✓</span>
+                  ) : onAddExtraToRoutine ? (
+                    <button type="button" class="btn-sm text-xs shrink-0" onClick={() => onAddExtraToRoutine(summary.day, ex.name, ex.sets, ex.reps)}>
+                      + Fijar en {summary.day}
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div class="flex justify-end pt-1">

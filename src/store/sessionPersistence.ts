@@ -106,10 +106,17 @@ export function buildWorkoutSummary(state: State, live: LiveWorkout, savedExerci
   let sets = 0;
   let tonnageKg = 0;
   const prNames: string[] = [];
+  const plannedNorms = live.day !== 'Libre'
+    ? new Set((state.settings.routines[live.day] ?? []).map((r) => norm(r.name)))
+    : null;
+  const extraExercises: NonNullable<WorkoutSummary['extraExercises']> = [];
   for (const ex of validEx) {
     const doneSets = ex.sets.filter(isCompletedSet);
     sets += doneSets.length;
     for (const s of doneSets) tonnageKg += Math.max(0, s.w) * s.r;
+    if (plannedNorms && !plannedNorms.has(norm(ex.name))) {
+      extraExercises.push({ name: ex.name, sets: doneSets.length, reps: doneSets[0]?.r ?? 10 });
+    }
     const prev = findAnalyzedExercise(state.analysis, ex.name);
     if (prev && prev.n > 0) {
       const bestW = Math.max(...doneSets.map((s) => s.w));
@@ -122,5 +129,13 @@ export function buildWorkoutSummary(state: State, live: LiveWorkout, savedExerci
       }
     }
   }
-  return { day: live.day, durationMin, exercises: savedExercises, sets, tonnageKg: Math.round(tonnageKg), prNames };
+  return {
+    day: live.day,
+    durationMin,
+    exercises: savedExercises,
+    sets,
+    tonnageKg: Math.round(tonnageKg),
+    prNames,
+    ...(extraExercises.length ? { extraExercises } : {}),
+  };
 }

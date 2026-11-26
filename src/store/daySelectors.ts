@@ -45,17 +45,30 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
       });
     }
   }
-  const primary = [...plannedPrimary, ...analyzedByDay.filter((e) => !seenPrimary.has(norm(e.name)))];
+  const primary = plannedPrimary;
   const primaryNorms = new Set(primary.map((e) => norm(e.name)));
+  const sessAll = state.analysis.sessions.filter((x) => x.day === day);
+  const doneInDayNorms = new Set<string>();
+  for (const s of sessAll) {
+    for (const exName of s.exercises) doneInDayNorms.add(norm(exName));
+  }
+  for (const e of analyzedByDay) doneInDayNorms.add(norm(e.name));
+
+  const priorityOf = (name: string, exDay: string | null) =>
+    doneInDayNorms.has(norm(name)) ? 0 : exDay === day ? 1 : 2;
   const extraAll = [...state.analysis.exercises.values()]
-    .filter((e) => !primaryNorms.has(norm(e.name)) && !e.name.startsWith('Samsung #') && (e.day === day || e.day == null))
+    .filter((e) => !primaryNorms.has(norm(e.name)) && !e.name.startsWith('Samsung #') && (doneInDayNorms.has(norm(e.name)) || e.day === day || e.day == null))
     .map((e) => filterExByRange(e, bounds))
     .filter((e) => !hasFilter || e.n > 0)
-    .sort((a, b) => (a.day === day ? 0 : 1) - (b.day === day ? 0 : 1) || b.n - a.n);
+    .sort((a, b) =>
+      priorityOf(a.name, a.day) - priorityOf(b.name, b.day)
+      || (b.last?.date ?? '').localeCompare(a.last?.date ?? '')
+      || b.n - a.n,
+    );
 
   const isEmpty = !primary.length && !extraAll.length;
-  const showingExtra = Boolean(state.dayExtra?.[day]) && extraAll.length > 0;
-  const visibleList = showingExtra ? extraAll : primary.length ? primary : extraAll;
+  const showingExtra = primary.length === 0 ? extraAll.length > 0 : Boolean(state.dayExtra?.[day]) && extraAll.length > 0;
+  const visibleList = showingExtra ? extraAll : primary;
   const allPool = [...primary, ...extraAll];
 
   const rawSel = state.sel[day];
@@ -74,7 +87,6 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
   const mobileChartCfg =
     mobileEx && mobileEx.sessions.length ? exerciseChartConfig(mobileEx.sessions, dayColor) : null;
 
-  const sessAll = state.analysis.sessions.filter((x) => x.day === day);
   const sess = hasFilter ? sessAll.filter((x) => inRange(x.date, bounds)) : sessAll;
   const lastS = sess[sess.length - 1];
 

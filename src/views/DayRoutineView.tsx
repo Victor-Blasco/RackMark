@@ -123,6 +123,10 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         onUpdateTarget={(idx, setsRaw, repsRaw) => void updateTarget(idx, setsRaw, repsRaw)}
         onMoveRow={(idx, dir) => void plan.moveRoutineRow(day, idx, dir)}
         onDeleteRow={(idx) => void plan.deleteRoutineRow(day, idx)}
+        onAddToRoutine={(name) => {
+          if (vm.primary.length === 0 && vm.extraAll.length > 1) plan.setDayScope(day, 'extra');
+          void plan.quickAddToRoutine(day, name);
+        }}
       />
     </div>
   );

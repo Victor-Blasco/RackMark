@@ -8,44 +8,26 @@ import { DayExerciseDetail } from './DayExerciseDetail';
 import { DayMobileAccordion } from './DayMobileAccordion';
 
 interface DayMasterListProps {
-  /** Nombre de la rutina mostrada. */
   day: string;
-  /** Lista de ejercicios visibles según el ámbito seleccionado. */
   exercises: ExStats[];
-  /** Filas planificadas reales de `settings.routines[day]` para edición directa. */
   routineRows?: RoutineEx[];
-  /** Muestra botones de reordenamiento y borrado por fila. */
   organizeMode?: boolean;
-  /** Ejercicio seleccionado actualmente en escritorio. */
   desktopCur?: string;
-  /** Ejercicio desplegado actualmente en el acordeón móvil. */
   mobileCur?: string;
-  /** Datos del ejercicio mostrado en el panel derecho de escritorio. */
   desktopEx?: ExStats;
-  /** Config Chart.js para escritorio. */
   desktopChartCfg: ChartConfiguration | null;
-  /** Config Chart.js para móvil. */
   mobileChartCfg: ChartConfiguration | null;
-  /** Etiqueta del filtro temporal activo. */
   rangeLabel: string;
-  /** Fecha de informe IA vigente. */
   aiDate?: string;
-  /** Notas fijas del usuario por nombre de ejercicio. */
   userNotes: Record<string, string>;
-  /** Resuelve consejo IA para cada ejercicio si aplica. */
   aiFor: (ex: ExStats) => AiEntry | undefined;
-  /** Selecciona o repliega un ejercicio en lista o acordeón. */
   onSelectEx: (name: string) => void;
-  /** Inicia entrenamiento en vivo de esta rutina. */
   onStartWorkout: () => void;
-  /** Abre el modal de nota permanente. */
   onEditNote: (exName: string) => void;
-  /** Guarda series × reps objetivo editadas in-situ. */
   onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
-  /** Mueve una fila arriba (`-1`) o abajo (`+1`). */
   onMoveRow?: (idx: number, dir: number) => void;
-  /** Elimina una fila de la rutina. */
   onDeleteRow?: (idx: number) => void;
+  onAddToRoutine?: (exName: string) => void;
 }
 
 const lastSummary = (x: ExStats, rangeLabel: string) => {
@@ -60,7 +42,8 @@ const lastSummary = (x: ExStats, rangeLabel: string) => {
 export function DayMasterList(props: DayMasterListProps) {
   const {
     day, exercises, routineRows = [], organizeMode = false, desktopCur, desktopEx, desktopChartCfg,
-    rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote, onUpdateTarget, onMoveRow, onDeleteRow,
+    rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote,
+    onUpdateTarget, onMoveRow, onDeleteRow, onAddToRoutine,
   } = props;
 
   const onOptionKeyDown = (e: KeyboardEvent, idx: number, name: string) => {
@@ -119,6 +102,7 @@ export function DayMasterList(props: DayMasterListProps) {
                 onUpdateTarget={onUpdateTarget}
                 onMoveRow={onMoveRow}
                 onDeleteRow={onDeleteRow}
+                onAddToRoutine={onAddToRoutine}
               />
             );
           })}
