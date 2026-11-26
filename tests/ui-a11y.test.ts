@@ -232,7 +232,7 @@ describe('Bloque 3 gráficas, shellView e iconos', () => {
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...baseState, tab: 'log', logDraft: initLogDraft(baseState, 'Push', '2026-11-16') } }));
     expect(logHtml).toContain('text-base font-semibold tabular-nums');
-    expect(logHtml).toContain('h-11 rounded-md px-1.5 py-0 text-center text-xs font-semibold tabular-nums');
+    expect(logHtml).toContain('h-11 rounded-md px-1.5 py-0 text-center text-base sm:text-sm font-semibold tabular-nums');
   });
 });
 
@@ -406,7 +406,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
     expect(liveHtml).toContain('text-rose-300 hover:text-rose-200');
     expect(liveHtml).not.toContain('text-coralRed/90');
-    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px]');
+    expect(liveHtml).toContain('inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[36px] min-[390px]:min-w-[40px]');
     expect(liveHtml).toContain('min-h-[48px] min-w-[48px]');
     expect(liveHtml).not.toMatch(/class="[^"]*\b(?:btn|btn-primary|inp|inp-stepper|tab)\b[^"]*!/);
     expect(liveHtml.match(/![a-zA-Z0-9-[\]]+/g)).toBeNull();

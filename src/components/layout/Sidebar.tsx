@@ -15,8 +15,6 @@ interface SidebarProps {
   draftCount: number;
   /** Indica si existen cambios pendientes de subir a la nube. */
   unsynced: boolean;
-  /** Segundos restantes del descanso activo (`0` si inactivo). */
-  restRemSec?: number;
   /** Marca temporal objetivo del descanso activo para reloj local sin re-renders globales. */
   restUntil?: number;
   /** Duración objetivo del descanso activo en segundos. */
@@ -33,7 +31,7 @@ interface SidebarProps {
 
 /** Barra lateral fija para escritorio (`lg:`) con accesos a entrenar, rutinas, análisis, herramientas y cuenta. */
 export function Sidebar({
-  state, statsText, liveCount, draftCount, unsynced, restRemSec = 0, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onNewRoutine, onCloudLogin,
+  state, statsText, liveCount, draftCount, unsynced, restUntil, targetRestSec, onSelectTab, onSelectPlanTab, onNewRoutine, onCloudLogin,
 }: SidebarProps) {
   const unmappedCount = state.analysis.unmapped.length;
   const activePlanTab = state.planTab ?? 'exercises';
@@ -55,7 +53,7 @@ export function Sidebar({
             <button type="button" aria-current={state.tab === 'workout' ? 'page' : undefined} class={`nav-item ${state.tab === 'workout' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('workout')}>
               <Icon name="play" className="h-4 w-4" />
               <span class="flex-1 text-left">Iniciar entreno</span>
-              <RestTimerBadge restUntil={restUntil} targetRestSec={targetRestSec} fallbackRemSec={restRemSec} className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white" />
+              <RestTimerBadge restUntil={restUntil} targetRestSec={targetRestSec} className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold tabular-nums text-white" />
               {liveCount > 0 && (
                 <span class="inline-flex items-center gap-1 rounded-full bg-emeraldGreen/25 px-2 py-0.5 text-[10px] font-bold tabular-nums text-emerald-200">
                   <span class="h-1.5 w-1.5 rounded-full bg-emeraldGreen" />

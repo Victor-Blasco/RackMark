@@ -8,14 +8,22 @@ import { SearchInput } from '../common/SearchInput';
 import { PlanCatalogList } from '../plan/PlanCatalogList';
 
 interface AddRoutineExerciseModalProps {
-  state: State; /** Estado global con catálogo, rutinas y mapa muscular. */
-  routine: string; /** Rutina o ámbito destino seleccionado. */
-  title?: string; /** Título personalizado del modal. */
-  countLabel?: string; /** Subtítulo contador personalizado. */
-  candidates?: string[]; /** Subconjunto opcional de ejercicios filtrables. */
-  existingNames?: string[]; /** Nombres ya seleccionados si difieren de `settings.routines`. */
-  addLabel?: string; /** Etiqueta positiva (`+ Añadir` / `Elegir`). */
-  addedLabel?: string; /** Etiqueta de estado presente (`Añadido` / `Actual`). */
+  /** Estado global con catálogo, rutinas y mapa muscular. */
+  state: State;
+  /** Rutina o ámbito destino seleccionado. */
+  routine: string;
+  /** Título personalizado del modal. */
+  title?: string;
+  /** Subtítulo contador personalizado. */
+  countLabel?: string;
+  /** Subconjunto opcional de ejercicios filtrables. */
+  candidates?: string[];
+  /** Nombres ya seleccionados si difieren de `settings.routines`. */
+  existingNames?: string[];
+  /** Etiqueta positiva (`+ Añadir` / `Elegir`). */
+  addLabel?: string;
+  /** Etiqueta de estado presente (`Añadido` / `Actual`). */
+  addedLabel?: string;
   onAdd: (routine: string, name: string) => void | Promise<void>;
   onRemove?: (routine: string, name: string) => void | Promise<void>;
   onCreateExercise?: (routine: string, initialName?: string) => void;

@@ -7,18 +7,15 @@ interface RestTimerBadgeProps {
   restUntil?: number;
   /** Duración objetivo configurada por defecto en segundos. */
   targetRestSec?: number;
-  /** Segundos restantes explícitos opcionales para renderizado SSR aislado. */
-  fallbackRemSec?: number;
   /** Clases CSS aplicables al badge visible cuando hay descanso activo. */
   className: string;
 }
 
 /** Insignia hoja que actualiza el reloj de descanso sin re-renderizar `AppShell`. */
-export function RestTimerBadge({ restUntil, targetRestSec, fallbackRemSec = 0, className }: RestTimerBadgeProps) {
+export function RestTimerBadge({ restUntil, targetRestSec, className }: RestTimerBadgeProps) {
   const { remSec } = useRestTimer(restUntil, targetRestSec);
-  const effectiveSec = restUntil != null ? remSec : fallbackRemSec;
-  if (effectiveSec <= 0) return null;
-  return <span class={className}>{fmtMMSS(effectiveSec)}</span>;
+  if (restUntil == null || remSec <= 0) return null;
+  return <span class={className}>{fmtMMSS(remSec)}</span>;
 }
 
 interface RestTimerWatcherProps {

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -35,13 +35,12 @@ export const fs = getFirestore(app);
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim() || '';
 
-let appCheckInstance: AppCheck | undefined;
 if (typeof window !== 'undefined' && recaptchaSiteKey) {
   if (import.meta.env.DEV && import.meta.env.VITE_APPCHECK_DEBUG_TOKEN !== 'false') {
     (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string }).FIREBASE_APPCHECK_DEBUG_TOKEN =
       import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
   }
-  appCheckInstance = initializeAppCheck(app, {
+  initializeAppCheck(app, {
     provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,
   });

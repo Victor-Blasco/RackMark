@@ -25,7 +25,7 @@ const STEP_BTN_CLS =
   'inline-flex min-h-[44px] min-w-[44px] sm:min-h-[30px] sm:min-w-[30px] items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm font-bold text-gray-200 transition-all duration-150 hover:border-white/25 hover:text-white active:scale-95 disabled:opacity-35 disabled:pointer-events-none motion-reduce:transition-none motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 const SYNC_BTN_CLS =
-  'inline-flex min-h-[36px] sm:min-h-[28px] items-center rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold text-gray-200 hover:border-electricBlue/50 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+  'inline-flex min-h-[44px] sm:min-h-[30px] items-center rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[11px] font-semibold text-gray-200 hover:border-electricBlue/50 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /**
  * Selector de frecuencia semanal por rutina (`0×..7×`) mediante stepper táctil.

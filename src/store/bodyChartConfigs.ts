@@ -116,6 +116,7 @@ export function buildPerimChartConfig(state: State, msInRange?: Measure[]): Char
         label: MEASURE_LABEL.get(k) ?? k,
         data: perimRows.map((m) => m[k] ?? null),
         borderColor: PAL[i],
+        backgroundColor: PAL[i],
         tension: 0.25,
         spanGaps: true,
       })),

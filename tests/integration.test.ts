@@ -213,9 +213,6 @@ describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y accio
       retryAiAnalysis: () => {},
       dismissAiJob: () => {},
       openWizard: () => {},
-      closeModal: () => {
-        state.activeModal = null;
-      },
     });
     const workoutActions = createLiveWorkoutActions({
       getState: () => state,

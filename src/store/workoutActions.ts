@@ -138,10 +138,5 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
     },
 
     openFixedNote: (exName: string) => deps.openNoteModal(exName),
-
-    goLogTab() {
-      deps.setTab('log');
-      window.scrollTo?.(0, 0);
-    },
   };
 }

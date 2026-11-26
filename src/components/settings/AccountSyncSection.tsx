@@ -6,8 +6,6 @@ interface AccountSyncSectionProps {
   state: State;
   /** Abre el modal de acceso/registro. */
   onOpenAuth?: (mode?: 'login' | 'signup') => void;
-  /** Fallback directo para tests aislados sin `onOpenAuth`. */
-  onLogin?: () => void;
   /** Reenvía el correo de verificación de la cuenta activa. */
   onResendVerification?: () => void;
   /** Comprueba si el usuario ya completó la verificación de su correo. */
@@ -41,7 +39,6 @@ function resolveSyncStatusText(state: State): string {
 export function AccountSyncSection({
   state,
   onOpenAuth,
-  onLogin,
   onResendVerification,
   onCheckVerified,
   onSync,
@@ -50,7 +47,7 @@ export function AccountSyncSection({
 }: AccountSyncSectionProps) {
   const initial = (state.user?.displayName ?? state.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
   const syncStatus = resolveSyncStatusText(state);
-  const openLogin = () => (onOpenAuth ? onOpenAuth('login') : onLogin?.());
+  const openLogin = () => onOpenAuth?.('login');
 
   if (!state.user) {
     return (

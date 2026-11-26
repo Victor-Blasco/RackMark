@@ -21,7 +21,7 @@ interface LogSetRowProps {
 
 const LOG_STEP_BTN =
   'flex h-11 w-9 shrink-0 items-center justify-center border border-gray-700 bg-gray-900 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
-const DESKTOP_NUM_INP = 'inp h-11 rounded-md px-1.5 py-0 text-center text-xs font-semibold tabular-nums';
+const DESKTOP_NUM_INP = 'inp h-11 rounded-md px-1.5 py-0 text-center text-base sm:text-sm font-semibold tabular-nums';
 const MOBILE_NUM_INP = 'inp h-11 rounded-lg px-2 py-0 text-center text-base font-semibold tabular-nums';
 
 /**

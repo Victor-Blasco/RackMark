@@ -13,10 +13,6 @@ interface PlanSidebarWidgetsProps {
   state: State;
   /** Si es `true`, omite el contenedor lateral de escritorio para embeberlo en línea. */
   inline?: boolean;
-  /** Override opcional para tests aislados sin Provider. */
-  onChangeFreq?: (day: string, freq: number) => void;
-  /** Override opcional para abrir el catálogo de músculos. */
-  onOpenCatalog?: () => void;
 }
 
 const fmtSets = (v: number): string => (v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ','));
@@ -24,7 +20,7 @@ const fmtSets = (v: number): string => (v % 1 === 0 ? String(v) : v.toFixed(1).r
 /**
  * Panel lateral del editor de rutinas con simulador de volumen semanal, frecuencia y desglose por músculo.
  */
-export function PlanSidebarWidgets({ state, inline = false, onChangeFreq, onOpenCatalog }: PlanSidebarWidgetsProps) {
+export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgetsProps) {
   const { plan } = useAppStore();
   const [openMuscle, setOpenMuscle] = useState<string | null>(null);
   const s = state.settings;
@@ -33,8 +29,8 @@ export function PlanSidebarWidgets({ state, inline = false, onChangeFreq, onOpen
   const { byMuscle, unmapped, totalWeeklySessions, totalPlannedSets } = plannedVolumeBreakdown(s);
   const { min: minSets, max: maxSets, isLightPlan } = volumeRangeForProfile(s.profile);
 
-  const handleFreq = onChangeFreq ?? ((day: string, freq: number) => void plan.changeRoutineFreq(day, freq));
-  const handleCatalog = onOpenCatalog ?? (() => plan.openPlanTab('exercises'));
+  const handleFreq = (day: string, freq: number) => void plan.changeRoutineFreq(day, freq);
+  const handleCatalog = () => plan.openPlanTab('exercises');
   const unmappedPreview = unmapped.slice(0, 3).map((u) => u.exercise).join(', ');
 
   const card = (
@@ -87,7 +83,7 @@ export function PlanSidebarWidgets({ state, inline = false, onChangeFreq, onOpen
               <button
                 type="button"
                 aria-expanded={isOpen ? 'true' : 'false'}
-                class="grid w-full min-h-[36px] sm:min-h-[28px] grid-cols-[96px_1fr_auto] items-center gap-2 rounded-lg px-1 -mx-1 text-left text-xs hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+                class="grid w-full min-h-[44px] sm:min-h-[30px] grid-cols-[96px_1fr_auto] items-center gap-2 rounded-lg px-1 -mx-1 text-left text-xs hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
                 onClick={() => setOpenMuscle(isOpen ? null : m)}
               >
                 <span class="truncate text-gray-200">{m}</span>

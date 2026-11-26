@@ -113,7 +113,6 @@ export interface ConfirmModalOpts {
   message: string;
   confirmLabel?: string;
   danger?: boolean;
-  onConfirm?: () => void;
 }
 
 /** Unión discriminada de todos los modales posibles en la aplicación. */

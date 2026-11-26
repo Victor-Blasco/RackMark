@@ -222,6 +222,9 @@ body {
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  .num-col {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 /* Alto contraste para texto sobre botones/badges de acento (oscuro en dark mode, blanco en light mode) */
@@ -231,7 +234,7 @@ body {
 }
 
 /* Adaptación completa a Modo Claro conservando contraste WCAG 2.1 AA */
-html[data-theme='light'] .text-white:not(.btn-primary):not(.btn-primary-sm):not(.btn-danger-solid):not(.bg-electricBlue):not(.bg-blue-600):not(.bg-rose-600),
+html[data-theme='light'] .text-white:not(.btn-primary):not(.btn-primary-sm):not(.btn-danger-solid):not(.bg-electricBlue):not(.bg-blue-600),
 html[data-theme='light'] .hover\:text-white:hover,
 html[data-theme='light'] .inp,
 html[data-theme='light'] .inp-stepper {
@@ -239,26 +242,37 @@ html[data-theme='light'] .inp-stepper {
 }
 
 html[data-theme='light'] .border-white\/5 { border-color: rgba(15, 23, 26, 0.06); }
+html[data-theme='light'] .border-white\/\[0\.06\] { border-color: rgba(15, 23, 26, 0.08); }
 html[data-theme='light'] .border-white\/10 { border-color: rgba(15, 23, 26, 0.11); }
 html[data-theme='light'] .border-white\/15 { border-color: rgba(15, 23, 26, 0.16); }
 html[data-theme='light'] .border-white\/20 { border-color: rgba(15, 23, 26, 0.22); }
-html[data-theme='light'] .border-white\/25,
 html[data-theme='light'] .hover\:border-white\/25:hover { border-color: rgba(15, 23, 26, 0.26); }
 
-html[data-theme='light'] .divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15, 23, 26, 0.06); }
+html[data-theme='light'] .divide-white\/\[0\.06\] > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15, 23, 26, 0.08); }
 html[data-theme='light'] .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(15, 23, 26, 0.11); }
 
 html[data-theme='light'] .bg-white\/\[0\.02\] { background-color: rgba(15, 23, 26, 0.025); }
 html[data-theme='light'] .bg-white\/\[0\.03\],
 html[data-theme='light'] .hover\:bg-white\/\[0\.03\]:hover { background-color: rgba(15, 23, 26, 0.04); }
-html[data-theme='light'] .bg-white\/\[0\.04\] { background-color: rgba(15, 23, 26, 0.05); }
-html[data-theme='light'] .bg-white\/\[0\.06\] { background-color: rgba(15, 23, 26, 0.07); }
+html[data-theme='light'] .bg-white\/\[0\.04\],
+html[data-theme='light'] .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(15, 23, 26, 0.05); }
+html[data-theme='light'] .bg-white\/\[0\.05\],
+html[data-theme='light'] .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(15, 23, 26, 0.06); }
+html[data-theme='light'] .bg-white\/\[0\.06\],
+html[data-theme='light'] .hover\:bg-white\/\[0\.06\]:hover,
+html[data-theme='light'] .active\:bg-white\/\[0\.06\]:active { background-color: rgba(15, 23, 26, 0.08); }
 html[data-theme='light'] .bg-white\/5,
 html[data-theme='light'] .hover\:bg-white\/5:hover { background-color: rgba(15, 23, 26, 0.05); }
 html[data-theme='light'] .bg-white\/10,
 html[data-theme='light'] .hover\:bg-white\/10:hover { background-color: rgba(15, 23, 26, 0.08); }
 html[data-theme='light'] .bg-white\/15 { background-color: rgb(var(--c-card)); box-shadow: 0 1px 2px rgba(15, 23, 26, 0.08); }
+html[data-theme='light'] .bg-white\/80 { background-color: rgba(15, 23, 26, 0.7); }
+html[data-theme='light'] .text-white\/80 { color: rgba(15, 23, 26, 0.78); }
 html[data-theme='light'] .ring-white\/10 { --tw-ring-color: rgba(15, 23, 26, 0.12); }
+html[data-theme='light'] .ring-white\/40 { --tw-ring-color: rgba(15, 23, 26, 0.35); }
+html[data-theme='light'] .ring-white,
+html[data-theme='light'] .peer:checked ~ .peer-checked\:ring-white { --tw-ring-color: rgb(var(--c-gray-100)); }
+html[data-theme='light'] .bg-emeraldGreen.text-gray-950 { color: rgb(10 13 14); }
 
 html[data-theme='light'] .text-emerald-200,
 html[data-theme='light'] .text-emerald-300,
@@ -266,13 +280,11 @@ html[data-theme='light'] .text-emerald-400 {
   color: rgb(21 128 61);
 }
 html[data-theme='light'] .text-amber-200,
-html[data-theme='light'] .text-amber-300,
-html[data-theme='light'] .text-amber-400 {
+html[data-theme='light'] .text-amber-300 {
   color: rgb(180 83 9);
 }
 html[data-theme='light'] .text-rose-200,
 html[data-theme='light'] .text-rose-300,
-html[data-theme='light'] .text-rose-400,
 html[data-theme='light'] .btn-danger {
   color: rgb(190 18 60);
 }

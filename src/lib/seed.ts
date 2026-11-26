@@ -206,6 +206,10 @@ export const MUSCLE_DAY: Record<string, 'Push' | 'Pull' | 'Leg' | null> = {
 };
 
 export const ROUTINE_COLORS = ['#A855F7', '#3B82F6', '#10B981', '#F59E0B', '#06B6D4', '#6366F1', '#14B8A6', '#84CC16'];
+export const ROUTINE_COLOR_NAMES: Record<string, string> = {
+  '#A855F7': 'Morado', '#3B82F6': 'Azul', '#10B981': 'Esmeralda', '#F59E0B': 'Ámbar',
+  '#06B6D4': 'Cian', '#6366F1': 'Índigo', '#14B8A6': 'Turquesa', '#84CC16': 'Lima',
+};
 
 const PPL_ROUTINES: Settings['routines'] = {
   Push: [

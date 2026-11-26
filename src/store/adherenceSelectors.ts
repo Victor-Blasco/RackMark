@@ -64,37 +64,43 @@ export function buildAdherenceViewModel(state: State) {
   const { recentSessions, sessionFilters } = buildAdherenceSessions(state, effBounds, routines);
 
   const wellScope = state.wellbeing.filter((w) => inRange(w.date, effBounds));
-  const hasSleep = wellScope.some((w) => w.sleepMin != null || w.hrv != null);
+  const hasSleepHours = wellScope.some((w) => w.sleepMin != null);
+  const hasHrv = wellScope.some((w) => w.hrv != null);
+  const hasSleep = hasSleepHours || hasHrv;
   const hasSteps = wellScope.some((w) => w.steps != null);
+
+  const sleepDatasets: ChartConfiguration<'line'>['data']['datasets'] = [];
+  if (hasSleepHours) {
+    const accent = chartAccentColor();
+    sleepDatasets.push({
+      label: 'Sueño (h)',
+      data: wellScope.map((w) => (w.sleepMin != null ? Math.round((w.sleepMin / 60) * 10) / 10 : null)),
+      borderColor: accent,
+      backgroundColor: accent,
+      yAxisID: 'y',
+      tension: 0.25,
+      spanGaps: true,
+    });
+  }
+  if (hasHrv) {
+    sleepDatasets.push({
+      label: 'HRV (ms)',
+      data: wellScope.map((w) => w.hrv ?? null),
+      borderColor: '#22C55E',
+      backgroundColor: '#22C55E',
+      yAxisID: hasSleepHours ? 'y1' : 'y',
+      tension: 0.25,
+      spanGaps: true,
+    });
+  }
 
   const sleepChartCfg: ChartConfiguration<'line'> | null = hasSleep
     ? {
         type: 'line',
-        data: {
-          labels: wellScope.map((w) => short(w.date)),
-          datasets: [
-            {
-              label: 'Sueño (h)',
-              data: wellScope.map((w) => (w.sleepMin != null ? Math.round((w.sleepMin / 60) * 10) / 10 : null)),
-              borderColor: chartAccentColor(),
-              yAxisID: 'y',
-              tension: 0.25,
-              spanGaps: true,
-            },
-            {
-              label: 'HRV (ms)',
-              data: wellScope.map((w) => w.hrv ?? null),
-              borderColor: '#10B981',
-              yAxisID: 'y1',
-              tension: 0.25,
-              spanGaps: true,
-            },
-          ],
-        },
-        options: {
-          interaction: { mode: 'index', intersect: false },
-          scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } },
-        },
+        data: { labels: wellScope.map((w) => short(w.date)), datasets: sleepDatasets },
+        options: hasSleepHours && hasHrv
+          ? { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } }
+          : undefined,
       }
     : null;
 
@@ -103,7 +109,7 @@ export function buildAdherenceViewModel(state: State) {
         type: 'bar',
         data: {
           labels: wellScope.map((w) => short(w.date)),
-          datasets: [{ label: 'Pasos diarios', data: wellScope.map((w) => w.steps ?? 0), backgroundColor: '#F59E0B' }],
+          datasets: [{ label: 'Pasos diarios', data: wellScope.map((w) => w.steps ?? 0), backgroundColor: chartAccentColor() }],
         },
       }
     : null;

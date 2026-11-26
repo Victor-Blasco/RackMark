@@ -45,7 +45,6 @@ export function ModalHost({ state: propState }: ModalHostProps) {
           confirmLabel={modal.confirmLabel}
           danger={modal.danger}
           onConfirm={() => {
-            modal.onConfirm?.();
             store.resolveConfirm(true);
           }}
           onCancel={() => store.resolveConfirm(false)}

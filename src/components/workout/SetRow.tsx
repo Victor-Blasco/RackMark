@@ -29,7 +29,7 @@ interface SetRowProps {
 }
 
 const STEP_BTN =
-  'flex min-h-[48px] sm:min-h-[44px] w-9 sm:w-10 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
+  'flex min-h-[48px] sm:min-h-[44px] w-9 min-[390px]:w-11 sm:w-10 shrink-0 items-center justify-center border border-white/15 bg-white/5 text-base font-bold text-gray-200 hover:border-electricBlue active:scale-95 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 const EXTRA_INP =
   'min-h-[44px] sm:min-h-0 rounded-lg border border-white/15 bg-transparent py-1.5 sm:py-1 text-center text-base sm:text-xs font-semibold tabular-nums text-white focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
@@ -64,7 +64,7 @@ export function SetRow({
           label="Peso (kg)" labelClass="sr-only" wrapClass="flex-1 min-w-0"
           value={s.w} step="0.5" inputMode="decimal" inputAria={`Peso kg serie ${n}`} delta={2.5}
           decAria={`Restar 2,5 kg serie ${n}`} incAria={`Sumar 2,5 kg serie ${n}`} btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px] px-0.5"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[36px] min-[390px]:min-w-[40px] px-0.5"
           onStep={onStepWeight} onInputValue={(raw) => onWeightChange(raw, false)} onBlurValue={(raw) => onWeightChange(raw, true)}
         />
 
@@ -72,7 +72,7 @@ export function SetRow({
           label="Reps" labelClass="sr-only" wrapClass="flex-1 min-w-0"
           value={s.r} step="1" inputMode="numeric" inputAria={`Repeticiones serie ${n}`} delta={1}
           decAria={`Restar 1 repetición serie ${n}`} incAria={`Sumar 1 repetición serie ${n}`} btnClass={STEP_BTN}
-          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[40px] min-[390px]:min-w-[52px] px-0.5"
+          inputClass="inp-stepper border-white/15 bg-transparent text-base min-h-[48px] sm:min-h-[44px] min-w-[36px] min-[390px]:min-w-[40px] px-0.5"
           onStep={onStepReps} onInputValue={(raw) => onRepsChange(raw, false)} onBlurValue={(raw) => onRepsChange(raw, true)}
         />
 

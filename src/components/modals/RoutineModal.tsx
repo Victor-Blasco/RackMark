@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { ROUTINE_COLORS } from '../../lib/seed';
+import { ROUTINE_COLORS, ROUTINE_COLOR_NAMES } from '../../lib/seed';
 import type { SaveRoutinePayload } from '../../store/planActions';
 import { Icon } from '../common/Icon';
 import { ModalShell } from '../common/ModalShell';
@@ -18,11 +18,6 @@ interface RoutineModalProps {
   /** Cierra el modal sin guardar cambios. */
   onClose: () => void;
 }
-
-const COLOR_NAMES: Record<string, string> = {
-  '#A855F7': 'Morado', '#3B82F6': 'Azul', '#10B981': 'Esmeralda', '#F59E0B': 'Ámbar',
-  '#06B6D4': 'Cian', '#6366F1': 'Índigo', '#14B8A6': 'Turquesa', '#84CC16': 'Lima',
-};
 
 /**
  * Modal de creación y edición de nombre, subtítulo y color de una rutina.
@@ -86,7 +81,7 @@ export function RoutineModal({ mode, initialName, initialSub, initialColor, onSa
           <div class="flex flex-wrap gap-1.5 sm:gap-2.5">
             {ROUTINE_COLORS.map((c) => (
               <label key={c} class="inline-flex h-11 w-11 sm:h-8 sm:w-8 cursor-pointer items-center justify-center rounded-full">
-                <input type="radio" name="color" value={c} aria-label={`Color ${COLOR_NAMES[c] ?? c}`} checked={c === color} class="sr-only peer" onChange={() => setColor(c)} />
+                <input type="radio" name="color" value={c} aria-label={`Color ${ROUTINE_COLOR_NAMES[c] ?? c}`} checked={c === color} class="sr-only peer" onChange={() => setColor(c)} />
                 <span class="block h-7 w-7 rounded-full border border-white/20 transition-transform motion-reduce:transform-none peer-checked:scale-110 peer-checked:ring-2 peer-checked:ring-white peer-checked:ring-offset-2 peer-checked:ring-offset-modalDark peer-focus-visible:ring-2 peer-focus-visible:ring-electricBlue peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-modalDark" style={{ background: c }} />
               </label>
             ))}

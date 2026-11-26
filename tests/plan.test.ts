@@ -893,7 +893,6 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
       retryAiAnalysis: () => {},
       dismissAiJob: () => {},
       openWizard: () => {},
-      closeModal: () => {},
     });
     actions.openRoutineExercisePicker('Pull');
     expect(state.activeModal).toEqual({ type: 'routineExercisePicker', routine: 'Pull' });

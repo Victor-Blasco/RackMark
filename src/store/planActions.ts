@@ -28,7 +28,6 @@ export interface PlanActionDeps {
   retryAiAnalysis: () => void;
   dismissAiJob: () => void;
   openWizard: () => void;
-  closeModal: () => void;
   saveDraft?: (draft?: LogDraft) => void;
   saveLive?: (live?: LiveWorkout) => void;
 }

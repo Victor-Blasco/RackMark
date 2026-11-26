@@ -893,5 +893,16 @@ describe('cuerpo, calculadoras, adherencia y analítica', () => {
     });
     expect(firstDayAdh.isCurrentWeekOnly).toBe(true);
     expect(firstDayAdh.avg).toBe(1);
+
+    const sleepOnlyAdh = buildAdherenceViewModel({
+      ...invalidRangeState,
+      tab: 'adherence',
+      ranges: { adherence: '1M' },
+      customRanges: undefined,
+      wellbeing: [{ date: today, sleepMin: 450, steps: 8500 }],
+    });
+    expect(sleepOnlyAdh.sleepChartCfg?.data.datasets.map((d) => d.label)).toEqual(['Sueño (h)']);
+    expect(sleepOnlyAdh.sleepChartCfg?.options).toBeUndefined();
+    expect(sleepOnlyAdh.stepsChartCfg?.data.datasets[0]?.backgroundColor).toBe('#2DD4BF');
   });
 });

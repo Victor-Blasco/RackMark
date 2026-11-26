@@ -314,7 +314,6 @@ const planActions = createPlanActions({
   retryAiAnalysis: () => void aiCtrl.retryAi(),
   dismissAiJob: () => void aiCtrl.dismissAi(),
   openWizard: () => wizardActions.open(),
-  closeModal,
   saveDraft,
   saveLive,
 });

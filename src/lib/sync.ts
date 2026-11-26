@@ -354,7 +354,6 @@ function mergeConcurrentSyncMeta(baseMeta: SyncMeta, sinceTs: number): SyncMeta 
 }
 
 async function handlePendingWipe(
-  uid: string,
   meta: SyncMeta,
   settingsRef: ReturnType<typeof doc>,
   bucketDocs: { ref: ReturnType<typeof doc> }[],
@@ -552,7 +551,7 @@ export async function syncWithCloud(uid: string): Promise<SyncReport> {
       : null;
 
   if (meta.pendingWipeAt && (!remoteSettings || meta.pendingWipeAt >= remoteSettings.updatedAt)) {
-    return handlePendingWipe(uid, meta, settingsRef, bucketsSnap.docs, now, syncStartedAt, accountSwitched);
+    return handlePendingWipe(meta, settingsRef, bucketsSnap.docs, now, syncStartedAt, accountSwitched);
   }
   if (
     remoteSettings?.wipedAt &&

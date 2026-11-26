@@ -7,12 +7,18 @@ import { Icon } from '../common/Icon';
 import { SearchInput } from '../common/SearchInput';
 
 interface ExercisePickerSheetProps {
-  mode: 'add' | 'swap'; /** Modo de apertura: añadir ejercicio adicional o sustituir el actual. */
-  currentExName?: string; /** Nombre del ejercicio actual (solo en modo `swap`). */
-  available: string[]; /** Ejercicios disponibles no presentes todavía en la sesión. */
-  quickSuggestions: string[]; /** Sugerencias afines al grupo muscular del día o del ejercicio sustituido. */
-  settings?: Settings; /** Ajustes del usuario para enriquecer búsqueda y subtítulo muscular. */
-  query: string; /** Término actual del campo de búsqueda. */
+  /** Modo de apertura: añadir ejercicio adicional o sustituir el actual. */
+  mode: 'add' | 'swap';
+  /** Nombre del ejercicio actual (solo en modo `swap`). */
+  currentExName?: string;
+  /** Ejercicios disponibles no presentes todavía en la sesión. */
+  available: string[];
+  /** Sugerencias afines al grupo muscular del día o del ejercicio sustituido. */
+  quickSuggestions: string[];
+  /** Ajustes del usuario para enriquecer búsqueda y subtítulo muscular. */
+  settings?: Settings;
+  /** Término actual del campo de búsqueda. */
+  query: string;
   onQueryChange: (q: string) => void;
   onPick: (name: string) => void;
   onClose: () => void;
