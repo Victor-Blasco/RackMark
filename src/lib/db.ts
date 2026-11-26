@@ -83,6 +83,17 @@ export async function putMany<T>(store: Store, items: T[]): Promise<void> {
 }
 export const getAll = async <T>(store: Store): Promise<T[]> => wrap((await tx(store, 'readonly')).getAll() as IDBRequest<T[]>);
 export const deleteKey = async (store: Store, key: IDBValidKey) => { await wrap((await tx(store, 'readwrite')).delete(key)); };
+export async function deleteMany(store: Store, keys: IDBValidKey[]): Promise<void> {
+  if (!keys.length) return;
+  const db = await open();
+  await new Promise<void>((res, rej) => {
+    const t = db.transaction(store, 'readwrite');
+    const os = t.objectStore(store);
+    keys.forEach((k) => os.delete(k));
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
 
 export async function loadSettings(): Promise<Settings> {
   const saved = (await wrap((await tx('kv', 'readonly')).get('settings'))) as Partial<Settings> | undefined;

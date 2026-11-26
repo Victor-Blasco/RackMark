@@ -4,7 +4,6 @@ import type { Measure, NumericMeasureKey } from '../types';
 import {
   fmtDate,
   inRange,
-  movingAverage7dFor,
   r1,
   resolveRange,
   short,
@@ -12,6 +11,7 @@ import {
   type State,
 } from '../ui/shared';
 import { chartAccentColor } from '../ui/theme';
+import { buildCompChartConfig } from './bodyChartConfigs';
 
 export const STATUS_STYLE: Record<ExStats['statusColor'], { dot: string; text: string; glyph: string }> = {
   emeraldGreen: { dot: 'bg-emeraldGreen', text: 'text-emerald-300', glyph: '↑' },
@@ -108,26 +108,7 @@ export function exerciseChartConfig(sessions: ExSession[], color: string): Chart
 
 /** Construye la configuración de composición corporal para Resumen evitando crear eje `y1` si falta dato. */
 export function buildBodyHomeChartConfig(ms: Measure[], allMeasures?: Measure[]): ChartConfiguration<'line'> | null {
-  const mm = ms.filter((m) => m.weight != null || m.bf != null);
-  if (!mm.length) return null;
-  const hasWeight = mm.some((m) => m.weight != null);
-  const hasBf = mm.some((m) => m.bf != null);
-  const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];
-  if (hasWeight) {
-    const accent = chartAccentColor();
-    datasets.push(
-      { label: 'Tendencia 7d (kg)', data: movingAverage7dFor(mm, allMeasures), borderColor: accent, backgroundColor: accent, borderWidth: 2.5, pointRadius: 0, yAxisID: 'y', tension: 0.3, spanGaps: true },
-      { label: 'Peso diario (kg)', data: mm.map((m) => m.weight ?? null), borderColor: 'rgba(148,163,168,0.55)', backgroundColor: 'rgba(148,163,168,0.65)', borderDash: [3, 3], borderWidth: 1.5, pointRadius: 2, yAxisID: 'y', tension: 0.2, spanGaps: true },
-    );
-  }
-  if (hasBf) {
-    datasets.push({ label: '% Grasa', data: mm.map((m) => m.bf ?? null), borderColor: '#F59E0B', backgroundColor: '#F59E0B', yAxisID: hasWeight ? 'y1' : 'y', tension: 0.25, spanGaps: true });
-  }
-  return {
-    type: 'line',
-    data: { labels: mm.map((m) => short(m.date)), datasets },
-    options: { scales: hasWeight && hasBf ? { y: { position: 'left' }, y1: { position: 'right', grid: { drawOnChartArea: false } } } : { y: { position: 'left' } } },
-  };
+  return buildCompChartConfig(ms, 'weight', allMeasures, { includeMuscle: false });
 }
 
 /** Devuelve la lista priorizada de ejercicios disponibles en la vista Resumen. */

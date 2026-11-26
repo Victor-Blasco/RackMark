@@ -12,6 +12,7 @@ export interface RoutineEditDeps {
   getState: () => State;
   getLastRoutine: () => DayName;
   setLastRoutine: (day: DayName) => void;
+  setTab?: (tab: string) => void;
   persist: () => Promise<void>;
   render: () => void;
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void;
@@ -63,9 +64,28 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       const { [name]: _removedRoutine, ...routines } = cur.settings.routines;
       const { [name]: _removedMeta, ...routineMeta } = cur.settings.routineMeta ?? {};
       cur.settings = { ...cur.settings, routines, routineMeta };
+      const { [name]: _rs, ...restSel } = cur.sel;
+      cur.sel = restSel;
+      if (cur.dayExtra) {
+        const { [name]: _rd, ...restExtra } = cur.dayExtra;
+        cur.dayExtra = restExtra;
+      }
+      if (cur.ranges) {
+        const { [name]: _rr, ...restRanges } = cur.ranges;
+        cur.ranges = restRanges;
+      }
+      if (cur.customRanges) {
+        const { [name]: _rc, ...restCustom } = cur.customRanges;
+        cur.customRanges = restCustom;
+      }
       const remaining = routineNames(cur.settings);
       if (deps.getLastRoutine() === name) deps.setLastRoutine(remaining[0] ?? 'Push');
       if (cur.planRoutine === name) cur.planRoutine = remaining[0];
+      if (cur.tab === name) {
+        const nextTab = remaining[0] ?? 'home';
+        if (deps.setTab) deps.setTab(nextTab);
+        else cur.tab = nextTab;
+      }
       deps.syncWorkoutRoutineNames();
       await deps.persist();
       deps.toast(`Rutina "${name}" eliminada.`);
@@ -75,7 +95,7 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
       const tpl = ROUTINE_TEMPLATES[key];
       const confirmOpts = tpl ? confirmTemplateOpts(state(), key) : null;
       if (!tpl || !confirmOpts || !(await deps.askConfirm(confirmOpts))) return;
-      applyRoutineTemplateToState(state(), key, deps.getLastRoutine, deps.setLastRoutine, deps.syncWorkoutRoutineNames);
+      applyRoutineTemplateToState(state(), key, deps.getLastRoutine, deps.setLastRoutine, deps.syncWorkoutRoutineNames, undefined, deps.setTab);
       await deps.persist();
       deps.toast(`Plantilla "${tpl.label}" aplicada.`);
     },

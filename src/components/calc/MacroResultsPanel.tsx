@@ -1,4 +1,5 @@
 import type { NutritionResult } from '../../lib/nutrition';
+import { r1 } from '../../ui/shared';
 
 function deltaBadgeClass(deltaNum: number): string {
   if (deltaNum === 0) return 'bg-white/5 text-gray-300';
@@ -74,11 +75,11 @@ export function MacroDistributionPanel({ nutrition, carbWarning }: MacroDistribu
         </div>
         <div class="grid grid-cols-3 divide-x divide-white/10 text-center">
           <div class="px-2">
-            <span class="block text-[11px] tabular-nums text-gray-400">Proteína {nutrition.proteinPerKg.toFixed(1).replace('.', ',')} g/kg</span>
+            <span class="block text-[11px] tabular-nums text-gray-400">Proteína {r1(nutrition.proteinPerKg)} g/kg</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-emerald-300">{nutrition.proteinG} g</span>
           </div>
           <div class="px-2">
-            <span class="block text-[11px] tabular-nums text-gray-400">Grasas {nutrition.fatPerKg.toFixed(1).replace('.', ',')} g/kg</span>
+            <span class="block text-[11px] tabular-nums text-gray-400">Grasas {r1(nutrition.fatPerKg)} g/kg</span>
             <span class="tabular-nums text-lg sm:text-xl font-extrabold text-amberGold">{nutrition.fatG} g</span>
           </div>
           <div class="px-2">

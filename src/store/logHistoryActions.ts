@@ -1,4 +1,4 @@
-import { deleteKey } from '../lib/db';
+import { deleteMany } from '../lib/db';
 import { markBucketDeletes } from '../lib/sync';
 import type { DayName, LogDraft } from '../types';
 import type { State } from '../ui/shared';
@@ -95,7 +95,7 @@ export function createLogHistoryActions(
         ? latestState.strength.filter((r) => r.sessionId === sessionId)
         : latestState.strength.filter((r) => r.date === date);
       if (!freshToDel.length) return;
-      for (const r of freshToDel) await deleteKey('strength', r.id);
+      await deleteMany('strength', freshToDel.map((r) => r.id));
       markBucketDeletes('strength', freshToDel.map((r) => ({ key: r.id, date: r.date })));
       await deps.reload();
       const curDraft = deps.getState().logDraft;

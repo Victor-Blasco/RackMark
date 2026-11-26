@@ -56,31 +56,20 @@ export function distributeWeeklyFreqs(routines: string[], targetDays: number): R
  * @returns Mapa músculo -> series semanales ponderadas (1 principal, 0.5 secundario).
  */
 export function plannedWeeklyVolume(settings: Settings): Map<string, number> {
-  const out = new Map<string, number>(MUSCLES.map((m) => [m, 0]));
-  for (const r of routineNames(settings)) {
-    const freq = routineFreq(settings, r);
-    if (freq <= 0) continue;
-    for (const item of settings.routines[r] ?? []) {
-      if (!item.name || !(item.sets > 0)) continue;
-      const m = musclesOf(item.name, settings);
-      if (!m) continue;
-      for (const [muscle, factor] of effectiveMuscleCredits(m)) {
-        out.set(muscle, (out.get(muscle) ?? 0) + item.sets * factor * freq);
-      }
-    }
-  }
-  return out;
+  return plannedVolumeBreakdown(settings).totals;
 }
 
 /**
  * Desglosa por músculo las aportaciones planificadas y detecta ejercicios sin músculo asignado.
  */
 export function plannedVolumeBreakdown(settings: Settings): {
+  totals: Map<string, number>;
   byMuscle: Map<string, PlannedMuscleContribution[]>;
   unmapped: { routine: string; exercise: string }[];
   totalWeeklySessions: number;
   totalPlannedSets: number;
 } {
+  const totals = new Map<string, number>(MUSCLES.map((m) => [m, 0]));
   const byMuscle = new Map<string, PlannedMuscleContribution[]>(MUSCLES.map((m) => [m, []]));
   const unmapped: { routine: string; exercise: string }[] = [];
   let totalWeeklySessions = 0;
@@ -98,6 +87,8 @@ export function plannedVolumeBreakdown(settings: Settings): {
         continue;
       }
       for (const [muscle, factor] of effectiveMuscleCredits(m)) {
+        const effective = item.sets * factor * freq;
+        totals.set(muscle, (totals.get(muscle) ?? 0) + effective);
         const list = byMuscle.get(muscle);
         if (!list) continue;
         list.push({
@@ -106,12 +97,12 @@ export function plannedVolumeBreakdown(settings: Settings): {
           exercise: item.name,
           sets: item.sets,
           factor,
-          effective: item.sets * factor * freq,
+          effective,
         });
       }
     }
   }
-  return { byMuscle, unmapped, totalWeeklySessions, totalPlannedSets };
+  return { totals, byMuscle, unmapped, totalWeeklySessions, totalPlannedSets };
 }
 
 const MUSCLE_HINTS: ReadonlyArray<[RegExp, string]> = [

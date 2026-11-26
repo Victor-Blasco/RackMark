@@ -22,6 +22,7 @@ import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
 import { Sidebar } from '../src/components/layout/Sidebar';
 import { ModalHost } from '../src/components/modals/ModalHost';
+import { AccountSyncSection } from '../src/components/settings/AccountSyncSection';
 import { WizardModal } from '../src/components/modals/WizardModal';
 import { ChartCanvas } from '../src/components/common/ChartCanvas';
 import { RangePicker } from '../src/components/common/RangePicker';
@@ -1212,5 +1213,19 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     await actions.pickExercise('Press inclinado con mancuernas');
     expect(confirmTitles).toEqual(['Cambiar ejercicio con series marcadas']);
     expect(live.exercises[0].name).toBe('Press de banca');
+
+    // AccountSyncSection refleja cambios locales pendientes cuando unsynced=true
+    const syncHtml = renderToString(
+      h(AccountSyncSection, {
+        state: {
+          ...baseState,
+          user: { uid: 'u1', email: 'u1@example.com', displayName: 'Tester', photoURL: null, emailVerified: true },
+        },
+        unsynced: true,
+        onSync: () => {},
+        onLogout: () => {},
+      }),
+    );
+    expect(syncHtml).toContain('pendiente de sincronizar');
   });
 });

@@ -4,6 +4,8 @@ import { Icon } from '../common/Icon';
 interface AccountSyncSectionProps {
   /** Estado global con sesión Firebase, estado de cola y hora de última sincronización. */
   state: State;
+  /** Indica si existen cambios locales pendientes de subir a la nube. */
+  unsynced?: boolean;
   /** Abre el modal de acceso/registro. */
   onOpenAuth?: (mode?: 'login' | 'signup') => void;
   /** Reenvía el correo de verificación de la cuenta activa. */
@@ -18,7 +20,7 @@ interface AccountSyncSectionProps {
   onDeleteAccount?: () => void;
 }
 
-function resolveSyncStatusText(state: State): string {
+function resolveSyncStatusText(state: State, unsynced = false): string {
   if (state.syncing) return 'Sincronizando…';
   if (state.syncJob?.status === 'error') {
     const retry = state.syncJob.nextAttemptAt
@@ -26,7 +28,7 @@ function resolveSyncStatusText(state: State): string {
       : '';
     return `Pendiente: ${humanizeError(state.syncJob.error, 'error recuperable')}${retry}`;
   }
-  if (state.syncJob?.status === 'pending') return 'Guardado localmente · pendiente de sincronizar';
+  if (state.syncJob?.status === 'pending' || unsynced) return 'Guardado localmente · pendiente de sincronizar';
   if (state.lastSync) {
     return `Última sincronización: ${new Date(state.lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`;
   }
@@ -38,6 +40,7 @@ function resolveSyncStatusText(state: State): string {
  */
 export function AccountSyncSection({
   state,
+  unsynced = false,
   onOpenAuth,
   onResendVerification,
   onCheckVerified,
@@ -46,7 +49,7 @@ export function AccountSyncSection({
   onDeleteAccount,
 }: AccountSyncSectionProps) {
   const initial = (state.user?.displayName ?? state.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
-  const syncStatus = resolveSyncStatusText(state);
+  const syncStatus = resolveSyncStatusText(state, unsynced);
   const openLogin = () => onOpenAuth?.('login');
 
   if (!state.user) {

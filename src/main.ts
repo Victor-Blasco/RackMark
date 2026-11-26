@@ -2,7 +2,7 @@ import './style.css';
 import { h, render as renderPreact } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
-import { getAll, loadAiJob, loadSettings, loadSyncJob, saveSettings } from './lib/db';
+import { getAll, loadAiJob, loadSettings, loadSyncJob, sanitizeSettings, saveSettings } from './lib/db';
 import { DEFAULT_SETTINGS } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
@@ -135,6 +135,7 @@ function render() {
 }
 
 async function persist() {
+  S.settings = sanitizeSettings(S.settings);
   applyTheme(S.settings.theme ?? 'dark');
   await saveSettings(S.settings);
   markSettingsDirty();

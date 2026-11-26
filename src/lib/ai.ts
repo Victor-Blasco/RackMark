@@ -2,7 +2,7 @@ import { AIError, getAI, getGenerativeModel, GoogleAIBackend, type AI } from 'fi
 import type { AiResult, AiTone, CardioRow, DailyWellbeing, Measure, Settings } from '../types';
 import { currentPhase, effectiveMuscleCredits, musclesOf, type Analysis, type ExStats } from './analysis';
 import { app } from './firebase';
-import { todayIso } from './seed';
+import { daysAgoIso, todayIso } from './seed';
 
 let aiInstance: AI | undefined;
 function getAiBackend(): AI {
@@ -208,10 +208,9 @@ export function buildPayload(
   cardio: CardioRow[] = [],
   wellbeing: DailyWellbeing[] = [],
 ) {
-  const daysAgo = (n: number) => todayIso(new Date(Date.now() - n * 864e5));
-  const since56 = daysAgo(56);
-  const since28 = daysAgo(28);
-  const since7 = daysAgo(7);
+  const since56 = daysAgoIso(56);
+  const since28 = daysAgoIso(28);
+  const since7 = daysAgoIso(7);
 
   const exercises: Record<string, unknown> = {};
   for (const d of Object.keys(a.byDay)) {

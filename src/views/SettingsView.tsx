@@ -21,7 +21,7 @@ const THEME_OPTIONS: ReadonlyArray<{ id: ThemeMode; label: string }> = [
  * Vista `Cuenta y ajustes`: sincronización en la nube, perfil del atleta, apariencia y tono del Coach IA.
  */
 export function SettingsView({ state: propState }: SettingsViewProps) {
-  const { state: storeState, plan, analytics, dataSync, setTab } = useAppStore();
+  const { state: storeState, unsynced, plan, analytics, dataSync, setTab } = useAppStore();
   const state = propState ?? storeState;
   const tone: AiTone = state.settings.aiTone === 'simple' ? 'simple' : 'technical';
   const theme: ThemeMode = state.settings.theme ?? 'dark';
@@ -31,6 +31,7 @@ export function SettingsView({ state: propState }: SettingsViewProps) {
       <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 pb-5 border-b border-white/10">
         <AccountSyncSection
           state={state}
+          unsynced={unsynced}
           onOpenAuth={dataSync.openAuthModal}
           onResendVerification={dataSync.cloudResendVerification}
           onCheckVerified={dataSync.cloudCheckEmailVerified}

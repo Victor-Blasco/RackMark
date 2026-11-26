@@ -1,6 +1,7 @@
 import type { DayName, LiveWorkout } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import { manualSessionId } from './exerciseCatalog';
+import { isCompletedSet } from './draftSetHelpers';
 import { buildWorkoutSummary, persistCompletedSession } from './sessionPersistence';
 import type { ConfirmModalOpts, ToastAction } from './types';
 import { createWorkoutPickerActions } from './workoutPickerActions';
@@ -61,7 +62,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
     async discard() {
       const live = getLive();
       if (!live) return;
-      const hasDone = live.exercises.some((e) => e.sets.some((s) => s.done && s.r > 0));
+      const hasDone = live.exercises.some((e) => e.sets.some(isCompletedSet));
       if (hasDone) {
         const confirmed = await deps.askConfirm({
           title: 'Descartar entrenamiento',
@@ -80,7 +81,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
       const live = state.liveWorkout;
       if (!live) return;
 
-      const doneSets = live.exercises.reduce((acc, e) => acc + e.sets.filter((s) => s.done && s.r > 0).length, 0);
+      const doneSets = live.exercises.reduce((acc, e) => acc + e.sets.filter(isCompletedSet).length, 0);
       const totalSets = live.exercises.reduce((acc, e) => acc + e.sets.length, 0);
       if (doneSets > 0 && doneSets < totalSets) {
         const pending = totalSets - doneSets;
@@ -94,7 +95,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
 
       const latestState = deps.getState();
       const curLive = finalizePendingRest(latestState.liveWorkout ?? live);
-      const validEx = curLive.exercises.filter((e) => e.sets.some((s) => s.done && s.r > 0));
+      const validEx = curLive.exercises.filter((e) => e.sets.some(isCompletedSet));
       const totalDurMin = Math.max(1, Math.round((Date.now() - curLive.startedAt) / 60000));
       const perExDur = validEx.length > 0 ? Math.max(0.2, Math.round((totalDurMin / validEx.length) * 10) / 10) : undefined;
       const baseSid = manualSessionId(curLive.date, curLive.day);

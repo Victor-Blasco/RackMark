@@ -1,6 +1,6 @@
 import { parseDecimal } from '../lib/seed';
 import type { LiveWorkout, LogExDraft, SetRec } from '../types';
-import { clampOptionalInt, isCompletedSet } from './draftSetHelpers';
+import { isCompletedSet, setOptionalSetInt } from './draftSetHelpers';
 
 export const mapExercise = (live: LiveWorkout, ei: number, updater: (ex: LogExDraft) => LogExDraft): LiveWorkout => ({
   ...live,
@@ -29,16 +29,7 @@ export function createWorkoutSetInputs(
   const updateOptionalInt = (ei: number, si: number, raw: string, key: 'rir' | 'restSec', max: number) => {
     const live = getLive();
     if (!live?.exercises[ei]?.sets[si]) return;
-    const val = clampOptionalInt(raw, max);
-    saveOnly(
-      mapSet(live, ei, si, (set) => {
-        if (val == null) {
-          const { [key]: _removed, ...rest } = set;
-          return rest;
-        }
-        return { ...set, [key]: val };
-      }),
-    );
+    saveOnly(mapSet(live, ei, si, (set) => setOptionalSetInt(set, key, raw, max)));
   };
 
   return {

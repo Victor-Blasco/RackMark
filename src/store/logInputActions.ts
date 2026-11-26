@@ -1,6 +1,6 @@
 import { parseDecimal } from '../lib/seed';
 import type { LogDraft, LogExDraft, SetRec } from '../types';
-import { clampOptionalInt, isCompletedSet } from './draftSetHelpers';
+import { isCompletedSet, setOptionalSetInt } from './draftSetHelpers';
 
 export const mapDraftEx = (
   draft: LogDraft,
@@ -43,16 +43,7 @@ export function createLogInputActions(
   const setOptionalIntField = (ei: number, si: number, raw: string, key: 'restSec' | 'rir', max: number) => {
     const draft = ensureDraft();
     if (!draft.exercises[ei]?.sets[si]) return;
-    const val = clampOptionalInt(raw, max);
-    saveDraftOnly(
-      mapDraftSet(draft, ei, si, (set) => {
-        if (val == null) {
-          const { [key]: _removed, ...clean } = set;
-          return clean;
-        }
-        return { ...set, [key]: val };
-      }),
-    );
+    saveDraftOnly(mapDraftSet(draft, ei, si, (set) => setOptionalSetInt(set, key, raw, max)));
   };
 
   return {

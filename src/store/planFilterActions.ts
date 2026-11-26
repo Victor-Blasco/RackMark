@@ -1,4 +1,4 @@
-import { isValidIsoDate } from '../lib/seed';
+import { daysAgoIso, isValidIsoDate } from '../lib/seed';
 import type { DayName } from '../types';
 import { todayIso, type PlanTab, type RangeKey, type State } from '../ui/shared';
 
@@ -24,7 +24,7 @@ export function createPlanFilterActions(
         if (!cur.from && !cur.to) {
           S.customRanges = {
             ...S.customRanges,
-            [scope]: { from: todayIso(new Date(Date.now() - 30 * 864e5)), to: todayIso() },
+            [scope]: { from: daysAgoIso(30), to: todayIso() },
           };
         }
       }

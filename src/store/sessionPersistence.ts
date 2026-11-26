@@ -1,5 +1,5 @@
 import { epley, findAnalyzedExercise } from '../lib/analysis';
-import { deleteKey, putMany } from '../lib/db';
+import { deleteMany, putMany } from '../lib/db';
 import { isValidIsoDate, norm } from '../lib/seed';
 import { markBucketDeletes, markBucketUpserts } from '../lib/sync';
 import type { DayName, LiveWorkout, LogExDraft, StrengthRow } from '../types';
@@ -84,8 +84,10 @@ export async function persistCompletedSession(
         r.sessionId === opts.sessionId ||
         (r.id.startsWith('manual-') && r.sessionId === legacySid && (r.day ?? 'Libre') === opts.day),
     );
-    for (const r of oldRows) await deleteKey('strength', r.id);
-    if (oldRows.length) markBucketDeletes('strength', oldRows.map((r) => ({ key: r.id, date: r.date })));
+    if (oldRows.length) {
+      await deleteMany('strength', oldRows.map((r) => r.id));
+      markBucketDeletes('strength', oldRows.map((r) => ({ key: r.id, date: r.date })));
+    }
   }
   await putMany('strength', rows);
   markBucketUpserts('strength', rows);

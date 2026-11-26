@@ -12,6 +12,16 @@ export function clampOptionalInt(raw: string, max: number, min = 0): number | un
   return Math.min(max, Math.max(min, Math.round(Number(trimmed) || 0)));
 }
 
+/** Actualiza o elimina un campo entero opcional (`rir` o `restSec`) de una serie. */
+export function setOptionalSetInt(set: SetRec, key: 'rir' | 'restSec', raw: string, max: number): SetRec {
+  const val = clampOptionalInt(raw, max);
+  if (val == null) {
+    const { [key]: _removed, ...rest } = set;
+    return rest;
+  }
+  return { ...set, [key]: val };
+}
+
 /** Solicita confirmación si el borrador histórico tiene cambios sin guardar y se va a cambiar de sesión. */
 export async function confirmSwitchLogDraft(
   cur: LogDraft | undefined,

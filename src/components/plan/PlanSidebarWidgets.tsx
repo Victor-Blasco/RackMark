@@ -1,9 +1,9 @@
 import { useState } from 'preact/hooks';
 import { MUSCLES } from '../../lib/seed';
 import { useAppStore } from '../../store/appStore';
-import { plannedVolumeBreakdown, plannedWeeklyVolume } from '../../store/planSelectors';
+import { plannedVolumeBreakdown } from '../../store/planSelectors';
 import { volumeRangeForProfile } from '../../store/volumeSelectors';
-import { routineNames, type State } from '../../ui/shared';
+import { r1, routineNames, type State } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { PlanVolumeFreqList } from './PlanVolumeFreqList';
@@ -15,18 +15,12 @@ interface PlanSidebarWidgetsProps {
   inline?: boolean;
 }
 
-const fmtSets = (v: number): string => (v % 1 === 0 ? String(v) : v.toFixed(1).replace('.', ','));
-
-/**
- * Panel lateral del editor de rutinas con simulador de volumen semanal, frecuencia y desglose por músculo.
- */
 export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgetsProps) {
   const { plan } = useAppStore();
   const [openMuscle, setOpenMuscle] = useState<string | null>(null);
   const s = state.settings;
   const routines = routineNames(s);
-  const volMap = plannedWeeklyVolume(s);
-  const { byMuscle, unmapped, totalWeeklySessions, totalPlannedSets } = plannedVolumeBreakdown(s);
+  const { totals: volMap, byMuscle, unmapped, totalWeeklySessions, totalPlannedSets } = plannedVolumeBreakdown(s);
   const { min: minSets, max: maxSets, isLightPlan } = volumeRangeForProfile(s.profile);
 
   const handleFreq = (day: string, freq: number) => void plan.changeRoutineFreq(day, freq);
@@ -91,7 +85,7 @@ export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgets
                   <div class={`h-full rounded-full transition-[width] duration-300 ease-out motion-reduce:transition-none ${barCol}`} style={{ width: `${pct}%` }} />
                 </div>
                 <span class="inline-flex items-center gap-1 tabular-nums font-bold">
-                  <span class={`transition-colors duration-200 ${textCol}`}>{cue}{fmtSets(v)}<span class="sr-only">{srLabel}</span></span>
+                  <span class={`transition-colors duration-200 ${textCol}`}>{cue}{r1(v)}<span class="sr-only">{srLabel}</span></span>
                   <Icon name="caretDown" className={`h-3 w-3 text-gray-400 transition-transform duration-200 motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`} />
                 </span>
               </button>
@@ -107,7 +101,7 @@ export function PlanSidebarWidgets({ state, inline = false }: PlanSidebarWidgets
                           {it.exercise}
                           {it.factor < 1 && <span class="text-gray-400"> · apoyo 0,5</span>}
                         </span>
-                        <span class="shrink-0 tabular-nums font-semibold text-white">{fmtSets(it.effective)}</span>
+                        <span class="shrink-0 tabular-nums font-semibold text-white">{r1(it.effective)}</span>
                       </div>
                     ))
                   )}

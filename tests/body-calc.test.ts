@@ -904,5 +904,7 @@ describe('cuerpo, calculadoras, adherencia y analítica', () => {
     expect(sleepOnlyAdh.sleepChartCfg?.data.datasets.map((d) => d.label)).toEqual(['Sueño (h)']);
     expect(sleepOnlyAdh.sleepChartCfg?.options).toBeUndefined();
     expect(sleepOnlyAdh.stepsChartCfg?.data.datasets[0]?.backgroundColor).toBe('#2DD4BF');
+
+    expect(daysAgoIso(5, Date.parse('2026-11-26T12:00:00Z'))).toBe('2026-11-21');
   });
 });

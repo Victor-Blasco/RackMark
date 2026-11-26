@@ -25,11 +25,13 @@ export function buildCompChartConfig(
   msInRange: Measure[],
   mode: 'weight' | 'muscle' = 'weight',
   allMeasures?: Measure[],
+  opts?: { includeMuscle?: boolean },
 ): ChartConfiguration<'line'> | null {
-  const comp = msInRange.filter((m) => m.weight != null || m.bf != null || m.muscle != null);
+  const includeMuscle = opts?.includeMuscle ?? true;
+  const comp = msInRange.filter((m) => m.weight != null || m.bf != null || (includeMuscle && m.muscle != null));
   if (!comp.length) return null;
   const hasWeight = comp.some((m) => m.weight != null);
-  const hasMuscle = comp.some((m) => m.muscle != null);
+  const hasMuscle = includeMuscle && comp.some((m) => m.muscle != null);
   const hasBf = comp.some((m) => m.bf != null);
   const showMuscle = (mode === 'muscle' && hasMuscle) || (!hasWeight && hasMuscle);
   const datasets: ChartConfiguration<'line'>['data']['datasets'] = [];

@@ -1,5 +1,5 @@
 import { norm } from '../../lib/seed';
-import type { WorkoutSummary } from '../../ui/shared';
+import { r1, type WorkoutSummary } from '../../ui/shared';
 import { Icon } from '../common/Icon';
 import { ModalShell } from '../common/ModalShell';
 
@@ -19,7 +19,7 @@ interface WorkoutSummaryModalProps {
  */
 export function WorkoutSummaryModal({ summary, routineExNames = [], onAddExtraToRoutine, onClose }: WorkoutSummaryModalProps) {
   const tonnageLabel = summary.tonnageKg >= 1000
-    ? `${(summary.tonnageKg / 1000).toFixed(1).replace('.', ',')} t`
+    ? `${r1(summary.tonnageKg / 1000)} t`
     : `${Math.round(summary.tonnageKg)} kg`;
   const routineSet = new Set(routineExNames.map((n) => norm(n)));
   const extras = summary.day !== 'Libre' ? (summary.extraExercises ?? []) : [];

@@ -1702,4 +1702,63 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     expect(added).toEqual({ name: 'Press horizontal en máquina', sets: 2, reps: 9 });
     expect(toasts.at(-1)).toContain('2×9');
   });
+
+  it('redirige tab al borrar rutina activa o aplicar plantilla, conserva sel.home y actualiza S.sel al fusionar ejercicios', async () => {
+    const settings = sanitizeSettings({});
+    const state: State = {
+      tab: 'Push',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: { home: 'Press de banca', Push: 'Press de banca' },
+      dayExtra: { Push: true },
+      ranges: { Push: '3M' },
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    const tabs: string[] = [];
+    const edits = createRoutineEditActions({
+      getState: () => state,
+      getLastRoutine: () => 'Push',
+      setLastRoutine: () => {},
+      setTab: (t) => {
+        state.tab = t;
+        tabs.push(t);
+      },
+      persist: async () => {},
+      render: () => {},
+      syncWorkoutRoutineNames: () => {},
+      askConfirm: async () => true,
+      toast: () => {},
+    });
+
+    await edits.removeRoutineDay('Push');
+    expect(state.tab).toBe('Pull');
+    expect(tabs.at(-1)).toBe('Pull');
+    expect(state.sel.Push).toBeUndefined();
+    expect(state.dayExtra?.Push).toBeUndefined();
+    expect(state.ranges?.Push).toBeUndefined();
+    expect(state.sel.home).toBe('Press de banca');
+
+    // applyRoutineTemplateToState conserva sel.home (nombre de ejercicio) y redirige si la rutina activa desaparece
+    applyRoutineTemplateToState(state, 'upperLower', () => 'Pull', () => {}, () => {}, undefined, (t) => {
+      state.tab = t;
+    });
+    expect(state.sel.home).toBe('Press de banca');
+    expect(state.tab).toBe('Torso A');
+
+    // mergeExercises actualiza S.sel al nombre destino
+    state.sel['Torso A'] = 'Press Banca';
+    const cat = createCatalogMapActions({
+      getState: () => state,
+      persist: async () => {},
+      toast: () => {},
+      askConfirm: async () => true,
+    });
+    await cat.mergeExercises('Press Banca', 'Press de banca');
+    expect(state.sel['Torso A']).toBe('Press de banca');
+  });
 });

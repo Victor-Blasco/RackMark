@@ -35,7 +35,9 @@ export function parseDecimal(raw: string): number | undefined {
 
 /** Devuelve la fecha local `YYYY-MM-DD` correspondiente a hace `days` días. */
 export function daysAgoIso(days: number, now = Date.now()): string {
-  return todayIso(new Date(now - days * 864e5));
+  const d = new Date(now);
+  d.setDate(d.getDate() - days);
+  return todayIso(d);
 }
 
 /** Calcula los días naturales inclusivos entre dos fechas ISO `YYYY-MM-DD` (`>= 1`). */

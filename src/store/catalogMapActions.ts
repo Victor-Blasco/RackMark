@@ -335,10 +335,16 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
           .filter((r) => !used.has(norm(r.name)) && Boolean(used.add(norm(r.name))));
       }
       const nextNotes = { ...S.settings.notes };
-      if (nextNotes[from]) {
-        if (!nextNotes[target]) nextNotes[target] = nextNotes[from];
-        delete nextNotes[from];
+      for (const [k, v] of Object.entries(S.settings.notes)) {
+        if (norm(k) !== norm(from)) continue;
+        if (!nextNotes[target]) nextNotes[target] = v;
+        delete nextNotes[k];
       }
+      const nextSel: typeof S.sel = {};
+      for (const [day, ex] of Object.entries(S.sel)) {
+        nextSel[day] = norm(ex) === norm(from) ? target : ex;
+      }
+      S.sel = nextSel;
       const rename = <T extends { exercises: { name: string }[] }>(b?: T): T | undefined =>
         b && { ...b, exercises: b.exercises.map((e) => (norm(e.name) === norm(from) ? { ...e, name: target } : e)) };
       S.settings = { ...S.settings, aliases: nextAliases, routines: nextRoutines, notes: nextNotes };
@@ -371,6 +377,10 @@ export function createCatalogMapActions(deps: CatalogMapDeps) {
         return;
       }
       const S = state();
+      if (S.settings.phases.length >= 100) {
+        deps.toast('Máximo 100 fases permitidas.');
+        return;
+      }
       S.settings = {
         ...S.settings,
         phases: [...S.settings.phases, { name, start }],

@@ -53,9 +53,11 @@ export function applyRoutineTemplateToState(
   setLastRoutine: (day: string) => void,
   syncWorkoutRoutineNames: (oldName?: string, newName?: string) => void,
   targetDays: number | undefined = state.settings.profile.daysPerWeek,
+  setTab?: (tab: string) => void,
 ): string | undefined {
   const tpl = ROUTINE_TEMPLATES[tplKey];
   if (!tpl) return undefined;
+  const prevRoutines = new Set(routineNames(state.settings));
   const routineMeta = structuredClone(tpl.meta);
   if (targetDays != null) {
     const freqs = distributeWeeklyFreqs(Object.keys(tpl.routines), targetDays);
@@ -69,11 +71,25 @@ export function applyRoutineTemplateToState(
     routineMeta,
   };
   const remaining = routineNames(state.settings);
+  const nextSet = new Set(remaining);
+  const pruneMap = <T>(rec: Record<string, T> | undefined): Record<string, T> | undefined => {
+    if (!rec) return rec;
+    const next: Record<string, T> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      if (!(prevRoutines.has(k) && !nextSet.has(k))) next[k] = v;
+    }
+    return next;
+  };
+  state.sel = pruneMap(state.sel) ?? {};
+  state.dayExtra = pruneMap(state.dayExtra);
+  state.ranges = pruneMap(state.ranges);
+  state.customRanges = pruneMap(state.customRanges);
   if (!isRoutineTab(state, getLastRoutine())) setLastRoutine(remaining[0] ?? 'Push');
   state.planRoutine = remaining[0];
-  if (state.sel.home && !state.settings.routines[state.sel.home]) {
-    const { home: _home, ...restSel } = state.sel;
-    state.sel = restSel;
+  if (prevRoutines.has(state.tab) && !nextSet.has(state.tab)) {
+    const nextTab = remaining[0] ?? 'home';
+    if (setTab) setTab(nextTab);
+    else state.tab = nextTab;
   }
   syncWorkoutRoutineNames();
   return tpl.label;
