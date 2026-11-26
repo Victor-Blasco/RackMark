@@ -23,6 +23,8 @@ interface LogSessionHeaderProps {
   allDone: boolean;
   /** Abre el modo `En vivo`. */
   onOpenLive: () => void;
+  /** Abre el selector para añadir un ejercicio a la sesión. */
+  onOpenPicker: () => void;
   /** Marca o desmarca todas las series válidas de la sesión. */
   onToggleAll: () => void;
   /** Reinicia el borrador actual previa confirmación. */
@@ -49,6 +51,7 @@ export function LogSessionHeader({
   totalSetsCount,
   allDone,
   onOpenLive,
+  onOpenPicker,
   onToggleAll,
   onReset,
   onSave,
@@ -69,7 +72,7 @@ export function LogSessionHeader({
           <button type="button" class="btn btn-accent hidden lg:inline-flex text-sm" onClick={onOpenLive}>
             <Icon name="play" className="h-3.5 w-3.5" /> Iniciar entreno en vivo
           </button>
-          <a href="#log-add-section" class="btn hidden md:inline-flex py-1.5 text-sm">+ Añadir ejercicio</a>
+          <button type="button" class="btn hidden md:inline-flex py-1.5 text-sm" onClick={onOpenPicker}>+ Añadir ejercicio</button>
           {totalSetsCount > 0 && (
             <button
               type="button"

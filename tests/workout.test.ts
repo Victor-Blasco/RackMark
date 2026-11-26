@@ -756,6 +756,8 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     const logHtml2 = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', today) } }));
     expect(logHtml2).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
     expect(logHtml2).toContain('Nota fija:');
+    expect(logHtml2).not.toContain('href="#log-add-section"');
+    expect(logHtml2).toContain('>+ Añadir ejercicio</button>');
 
     // 4. Volumen unificado (6-16 para principiante / <=3d y 8-20 en general) + veredictos en gráficas + Settings Fases del bloque
     expect(volumeRangeForProfile({ experience: 'beginner', daysPerWeek: 4 })).toEqual({ min: 6, max: 16, isLightPlan: true });

@@ -46,6 +46,7 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
         totalSetsCount={vm.totalSetsCount}
         allDone={vm.allSetsDone}
         onOpenLive={actions.openLiveWorkoutTab}
+        onOpenPicker={actions.openExercisePicker}
         onToggleAll={actions.toggleAllSets}
         onReset={() => void actions.resetDraft()}
         onSave={() => void actions.saveSession()}
