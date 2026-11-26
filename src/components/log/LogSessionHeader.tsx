@@ -106,7 +106,7 @@ export function LogSessionHeader({
             </button>
           )}
         </div>
-        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-0.5" role="group" aria-label="Rutina de la sesión">
+        <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap pb-0.5 pr-2" role="group" aria-label="Rutina de la sesión">
           {[...routines, 'Libre'].map((d, idx) => {
             const on = selectedDay === d;
             const col = d === 'Libre' ? '#9CA3AF' : routineColor(d, state.settings, idx);
@@ -115,7 +115,7 @@ export function LogSessionHeader({
                 key={d}
                 type="button"
                 aria-pressed={on ? 'true' : 'false'}
-                class={`tab min-h-[44px] sm:min-h-0 ${on ? 'tab-on' : ''}`}
+                class={`tab shrink-0 whitespace-nowrap min-h-[44px] sm:min-h-0 ${on ? 'tab-on' : ''}`}
                 style={on && d !== 'Libre' ? { borderColor: col, color: col } : undefined}
                 onClick={() => onSelectDay(d)}
               >

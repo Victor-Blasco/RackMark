@@ -101,6 +101,9 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             <SetRow key={si} setIndex={si} set={s} targetRestSec={targetRestSec} showDetails={showDetails} onStepWeight={(d) => actions.stepWeight(curIdx, si, d)} onWeightChange={(raw, fin) => actions.updateWeight(curIdx, si, raw, fin)} onStepReps={(d) => actions.stepReps(curIdx, si, d)} onRepsChange={(raw, fin) => actions.updateReps(curIdx, si, raw, fin)} onToggleDone={() => actions.toggleSet(curIdx, si)} onRirChange={(raw) => actions.updateRir(curIdx, si, raw)} onRestChange={(raw) => actions.updateRest(curIdx, si, raw)} />
           ))}
         </div>
+        <Collapsible open={showDetails} keepMounted>
+          <p class="px-1 pt-1.5 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
+        </Collapsible>
       </div>
 
       <div class="space-y-2 pt-1">

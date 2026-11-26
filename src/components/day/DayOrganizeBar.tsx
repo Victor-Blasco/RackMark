@@ -57,7 +57,7 @@ export function DayOrganizeBar({
             + Nueva rutina
           </button>
           <button type="button" class="btn-sm min-h-[44px] sm:min-h-[34px]" onClick={onEditRoutine}>
-            <Icon name="edit" className="h-3.5 w-3.5" /> Editar día
+            <Icon name="edit" className="h-3.5 w-3.5" /> Editar rutina
           </button>
           {routineCount > 1 && (
             <button type="button" class="btn-danger btn-sm min-h-[44px] sm:min-h-[34px]" onClick={onDeleteRoutine}>

@@ -79,7 +79,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
                   Músculo
                 </th>
                 {vm.weeks.map((w) => (
-                  <th key={w} scope="col" class="min-w-[3.25rem] sm:min-w-[3.75rem] px-2 py-2 tabular-nums font-medium whitespace-nowrap">
+                  <th key={w} scope="col" class="min-w-[3.5rem] sm:min-w-[3.75rem] px-2.5 py-2 tabular-nums font-medium whitespace-nowrap">
                     <span>{short(w)}</span>
                     {w === vm.curWeek && <span class="block text-[10px] font-semibold text-blue-300">En curso</span>}
                   </th>
@@ -108,7 +108,7 @@ export function VolumeView({ state: propState }: VolumeViewProps) {
                       const v = vm.vol.get(m)?.get(w) ?? 0;
                       const isCurrentWeek = w === vm.curWeek;
                       return (
-                        <td key={w} class={`min-w-[3.25rem] sm:min-w-[3.75rem] px-2 tabular-nums font-bold whitespace-nowrap ${cellColor(v, isCurrentWeek, vm.range.min, vm.range.max)}`}>
+                        <td key={w} class={`min-w-[3.5rem] sm:min-w-[3.75rem] px-2.5 tabular-nums font-bold whitespace-nowrap ${cellColor(v, isCurrentWeek, vm.range.min, vm.range.max)}`}>
                           {v ? (
                             <>
                               {r1(v)}

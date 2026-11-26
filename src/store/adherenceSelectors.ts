@@ -37,7 +37,12 @@ export function buildAdherenceViewModel(state: State) {
   });
   const curWeek = isoWeekStart(todayIso());
   const completedCols = cols.length > 1 && cols[cols.length - 1] === curWeek ? cols.slice(0, -1) : cols;
-  const avg = completedCols.reduce((a, w) => a + (perWeek.get(w) ?? 0), 0) / completedCols.length;
+  const hasCompletedHistory = completedCols.some((w) => (perWeek.get(w) ?? 0) > 0);
+  const curWeekCount = perWeek.get(curWeek) ?? 0;
+  const isCurrentWeekOnly = !hasCompletedHistory && curWeekCount > 0;
+  const avg = isCurrentWeekOnly
+    ? curWeekCount
+    : completedCols.reduce((a, w) => a + (perWeek.get(w) ?? 0), 0) / completedCols.length;
   const targetDays = Math.max(1, state.settings.profile.daysPerWeek ?? 3);
   let streak = 0;
   const curMs = Date.parse(`${curWeek}T00:00:00Z`);
@@ -112,6 +117,7 @@ export function buildAdherenceViewModel(state: State) {
     routines,
     calendar,
     avg,
+    isCurrentWeekOnly,
     streak,
     targetDays,
     counts,

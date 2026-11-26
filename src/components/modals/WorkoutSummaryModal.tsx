@@ -49,7 +49,7 @@ export function WorkoutSummaryModal({ summary, onClose }: WorkoutSummaryModalPro
           <span class="tabular-nums text-lg font-extrabold text-emeraldGreen">{summary.sets}</span>
         </div>
         <div class="px-2">
-          <span class="block text-[11px] text-gray-400">Volumen</span>
+          <span class="block text-[11px] text-gray-400">Kilos movidos</span>
           <span class="tabular-nums text-lg font-extrabold text-electricBlue">{tonnageLabel}</span>
         </div>
       </div>

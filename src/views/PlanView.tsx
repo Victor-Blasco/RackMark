@@ -16,7 +16,7 @@ interface PlanViewProps {
  * Vista `Planificación`: catálogo muscular, mapeos y fases nutricionales y de entrenamiento.
  */
 export function PlanView({ state: propState }: PlanViewProps) {
-  const { state: storeState, plan: actions, setTab } = useAppStore();
+  const { state: storeState, lastRoutine, plan: actions, setTab } = useAppStore();
   const state = propState ?? storeState;
   const tab = state.planTab ?? 'exercises';
   const allNames = allExerciseNames(state);
@@ -32,6 +32,16 @@ export function PlanView({ state: propState }: PlanViewProps) {
 
   return (
     <div class="space-y-5">
+      <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10 lg:border-b-0 lg:pb-0">
+        <button
+          type="button"
+          class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-2 text-xs font-semibold text-gray-300 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+          onClick={() => setTab(lastRoutine)}
+        >
+          ← Volver a rutinas
+        </button>
+      </div>
+
       <div class="sr-only lg:not-sr-only lg:flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div>
           <h1 class="text-lg font-extrabold text-white">Planificación</h1>

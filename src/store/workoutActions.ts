@@ -50,7 +50,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
   return {
     ...createWorkoutRestActions(getLive, deps.commitLive),
     ...createWorkoutSetActions(getLive, deps.saveLiveOnly, deps.commitLive, deps.toast),
-    ...createWorkoutPickerActions(deps.getState, getLive, deps.commitLive, deps.toast),
+    ...createWorkoutPickerActions(deps.getState, getLive, deps.commitLive, deps.toast, deps.askConfirm),
     selectExercise,
 
     start(day: DayName | 'Libre' = 'Libre') {

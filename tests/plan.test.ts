@@ -906,7 +906,7 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     const toastHtml = renderToString(h(ToastBanner, { message: 'Ok' }));
     const swHtml = renderToString(h(SwUpdateBanner, { visible: true, onDismiss: () => {}, onReload: () => {} }));
     expect(toastHtml).toContain('z-[60]');
-    expect(swHtml).toContain('z-[55]');
+    expect(swHtml).toContain('z-40');
 
     // 2. WizardModal muestra error inline role="alert" cuando draft.error está presente
     const settings = sanitizeSettings({});

@@ -101,7 +101,6 @@ export function SetRow({
             <span>s</span>
           </label>
         </div>
-        <p class="pl-6 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
       </Collapsible>
     </div>
   );

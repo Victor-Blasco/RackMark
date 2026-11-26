@@ -72,10 +72,15 @@ export function ExercisePickerSheet({
 
   return (
     <section aria-label={title} class="rounded-2xl border border-electricBlue/40 bg-floatDark p-3.5 shadow-xl shadow-black/40 space-y-3">
-      <div class="flex items-center justify-between gap-2">
-        <h3 class="text-sm font-extrabold text-white">{title}</h3>
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0">
+          <h3 class="text-sm font-extrabold text-white">{title}</h3>
+          {mode === 'swap' && (
+            <p class="text-[11px] text-gray-400 mt-0.5">Solo para hoy (no modifica tu rutina base).</p>
+          )}
+        </div>
         {currentExName && (
-          <button type="button" class="min-h-[44px] sm:min-h-[34px] rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onClose}>Cancelar</button>
+          <button type="button" class="min-h-[44px] sm:min-h-[34px] shrink-0 rounded-lg px-2.5 text-xs font-semibold text-gray-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onClose}>Cancelar</button>
         )}
       </div>
 

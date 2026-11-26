@@ -884,5 +884,14 @@ describe('cuerpo, calculadoras, adherencia y analítica', () => {
       customRanges: { home: { from: '2026-02-31', to: today } },
     };
     expect(resolveRange(invalidRangeState, 'home').from).toBeNull();
+
+    const firstDayAdh = buildAdherenceViewModel({
+      ...invalidRangeState,
+      tab: 'adherence',
+      ranges: { adherence: '1M' },
+      customRanges: undefined,
+    });
+    expect(firstDayAdh.isCurrentWeekOnly).toBe(true);
+    expect(firstDayAdh.avg).toBe(1);
   });
 });

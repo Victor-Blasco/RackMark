@@ -77,7 +77,7 @@ export function OnboardingHome({
               + Empezar entreno en vivo
             </button>
             <button type="button" class="btn min-h-[44px]" onClick={onGoLog}>
-              Apuntar entreno ya hecho
+              Registrar hecho
             </button>
           </div>
           {routines.length > 0 && (

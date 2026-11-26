@@ -15,7 +15,8 @@ import {
   norm,
 } from '../src/lib/seed';
 import { AiInsightBanner } from '../src/components/common/AiInsightBanner';
-import { ToastBanner } from '../src/components/common/ToastBanner';
+import { SwUpdateBanner, ToastBanner } from '../src/components/common/ToastBanner';
+import { DayOrganizeBar } from '../src/components/day/DayOrganizeBar';
 import { AiCoachPanel } from '../src/components/home/AiCoachPanel';
 import { MobileHeader } from '../src/components/layout/MobileHeader';
 import { MobileBottomNav } from '../src/components/layout/MobileNav';
@@ -1140,5 +1141,76 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     expect(verifiedExhaustedHtml).toContain('Límite diario alcanzado');
     expect(verifiedExhaustedHtml).toContain('Eliminar cuenta');
     expect(verifiedExhaustedHtml).not.toContain('<h3');
+  });
+
+  it('mejora UX móvil: SwUpdateBanner z-40, copias claras, Volver en Plan y confirmación en swap con series hechas', async () => {
+    const swHtml = renderToString(h(SwUpdateBanner, { visible: true, onDismiss: () => {}, onReload: () => {} }));
+    expect(swHtml).toContain('z-40');
+
+    const settings = sanitizeSettings({});
+    const baseState: State = {
+      tab: 'plan',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings,
+      analysis: analyze([], settings),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const summaryHtml = renderToString(
+      h(ModalHost, {
+        state: {
+          ...baseState,
+          activeModal: {
+            type: 'workoutSummary',
+            summary: { day: 'Push', durationMin: 40, exercises: 3, sets: 9, tonnageKg: 2500, prNames: [] },
+          },
+        },
+      }),
+    );
+    expect(summaryHtml).toContain('Kilos movidos');
+
+    const planHtml = renderToString(h(PlanView, { state: baseState }));
+    expect(planHtml).toContain('Volver a rutinas');
+
+    const orgHtml = renderToString(
+      h(DayOrganizeBar, {
+        day: 'Push',
+        routineCount: 2,
+        onAddExercise: () => {},
+        onApplyTemplate: () => {},
+        onNewRoutine: () => {},
+        onEditRoutine: () => {},
+        onDeleteRoutine: () => {},
+        onOpenCatalog: () => {},
+      }),
+    );
+    expect(orgHtml).toContain('Editar rutina');
+
+    let live = {
+      ...initLiveWorkout(baseState, 'Push'),
+      pickerMode: 'swap' as const,
+      exercises: [{ name: 'Press de banca', note: '', done: false, sets: [{ w: 80, r: 8, done: true }] }],
+    };
+    const confirmTitles: string[] = [];
+    const actions = createLiveWorkoutActions({
+      getState: () => ({ ...baseState, liveWorkout: live }),
+      saveLiveOnly: (next) => { if (next) live = next as typeof live; },
+      commitLive: (next) => { if (next) live = next as typeof live; },
+      reload: async () => {},
+      setTab: () => {},
+      queueSync: () => {},
+      toast: () => {},
+      askConfirm: async (opts) => { confirmTitles.push(opts.title); return false; },
+      openNoteModal: () => {},
+      showSummary: () => {},
+    });
+    await actions.pickExercise('Press inclinado con mancuernas');
+    expect(confirmTitles).toEqual(['Cambiar ejercicio con series marcadas']);
+    expect(live.exercises[0].name).toBe('Press de banca');
   });
 });

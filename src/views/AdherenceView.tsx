@@ -47,9 +47,13 @@ export function AdherenceView({ state: propState }: AdherenceViewProps) {
 
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4 pb-5 border-b border-white/10">
         <div>
-          <span class="block text-xs text-gray-400">Media semanal ({vm.bounds.label})</span>
+          <span class="block text-xs text-gray-400">
+            {vm.isCurrentWeekOnly ? 'Esta semana' : `Media semanal (${vm.bounds.label})`}
+          </span>
           <span class="tabular-nums text-xl font-extrabold text-white">{r1(vm.avg)}</span>
-          <span class="block text-xs text-gray-400">días entrenados</span>
+          <span class="block text-xs text-gray-400">
+            {vm.isCurrentWeekOnly && vm.avg === 1 ? 'día entrenado' : 'días entrenados'}
+          </span>
         </div>
         <div>
           <span class="block text-xs text-gray-400">Racha ≥{vm.targetDays} {vm.targetDays === 1 ? 'día' : 'días'}/sem.</span>
