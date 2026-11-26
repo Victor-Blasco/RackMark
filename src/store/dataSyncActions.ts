@@ -9,6 +9,7 @@ import {
 } from '../lib/db';
 import { MEASURES_CSV_TEMPLATE, parseMeasuresCsv } from '../lib/measures';
 import { importSamsungInWorker } from '../lib/samsung';
+import { mergeSamsungStrengthWithManual } from '../lib/samsungMerge';
 import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import type { AiTone, ThemeMode } from '../types';
 import { todayIso, type State } from '../ui/shared';
@@ -69,15 +70,16 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
           deps.toast('Procesando exportación…');
           const imp = await importSamsungInWorker(files);
           const before = S.strength.length;
-          await putMany('strength', imp.strength);
-          await putMany('cardio', imp.cardio);
-          await mergeWellbeing(imp.wellbeing);
           S.settings = sanitizeSettings({
             ...S.settings,
             customNames: { ...S.settings.customNames, ...imp.customNames },
           });
+          const mergeRes = mergeSamsungStrengthWithManual(S.strength, imp.strength, S.settings);
+          await putMany('strength', mergeRes.toUpsert);
+          await putMany('cardio', imp.cardio);
+          await mergeWellbeing(imp.wellbeing);
           await saveSettings(S.settings);
-          markBucketUpserts('strength', imp.strength);
+          markBucketUpserts('strength', mergeRes.toUpsert);
           markBucketUpserts('cardio', imp.cardio);
           markBucketUpserts('wellbeing', imp.wellbeing);
           markSettingsDirty();
@@ -90,6 +92,11 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
             .filter((ref, index, refs) => refs.indexOf(ref) === index);
           const parts = [
             `${S.strength.length - before} ejercicios nuevos (${imp.strength.length} leídos)`,
+            ...(mergeRes.mergedDays > 0
+              ? [
+                  `${mergeRes.mergedDays} ${mergeRes.mergedDays === 1 ? 'día enriquecido' : 'días enriquecidos'} con pulso/kcal de Samsung sin tocar tus series`,
+                ]
+              : []),
             `${imp.cardio.length} cardio`,
             `${imp.wellbeing.length} días de bienestar`,
             `${Object.keys(imp.customNames).length} nombres`,
