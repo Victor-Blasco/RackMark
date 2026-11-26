@@ -403,20 +403,18 @@ async function syncSettingsDoc(
   now: number,
 ): Promise<{ direction: SyncReport['settingsDirection']; conflict: boolean }> {
   const localSettings = await loadSettings();
+  const isFirstSync = !meta.remoteUpdated.settings;
+  const remoteHasCustom = Boolean(remoteSettings && hasCustomSettings(remoteSettings.data));
   const localWinsInitial =
-    !meta.remoteUpdated.settings &&
-    !meta.settingsDirtyAt &&
-    remoteSettings != null &&
-    hasCustomSettings(localSettings) &&
-    !hasCustomSettings(remoteSettings.data);
-  if (!remoteSettings || localWinsInitial || (meta.settingsDirtyAt ?? 0) > remoteSettings.updatedAt) {
+    isFirstSync && remoteSettings != null && hasCustomSettings(localSettings) && !remoteHasCustom;
+  if (!remoteSettings || localWinsInitial || (!isFirstSync && (meta.settingsDirtyAt ?? 0) > remoteSettings.updatedAt)) {
     const updatedAt = Math.max(now, meta.settingsDirtyAt ?? now);
     await setDoc(settingsRef, { data: stripUndefined(localSettings), updatedAt } satisfies RemoteSettingsDoc);
     meta.settingsDirtyAt = undefined;
     meta.remoteUpdated.settings = updatedAt;
     return { direction: 'pushed', conflict: false };
   }
-  if (remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
+  if (isFirstSync || remoteSettings.updatedAt > (meta.remoteUpdated.settings ?? 0)) {
     const cleanRemote = sanitizeSettings(remoteSettings.data);
     const hadLocalDirty = (meta.settingsDirtyAt ?? 0) > 0;
     const nextSettings = hadLocalDirty ? mergeSyncSettings(localSettings, cleanRemote) : cleanRemote;

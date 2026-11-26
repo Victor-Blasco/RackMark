@@ -426,4 +426,48 @@ describe('cloud sync helpers', () => {
     expect(merged.routineMeta?.Pull?.freq).toBe(2);
     expect(merged.routineMeta?.Leg?.freq).toBe(0);
   });
+
+  it('no sobrescribe perfil ni rutinas de la nube cuando hay pruebas locales antes del primer login', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, String(v)); },
+      removeItem: (k: string) => { store.delete(k); },
+    });
+    fakeRemoteDocs.clear();
+    Object.values(fakeIdb).forEach((m) => m.clear());
+    clearSyncMeta();
+
+    const cloudSettings = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      profile: { sex: 'hombre', age: 29, height: 178, daysPerWeek: 5 as const },
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8 }],
+        Pull: [{ name: 'Jalón al pecho', sets: 3, reps: 10 }],
+        Leg: [{ name: 'Sentadilla hack', sets: 3, reps: 8 }],
+      },
+    };
+    fakeRemoteDocs.set('users/u1/sync/settings', { data: cloudSettings, updatedAt: 1000 });
+
+    fakeSettings = {
+      ...structuredClone(DEFAULT_SETTINGS),
+      profile: { sex: 'hombre', age: 22, height: 170 },
+      routines: {
+        'Full Body A': [{ name: 'Sentadilla', sets: 3, reps: 8 }],
+      },
+    };
+    markSettingsDirty(5000);
+
+    const report = await syncWithCloud('u1');
+    expect(report.settingsDirection).toBe('pulled');
+    expect(report.settingsConflict).toBe(true);
+    expect((fakeSettings as typeof cloudSettings).profile.age).toBe(29);
+    expect((fakeSettings as typeof cloudSettings).profile.daysPerWeek).toBe(5);
+    expect(Object.keys((fakeSettings as typeof cloudSettings).routines)).toEqual(['Push', 'Pull', 'Leg']);
+
+    const remoteAfter = fakeRemoteDocs.get('users/u1/sync/settings') as { data: typeof cloudSettings };
+    expect(remoteAfter.data.profile.age).toBe(29);
+    expect(Object.keys(remoteAfter.data.routines)).toEqual(['Push', 'Pull', 'Leg']);
+    vi.unstubAllGlobals();
+  });
 });
