@@ -113,7 +113,7 @@ export function WizardStep2({ draft, onPatch }: WizardStepProps) {
                 onClick={() =>
                   onPatch({
                     experience: e.id,
-                    templateKey: recommendTemplate(draft.daysPerWeek, e.id),
+                    ...(draft.templateKey !== 'keep' ? { templateKey: recommendTemplate(draft.daysPerWeek, e.id) } : {}),
                     ...(e.id === 'beginner' ? { aiTone: 'simple' } : {}),
                   })
                 }
@@ -137,7 +137,7 @@ export function WizardStep2({ draft, onPatch }: WizardStepProps) {
                 type="button"
                 aria-pressed={active ? 'true' : 'false'}
                 class={`min-h-[44px] rounded-xl border px-2 py-2 text-center tabular-nums text-xs sm:text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'border-electricBlue bg-electricBlue/20 text-white' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-white/25'}`}
-                onClick={() => onPatch({ daysPerWeek: d, templateKey: recommendTemplate(d, draft.experience) })}
+                onClick={() => onPatch({ daysPerWeek: d, ...(draft.templateKey !== 'keep' ? { templateKey: recommendTemplate(d, draft.experience) } : {}) })}
               >
                 {d} días
               </button>

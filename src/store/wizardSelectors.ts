@@ -96,6 +96,7 @@ export function createWizardDraft(state: State): WizardDraft {
   const rawDays = p.daysPerWeek;
   const daysPerWeek: 2 | 3 | 4 | 5 | 6 =
     rawDays === 2 || rawDays === 3 || rawDays === 4 || rawDays === 5 || rawDays === 6 ? rawDays : 4;
+  const hasExisting = Boolean(state.settings.onboardingCompleted || state.strength.length > 0);
   return {
     step: 1,
     sex: p.sex === 'mujer' ? 'mujer' : 'hombre',
@@ -107,7 +108,7 @@ export function createWizardDraft(state: State): WizardDraft {
     goal: p.goal ?? 'bulk',
     experience,
     daysPerWeek,
-    templateKey: recommendTemplate(daysPerWeek, experience),
+    templateKey: hasExisting ? 'keep' : recommendTemplate(daysPerWeek, experience),
     aiTone: state.settings.onboardingCompleted ? (state.settings.aiTone ?? 'simple') : 'simple',
     anim: 'open',
   };

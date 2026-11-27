@@ -430,6 +430,13 @@ describe('onboarding wizard & athlete profile', () => {
     expect(draft.templateKey).toBe('fullBody');
     expect(draft.aiTone).toBe('simple');
 
+    // Si ya completó el onboarding o tiene historial, el asistente conserva las rutinas existentes ('keep')
+    const onboardedDraft = createWizardDraft({
+      ...baseState,
+      settings: { ...baseState.settings, onboardingCompleted: true },
+    });
+    expect(onboardedDraft.templateKey).toBe('keep');
+
     const renderWizard = (wizardDraft: ReturnType<typeof createWizardDraft>) =>
       renderToString(
         h(WizardModal, {
