@@ -2,6 +2,7 @@ import { inRange, routineColor, routineNames, todayIso, type DateBounds, type St
 
 export const CARDIO_CALENDAR_COLOR = '#06B6D4';
 export const OTHER_CALENDAR_COLOR = '#6B7280';
+export const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const;
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -65,7 +66,7 @@ export const formatDayHeading = (iso: string): string => {
   return `${DAY_SHORT[d.getUTCDay()]}, ${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;
 };
 
-const monthList = (minYm: string, maxYm: string): string[] => {
+export const monthList = (minYm: string, maxYm: string): string[] => {
   const [sy, sm] = minYm.split('-').map(Number);
   const [ey, em] = maxYm.split('-').map(Number);
   const startIdx = Math.max(0, sy * 12 + (sm - 1));

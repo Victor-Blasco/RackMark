@@ -1,4 +1,5 @@
 import { SegmentedControl } from '../components/common/SegmentedControl';
+import { PhaseAnalyticsPanel } from '../components/plan/PhaseAnalyticsPanel';
 import { PlanExercisesTab } from '../components/plan/PlanExercisesTab';
 import { PlanPhasesSection } from '../components/plan/PlanPhasesSection';
 import { PlanRoutinesTab } from '../components/plan/PlanRoutinesTab';
@@ -61,7 +62,12 @@ export function PlanView({ state: propState }: PlanViewProps) {
       {tab === 'exercises' ? (
         <PlanExercisesTab state={state} allNames={allNames} actions={actions} />
       ) : tab === 'phases' ? (
-        <PlanPhasesSection phases={state.settings.phases} onAddPhase={actions.addPhase} onDeletePhase={actions.deletePhase} />
+        <div class="space-y-6">
+          <PhaseAnalyticsPanel state={state} />
+          <div class="pt-4 border-t border-white/10">
+            <PlanPhasesSection phases={state.settings.phases} onAddPhase={actions.addPhase} onDeletePhase={actions.deletePhase} />
+          </div>
+        </div>
       ) : (
         <PlanRoutinesTab state={state} actions={actions} onOpenRoutineTab={setTab} />
       )}

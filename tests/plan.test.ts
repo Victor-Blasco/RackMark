@@ -18,6 +18,7 @@ import { ExerciseModal } from '../src/components/modals/ExerciseModal';
 import { ModalHost } from '../src/components/modals/ModalHost';
 import { WizardModal } from '../src/components/modals/WizardModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { PhaseAnalyticsPanel } from '../src/components/plan/PhaseAnalyticsPanel';
 import { PlanSidebarWidgets } from '../src/components/plan/PlanSidebarWidgets';
 import { DayOrganizeBar } from '../src/components/day/DayOrganizeBar';
 import { ExercisePickerSheet } from '../src/components/workout/ExercisePickerSheet';
@@ -26,6 +27,7 @@ import { fmtMMSS } from '../src/ui/restAudio';
 import { createCatalogMapActions } from '../src/store/catalogMapActions';
 import { allExerciseNames, extractTargetWeight } from '../src/store/exerciseCatalog';
 import { buildHomeExChartConfig } from '../src/store/homeChartConfigs';
+import { buildPhaseAnalytics } from '../src/store/phaseSelectors';
 import { buildDayRoutineViewModel } from '../src/store/daySelectors';
 import { initLogDraft } from '../src/store/logSelectors';
 import { isValidTab } from '../src/store/navigation';
@@ -1760,5 +1762,50 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     });
     await cat.mergeExercises('Press Banca', 'Press de banca');
     expect(state.sel['Torso A']).toBe('Press de banca');
+  });
+
+  it('buildPhaseAnalytics y PhaseAnalyticsPanel calculan fases, calendario lowkey y 4 KPIs neutros', () => {
+    const settings = sanitizeSettings({
+      phases: [
+        { name: 'Definición', start: '2026-10-01' },
+        { name: 'Recomposición', start: '2026-11-01' },
+      ],
+    });
+    const rows = [
+      { id: 'r1', sessionId: 's1', ts: 1000, date: '2026-11-02', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }] },
+      { id: 'r2', sessionId: 's2', ts: 2000, date: '2026-11-16', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 85, r: 8 }] },
+    ];
+    const measures = [
+      { date: '2026-11-01', weight: 78.5, waist: 82.0 },
+      { date: '2026-11-20', weight: 78.2, waist: 79.5 },
+    ];
+    const state = {
+      tab: 'plan',
+      strength: rows,
+      cardio: [],
+      measures,
+      wellbeing: [],
+      settings,
+      analysis: analyze(rows, settings),
+      sel: {},
+      perimeter: 'waist' as const,
+      muscleSel: 'Pecho',
+    };
+
+    const vm = buildPhaseAnalytics(state);
+    expect(vm.blocks.map((b) => b.name)).toEqual(['Definición', 'Recomposición', 'Sin fase (90d)']);
+    expect(vm.weightDeltaLabel).toBe('−0,3 kg');
+    expect(vm.weightSubLabel).toBe('Cintura −2,5 cm');
+    expect(vm.sessionsCount).toBe(2);
+    expect(vm.avgStrengthPct).toBeGreaterThan(0);
+
+    const html = renderToString(h(PhaseAnalyticsPanel, { state }));
+    expect(html).toContain('Fases del entrenamiento');
+    expect(html).toContain('Peso y cintura');
+    expect(html).toContain('Constancia');
+    expect(html).toContain('Volumen semanal');
+    expect(html).toContain('Fuerza en la etapa');
+    expect(html).toContain('Definición');
+    expect(html).toContain('Recomposición');
   });
 });

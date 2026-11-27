@@ -9,7 +9,7 @@ import {
 } from '../../store/adherenceCalendar';
 import type { Settings } from '../../types';
 import { routineColor, type DateBounds } from '../../ui/shared';
-import { Icon } from '../common/Icon';
+import { MonthCalendarGrid } from '../common/MonthCalendarGrid';
 import { AdherenceDayDetail } from './AdherenceSections';
 
 interface AdherenceCalendarProps {
@@ -22,8 +22,6 @@ interface AdherenceCalendarProps {
   /** Ajustes globales con metadatos de color. */
   settings: Settings;
 }
-
-const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 const pickInitialDay = (ym: string, cal: AdherenceCalendarData): string => {
   const active = Object.keys(cal.byDate).filter((iso) => iso.startsWith(ym)).sort();
@@ -64,27 +62,16 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
     <section class="pb-5 border-b border-white/10">
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
         <div class="lg:col-span-7 space-y-3">
-          <div class="flex items-center justify-between gap-2">
-            <button type="button" class="icon-btn border border-white/10 bg-white/[0.03]" disabled={monthIdx <= 0} aria-label="Mes anterior" onClick={() => stepMonth(-1)}>
-              <Icon name="caretLeft" className="h-4 w-4" />
-            </button>
-            <div class="text-center">
-              <h2 class="text-sm sm:text-base font-extrabold text-white">{formatMonthTitle(activeYm)}</h2>
-              <p class="text-[11px] text-gray-400 tabular-nums">
-                {monthTotalCount} {monthTotalCount === 1 ? 'sesión' : 'sesiones'} · {monthActs.length} {monthActs.length === 1 ? 'día activo' : 'días activos'}
-              </p>
-            </div>
-            <button type="button" class="icon-btn border border-white/10 bg-white/[0.03]" disabled={monthIdx >= calendar.months.length - 1} aria-label="Mes siguiente" onClick={() => stepMonth(1)}>
-              <Icon name="caretRight" className="h-4 w-4" />
-            </button>
-          </div>
-
-          <div class="grid grid-cols-7 border-b border-white/10 pb-2 text-center text-[11px] font-bold text-gray-400">
-            {WEEKDAYS.map((d, i) => <span key={d} class={i === 6 ? 'text-blue-300/80' : ''}>{d}</span>)}
-          </div>
-
-          <div class="grid grid-cols-7 gap-y-1">
-            {cells.map((c) => {
+          <MonthCalendarGrid
+            title={formatMonthTitle(activeYm)}
+            subtitle={`${monthTotalCount} ${monthTotalCount === 1 ? 'sesión' : 'sesiones'} · ${monthActs.length} ${monthActs.length === 1 ? 'día activo' : 'días activos'}`}
+            cells={cells}
+            showNav
+            canPrev={monthIdx > 0}
+            canNext={monthIdx < calendar.months.length - 1}
+            onPrev={() => stepMonth(-1)}
+            onNext={() => stepMonth(1)}
+            renderDay={(c) => {
               const isSelected = c.iso === selectedIso;
               const act = c.activity;
               const inWindow = Boolean(act?.primaryColor) && c.inMonth && c.inBounds;
@@ -114,8 +101,8 @@ export function AdherenceCalendar({ calendar, bounds, routines, settings }: Adhe
                   {act?.multi && <span class="mt-0.5 h-1 w-1 rounded-full bg-white/80" aria-hidden="true" />}
                 </button>
               );
-            })}
-          </div>
+            }}
+          />
 
           <div class="flex flex-wrap gap-3 pt-1 text-xs text-gray-400">
             {routines.map((d, idx) => (
