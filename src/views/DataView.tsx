@@ -1,6 +1,8 @@
 import { Icon } from '../components/common/Icon';
 import { ViewHeader } from '../components/common/ViewHeader';
 import { DataImportSection } from '../components/data/DataImportSection';
+import { DuplicateSessionsPanel } from '../components/data/DuplicateSessionsPanel';
+import { findDuplicateSessionGroups } from '../lib/dedupSessions';
 import { useAppStore } from '../store/appStore';
 import type { State } from '../ui/shared';
 
@@ -16,6 +18,7 @@ export function DataView({ state: propState }: DataViewProps) {
   const { state: storeState, plan, dataSync, setTab } = useAppStore();
   const state = propState ?? storeState;
   const unmappedCount = state.analysis.unmapped.length;
+  const dupGroups = findDuplicateSessionGroups(state);
 
   return (
     <div class="space-y-5">
@@ -59,6 +62,11 @@ export function DataView({ state: propState }: DataViewProps) {
           </div>
         </div>
       </div>
+
+      <DuplicateSessionsPanel
+        groups={dupGroups}
+        onKeepSession={(sessions, keepId) => void dataSync.resolveDuplicateSession(sessions, keepId)}
+      />
 
       <DataImportSection
         onImportFiles={dataSync.importFiles}

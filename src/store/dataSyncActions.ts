@@ -1,4 +1,5 @@
 import {
+  deleteMany,
   exportBackup,
   importBackup,
   mergeWellbeing,
@@ -7,10 +8,11 @@ import {
   sanitizeSettings,
   saveSettings,
 } from '../lib/db';
+import { buildSessionKeepCleanup, type DuplicateSessionItem } from '../lib/dedupSessions';
 import { MEASURES_CSV_TEMPLATE, parseMeasuresCsv } from '../lib/measures';
 import { importSamsungInWorker } from '../lib/samsung';
 import { mergeSamsungStrengthWithManual } from '../lib/samsungMerge';
-import { markBucketUpserts, markSettingsDirty } from '../lib/sync';
+import { markBucketDeletes, markBucketUpserts, markSettingsDirty } from '../lib/sync';
 import type { AiTone, ThemeMode } from '../types';
 import { todayIso, type State } from '../ui/shared';
 import { humanizeError } from './types';
@@ -144,6 +146,22 @@ export function createDataSyncActions(deps: DataSyncActionDeps) {
       } catch (err) {
         deps.toast(`Error al importar: ${humanizeError(err, 'revisa que el archivo tenga un formato válido.')}`);
       }
+    },
+
+    async resolveDuplicateSession(groupSessions: DuplicateSessionItem[], keepSessionId: string) {
+      const S = state();
+      const { toUpsert, toDeleteIds, toDeleteEntries } = buildSessionKeepCleanup(S.strength, groupSessions, keepSessionId);
+      if (!toDeleteIds.length) return;
+      if (toUpsert.length) {
+        await putMany('strength', toUpsert);
+        markBucketUpserts('strength', toUpsert);
+      }
+      await deleteMany('strength', toDeleteIds);
+      markBucketDeletes('strength', toDeleteEntries);
+      await deps.reload();
+      deps.render();
+      deps.queueSync();
+      deps.toast('Sesión duplicada eliminada.');
     },
 
     wipeAllData: () => void deps.wipeAllData(),

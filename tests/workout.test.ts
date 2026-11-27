@@ -3,6 +3,7 @@ import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import { buildPayload } from '../src/lib/ai';
 import { analyze, describeStatus, effectiveLoadKg, judge, latestBodyWeight, loadTypeOf, weeklyVolume } from '../src/lib/analysis';
+import { buildSessionKeepCleanup, findDuplicateSessionGroups } from '../src/lib/dedupSessions';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
 import { WorkoutSummaryModal } from '../src/components/modals/WorkoutSummaryModal';
@@ -1085,5 +1086,30 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(dedupAn.exercises.get('Elevación de gemelos sentado')?.last?.avgHr).toBe(118);
     const dedupVol = weeklyVolume(dupRows, aliasSettings);
     expect([...(dedupVol.get('Gemelos')?.values() ?? [])].reduce((a, b) => a + b, 0)).toBe(3);
+
+    // Detecta días con 2 sesiones de la misma rutina y prepara limpieza preservando telemetría
+    const dupSessionRows = [
+      { id: 'sh-1', sessionId: 'sh-1', ts: 1000, date: '2026-11-20', ref: 'name:Press de banca', day: 'Push', avgHr: 120, durMin: 72, kcal: 586, sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }] },
+      { id: 'man-1', sessionId: 'man-1', ts: 2000, date: '2026-11-20', ref: 'name:Press de banca', day: 'Push', sets: [{ w: 80, r: 8 }, { w: 80, r: 8 }, { w: 80, r: 8 }] },
+    ];
+    const dupState = {
+      tab: 'data',
+      strength: dupSessionRows,
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: aliasSettings,
+      analysis: analyze(dupSessionRows, aliasSettings),
+      sel: {},
+      perimeter: 'arms' as const,
+      muscleSel: 'Pecho',
+    };
+    const groups = findDuplicateSessionGroups(dupState);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].sessions.map((x) => x.sets)).toEqual([3, 2]);
+    const planClean = buildSessionKeepCleanup(dupSessionRows, groups[0].sessions, 'man-1');
+    expect(planClean.toDeleteIds).toEqual(['sh-1']);
+    expect(planClean.toUpsert[0]?.avgHr).toBe(120);
+    expect(planClean.toUpsert[0]?.durMin).toBe(72);
   });
 });
