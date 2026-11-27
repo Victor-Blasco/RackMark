@@ -1,5 +1,5 @@
 import { norm } from '../lib/seed';
-import type { DayName, LiveWorkout } from '../types';
+import type { DayName, LiveWorkout, LoadType } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import { manualSessionId } from './exerciseCatalog';
 import { isCompletedSet } from './draftSetHelpers';
@@ -21,6 +21,7 @@ export interface WorkoutActionDeps {
   toast: (msg: string, action?: ToastAction) => void;
   askConfirm: (opts: ConfirmModalOpts) => Promise<boolean>;
   openNoteModal: (exName: string) => void;
+  setLoadType?: (exName: string, loadType: LoadType) => void;
   showSummary: (summary: WorkoutSummary) => void;
 }
 
@@ -147,5 +148,6 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
     },
 
     openFixedNote: (exName: string) => deps.openNoteModal(exName),
+    setLoadType: (exName: string, loadType: LoadType) => deps.setLoadType?.(exName, loadType),
   };
 }

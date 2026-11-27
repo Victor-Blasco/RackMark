@@ -1,5 +1,5 @@
-import type { DayName, Settings, StrengthRow, MuscleMap, Measure, RoutineEx, SetRec } from '../types';
-import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, isValidIsoDate, norm, todayIso } from './seed';
+import type { DayName, LoadType, Settings, StrengthRow, MuscleMap, Measure, RoutineEx, SetRec } from '../types';
+import { BUILTIN_REF_NAMES, DEFAULT_LOAD_TYPES, DEFAULT_MUSCLES, MUSCLE_DAY, isValidIsoDate, norm, todayIso } from './seed';
 
 export const epley = (w: number, r: number) => (r <= 1 ? w : w * (1 + r / 30));
 export const isWorkSet = (s: SetRec) => s.kind !== 'W';
@@ -21,6 +21,34 @@ export function resolveName(ref: string, s: Settings): string {
 export function musclesOf(name: string, s: Settings): MuscleMap | null {
   const k = norm(name);
   return s.muscles[k] ?? DEFAULT_MUSCLES[k] ?? null;
+}
+
+/** Devuelve el tipo de carga configurado para un ejercicio (`external`, `weighted` o `assisted`). */
+export function loadTypeOf(name: string, s: Settings): LoadType {
+  const k = norm(name);
+  return s.loadTypes?.[k] ?? DEFAULT_LOAD_TYPES[k] ?? 'external';
+}
+
+/** Obtiene el peso corporal más reciente registrado en `measures` (en kg). */
+export function latestBodyWeight(measures: Measure[]): number | null {
+  let latestDate = '';
+  let latestW: number | null = null;
+  for (const m of measures) {
+    if (m.weight != null && m.weight > 0 && m.date >= latestDate) {
+      latestDate = m.date;
+      latestW = m.weight;
+    }
+  }
+  return latestW;
+}
+
+/** Calcula la carga total real en kg considerando peso corporal si el ejercicio es lastrado o asistido. */
+export function effectiveLoadKg(w: number, loadType: LoadType, bodyWeightKg: number | null): number {
+  const clean = Math.max(0, w);
+  if (bodyWeightKg == null) return clean;
+  if (loadType === 'weighted') return round(bodyWeightKg + clean, 1);
+  if (loadType === 'assisted') return round(Math.max(0, bodyWeightKg - clean), 1);
+  return clean;
 }
 
 export interface ExSession {

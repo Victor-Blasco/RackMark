@@ -331,6 +331,17 @@ export function sanitizeSettings(raw: unknown): Settings {
     if (cleanHidden.length) base.hiddenExercises = cleanHidden;
   }
 
+  if (isObj(raw.loadTypes)) {
+    const cleanLoadTypes: Record<string, 'external' | 'weighted' | 'assisted'> = {};
+    for (const [k, v] of Object.entries(raw.loadTypes)) {
+      if (Object.keys(cleanLoadTypes).length >= MAX_AUX_MAP_ENTRIES) break;
+      const nk = norm(k.slice(0, 80));
+      if (!nk || UNSAFE_KEYS.has(nk)) continue;
+      if (v === 'external' || v === 'weighted' || v === 'assisted') cleanLoadTypes[nk] = v;
+    }
+    if (Object.keys(cleanLoadTypes).length) base.loadTypes = cleanLoadTypes;
+  }
+
   const phases = sanitizePhases(raw.phases);
   if (phases) base.phases = phases;
   if (typeof raw.onboardingCompleted === 'boolean') base.onboardingCompleted = raw.onboardingCompleted;

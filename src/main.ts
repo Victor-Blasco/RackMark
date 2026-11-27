@@ -3,7 +3,7 @@ import { h, render as renderPreact } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { analyze } from './lib/analysis';
 import { getAll, loadAiJob, loadSettings, loadSyncJob, sanitizeSettings, saveSettings } from './lib/db';
-import { DEFAULT_SETTINGS } from './lib/seed';
+import { DEFAULT_SETTINGS, norm } from './lib/seed';
 import { hasUnsyncedChanges, markSettingsDirty } from './lib/sync';
 import { AppShell } from './components/layout/AppShell';
 import { createAnalyticsActions } from './store/analyticsActions';
@@ -243,6 +243,16 @@ const liveActions = createLiveWorkoutActions({
   toast,
   askConfirm,
   openNoteModal: openFixedNote,
+  setLoadType: (exName, loadType) => {
+    const nk = norm(exName);
+    if (!nk) return;
+    const prev = S.settings.loadTypes ?? {};
+    const next = { ...prev, [nk]: loadType };
+    S.settings = { ...S.settings, loadTypes: next };
+    const lbl = loadType === 'weighted' ? 'Peso corporal (+lastre)' : loadType === 'assisted' ? 'Asistido (−kg)' : 'Carga externa';
+    toast(`${exName}: ${lbl}.`);
+    void persist();
+  },
   showSummary: (summary) => {
     S.activeModal = { type: 'workoutSummary', summary };
     render();

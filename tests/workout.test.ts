@@ -2,11 +2,12 @@ import { h } from 'preact';
 import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import { buildPayload } from '../src/lib/ai';
-import { analyze, describeStatus, judge, weeklyVolume } from '../src/lib/analysis';
+import { analyze, describeStatus, effectiveLoadKg, judge, latestBodyWeight, loadTypeOf, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
 import { WorkoutSummaryModal } from '../src/components/modals/WorkoutSummaryModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { ExerciseHistoryDrawer } from '../src/components/workout/ExerciseHistoryDrawer';
 import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { PrevCompletedBanner } from '../src/components/workout/LiveStatusBanners';
@@ -982,5 +983,59 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     const chestMap = vol.get('Pecho');
     const weekTotal = [...(chestMap?.values() ?? [])].reduce((a, b) => a + b, 0);
     expect(weekTotal).toBe(1);
+  });
+
+  it('soporta historial rápido (ExerciseHistoryDrawer) y ejercicios con peso corporal (+BW / asistido)', () => {
+    const s = sanitizeSettings({
+      loadTypes: {
+        dominadas: 'weighted',
+        'curl de biceps': 'external',
+        'invalido': 'otro' as never,
+      },
+    });
+    expect(s.loadTypes).toEqual({ dominadas: 'weighted', 'curl de biceps': 'external' });
+    expect(loadTypeOf('Dominadas', s)).toBe('weighted');
+    expect(loadTypeOf('Fondos en paralelas', s)).toBe('weighted');
+    expect(loadTypeOf('Dominadas asistidas', s)).toBe('assisted');
+    expect(loadTypeOf('Press de banca', s)).toBe('external');
+
+    const bw = latestBodyWeight([
+      { date: '2026-11-10', weight: 77.5 },
+      { date: '2026-11-20', weight: 78.4 },
+    ]);
+    expect(bw).toBe(78.4);
+    expect(effectiveLoadKg(0, 'weighted', bw)).toBe(78.4);
+    expect(effectiveLoadKg(10, 'weighted', bw)).toBe(88.4);
+    expect(effectiveLoadKg(15, 'assisted', bw)).toBe(63.4);
+    expect(effectiveLoadKg(60, 'external', bw)).toBe(60);
+
+    const an = analyze([
+      {
+        id: 'h1',
+        sessionId: 'sess-h1',
+        ts: 1000,
+        date: '2026-11-20',
+        ref: 'name:Press de banca',
+        note: 'Subir a 82,5 kg si salen limpias',
+        sets: [
+          { w: 40, r: 10, kind: 'W' },
+          { w: 80, r: 8 },
+          { w: 85, r: 5 },
+        ],
+      },
+    ], s);
+    const drawerHtml = renderToString(
+      h(ExerciseHistoryDrawer, {
+        open: true,
+        exName: 'Press de banca',
+        hist: an.exercises.get('Press de banca'),
+        onClose: () => {},
+      }),
+    );
+    expect(drawerHtml).toContain('Historial · Press de banca');
+    expect(drawerHtml).toContain('PR 5RM');
+    expect(drawerHtml).toContain('85 kg');
+    expect(drawerHtml).toContain('80 kg');
+    expect(drawerHtml).toContain('Nota: Subir a 82,5 kg si salen limpias');
   });
 });

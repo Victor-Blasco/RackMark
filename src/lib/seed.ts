@@ -1,4 +1,4 @@
-import type { MuscleMap, Settings } from '../types';
+import type { LoadType, MuscleMap, Settings } from '../types';
 
 export const DRAFT_STORAGE_KEY = 'gymapp_log_draft';
 export const LIVE_WORKOUT_STORAGE_KEY = 'gymapp_live_workout';
@@ -376,6 +376,14 @@ export const ROUTINE_TEMPLATES: Record<string, RoutineTemplate> = {
       Hombro: { color: '#F59E0B', sub: 'Deltoides' },
     },
   },
+};
+
+export const DEFAULT_LOAD_TYPES: Record<string, LoadType> = {
+  dominadas: 'weighted',
+  'fondos en paralelas': 'weighted',
+  flexiones: 'weighted',
+  'dominadas asistidas': 'assisted',
+  'fondos asistidos': 'assisted',
 };
 
 export const DEFAULT_SETTINGS: Settings = {

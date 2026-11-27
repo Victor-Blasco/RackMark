@@ -1,4 +1,4 @@
-import { findAnalyzedExercise, musclesOf } from '../lib/analysis';
+import { findAnalyzedExercise, latestBodyWeight, loadTypeOf, musclesOf } from '../lib/analysis';
 import { CATALOG_EXERCISES, MUSCLE_DAY, norm } from '../lib/seed';
 import type { DayName, LogExDraft, SetRec } from '../types';
 import { findAiExercise, isAiFreshForEx, routineNames, short, type State } from '../ui/shared';
@@ -101,7 +101,9 @@ export function exerciseContext(state: State, day: DayName | 'Libre', ex: LogExD
   const doneInEx = ex.sets.filter((s) => s.done && s.r > 0).length;
   const allDoneInEx = ex.sets.length > 0 && doneInEx === ex.sets.length;
   const showApplyBtn = targetW != null && ex.sets.some((s) => !s.done && s.w !== targetW);
-  return { hist, tgt, lastRef, prescription, targetW, fixedNote, doneInEx, allDoneInEx, showApplyBtn };
+  const loadType = loadTypeOf(ex.name, state.settings);
+  const bodyWeightKg = latestBodyWeight(state.measures);
+  return { hist, tgt, lastRef, prescription, targetW, fixedNote, doneInEx, allDoneInEx, showApplyBtn, loadType, bodyWeightKg };
 }
 
 /**

@@ -22,6 +22,7 @@ service cloud.firestore {
     //       - refNames: map (size <= 500)
     //       - aliases: map (size <= 500)
     //       - muscles: map (size <= 500)
+    //       - loadTypes: map (optional, size <= 500)
     //       - notes: map (size <= 500)
     //       - hiddenExercises: list (optional, size <= 500)
     //       - phases: list (size <= 100)
@@ -134,7 +135,7 @@ service cloud.firestore {
       return d is map
         && d.keys().hasOnly([
           'routines', 'routineMeta', 'profile', 'customNames', 'refNames',
-          'aliases', 'muscles', 'notes', 'hiddenExercises', 'phases',
+          'aliases', 'muscles', 'loadTypes', 'notes', 'hiddenExercises', 'phases',
           'onboardingCompleted', 'geminiKey', 'aiTone', 'ai', 'theme'
         ])
         && (!('routines' in d) || isValidRoutines(d.routines))
@@ -145,6 +146,7 @@ service cloud.firestore {
         && isOptionalMapMax(d, 'refNames', 500)
         && isOptionalMapMax(d, 'aliases', 500)
         && isOptionalMapMax(d, 'muscles', 500)
+        && isOptionalMapMax(d, 'loadTypes', 500)
         && isOptionalMapMax(d, 'notes', 500)
         && isOptionalListMax(d, 'hiddenExercises', 500)
         && isOptionalListMax(d, 'phases', 100)

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
+import { effectiveLoadKg } from '../../lib/analysis';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LiveWorkoutActions } from '../../store/workoutActions';
 import type { LogExDraft } from '../../types';
 import { fmtMMSS } from '../../ui/restAudio';
+import { r1 } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { ExercisePrescriptionBanner } from '../common/ExercisePrescriptionBanner';
 import { Icon } from '../common/Icon';
+import { ExerciseCardMenu } from './ExerciseCardMenu';
+import { ExerciseHistoryDrawer } from './ExerciseHistoryDrawer';
 import { SetRow } from './SetRow';
 
 interface ExerciseCardProps {
@@ -22,17 +26,18 @@ interface ExerciseCardProps {
   actions: LiveWorkoutActions;
 }
 
-const MENU_ITEM = 'min-h-[44px] sm:min-h-[36px] w-full flex items-center gap-2 rounded-lg px-2.5 text-left text-xs font-semibold text-gray-200 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 const PILL_BTN = 'min-h-[44px] sm:min-h-[34px] inline-flex items-center rounded-xl border px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
 
 /** Vista plana y compacta del único ejercicio activo en `En vivo` con menú `⋯`, series en 1 fila y toggles. */
 export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions }: ExerciseCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(() => Boolean(ex.note.trim()));
   const { open: menuOpen, setOpen: setMenuOpen, triggerRef, menuRef } = useDismissibleMenu();
 
   useEffect(() => {
     setShowDetails(false);
+    setHistoryOpen(false);
     setMenuOpen(false);
     setNoteOpen(Boolean(ex.note.trim()));
   }, [ex.name]);
@@ -44,6 +49,8 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
   const detailsCount = ex.sets.filter((s) => s.rir != null || s.restSec != null).length;
   const hasNote = Boolean(ex.note.trim());
   const act = (fn: () => void) => { setMenuOpen(false); fn(); };
+  const colWeightLabel = ctx.loadType === 'weighted' ? 'Lastre (+kg)' : ctx.loadType === 'assisted' ? 'Asistencia (−kg)' : 'Peso (kg)';
+  const firstW = ex.sets[0]?.w ?? 0;
 
   return (
     <section aria-label={`Ejercicio actual: ${ex.name}`} class="space-y-2.5 pt-1">
@@ -54,10 +61,17 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             <p class="mt-0.5 text-xs text-gray-300 tabular-nums">
               {ctx.tgt && <><span class="text-gray-400">Objetivo {ctx.tgt.sets}×{ctx.tgt.reps}</span> · </>}
               {ctx.tgt?.restSec != null && <><span class="text-blue-300">Descanso {fmtMMSS(ctx.tgt.restSec)}</span> · </>}
-              {ctx.lastRef}
+              {ctx.hist && ctx.hist.n > 0 ? (
+                <button type="button" class="underline decoration-white/30 underline-offset-2 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded" onClick={() => setHistoryOpen(true)}>{ctx.lastRef}</button>
+              ) : ctx.lastRef}
             </p>
+            {ctx.loadType !== 'external' && ctx.bodyWeightKg != null && (
+              <p class="mt-0.5 text-[11px] text-blue-300 tabular-nums">
+                Carga real S1: {r1(effectiveLoadKg(firstW, ctx.loadType, ctx.bodyWeightKg))} kg (BW {r1(ctx.bodyWeightKg)} kg)
+              </p>
+            )}
           </div>
-          <div class="relative flex shrink-0 items-center gap-1">
+          <div class="relative flex shrink-0 items-center gap-1" ref={menuRef}>
             <span class={`text-xs font-bold tabular-nums ${ctx.allDoneInEx ? 'text-emerald-300' : 'text-gray-400'}`}>
               {ctx.doneInEx}/{ex.sets.length} {ex.sets.length === 1 ? 'serie' : 'series'}
             </span>
@@ -65,20 +79,20 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
               <Icon name="dotsVertical" className="h-4 w-4" />
             </button>
             {menuOpen && (
-              <div ref={menuRef} role="menu" aria-label={`Acciones de ${ex.name}`} class="absolute right-0 top-11 z-30 w-52 rounded-xl border border-white/10 bg-modalDark p-1.5 shadow-2xl space-y-0.5">
-                <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openPicker('swap'))}><Icon name="refresh" className="h-3.5 w-3.5 text-blue-300" /> Cambiar ejercicio</button>
-                <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openPicker('add'))}><Icon name="plus" className="h-3.5 w-3.5 text-blue-300" /> Añadir ejercicio</button>
-                <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => act(() => actions.openFixedNote(ex.name))}><Icon name="edit" className="h-3.5 w-3.5 text-gray-400" /> Nota fija (siempre)</button>
-              </div>
+              <ExerciseCardMenu
+                exName={ex.name} historyCount={ctx.hist?.n ?? 0} loadType={ctx.loadType}
+                onOpenHistory={() => act(() => setHistoryOpen(true))}
+                onOpenPicker={(mode) => act(() => actions.openPicker(mode))}
+                onOpenFixedNote={() => act(() => actions.openFixedNote(ex.name))}
+                onSetLoadType={(lt) => act(() => actions.setLoadType(ex.name, lt))}
+              />
             )}
           </div>
         </div>
 
         <ExercisePrescriptionBanner
-          prescription={ctx.prescription}
-          targetW={ctx.showApplyBtn ? ctx.targetW : null}
-          fixedNote={ctx.fixedNote}
-          firstTimeHint={!ctx.hist && ex.sets.every((s) => s.w === 0)}
+          prescription={ctx.prescription} targetW={ctx.showApplyBtn ? ctx.targetW : null}
+          fixedNote={ctx.fixedNote} firstTimeHint={!ctx.hist && ex.sets.every((s) => s.w === 0)}
           onApplyTarget={(w) => actions.applyTargetWeight(curIdx, w)}
         />
       </div>
@@ -86,7 +100,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
       <div>
         <div class="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
           <span class="w-9 shrink-0 text-center">Tipo</span>
-          <span class="flex-1 text-center">Peso (kg)</span>
+          <span class="flex-1 text-center">{colWeightLabel}</span>
           <span class="flex-1 text-center">Reps</span>
           <span class="w-12 sm:w-20 shrink-0 text-center">OK</span>
         </div>
@@ -98,15 +112,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             for (let j = si; j >= 0 && ex.sets[j].kind === 'D'; j--) dropIdx++;
             const tagLabel = s.kind === 'W' ? 'W' : s.kind === 'D' ? `↳D${dropIdx}` : `${s.kind === 'F' ? 'F' : 'S'}${effIdx}`;
             return (
-              <SetRow
-                key={si} setIndex={si} tagLabel={tagLabel} nextDropNum={dropIdx + 1} canDelete={ex.sets.length > 1}
-                set={s} targetRestSec={targetRestSec} showDetails={showDetails}
-                onStepWeight={(d) => actions.stepWeight(curIdx, si, d)} onWeightChange={(raw, fin) => actions.updateWeight(curIdx, si, raw, fin)}
-                onStepReps={(d) => actions.stepReps(curIdx, si, d)} onRepsChange={(raw, fin) => actions.updateReps(curIdx, si, raw, fin)}
-                onToggleDone={() => actions.toggleSet(curIdx, si)} onRirChange={(raw) => actions.updateRir(curIdx, si, raw)}
-                onRestChange={(raw) => actions.updateRest(curIdx, si, raw)} onSelectKind={(k) => actions.setSetKind(curIdx, si, k)}
-                onAddDrop={() => actions.addDropSet(curIdx, si)} onRemoveDrop={() => actions.delSet(curIdx, si)}
-              />
+              <SetRow key={si} setIndex={si} tagLabel={tagLabel} nextDropNum={dropIdx + 1} canDelete={ex.sets.length > 1} set={s} targetRestSec={targetRestSec} showDetails={showDetails} onStepWeight={(d) => actions.stepWeight(curIdx, si, d)} onWeightChange={(raw, fin) => actions.updateWeight(curIdx, si, raw, fin)} onStepReps={(d) => actions.stepReps(curIdx, si, d)} onRepsChange={(raw, fin) => actions.updateReps(curIdx, si, raw, fin)} onToggleDone={() => actions.toggleSet(curIdx, si)} onRirChange={(raw) => actions.updateRir(curIdx, si, raw)} onRestChange={(raw) => actions.updateRest(curIdx, si, raw)} onSelectKind={(k) => actions.setSetKind(curIdx, si, k)} onAddDrop={() => actions.addDropSet(curIdx, si)} onRemoveDrop={() => actions.delSet(curIdx, si)} />
             );
           })}
         </div>
@@ -130,6 +136,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
           <input class="w-full min-h-[44px] rounded-sm border-b border-white/15 bg-transparent py-2 text-base sm:text-sm text-gray-200 placeholder-gray-400 focus:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" enterKeyHint="done" value={ex.note} placeholder="Nota de hoy (sensaciones, ajustes)…" aria-label={`Nota para ${ex.name}`} onInput={(e) => actions.updateNote(curIdx, e.currentTarget.value)} />
         </Collapsible>
       </div>
+      <ExerciseHistoryDrawer open={historyOpen} exName={ex.name} hist={ctx.hist} onClose={() => setHistoryOpen(false)} />
     </section>
   );
 }

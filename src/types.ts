@@ -125,6 +125,7 @@ export interface RoutineEx { name: string; sets: number; reps: number; restSec?:
 export interface MuscleMap { p: string; s: string[] }
 export type AiTone = 'simple' | 'technical';
 export type ThemeMode = 'dark' | 'light' | 'system';
+export type LoadType = 'external' | 'weighted' | 'assisted';
 export interface AiEntry { status?: string; prescription?: string; biomech?: string }
 export interface AiSection {
   title: string;
@@ -190,6 +191,7 @@ export interface Settings {
   refNames: Record<string, string>;      // ref -> nombre manual (renombrar tipos Samsung)
   aliases: Record<string, string>;       // nombre -> nombre (fusionar)
   muscles: Record<string, MuscleMap>;    // nombre normalizado -> músculos
+  loadTypes?: Record<string, LoadType>;  // nombre normalizado -> tipo de carga (+BW / asistido)
   notes: Record<string, string>;         // nombre -> nota biomecánica editable
   hiddenExercises?: string[];            // nombres normalizados de ejercicios predeterminados ocultos
   phases: { name: string; start: string }[];
