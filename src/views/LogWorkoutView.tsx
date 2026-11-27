@@ -45,10 +45,13 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
         doneSetsCount={vm.doneSetsCount}
         totalSetsCount={vm.totalSetsCount}
         allDone={vm.allSetsDone}
+        isSavedSession={vm.isSavedSession}
         onOpenLive={actions.openLiveWorkoutTab}
         onOpenPicker={actions.openExercisePicker}
         onToggleAll={actions.toggleAllSets}
         onReset={() => void actions.resetDraft()}
+        onDiscard={() => void actions.discardDraft()}
+        onDeleteSession={() => void actions.deleteHistorySession(vm.draft.sessionId ?? '', vm.draft.date)}
         onSave={() => void actions.saveSession()}
         onChangeDate={(d) => void actions.changeDate(d)}
         onSelectDay={(d) => void actions.selectDay(d)}
@@ -79,9 +82,20 @@ export function LogWorkoutView({ state: propState }: LogWorkoutViewProps) {
       )}
 
       <div class="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" class="btn min-h-[44px]" onClick={() => void actions.resetDraft()}>
-          <Icon name="reset" className="h-4 w-4" /> Reiniciar borrador
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" class="btn min-h-[44px]" onClick={() => void actions.resetDraft()}>
+            <Icon name="reset" className="h-4 w-4" /> Reiniciar borrador
+          </button>
+          {vm.isSavedSession && (
+            <button
+              type="button"
+              class="btn btn-danger min-h-[44px]"
+              onClick={() => void actions.deleteHistorySession(vm.draft.sessionId ?? '', vm.draft.date)}
+            >
+              <Icon name="trash" className="h-4 w-4" /> Eliminar sesión
+            </button>
+          )}
+        </div>
         <button type="button" class="btn-primary min-h-[44px] px-5 py-2.5 tabular-nums" onClick={() => void actions.saveSession()}>
           <Icon name="save" className="h-4 w-4" /> Guardar sesión ({vm.doneSetsCount} {vm.doneSetsCount === 1 ? 'serie' : 'series'})
         </button>

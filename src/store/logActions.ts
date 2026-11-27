@@ -83,6 +83,22 @@ export function createLogWorkoutActions(deps: LogActionDeps) {
       deps.commitDraft(initLogDraft(deps.getState(), cur.day, cur.date, cur.sessionId));
     },
 
+    async discardDraft() {
+      const cur = deps.getState().logDraft;
+      if (cur?.dirty) {
+        const confirmed = await deps.askConfirm({
+          title: 'Descartar borrador',
+          message: 'Se eliminará el borrador actual y se perderán los cambios sin guardar.',
+          confirmLabel: 'Descartar y volver',
+          danger: true,
+        });
+        if (!confirmed) return;
+      }
+      deps.commitDraft(undefined);
+      deps.setTab('home');
+      if (cur) deps.toast('Borrador descartado.');
+    },
+
     addExerciseByName(rawName: string, fallbackSets?: number, fallbackReps?: number) {
       const clean = rawName.trim();
       if (!clean) return;

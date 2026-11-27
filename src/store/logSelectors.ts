@@ -126,6 +126,9 @@ export function buildLogViewModel(state: State) {
   const totalSetsCount = draft.exercises.reduce((acc, e) => acc + e.sets.length, 0);
   const allSetsDone = validSetsCount > 0 && doneSetsCount === validSetsCount;
   const recentSessions = [...state.analysis.sessions].reverse().slice(0, 10);
+  const isSavedSession = Boolean(
+    draft.sessionId && state.strength.some((r) => r.sessionId === draft.sessionId),
+  );
 
   return {
     routines,
@@ -137,5 +140,6 @@ export function buildLogViewModel(state: State) {
     totalSetsCount,
     allSetsDone,
     recentSessions,
+    isSavedSession,
   };
 }

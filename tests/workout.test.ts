@@ -14,6 +14,7 @@ import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { PrevCompletedBanner } from '../src/components/workout/LiveStatusBanners';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { manualSessionId } from '../src/store/exerciseCatalog';
+import { createLogWorkoutActions } from '../src/store/logActions';
 import { createLogHistoryActions } from '../src/store/logHistoryActions';
 import { createLogInputActions } from '../src/store/logInputActions';
 import { initLogDraft } from '../src/store/logSelectors';
@@ -1111,5 +1112,77 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(planClean.toDeleteIds).toEqual(['sh-1']);
     expect(planClean.toUpsert[0]?.avgHr).toBe(120);
     expect(planClean.toUpsert[0]?.durMin).toBe(72);
+  });
+
+  it('permite volver descartando el borrador y eliminar una sesión guardada desde Registrar hecho', async () => {
+    const s = sanitizeSettings({});
+    const savedRow = {
+      id: 'man-edit-1',
+      sessionId: 'man-edit-1',
+      ts: 1000,
+      date: '2026-11-26',
+      ref: 'name:Press de banca',
+      day: 'Push',
+      sets: [{ w: 80, r: 8 }],
+    };
+    const baseState: State = {
+      tab: 'log',
+      strength: [savedRow],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: s,
+      analysis: analyze([savedRow], s),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+
+    const newDraft = initLogDraft(baseState, 'Push', '2026-11-27');
+    const newHtml = renderToString(h(LogWorkoutView, { state: { ...baseState, logDraft: newDraft } }));
+    expect(newHtml).toContain('aria-label="Volver atrás y descartar borrador"');
+    expect(newHtml).not.toContain('Eliminar sesión');
+
+    const editDraft = initLogDraft(baseState, 'Push', '2026-11-26', 'man-edit-1');
+    const editHtml = renderToString(h(LogWorkoutView, { state: { ...baseState, logDraft: editDraft } }));
+    expect(editHtml).toContain('aria-label="Volver atrás y descartar borrador"');
+    expect(editHtml).toContain('Eliminar sesión');
+
+    // discardDraft con borrador limpio: no pide confirmación, limpia logDraft y vuelve a home
+    let curState: State = { ...baseState, logDraft: { ...newDraft, dirty: false } };
+    let confirms = 0;
+    const toasts: string[] = [];
+    const makeActions = (confirmAnswer: boolean) =>
+      createLogWorkoutActions({
+        getState: () => curState,
+        saveDraftOnly: (d) => { curState = { ...curState, logDraft: d }; },
+        commitDraft: (d) => { curState = { ...curState, logDraft: d }; },
+        reload: async () => {},
+        setTab: (t) => { curState = { ...curState, tab: t }; },
+        queueSync: () => {},
+        toast: (m) => { toasts.push(m); },
+        askConfirm: async () => { confirms += 1; return confirmAnswer; },
+        openNoteModal: () => {},
+        onStartLiveTab: () => {},
+        onOpenExercisePicker: () => {},
+      });
+
+    await makeActions(true).discardDraft();
+    expect(confirms).toBe(0);
+    expect(curState.logDraft).toBeUndefined();
+    expect(curState.tab).toBe('home');
+    expect(toasts).toContain('Borrador descartado.');
+
+    // discardDraft con borrador sucio: si cancela mantiene borrador; si confirma descarta y vuelve a home
+    curState = { ...baseState, tab: 'log', logDraft: { ...newDraft, dirty: true } };
+    await makeActions(false).discardDraft();
+    expect(confirms).toBe(1);
+    expect(curState.logDraft).toBeDefined();
+    expect(curState.tab).toBe('log');
+
+    await makeActions(true).discardDraft();
+    expect(confirms).toBe(2);
+    expect(curState.logDraft).toBeUndefined();
+    expect(curState.tab).toBe('home');
   });
 });

@@ -21,19 +21,16 @@ interface LogSessionHeaderProps {
   totalSetsCount: number;
   /** Indica si todas las series con repeticiones están marcadas como hechas. */
   allDone: boolean;
-  /** Abre el modo `En vivo`. */
+  /** Indica si el borrador corresponde a una sesión ya guardada en el historial. */
+  isSavedSession: boolean;
   onOpenLive: () => void;
-  /** Abre el selector para añadir un ejercicio a la sesión. */
   onOpenPicker: () => void;
-  /** Marca o desmarca todas las series válidas de la sesión. */
   onToggleAll: () => void;
-  /** Reinicia el borrador actual previa confirmación. */
   onReset: () => void;
-  /** Persiste la sesión en IndexedDB. */
+  onDiscard: () => void;
+  onDeleteSession: () => void;
   onSave: () => void;
-  /** Cambia la fecha del borrador. */
   onChangeDate: (date: string) => void;
-  /** Cambia la rutina del borrador. */
   onSelectDay: (day: DayName | 'Libre') => void;
 }
 
@@ -50,16 +47,30 @@ export function LogSessionHeader({
   doneSetsCount,
   totalSetsCount,
   allDone,
+  isSavedSession,
   onOpenLive,
   onOpenPicker,
   onToggleAll,
   onReset,
+  onDiscard,
+  onDeleteSession,
   onSave,
   onChangeDate,
   onSelectDay,
 }: LogSessionHeaderProps) {
   return (
     <div class="space-y-3 pb-4 border-b border-white/10">
+      <div class="flex items-center justify-between gap-2">
+        <button type="button" class="btn min-h-[44px] sm:min-h-[34px] py-1.5 text-sm shrink-0" aria-label="Volver atrás y descartar borrador" onClick={onDiscard}>
+          <Icon name="caretLeft" className="h-4 w-4" /> Volver
+        </button>
+        {isSavedSession && (
+          <button type="button" class="btn btn-danger min-h-[44px] sm:min-h-[34px] py-1.5 text-sm shrink-0" onClick={onDeleteSession}>
+            <Icon name="trash" className="h-3.5 w-3.5" /> Eliminar sesión
+          </button>
+        )}
+      </div>
+
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="min-w-[200px] flex-1">
           <h1 class="text-lg font-extrabold text-white">Registrar entreno ya hecho</h1>
@@ -74,12 +85,7 @@ export function LogSessionHeader({
           </button>
           <button type="button" class="btn hidden md:inline-flex py-1.5 text-sm" onClick={onOpenPicker}>+ Añadir ejercicio</button>
           {totalSetsCount > 0 && (
-            <button
-              type="button"
-              aria-pressed={allDone ? 'true' : 'false'}
-              class="btn hidden sm:inline-flex py-1.5 text-sm shrink-0"
-              onClick={onToggleAll}
-            >
+            <button type="button" aria-pressed={allDone ? 'true' : 'false'} class="btn hidden sm:inline-flex py-1.5 text-sm shrink-0" onClick={onToggleAll}>
               {allDone ? 'Desmarcar todo' : 'Marcar todo ✓'}
             </button>
           )}

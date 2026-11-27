@@ -101,6 +101,7 @@ export function createLogHistoryActions(
       const curDraft = deps.getState().logDraft;
       const editingDeleted = curDraft && (sessionId ? curDraft.sessionId === sessionId : curDraft.date === date);
       deps.commitDraft(editingDeleted ? undefined : curDraft);
+      if (editingDeleted) deps.setTab('home');
       deps.queueSync();
       deps.toast('Sesión borrada.');
     },
