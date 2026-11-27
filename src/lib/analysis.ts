@@ -240,7 +240,7 @@ function summarizePhysio(acc: PhysioAcc) {
 }
 
 export function analyze(rows: StrengthRow[], s: Settings): Analysis {
-  const perEx = new Map<string, Map<string, { sets: SetRec[]; notes: string[]; phys: PhysioAcc }>>();
+  const perEx = new Map<string, Map<string, { sets: SetRec[]; seenSigs: Set<string>; notes: string[]; phys: PhysioAcc }>>();
   const unm = new Map<string, { n: number; last: string }>();
   const sessMap = new Map<string, { date: string; day?: DayName; names: Set<string>; sets: number; phys: PhysioAcc }>();
   const manualDays = new Map<string, DayName>();
@@ -265,17 +265,28 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
       unm.set(row.ref, u);
     }
     if (row.day) manualDays.set(name, row.day);
-    const byDate = perEx.get(name) ?? new Map<string, { sets: SetRec[]; notes: string[]; phys: PhysioAcc }>();
-    const entry = byDate.get(row.date) ?? { sets: [], notes: [], phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
-    entry.sets.push(...validSets);
+    const byDate = perEx.get(name) ?? new Map<string, { sets: SetRec[]; seenSigs: Set<string>; notes: string[]; phys: PhysioAcc }>();
+    const entry = byDate.get(row.date) ?? { sets: [], seenSigs: new Set<string>(), notes: [], phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
+    const sig = validSets.map((x) => `${x.w}x${x.r}`).join('|');
+    const isDuplicateSets = entry.seenSigs.has(sig);
+    if (!isDuplicateSets) {
+      entry.seenSigs.add(sig);
+      entry.sets.push(...validSets);
+      addPhysio(entry.phys, row);
+    } else if (entry.phys.hrs.length === 0 && entry.phys.durMin === 0) {
+      addPhysio(entry.phys, row);
+    }
     if (row.note?.trim()) entry.notes.push(row.note.trim());
-    addPhysio(entry.phys, row);
     byDate.set(row.date, entry);
     perEx.set(name, byDate);
     const sm = sessMap.get(row.sessionId) ?? { date: row.date, day: row.day, names: new Set<string>(), sets: 0, phys: { hrs: [], maxHr: 0, durMin: 0, kcal: 0 } };
     if (row.day && !sm.day) sm.day = row.day;
-    sm.names.add(name); sm.sets += validSets.length; if (row.date < sm.date) sm.date = row.date;
-    addPhysio(sm.phys, row);
+    sm.names.add(name);
+    if (!isDuplicateSets) {
+      sm.sets += validSets.length;
+      addPhysio(sm.phys, row);
+    }
+    if (row.date < sm.date) sm.date = row.date;
     sessMap.set(row.sessionId, sm);
   }
 
@@ -376,6 +387,7 @@ export function weeklyVolume(
   to: string | null = null,
 ): Map<string, Map<string, number>> {
   const out = new Map<string, Map<string, number>>();
+  const seenDaySigs = new Set<string>();
   for (const row of [...rows].sort((a, b) => a.ts - b.ts)) {
     if (!row || !isValidIsoDate(row.date) || !Array.isArray(row.sets)) continue;
     if (from && row.date < from) continue;
@@ -384,7 +396,11 @@ export function weeklyVolume(
       x && Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0 && isCountedSet(x),
     );
     if (!validSets.length) continue;
-    const m = musclesOf(resolveName(row.ref, s), s);
+    const name = resolveName(row.ref, s);
+    const sigKey = `${norm(name)}|${row.date}|${validSets.map((x) => `${x.w}x${x.r}`).join('|')}`;
+    if (seenDaySigs.has(sigKey)) continue;
+    seenDaySigs.add(sigKey);
+    const m = musclesOf(name, s);
     if (!m) continue;
     const wk = isoWeekStart(row.date);
     const sets = validSets.length;

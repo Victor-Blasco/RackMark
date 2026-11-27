@@ -1073,5 +1073,17 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     }));
     expect(logHtml).toContain('↳D1');
     expect(logHtml).toContain('>W</button>');
+
+    // Deduplica series idénticas en la misma fecha al fusionar alias (ej. Sóleo sentado -> Elevación de gemelos sentado)
+    const aliasSettings = sanitizeSettings({ aliases: { 'Sóleo sentado': 'Elevación de gemelos sentado' } });
+    const dupRows = [
+      { id: 'sh-1', sessionId: 'sh-s1', ts: 1000, date: '2026-11-24', ref: 'name:Sóleo sentado', avgHr: 118, durMin: 12, sets: [{ w: 25, r: 12 }, { w: 25, r: 12 }, { w: 25, r: 10 }] },
+      { id: 'man-1', sessionId: 'man-s1', ts: 2000, date: '2026-11-24', ref: 'name:Elevación de gemelos sentado', sets: [{ w: 25, r: 12 }, { w: 25, r: 12 }, { w: 25, r: 10 }] },
+    ];
+    const dedupAn = analyze(dupRows, aliasSettings);
+    expect(dedupAn.exercises.get('Elevación de gemelos sentado')?.last?.sets).toHaveLength(3);
+    expect(dedupAn.exercises.get('Elevación de gemelos sentado')?.last?.avgHr).toBe(118);
+    const dedupVol = weeklyVolume(dupRows, aliasSettings);
+    expect([...(dedupVol.get('Gemelos')?.values() ?? [])].reduce((a, b) => a + b, 0)).toBe(3);
   });
 });
