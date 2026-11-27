@@ -24,7 +24,7 @@ interface DayMasterListProps {
   onSelectEx: (name: string) => void;
   onStartWorkout: () => void;
   onEditNote: (exName: string) => void;
-  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
+  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string, restSec?: number) => void;
   onMoveRow?: (idx: number, dir: number) => void;
   onDeleteRow?: (idx: number) => void;
   onAddToRoutine?: (exName: string) => void;

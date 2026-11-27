@@ -3,7 +3,7 @@ import { isCompletedSet } from './draftSetHelpers';
 import { finalizePendingRest } from './workoutRestActions';
 
 const clearRestFields = (live: LiveWorkout): LiveWorkout => {
-  const { restStartedAt: _s, restUntil: _u, restRef: _r, ...rest } = live;
+  const { restStartedAt: _s, restUntil: _u, restPausedRemSec: _p, restRef: _r, ...rest } = live;
   return rest;
 };
 
@@ -35,6 +35,7 @@ export function applyToggleLiveSet(
   ei: number,
   si: number,
   toast: (msg: string) => void,
+  exerciseRestSec?: number,
 ): { nextLive: LiveWorkout; changed: boolean; advanced: boolean } {
   const ex = live.exercises[ei];
   const s = ex?.sets[si];
@@ -82,13 +83,20 @@ export function applyToggleLiveSet(
       /* vibración opcional según navegador */
     }
 
+    const nextSet = nextExercises[ei].sets[si + 1];
+    const hasPendingDrop = nextSet?.kind === 'D' && !isCompletedSet(nextSet);
     const hasMore = nextExercises.some((e) => e.sets.some((x) => !isCompletedSet(x)));
-    if (hasMore) {
+    if (hasPendingDrop) {
+      workingLive = clearRestFields(workingLive);
+      toast('Sin descanso → pasa directa a la Drop.');
+    } else if (hasMore) {
       const restStartedAt = Date.now();
+      const restDur = Math.max(15, exerciseRestSec ?? workingLive.targetRestSec);
+      const { restPausedRemSec: _p, ...cleanLive } = workingLive;
       workingLive = {
-        ...workingLive,
+        ...cleanLive,
         restStartedAt,
-        restUntil: restStartedAt + workingLive.targetRestSec * 1000,
+        restUntil: restStartedAt + restDur * 1000,
         restRef: { ei, si },
       };
     } else {

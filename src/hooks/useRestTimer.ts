@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-type RestTimerMode = 'running' | 'done' | 'idle';
+type RestTimerMode = 'running' | 'paused' | 'done' | 'idle';
 
 /** Estado calculado del temporizador de descanso entre series. */
 interface RestTimerSnapshot {
-  /** Fase actual del cronómetro: contando, terminado o en espera. */
+  /** Fase actual del cronómetro: contando, en pausa, terminado o en espera. */
   mode: RestTimerMode;
   /** Segundos restantes hasta el fin del descanso. */
   remSec: number;
@@ -19,7 +19,11 @@ function calcRestTimerState(
   restUntil?: number,
   targetRestSec = 90,
   now = Date.now(),
+  restPausedRemSec?: number,
 ): RestTimerSnapshot {
+  if (restPausedRemSec != null && restPausedRemSec > 0) {
+    return { mode: 'paused', remSec: Math.round(restPausedRemSec), restSec: targetRestSec };
+  }
   const remSec = restUntil != null ? Math.max(0, Math.ceil((restUntil - now) / 1000)) : 0;
   const mode: RestTimerMode = restUntil != null && remSec > 0 ? 'running' : restUntil != null ? 'done' : 'idle';
   return { mode, remSec, restSec: targetRestSec };
@@ -30,17 +34,19 @@ function calcRestTimerState(
  *
  * @param restUntil - Marca temporal objetivo en milisegundos epoch.
  * @param targetRestSec - Duración objetivo por defecto en segundos.
+ * @param restPausedRemSec - Segundos restantes cuando el descanso está en pausa.
  * @returns Instantánea reactiva `{ mode, remSec, restSec }`.
  */
 export function useRestTimer(
   restUntil?: number,
   targetRestSec = 90,
+  restPausedRemSec?: number,
 ): RestTimerSnapshot {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
     setNow(Date.now());
-    if (restUntil == null || restUntil <= Date.now()) return;
+    if (restPausedRemSec != null || restUntil == null || restUntil <= Date.now()) return;
 
     const timer = window.setInterval(() => {
       const current = Date.now();
@@ -49,7 +55,7 @@ export function useRestTimer(
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [restUntil]);
+  }, [restUntil, restPausedRemSec]);
 
-  return calcRestTimerState(restUntil, targetRestSec, now);
+  return calcRestTimerState(restUntil, targetRestSec, now, restPausedRemSec);
 }

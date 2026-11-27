@@ -8,9 +8,9 @@ import type { LiveWorkout } from '../types';
  * @returns Nueva referencia de `LiveWorkout` sin temporizador pendiente.
  */
 export function finalizePendingRest(live: LiveWorkout): LiveWorkout {
-  const { restStartedAt, restUntil: _until, restRef, ...restClean } = live;
+  const { restStartedAt, restUntil: _until, restPausedRemSec: _paused, restRef, ...restClean } = live;
   if (restStartedAt == null) {
-    return live;
+    return restClean;
   }
 
   const elapsedSec = Math.min(1800, Math.max(1, Math.round((Date.now() - restStartedAt) / 1000)));
@@ -52,8 +52,9 @@ export function createWorkoutRestActions(
       const base = finalizePendingRest(live);
       const targetRestSec = Math.max(15, sec || 90);
       const restStartedAt = Date.now();
+      const { restPausedRemSec: _paused, ...cleanBase } = base;
       commit({
-        ...base,
+        ...cleanBase,
         targetRestSec,
         restStartedAt,
         restUntil: restStartedAt + targetRestSec * 1000,
@@ -63,13 +64,47 @@ export function createWorkoutRestActions(
     adjustRest(deltaSec: number) {
       const live = getLive();
       if (!live) return;
+      const delta = deltaSec || 0;
+      if (live.restPausedRemSec != null) {
+        if (delta < 0 && live.restPausedRemSec <= Math.abs(delta)) {
+          commit(finalizePendingRest(live));
+          return;
+        }
+        commit({ ...live, restPausedRemSec: Math.max(1, live.restPausedRemSec + delta) });
+        return;
+      }
       const now = Date.now();
+      const remSec = live.restUntil != null ? Math.ceil((live.restUntil - now) / 1000) : 0;
+      if (delta < 0 && live.restUntil != null && remSec <= Math.abs(delta)) {
+        commit(finalizePendingRest(live));
+        return;
+      }
       const base = Math.max(now, live.restUntil ?? now);
       commit({
         ...live,
         restStartedAt: live.restStartedAt ?? now,
-        restUntil: Math.max(now + 1000, base + (deltaSec || 0) * 1000),
+        restUntil: Math.max(now + 1000, base + delta * 1000),
       });
+    },
+
+    togglePauseRest() {
+      const live = getLive();
+      if (!live) return;
+      const now = Date.now();
+      if (live.restPausedRemSec != null) {
+        const { restPausedRemSec, ...rest } = live;
+        commit({
+          ...rest,
+          restStartedAt: live.restStartedAt ?? now,
+          restUntil: now + restPausedRemSec * 1000,
+        });
+        return;
+      }
+      if (live.restUntil != null && live.restUntil > now) {
+        const rem = Math.max(1, Math.ceil((live.restUntil - now) / 1000));
+        const { restUntil: _u, ...rest } = live;
+        commit({ ...rest, restPausedRemSec: rem });
+      }
     },
 
     stopRest() {

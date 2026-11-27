@@ -222,7 +222,13 @@ function sanitizeRoutines(raw: unknown): Record<DayName, RoutineEx[]> | null {
       const sets = fin(ex.sets);
       const reps = fin(ex.reps);
       if (!sets || sets <= 0 || !reps || reps <= 0) return [];
-      return [{ name: ex.name.trim(), sets, reps }];
+      const restSec = fin(ex.restSec);
+      return [{
+        name: ex.name.trim(),
+        sets,
+        reps,
+        ...(restSec !== undefined && restSec >= 15 && restSec <= 1800 ? { restSec: Math.round(restSec) } : {}),
+      }];
     });
   }
   return Object.keys(cleanRoutines).length > 0 ? cleanRoutines : null;
@@ -346,12 +352,14 @@ function sanitizeStrengthRow(r: unknown): StrengthRow | null {
     const reps = fin(s.r);
     const restSec = fin(s.restSec);
     const rir = fin(s.rir);
+    const kind = s.kind === 'W' || s.kind === 'F' || s.kind === 'D' ? (s.kind as 'W' | 'F' | 'D') : undefined;
     return w !== undefined && w >= 0 && reps !== undefined && reps > 0
       ? [{
           w,
           r: reps,
           ...(restSec !== undefined && restSec >= 0 && restSec <= 1800 ? { restSec: Math.round(restSec) } : {}),
           ...(rir !== undefined && rir >= 0 && rir <= 10 ? { rir: Math.round(rir) } : {}),
+          ...(kind ? { kind } : {}),
         }]
       : [];
   });

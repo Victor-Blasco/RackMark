@@ -2,48 +2,58 @@ import { useRestTimer } from '../../hooks/useRestTimer';
 import { fmtMMSS } from '../../ui/restAudio';
 import { Icon } from '../common/Icon';
 
-const REST_PRESETS = [60, 90, 120, 180] as const;
-
 interface RestTimerBarProps {
   /** Marca temporal de fin de descanso activo en milisegundos epoch. */
   restUntil?: number;
-  /** Descanso objetivo por defecto en segundos (`90` si se omite). */
+  /** Segundos restantes guardados si el temporizador está pausado. */
+  restPausedRemSec?: number;
+  /** Descanso objetivo del ejercicio o sesión en segundos (`90` si se omite). */
   targetRestSec?: number;
-  /** Ajusta el temporizador activo sumando o restando segundos. */
+  /** Ajusta el temporizador activo sumando o restando segundos (`±30s`). */
   onAdjust?: (deltaSec: number) => void;
-  /** Inicia un descanso manual con la duración elegida. */
+  /** Pausa o reanuda el temporizador activo. */
+  onTogglePause?: () => void;
+  /** Inicia un descanso manual con la duración configurada. */
   onStart?: (sec: number) => void;
   /** Detiene y registra el descanso pendiente. */
   onStop?: () => void;
-  /** Cambia el descanso automático por defecto entre series. */
-  onSelectPreset?: (sec: number) => void;
 }
 
 /**
- * Barra de cronómetro de descanso entre series en sus estados activo, completado o en espera.
+ * Barra de cronómetro de descanso entre series en sus estados activo, pausado, completado o en espera.
  */
 export function RestTimerBar({
   restUntil,
+  restPausedRemSec,
   targetRestSec = 90,
   onAdjust,
+  onTogglePause,
   onStart,
   onStop,
-  onSelectPreset,
 }: RestTimerBarProps) {
-  const { mode, remSec, restSec } = useRestTimer(restUntil, targetRestSec);
+  const { mode, remSec, restSec } = useRestTimer(restUntil, targetRestSec, restPausedRemSec);
 
-  if (mode === 'running') {
+  if (mode === 'running' || mode === 'paused') {
+    const isPaused = mode === 'paused';
     return (
-      <div id="rest-timer-bar" data-rest-state="running" class="border-l-4 border-electricBlue bg-electricBlue/10 px-3 py-2 rounded-r-xl">
+      <div
+        id="rest-timer-bar"
+        data-rest-state={mode}
+        class={`border-l-4 px-3 py-2.5 rounded-r-xl ${isPaused ? 'border-amberGold bg-amberGold/10' : 'border-electricBlue bg-electricBlue/10'}`}
+      >
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex items-center gap-2.5">
             <span id="rest-timer-val" class="tabular-nums text-2xl font-extrabold text-white">{fmtMMSS(remSec)}</span>
-            <span class="text-xs font-semibold uppercase tracking-wide text-blue-300">Descanso</span>
+            <span class={`text-xs font-semibold uppercase tracking-wide ${isPaused ? 'text-amberGold' : 'text-blue-300'}`}>
+              {isPaused ? 'En pausa' : 'Descanso'}
+            </span>
           </div>
-          <div class="flex items-center gap-1.5">
-            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 tabular-nums" aria-label="Restar 15 segundos" onClick={() => onAdjust?.(-15)}>−15s</button>
+          <div class="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
+            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 tabular-nums" aria-label="Restar 30 segundos" onClick={() => onAdjust?.(-30)}>−30s</button>
+            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 border-electricBlue/50 text-blue-200 hover:border-electricBlue" onClick={() => onTogglePause?.()}>
+              {isPaused ? 'Reanudar' : 'Pausar'}
+            </button>
             <button type="button" class="btn min-h-[48px] sm:min-h-[44px] px-3 tabular-nums" aria-label="Sumar 30 segundos" onClick={() => onAdjust?.(30)}>+30s</button>
-            <button type="button" class="btn min-h-[48px] sm:min-h-[44px] border-emeraldGreen/50 hover:border-emeraldGreen px-3 text-emerald-300" onClick={() => onStop?.()}>Listo</button>
           </div>
         </div>
       </div>
@@ -58,10 +68,8 @@ export function RestTimerBar({
             <span class="h-2.5 w-2.5 rounded-full bg-emeraldGreen" aria-hidden="true" />
             <span class="text-sm font-bold text-emerald-300">¡Descanso listo!</span>
           </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            {REST_PRESETS.map((p) => (
-              <button key={p} type="button" class="btn min-h-[44px] min-w-[44px] px-2.5 text-xs tabular-nums" onClick={() => onStart?.(p)}>{p}s</button>
-            ))}
+          <div class="flex items-center gap-1.5">
+            <button type="button" class="btn min-h-[44px] px-3 text-xs tabular-nums" onClick={() => onStart?.(restSec)}>Repetir {fmtMMSS(restSec)}</button>
             <button type="button" class="btn min-h-[44px] px-3 text-xs" onClick={() => onStop?.()}>Cerrar</button>
           </div>
         </div>
@@ -71,28 +79,14 @@ export function RestTimerBar({
 
   return (
     <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-gray-400">Descanso auto: <b class="text-white tabular-nums">{restSec}s</b></span>
-        <button
-          type="button"
-          class="btn min-h-[44px] sm:min-h-[36px] px-2.5 text-xs font-semibold text-blue-300"
-          onClick={() => onStart?.(restSec)}
-        >
-          <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {restSec}s
-        </button>
-      </div>
-      <div class="inline-flex items-center gap-1 rounded-xl bg-white/5 p-1">
-        {REST_PRESETS.map((p) => (
-          <button
-            key={p}
-            type="button"
-            class={`min-h-[44px] min-w-[44px] sm:min-h-[36px] rounded-lg px-2.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${p === restSec ? 'bg-electricBlue/25 text-blue-200' : 'text-gray-400 hover:text-white'}`}
-            onClick={() => onSelectPreset?.(p)}
-          >
-            {p}s
-          </button>
-        ))}
-      </div>
+      <span class="text-gray-400">Descanso de serie: <b class="text-white tabular-nums">{fmtMMSS(restSec)}</b></span>
+      <button
+        type="button"
+        class="btn min-h-[44px] min-w-[44px] sm:min-h-[36px] px-3 text-xs font-semibold text-blue-300 tabular-nums"
+        onClick={() => onStart?.(restSec)}
+      >
+        <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {fmtMMSS(restSec)}
+      </button>
     </div>
   );
 }

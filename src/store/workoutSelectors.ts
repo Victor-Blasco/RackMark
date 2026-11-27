@@ -178,6 +178,7 @@ export function buildLiveWorkoutViewModel(state: State, live: LiveWorkout) {
   const routines = routineNames(state.settings);
   const rIdx = routines.indexOf(live.day);
   const prevBannerEx = live.lastCompletedExIdx != null ? live.exercises[live.lastCompletedExIdx] : undefined;
+  const activeCtx = currentEx ? exerciseContext(state, live.day, currentEx) : undefined;
   return {
     total,
     curIdx,
@@ -190,7 +191,8 @@ export function buildLiveWorkoutViewModel(state: State, live: LiveWorkout) {
     prevBannerEx,
     prevSummary: prevBannerEx ? buildExerciseCompletionSummary(state, prevBannerEx) : undefined,
     dayColor: rIdx >= 0 ? routineColor(live.day, state.settings, rIdx) : '#9CA3AF',
-    activeCtx: currentEx ? exerciseContext(state, live.day, currentEx) : undefined,
+    activeCtx,
+    activeRestSec: activeCtx?.tgt?.restSec ?? live.targetRestSec,
     elapsedLabel: fmtElapsed(live.startedAt),
     menuItems: live.exercises.map((item, idx) => ({ item, idx, ...liveExQuickInfo(state, live.day, item) })),
   };

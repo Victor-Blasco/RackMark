@@ -162,6 +162,17 @@ export function createRoutineEditActions(deps: RoutineEditDeps) {
 
     changeRoutineExSets: (day: string, idx: number, raw: string) => changeRowNum(day, idx, 'sets', raw),
     changeRoutineExReps: (day: string, idx: number, raw: string) => changeRowNum(day, idx, 'reps', raw),
+    async changeRoutineExRest(day: string, idx: number, restSec?: number) {
+      if (!state().settings.routines[day]?.[idx]) return;
+      const clean = restSec != null && Number.isFinite(restSec) && restSec >= 15
+        ? Math.min(1800, Math.round(restSec))
+        : undefined;
+      await updateRoutineRows(day, (list) => list.map((item, i) => {
+        if (i !== idx) return item;
+        const { restSec: _prev, ...base } = item;
+        return clean != null ? { ...base, restSec: clean } : base;
+      }));
+    },
 
     async changeRoutineFreq(day: string, nextFreq: number) {
       const S = state();

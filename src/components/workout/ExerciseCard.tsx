@@ -3,6 +3,7 @@ import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LiveWorkoutActions } from '../../store/workoutActions';
 import type { LogExDraft } from '../../types';
+import { fmtMMSS } from '../../ui/restAudio';
 import { Collapsible } from '../common/Collapsible';
 import { ExercisePrescriptionBanner } from '../common/ExercisePrescriptionBanner';
 import { Icon } from '../common/Icon';
@@ -52,6 +53,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             <h2 class="text-xl font-extrabold text-white leading-tight">{ex.name}</h2>
             <p class="mt-0.5 text-xs text-gray-300 tabular-nums">
               {ctx.tgt && <><span class="text-gray-400">Objetivo {ctx.tgt.sets}×{ctx.tgt.reps}</span> · </>}
+              {ctx.tgt?.restSec != null && <><span class="text-blue-300">Descanso {fmtMMSS(ctx.tgt.restSec)}</span> · </>}
               {ctx.lastRef}
             </p>
           </div>
@@ -83,15 +85,30 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
 
       <div>
         <div class="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-          <span class="w-5 shrink-0 text-center">#</span>
+          <span class="w-9 shrink-0 text-center">Tipo</span>
           <span class="flex-1 text-center">Peso (kg)</span>
           <span class="flex-1 text-center">Reps</span>
           <span class="w-12 sm:w-20 shrink-0 text-center">OK</span>
         </div>
         <div class="divide-y divide-white/10 border-y border-white/10">
-          {ex.sets.map((s, si) => (
-            <SetRow key={si} setIndex={si} set={s} targetRestSec={targetRestSec} showDetails={showDetails} onStepWeight={(d) => actions.stepWeight(curIdx, si, d)} onWeightChange={(raw, fin) => actions.updateWeight(curIdx, si, raw, fin)} onStepReps={(d) => actions.stepReps(curIdx, si, d)} onRepsChange={(raw, fin) => actions.updateReps(curIdx, si, raw, fin)} onToggleDone={() => actions.toggleSet(curIdx, si)} onRirChange={(raw) => actions.updateRir(curIdx, si, raw)} onRestChange={(raw) => actions.updateRest(curIdx, si, raw)} />
-          ))}
+          {ex.sets.map((s, si) => {
+            let effIdx = 0;
+            for (let j = 0; j <= si; j++) if (ex.sets[j].kind !== 'W' && ex.sets[j].kind !== 'D') effIdx++;
+            let dropIdx = 0;
+            for (let j = si; j >= 0 && ex.sets[j].kind === 'D'; j--) dropIdx++;
+            const tagLabel = s.kind === 'W' ? 'W' : s.kind === 'D' ? `↳D${dropIdx}` : `${s.kind === 'F' ? 'F' : 'S'}${effIdx}`;
+            return (
+              <SetRow
+                key={si} setIndex={si} tagLabel={tagLabel} nextDropNum={dropIdx + 1} canDelete={ex.sets.length > 1}
+                set={s} targetRestSec={targetRestSec} showDetails={showDetails}
+                onStepWeight={(d) => actions.stepWeight(curIdx, si, d)} onWeightChange={(raw, fin) => actions.updateWeight(curIdx, si, raw, fin)}
+                onStepReps={(d) => actions.stepReps(curIdx, si, d)} onRepsChange={(raw, fin) => actions.updateReps(curIdx, si, raw, fin)}
+                onToggleDone={() => actions.toggleSet(curIdx, si)} onRirChange={(raw) => actions.updateRir(curIdx, si, raw)}
+                onRestChange={(raw) => actions.updateRest(curIdx, si, raw)} onSelectKind={(k) => actions.setSetKind(curIdx, si, k)}
+                onAddDrop={() => actions.addDropSet(curIdx, si)} onRemoveDrop={() => actions.delSet(curIdx, si)}
+              />
+            );
+          })}
         </div>
         <Collapsible open={showDetails} keepMounted>
           <p class="px-1 pt-1.5 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>

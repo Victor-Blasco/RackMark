@@ -2,7 +2,7 @@ import { h } from 'preact';
 import renderToString from 'preact-render-to-string';
 import { describe, expect, it } from 'vitest';
 import { buildPayload } from '../src/lib/ai';
-import { analyze, describeStatus, judge } from '../src/lib/analysis';
+import { analyze, describeStatus, judge, weeklyVolume } from '../src/lib/analysis';
 import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
 import { WorkoutSummaryModal } from '../src/components/modals/WorkoutSummaryModal';
@@ -747,8 +747,8 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(popupHtml).toContain('+2,5 kg máx');
     expect(popupHtml).toContain('+ Serie extra');
 
-    // 3. RestTimerBar en espera permite inicio manual; RIR explicado en móvil en En vivo y Registrar hecho
-    expect(renderToString(h(RestTimerBar, { targetRestSec: 90 }))).toContain('Iniciar 90s');
+    // 3. RestTimerBar en espera permite inicio manual (m:ss); RIR explicado en móvil en En vivo y Registrar hecho
+    expect(renderToString(h(RestTimerBar, { targetRestSec: 90 }))).toContain('Iniciar 1:30');
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: liveIdle } }));
     expect(liveHtml).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
     expect(liveHtml).toContain('aria-label="Opciones de Press de banca"');
@@ -899,5 +899,88 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     );
     expect(modalHtml).toContain('Guardado solo en el historial de hoy');
     expect(modalHtml).toContain('+ Fijar en Push');
+  });
+
+  it('soporta tipos de serie (W/S/F/D), dropset sin descanso, pausa y descanso por ejercicio', () => {
+    const cleanSet = sanitizeSettings({
+      routines: {
+        Push: [{ name: 'Press de banca', sets: 3, reps: 8, restSec: 180 }],
+      },
+    });
+    expect(cleanSet.routines.Push[0].restSec).toBe(180);
+
+    // 1. Dropset encadenado: completar serie con D pendiente debajo NO arranca descanso
+    const baseState: State = {
+      tab: 'workout',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: cleanSet,
+      analysis: analyze([], cleanSet),
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    };
+    let live = initLiveWorkout(baseState, 'Push');
+    live = {
+      ...live,
+      exercises: [
+        {
+          name: 'Press de banca',
+          done: false,
+          note: '',
+          sets: [
+            { w: 40, r: 10, kind: 'W' },
+            { w: 80, r: 8 },
+            { w: 62.5, r: 8, kind: 'D' },
+          ],
+        },
+      ],
+    };
+    const msgs: string[] = [];
+    const r1 = applyToggleLiveSet(live, 0, 1, (m) => msgs.push(m), 180);
+    expect(r1.nextLive.restUntil).toBeUndefined();
+    expect(msgs.at(-1)).toContain('Drop');
+
+    // Al completar la Drop sí arranca descanso usando restSec del ejercicio (180s)
+    const r2 = applyToggleLiveSet(r1.nextLive, 0, 2, (m) => msgs.push(m), 180);
+    expect(r2.nextLive.restUntil).toBeTypeOf('number');
+    expect((r2.nextLive.restUntil! - r2.nextLive.restStartedAt!) / 1000).toBe(180);
+
+    // 2. Pausa y -30s cuando quedan <= 30s termina el descanso
+    let curLive: typeof live | undefined = r2.nextLive;
+    const restAct = createWorkoutRestActions(() => curLive, (n) => { curLive = n; });
+    restAct.togglePauseRest();
+    expect(curLive?.restPausedRemSec).toBeGreaterThan(0);
+    expect(curLive?.restUntil).toBeUndefined();
+    restAct.adjustRest(-200);
+    expect(curLive?.restPausedRemSec).toBeUndefined();
+    expect(curLive?.restUntil).toBeUndefined();
+
+    // 3. Calentamiento (W) excluido de volumen/e1RM y Drop (D) no infla series semanales
+    const today = todayIso();
+    const rows = [
+      {
+        id: 's1',
+        sessionId: 'sess-1',
+        ts: 1000,
+        date: today,
+        ref: 'name:Press de banca',
+        day: 'Push',
+        sets: [
+          { w: 40, r: 10, kind: 'W' as const },
+          { w: 80, r: 8 },
+          { w: 60, r: 10, kind: 'D' as const },
+        ],
+      },
+    ];
+    const an = analyze(rows, cleanSet);
+    const bench = an.exercises.get('Press de banca')!;
+    expect(bench.last?.volume).toBe(80 * 8 + 60 * 10);
+    const vol = weeklyVolume(rows, cleanSet);
+    const chestMap = vol.get('Pecho');
+    const weekTotal = [...(chestMap?.values() ?? [])].reduce((a, b) => a + b, 0);
+    expect(weekTotal).toBe(1);
   });
 });

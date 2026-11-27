@@ -121,6 +121,7 @@ export function PlanRoutinesTab({ state, actions, onOpenRoutineTab }: PlanRoutin
                       onOpenPicker={() => actions.openRoutineExercisePicker(activeRoutine, i)}
                       onChangeSets={(val) => void actions.changeRoutineExSets(activeRoutine, i, val)}
                       onChangeReps={(val) => void actions.changeRoutineExReps(activeRoutine, i, val)}
+                      onChangeRest={(sec) => void actions.changeRoutineExRest(activeRoutine, i, sec)}
                       onMove={(dir) => {
                         const rects = captureFlipRects(listRef.current);
                         if (rects.size) pendingFlipRef.current = { rects, key: rowKey };

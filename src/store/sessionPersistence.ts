@@ -46,6 +46,7 @@ export async function persistCompletedSession(
         r: Math.max(1, Math.round(Number(s.r) || 0)),
         ...(s.restSec != null && Number.isFinite(s.restSec) && s.restSec >= 0 ? { restSec: Math.round(s.restSec) } : {}),
         ...(s.rir != null && Number.isFinite(s.rir) && s.rir >= 0 && s.rir <= 10 ? { rir: Math.round(s.rir) } : {}),
+        ...(s.kind === 'W' || s.kind === 'F' || s.kind === 'D' ? { kind: s.kind } : {}),
       }));
     if (!sets.length) continue;
     const durMin = ex.meta?.durMin ?? opts.defaultDurPerEx;
@@ -114,18 +115,21 @@ export function buildWorkoutSummary(state: State, live: LiveWorkout, savedExerci
   const extraExercises: NonNullable<WorkoutSummary['extraExercises']> = [];
   for (const ex of validEx) {
     const doneSets = ex.sets.filter(isCompletedSet);
-    sets += doneSets.length;
-    for (const s of doneSets) tonnageKg += Math.max(0, s.w) * s.r;
+    const workSets = doneSets.filter((s) => s.kind !== 'W');
+    const countedSets = workSets.filter((s) => s.kind !== 'D');
+    const effSets = countedSets.length ? countedSets : workSets;
+    sets += countedSets.length;
+    for (const s of workSets) tonnageKg += Math.max(0, s.w) * s.r;
     if (plannedNorms && !plannedNorms.has(norm(ex.name))) {
-      extraExercises.push({ name: ex.name, sets: doneSets.length, reps: doneSets[0]?.r ?? 10 });
+      extraExercises.push({ name: ex.name, sets: countedSets.length || doneSets.length, reps: effSets[0]?.r ?? doneSets[0]?.r ?? 10 });
     }
     const prev = findAnalyzedExercise(state.analysis, ex.name);
-    if (prev && prev.n > 0) {
-      const bestW = Math.max(...doneSets.map((s) => s.w));
-      const bestE1rm = Math.max(...doneSets.map((s) => epley(s.w, s.r)));
+    if (prev && prev.n > 0 && workSets.length > 0) {
+      const bestW = Math.max(...workSets.map((s) => s.w));
+      const bestE1rm = Math.max(...workSets.map((s) => epley(s.w, s.r)));
       if (bestW === 0 && prev.maxWeight === 0) {
         const prevMaxReps = Math.max(0, ...prev.sessions.map((s) => s.repsAtTop));
-        if (Math.max(...doneSets.map((s) => s.r)) > prevMaxReps) prNames.push(ex.name);
+        if (Math.max(...workSets.map((s) => s.r)) > prevMaxReps) prNames.push(ex.name);
       } else if (bestW > prev.maxWeight + 0.05 || bestE1rm > prev.maxE1rm + 0.05) {
         prNames.push(ex.name);
       }

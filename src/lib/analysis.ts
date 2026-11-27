@@ -2,6 +2,8 @@ import type { DayName, Settings, StrengthRow, MuscleMap, Measure, RoutineEx, Set
 import { BUILTIN_REF_NAMES, DEFAULT_MUSCLES, MUSCLE_DAY, isValidIsoDate, norm, todayIso } from './seed';
 
 export const epley = (w: number, r: number) => (r <= 1 ? w : w * (1 + r / 30));
+export const isWorkSet = (s: SetRec) => s.kind !== 'W';
+export const isCountedSet = (s: SetRec) => s.kind !== 'W' && s.kind !== 'D';
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
 
 export function resolveName(ref: string, s: Settings): string {
@@ -70,7 +72,7 @@ export function judge(sessions: ExSession[], t?: RoutineEx): Pick<ExStats, 'stat
   if (!last) return { status: 'Sin datos', statusColor: 'gray', prescription: 'Importa tus sesiones para ver recomendaciones.' };
   const minReps = t?.reps ?? 10;
   const nSets = t?.sets ?? 2;
-  const atTop = last.sets.filter((x) => x.w === last.top);
+  const atTop = last.sets.filter((x) => isCountedSet(x) && x.w === last.top);
   const hit = atTop.length >= nSets && atTop.slice(0, nSets).every((x) => x.r >= minReps);
   const missing = Math.max(0, nSets * minReps - atTop.slice(0, nSets).reduce((a, b) => a + b.r, 0));
 
@@ -252,13 +254,15 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
   const exercises = new Map<string, ExStats>();
   for (const [name, byDate] of perEx) {
     const sessions: ExSession[] = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, { sets, notes, phys }]) => {
-      const top = Math.max(...sets.map((x) => x.w));
+      const workSets = sets.filter(isWorkSet);
+      const active = workSets.length ? workSets : sets;
+      const top = Math.max(...active.map((x) => x.w));
       const note = notes.length ? [...new Set(notes)].join(' · ') : undefined;
       return {
         date, sets, top,
-        repsAtTop: Math.max(...sets.filter((x) => x.w === top).map((x) => x.r)),
-        volume: round(sets.reduce((a, x) => a + x.w * x.r, 0)),
-        e1rm: round(Math.max(...sets.map((x) => epley(x.w, x.r)))),
+        repsAtTop: Math.max(...active.filter((x) => x.w === top).map((x) => x.r)),
+        volume: round(active.reduce((a, x) => a + x.w * x.r, 0)),
+        e1rm: round(Math.max(...active.map((x) => epley(x.w, x.r)))),
         ...summarizePhysio(phys),
         ...(note ? { note } : {}),
       };
@@ -349,7 +353,7 @@ export function weeklyVolume(
     if (from && row.date < from) continue;
     if (to && row.date > to) continue;
     const validSets = row.sets.filter((x) =>
-      x && Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0,
+      x && Number.isFinite(x.w) && x.w >= 0 && Number.isFinite(x.r) && x.r > 0 && isCountedSet(x),
     );
     if (!validSets.length) continue;
     const m = musclesOf(resolveName(row.ref, s), s);

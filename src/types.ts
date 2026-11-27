@@ -1,6 +1,8 @@
 export type DayName = string;
 
-export interface SetRec { w: number; r: number; done?: boolean; restSec?: number; rir?: number }
+export type SetKind = 'W' | 'S' | 'F' | 'D';
+
+export interface SetRec { w: number; r: number; done?: boolean; restSec?: number; rir?: number; kind?: SetKind }
 
 /** Una fila de fuerza de Samsung Health = un ejercicio dentro de una sesión. */
 export interface StrengthRow {
@@ -55,6 +57,7 @@ export interface LiveWorkout {
   targetRestSec: number;
   restStartedAt?: number;
   restUntil?: number;
+  restPausedRemSec?: number;
   restRef?: { ei: number; si: number };
   lastCompletedExIdx?: number;
   pickerMode?: 'swap' | 'add';
@@ -118,7 +121,7 @@ export const MEASURE_FIELDS: { key: NumericMeasureKey; label: string; unit: stri
   { key: 'calfR', label: 'Gemelo der.', unit: 'cm' },
 ];
 
-export interface RoutineEx { name: string; sets: number; reps: number }
+export interface RoutineEx { name: string; sets: number; reps: number; restSec?: number }
 export interface MuscleMap { p: string; s: string[] }
 export type AiTone = 'simple' | 'technical';
 export type ThemeMode = 'dark' | 'light' | 'system';

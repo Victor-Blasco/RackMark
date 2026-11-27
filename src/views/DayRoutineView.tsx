@@ -32,9 +32,10 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
   const routineRows = state.settings.routines[day] ?? [];
   const totalRoutines = routineNames(state.settings).length;
 
-  const updateTarget = async (idx: number, setsRaw: string, repsRaw: string) => {
+  const updateTarget = async (idx: number, setsRaw: string, repsRaw: string, restSec?: number) => {
     await plan.changeRoutineExSets(day, idx, setsRaw);
     await plan.changeRoutineExReps(day, idx, repsRaw);
+    await plan.changeRoutineExRest(day, idx, restSec);
   };
 
   const organizeBar = (
@@ -120,7 +121,7 @@ export function DayRoutineView({ day, state: propState }: DayRoutineViewProps) {
         onSelectEx={(name) => plan.selectDayEx(day, name)}
         onStartWorkout={() => plan.startWorkout(day)}
         onEditNote={openFixedNote}
-        onUpdateTarget={(idx, setsRaw, repsRaw) => void updateTarget(idx, setsRaw, repsRaw)}
+        onUpdateTarget={(idx, setsRaw, repsRaw, restSec) => void updateTarget(idx, setsRaw, repsRaw, restSec)}
         onMoveRow={(idx, dir) => void plan.moveRoutineRow(day, idx, dir)}
         onDeleteRow={(idx) => void plan.deleteRoutineRow(day, idx)}
         onAddToRoutine={(name) => {

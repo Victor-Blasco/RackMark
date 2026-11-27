@@ -1,3 +1,4 @@
+import { norm } from '../lib/seed';
 import type { DayName, LiveWorkout } from '../types';
 import type { State, WorkoutSummary } from '../ui/shared';
 import { manualSessionId } from './exerciseCatalog';
@@ -48,9 +49,16 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
     if (typeof window !== 'undefined') window.scrollTo?.(0, 0);
   };
 
+  const getExRestSec = (live: LiveWorkout, ei: number) => {
+    const ex = live.exercises[ei];
+    if (!ex || live.day === 'Libre') return undefined;
+    const rows = deps.getState().settings.routines[live.day] ?? [];
+    return rows.find((r) => norm(r.name) === norm(ex.name))?.restSec;
+  };
+
   return {
     ...createWorkoutRestActions(getLive, deps.commitLive),
-    ...createWorkoutSetActions(getLive, deps.saveLiveOnly, deps.commitLive, deps.toast),
+    ...createWorkoutSetActions(getLive, deps.saveLiveOnly, deps.commitLive, deps.toast, getExRestSec),
     ...createWorkoutPickerActions(deps.getState, getLive, deps.commitLive, deps.toast, deps.askConfirm),
     selectExercise,
 

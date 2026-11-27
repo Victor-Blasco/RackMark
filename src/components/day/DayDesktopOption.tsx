@@ -16,7 +16,7 @@ interface DayDesktopOptionProps {
   organizeMode: boolean;
   onSelect: () => void;
   onKeyDown: (ev: KeyboardEvent) => void;
-  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
+  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string, restSec?: number) => void;
   onMoveRow?: (idx: number, dir: number) => void;
   onDeleteRow?: (idx: number) => void;
   onAddToRoutine?: (exName: string) => void;
@@ -51,7 +51,7 @@ export function DayDesktopOption({
         <span class="font-medium tabular-nums truncate">{summary}</span>
         <div class="flex shrink-0 items-center gap-1">
           {rRow && onUpdateTarget ? (
-            <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} onSave={(s, r) => onUpdateTarget(rIdx, s, r)} />
+            <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} restSec={rRow.restSec} onSave={(s, r, rest) => onUpdateTarget(rIdx, s, r, rest)} />
           ) : (
             <div class="flex shrink-0 items-center">
               <span class="shrink-0 text-xs text-gray-400 tabular-nums">{x.n} ses.</span>

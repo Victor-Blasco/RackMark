@@ -1,31 +1,28 @@
-import type { SetRec } from '../../types';
+import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
+import type { SetKind, SetRec } from '../../types';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { StepperInput } from '../common/StepperInput';
+import { SetTypePopover } from './SetTypePopover';
 
 interface SetRowProps {
-  /** Índice base 0 de esta serie dentro del ejercicio. */
   setIndex: number;
-  /** Datos de peso, repeticiones, RIR, descanso y estado de la serie. */
+  tagLabel: string;
+  nextDropNum: number;
+  canDelete: boolean;
   set: SetRec;
-  /** Descanso objetivo mostrado como placeholder si no hay valor registrado. */
   targetRestSec: number;
-  /** Muestra la subfila plegable con RIR y descanso real. */
   showDetails: boolean;
-  /** Incrementa o decrementa el peso mediante botones `−` / `+`. */
   onStepWeight: (delta: number) => void;
-  /** Actualiza el peso al escribir o perder el foco. */
   onWeightChange: (raw: string, finalize: boolean) => void;
-  /** Incrementa o decrementa las repeticiones mediante botones `−` / `+`. */
   onStepReps: (delta: number) => void;
-  /** Actualiza las repeticiones al escribir o perder el foco. */
   onRepsChange: (raw: string, finalize: boolean) => void;
-  /** Marca o desmarca la serie como completada. */
   onToggleDone: () => void;
-  /** Guarda el RIR opcional de la serie. */
   onRirChange: (raw: string) => void;
-  /** Guarda el descanso real opcional en segundos. */
   onRestChange: (raw: string) => void;
+  onSelectKind: (kind: SetKind) => void;
+  onAddDrop: () => void;
+  onRemoveDrop: () => void;
 }
 
 const STEP_BTN =
@@ -39,6 +36,9 @@ const EXTRA_INP =
  */
 export function SetRow({
   setIndex,
+  tagLabel,
+  nextDropNum,
+  canDelete,
   set: s,
   targetRestSec,
   showDetails,
@@ -49,16 +49,48 @@ export function SetRow({
   onToggleDone,
   onRirChange,
   onRestChange,
+  onSelectKind,
+  onAddDrop,
+  onRemoveDrop,
 }: SetRowProps) {
   const n = setIndex + 1;
+  const kind: SetKind = s.kind ?? 'S';
+  const { open, setOpen, triggerRef, menuRef } = useDismissibleMenu();
+  const tagCls = kind === 'W'
+    ? 'border-amberGold/50 text-amberGold bg-amberGold/10'
+    : kind === 'D'
+      ? 'border-electricBlue/50 text-blue-300 bg-electricBlue/10'
+      : kind === 'F'
+        ? 'border-coralRed/50 text-rose-300 bg-coralRed/10'
+        : s.done
+          ? 'border-emeraldGreen/50 text-emerald-300'
+          : 'border-white/15 text-gray-300';
 
   return (
-    <div class={`py-2 transition-colors ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`}>
+    <div class={`relative py-2 transition-colors ${kind === 'D' ? 'pl-2.5 border-l-2 border-electricBlue/70' : ''} ${kind === 'W' ? 'opacity-85' : ''} ${s.done ? 'bg-emeraldGreen/10 -mx-2 px-2 rounded-lg' : ''}`}>
       <div class="flex items-center gap-1.5">
-        <span class={`w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-300'}`}>
-          <span class="sr-only">Serie {n}{s.done ? ' · Hecha' : ''}</span>
-          <span aria-hidden="true">S{n}</span>
-        </span>
+        <div class="relative shrink-0" ref={menuRef}>
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open ? 'true' : 'false'}
+            aria-label={`Serie ${n} (${tagLabel})${s.done ? ' · Hecha' : ''} · Cambiar tipo`}
+            class={`flex min-h-[48px] sm:min-h-[44px] min-w-[36px] px-1 items-center justify-center rounded-lg border text-[11px] font-extrabold tabular-nums transition-colors hover:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tagCls}`}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {tagLabel}
+          </button>
+          {open && (
+            <SetTypePopover
+              kind={kind}
+              nextDropNum={nextDropNum}
+              onSelectKind={(k) => { setOpen(false); onSelectKind(k); }}
+              onAddDrop={() => { setOpen(false); onAddDrop(); }}
+              onRemoveDrop={canDelete ? () => { setOpen(false); onRemoveDrop(); } : undefined}
+            />
+          )}
+        </div>
 
         <StepperInput
           label="Peso (kg)" labelClass="sr-only" wrapClass="flex-1 min-w-0"

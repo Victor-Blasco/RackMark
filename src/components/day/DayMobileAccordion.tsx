@@ -23,7 +23,7 @@ interface DayMobileAccordionProps {
   onSelectEx: (name: string) => void;
   onStartWorkout: () => void;
   onEditNote: (exName: string) => void;
-  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string) => void;
+  onUpdateTarget?: (idx: number, setsRaw: string, repsRaw: string, restSec?: number) => void;
   onMoveRow?: (idx: number, dir: number) => void;
   onDeleteRow?: (idx: number) => void;
   onAddToRoutine?: (exName: string) => void;
@@ -69,7 +69,7 @@ export function DayMobileAccordion({
               </button>
               <div class="shrink-0 flex items-center gap-1">
                 {rRow && onUpdateTarget ? (
-                  <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} onSave={(s, r) => onUpdateTarget(rIdx, s, r)} />
+                  <InlineTargetEditor exName={x.name} sets={rRow.sets} reps={rRow.reps} restSec={rRow.restSec} onSave={(s, r, rest) => onUpdateTarget(rIdx, s, r, rest)} />
                 ) : !rRow && onAddToRoutine ? (
                   <button
                     type="button"

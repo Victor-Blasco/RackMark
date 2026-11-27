@@ -1,4 +1,4 @@
-import type { LiveWorkout } from '../types';
+import type { LiveWorkout, SetKind } from '../types';
 import type { ToastAction } from './types';
 import { createWorkoutSetInputs, mapExercise } from './workoutSetInputs';
 import { applyToggleLiveSet } from './workoutSetToggle';
@@ -10,6 +10,7 @@ import { applyToggleLiveSet } from './workoutSetToggle';
  * @param saveOnly - Persiste en `localStorage` sin forzar re-render.
  * @param commit - Persiste en `localStorage` y notifica a Preact.
  * @param toast - Muestra avisos al usuario ante validaciones (con acción opcional `Deshacer`).
+ * @param getExerciseRestSec - Opcional: resuelve el descanso configurado en la rutina para un ejercicio.
  * @returns Acciones tipadas para manipular series del ejercicio activo.
  */
 export function createWorkoutSetActions(
@@ -17,6 +18,7 @@ export function createWorkoutSetActions(
   saveOnly: (live?: LiveWorkout) => void,
   commit: (live?: LiveWorkout) => void,
   toast: (msg: string, action?: ToastAction) => void,
+  getExerciseRestSec?: (live: LiveWorkout, ei: number) => number | undefined,
 ) {
   return {
     ...createWorkoutSetInputs(getLive, saveOnly, commit),
@@ -89,10 +91,44 @@ export function createWorkoutSetActions(
     toggleSet(ei: number, si: number) {
       const live = getLive();
       if (!live) return;
-      const { nextLive, changed, advanced } = applyToggleLiveSet(live, ei, si, toast);
+      const exRest = getExerciseRestSec?.(live, ei);
+      const { nextLive, changed, advanced } = applyToggleLiveSet(live, ei, si, toast, exRest);
       if (!changed) return;
       commit(nextLive);
       if (advanced && typeof window !== 'undefined') window.scrollTo?.(0, 0);
+    },
+
+    setSetKind(ei: number, si: number, kind: SetKind) {
+      const live = getLive();
+      if (!live?.exercises[ei]?.sets[si]) return;
+      commit(mapExercise(live, ei, (item) => ({
+        ...item,
+        sets: item.sets.map((s, j) => {
+          if (j !== si) return s;
+          if (kind === 'S') {
+            const { kind: _k, ...rest } = s;
+            return rest;
+          }
+          return { ...s, kind };
+        }),
+      })));
+    },
+
+    addDropSet(ei: number, si: number) {
+      const live = getLive();
+      const ex = live?.exercises[ei];
+      const base = ex?.sets[si];
+      if (!live || !ex || !base) return;
+      const dropW = Math.max(0, Math.round((base.w * 0.8) / 2.5) * 2.5);
+      const dropSet = { w: dropW, r: base.r || 8, kind: 'D' as const, done: false };
+      const nextRestRef = live.restRef?.ei === ei && live.restRef.si > si
+        ? { ...live.restRef, si: live.restRef.si + 1 }
+        : live.restRef;
+      const nextLive = mapExercise({ ...live, restRef: nextRestRef }, ei, (item) => {
+        const sets = [...item.sets.slice(0, si + 1), dropSet, ...item.sets.slice(si + 1)];
+        return { ...item, sets, done: sets.every((s) => Boolean(s.done && s.r > 0)) };
+      });
+      commit(nextLive);
     },
   };
 }

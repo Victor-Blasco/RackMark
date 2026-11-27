@@ -75,8 +75,13 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
       )}
 
       <RestTimerBar
-        restUntil={live.restUntil} targetRestSec={live.targetRestSec}
-        onAdjust={actions.adjustRest} onStart={actions.startRest} onStop={actions.stopRest} onSelectPreset={actions.setRestPreset}
+        restUntil={live.restUntil}
+        restPausedRemSec={live.restPausedRemSec}
+        targetRestSec={vm.activeRestSec}
+        onAdjust={actions.adjustRest}
+        onTogglePause={actions.togglePauseRest}
+        onStart={actions.startRest}
+        onStop={actions.stopRest}
       />
 
       <Collapsible open={pickerOpen}>
@@ -93,7 +98,7 @@ export function LiveWorkoutView({ state: propState }: LiveWorkoutViewProps) {
       )}
 
       {vm.currentEx && vm.activeCtx && (
-        <ExerciseCard curIdx={vm.curIdx} exercise={vm.currentEx} ctx={vm.activeCtx} targetRestSec={live.targetRestSec} actions={actions} />
+        <ExerciseCard curIdx={vm.curIdx} exercise={vm.currentEx} ctx={vm.activeCtx} targetRestSec={vm.activeRestSec} actions={actions} />
       )}
 
       {vm.total > 1 && (
