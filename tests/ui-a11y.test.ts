@@ -959,7 +959,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
       h(LiveHeader, {
         day: 'Push', dayColor: '#A855F7', curIdx: 0, total: 2,
         doneSetsCount: 1, totalSetsCount: 4, elapsedLabel: '5 min',
-        menuOpen: true, onToggleMenu: () => {}, onDiscard: () => {}, onSave: () => {},
+        menuOpen: true, onToggleMenu: () => {}, onSave: () => {},
       }),
     );
     expect(openHdrHtml).toContain('aria-label="Cerrar lista de ejercicios"');

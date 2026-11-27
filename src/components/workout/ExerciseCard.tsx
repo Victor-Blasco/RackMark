@@ -4,7 +4,6 @@ import { effectiveLoadKg } from '../../lib/analysis';
 import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LiveWorkoutActions } from '../../store/workoutActions';
 import type { LogExDraft } from '../../types';
-import { fmtMMSS } from '../../ui/restAudio';
 import { r1 } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { ExercisePrescriptionBanner } from '../common/ExercisePrescriptionBanner';
@@ -51,6 +50,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
   const act = (fn: () => void) => { setMenuOpen(false); fn(); };
   const colWeightLabel = ctx.loadType === 'weighted' ? 'Lastre (+kg)' : ctx.loadType === 'assisted' ? 'Asistencia (−kg)' : 'Peso (kg)';
   const firstW = ex.sets[0]?.w ?? 0;
+  const cleanPrescription = ctx.prescription.replace(/\s*\(últimas?:[^)]+\)/gi, '').replace(/\s{2,}/g, ' ').trim();
 
   return (
     <section aria-label={`Ejercicio actual: ${ex.name}`} class="space-y-2.5 pt-1">
@@ -60,7 +60,6 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             <h2 class="text-xl font-extrabold text-white leading-tight">{ex.name}</h2>
             <p class="mt-0.5 text-xs text-gray-300 tabular-nums">
               {ctx.tgt && <><span class="text-gray-400">Objetivo {ctx.tgt.sets}×{ctx.tgt.reps}</span> · </>}
-              {ctx.tgt?.restSec != null && <><span class="text-blue-300">Descanso {fmtMMSS(ctx.tgt.restSec)}</span> · </>}
               {ctx.hist && ctx.hist.n > 0 ? (
                 <button type="button" class="underline decoration-white/30 underline-offset-2 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded" onClick={() => setHistoryOpen(true)}>{ctx.lastRef}</button>
               ) : ctx.lastRef}
@@ -91,7 +90,7 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
         </div>
 
         <ExercisePrescriptionBanner
-          prescription={ctx.prescription} targetW={ctx.showApplyBtn ? ctx.targetW : null}
+          prescription={cleanPrescription} targetW={ctx.showApplyBtn ? ctx.targetW : null}
           fixedNote={ctx.fixedNote} firstTimeHint={!ctx.hist && ex.sets.every((s) => s.w === 0)}
           onApplyTarget={(w) => actions.applyTargetWeight(curIdx, w)}
         />

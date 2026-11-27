@@ -26,6 +26,8 @@ interface LiveExerciseMenuProps {
   onSelectExercise: (idx: number) => void;
   /** Abre el selector para añadir un ejercicio nuevo al entreno. */
   onOpenAddPicker: () => void;
+  /** Descarta el entrenamiento en curso previa confirmación. */
+  onDiscard: () => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export function LiveExerciseMenu({
   onToggleMenu,
   onSelectExercise,
   onOpenAddPicker,
+  onDiscard,
 }: LiveExerciseMenuProps) {
   return (
     <Collapsible
@@ -92,6 +95,16 @@ export function LiveExerciseMenu({
           <button type="button" class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md bg-electricBlue/15 text-xs font-bold text-blue-300 hover:bg-electricBlue/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onOpenAddPicker}>
             <Icon name="plus" className="h-4 w-4" /> Añadir ejercicio al entreno
           </button>
+
+          <div class="border-t border-white/10 pt-2">
+            <button
+              type="button"
+              class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md text-xs font-semibold text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coralRed"
+              onClick={onDiscard}
+            >
+              <Icon name="trash" className="h-3.5 w-3.5" /> Descartar entrenamiento
+            </button>
+          </div>
         </nav>
     </Collapsible>
   );

@@ -655,7 +655,7 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
       muscleSel: 'Pecho',
     };
 
-    // 1. LiveHeader tiene Descartar entrenamiento y Terminar (0) neutro; LiveExerciseMenu ya no incluye Descartar
+    // 1. LiveHeader solo tiene Terminar (0) neutro; LiveExerciseMenu incluye Descartar entrenamiento
     const liveIdle = initLiveWorkout(state, 'Push');
     const hdrZero = renderToString(
       h(LiveHeader, {
@@ -668,11 +668,10 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
         elapsedLabel: '2 min',
         menuOpen: false,
         onToggleMenu: () => {},
-        onDiscard: () => {},
         onSave: () => {},
       }),
     );
-    expect(hdrZero).toContain('Descartar entrenamiento');
+    expect(hdrZero).not.toContain('Descartar entrenamiento');
     expect(hdrZero).toContain('Terminar (0)');
     expect(hdrZero).not.toContain('btn-primary');
 
@@ -687,7 +686,6 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
         elapsedLabel: '8 min',
         menuOpen: false,
         onToggleMenu: () => {},
-        onDiscard: () => {},
         onSave: () => {},
       }),
     );
@@ -702,9 +700,10 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
         onToggleMenu: () => {},
         onSelectExercise: () => {},
         onOpenAddPicker: () => {},
+        onDiscard: () => {},
       }),
     );
-    expect(menuHtml).not.toContain('Descartar entrenamiento');
+    expect(menuHtml).toContain('Descartar entrenamiento');
 
     // 2. Comparativa frente a sesión anterior y cierre automático del pop-up (5s) + último ejercicio también marca lastCompletedExIdx
     const cmpUp = buildExerciseCompletionSummary(state, {
@@ -750,8 +749,10 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(popupHtml).toContain('+2,5 kg máx');
     expect(popupHtml).toContain('+ Serie extra');
 
-    // 3. RestTimerBar en espera permite inicio manual (m:ss); RIR explicado en móvil en En vivo y Registrar hecho
-    expect(renderToString(h(RestTimerBar, { targetRestSec: 90 }))).toContain('Iniciar 1:30');
+    // 3. RestTimerBar en espera permite inicio manual (m:ss) sin duplicar la duración; RIR explicado en móvil en En vivo y Registrar hecho
+    const restIdleHtml = renderToString(h(RestTimerBar, { targetRestSec: 90 }));
+    expect(restIdleHtml).toContain('Iniciar 1:30');
+    expect(restIdleHtml).not.toContain('Descanso de serie:');
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: liveIdle } }));
     expect(liveHtml).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
     expect(liveHtml).toContain('aria-label="Opciones de Press de banca"');

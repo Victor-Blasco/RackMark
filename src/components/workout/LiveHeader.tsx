@@ -21,14 +21,12 @@ interface LiveHeaderProps {
   onToggleMenu: () => void;
   /** Degrada el botón Terminar a acento secundario cuando otro CTA domina la vista. */
   secondarySave?: boolean;
-  /** Descarta el entrenamiento en curso previa confirmación. */
-  onDiscard: () => void;
   /** Guarda el entrenamiento en IndexedDB. */
   onSave: () => void;
 }
 
 /**
- * Cabecera compacta de la sesión en vivo con menú de ejercicios, descarte y guardar.
+ * Cabecera compacta de la sesión en vivo con menú de ejercicios y guardar.
  */
 export function LiveHeader({
   day,
@@ -41,7 +39,6 @@ export function LiveHeader({
   menuOpen,
   onToggleMenu,
   secondarySave = false,
-  onDiscard,
   onSave,
 }: LiveHeaderProps) {
   const finishCls = doneSetsCount === 0 ? 'btn' : secondarySave ? 'btn btn-accent' : 'btn-primary';
@@ -71,16 +68,6 @@ export function LiveHeader({
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-1.5">
-        <button
-          type="button"
-          aria-label="Descartar entrenamiento"
-          title="Descartar entrenamiento"
-          class="btn min-h-[44px] px-2.5 text-xs text-coralRed hover:border-coralRed/40"
-          onClick={onDiscard}
-        >
-          <Icon name="trash" className="h-4 w-4" />
-          <span class="hidden min-[380px]:inline">Descartar</span>
-        </button>
         <button type="button" class={`${finishCls} min-h-[44px] px-2.5 sm:px-3 text-xs sm:text-sm`} onClick={onSave}>
           <Icon name="save" className="h-4 w-4" /> <span id="liveFinishLabel" class="tabular-nums">Terminar ({doneSetsCount})</span>
         </button>
