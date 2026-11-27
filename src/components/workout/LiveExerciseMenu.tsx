@@ -59,14 +59,14 @@ export function LiveExerciseMenu({
           </div>
 
           {items.length > 0 ? (
-            <div class="space-y-1 max-h-[55vh] overflow-y-auto pr-0.5">
+            <div class="space-y-1 max-h-[42dvh] sm:max-h-[50vh] overflow-y-auto overscroll-contain pr-0.5">
               {items.map(({ item, idx, infoLine, doneInEx, allDoneInEx }) => {
                 const active = idx === curIdx;
                 return (
                   <button
                     key={`${idx}-${item.name}`}
                     type="button"
-                    class={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 ring-1 ring-electricBlue/40' : 'hover:bg-white/[0.05]'}`}
+                    class={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${active ? 'bg-electricBlue/20 ring-1 ring-electricBlue/40' : 'hover:bg-white/[0.05]'}`}
                     onClick={() => onSelectExercise(idx)}
                   >
                     <div class="flex min-w-0 flex-1 items-center gap-2.5">
@@ -92,17 +92,22 @@ export function LiveExerciseMenu({
             <p class="px-2.5 py-3 text-xs text-gray-400">Todavía no hay ejercicios en esta sesión.</p>
           )}
 
-          <button type="button" class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md bg-electricBlue/15 text-xs font-bold text-blue-300 hover:bg-electricBlue/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={onOpenAddPicker}>
-            <Icon name="plus" className="h-4 w-4" /> Añadir ejercicio al entreno
-          </button>
-
-          <div class="border-t border-white/10 pt-2">
+          <div class="grid grid-cols-[1fr_auto] gap-2 border-t border-white/10 pt-2">
             <button
               type="button"
-              class="flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md text-xs font-semibold text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coralRed"
+              class="flex min-h-[44px] items-center justify-center gap-1.5 rounded-md bg-electricBlue/15 px-3 text-xs font-bold text-blue-300 hover:bg-electricBlue/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue"
+              onClick={onOpenAddPicker}
+            >
+              <Icon name="plus" className="h-4 w-4" /> Añadir ejercicio
+            </button>
+            <button
+              type="button"
+              aria-label="Descartar entrenamiento"
+              title="Descartar entrenamiento"
+              class="flex min-h-[44px] items-center justify-center gap-1.5 rounded-md border border-coralRed/30 px-3 text-xs font-semibold text-coralRed hover:bg-coralRed/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coralRed"
               onClick={onDiscard}
             >
-              <Icon name="trash" className="h-3.5 w-3.5" /> Descartar entrenamiento
+              <Icon name="trash" className="h-3.5 w-3.5" /> Descartar
             </button>
           </div>
         </nav>
