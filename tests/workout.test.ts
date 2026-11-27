@@ -1037,5 +1037,41 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(drawerHtml).toContain('85 kg');
     expect(drawerHtml).toContain('80 kg');
     expect(drawerHtml).toContain('Nota: Subir a 82,5 kg si salen limpias');
+
+    // Registrar hecho soporta tipos de serie (W/S/F/D) y dropsets
+    let logDraft = initLogDraft({ ...an ? {
+      tab: 'log',
+      strength: [],
+      cardio: [],
+      measures: [],
+      wellbeing: [],
+      settings: s,
+      analysis: an,
+      sel: {},
+      perimeter: 'arms',
+      muscleSel: 'Pecho',
+    } : ({} as State) }, 'Push', '2026-11-27');
+    const logActions = createLogSetActions(() => logDraft, (d) => { if (d) logDraft = d; }, () => {});
+    logActions.setSetKind(0, 0, 'W');
+    expect(logDraft.exercises[0].sets[0].kind).toBe('W');
+    logActions.addDropSet(0, 1);
+    expect(logDraft.exercises[0].sets[2].kind).toBe('D');
+    const logHtml = renderToString(h(LogWorkoutView, {
+      state: {
+        tab: 'log',
+        strength: [],
+        cardio: [],
+        measures: [],
+        wellbeing: [],
+        settings: s,
+        analysis: an,
+        sel: {},
+        perimeter: 'arms',
+        muscleSel: 'Pecho',
+        logDraft,
+      },
+    }));
+    expect(logHtml).toContain('↳D1');
+    expect(logHtml).toContain('>W</button>');
   });
 });

@@ -1,8 +1,10 @@
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
 import { norm } from '../../lib/seed';
 import { STATUS_STYLE } from '../../store/homeSelectors';
 import type { AiEntry, RoutineEx } from '../../types';
+import { captureFlipRects, playFlipRects } from '../../ui/reorder';
 import { short } from '../../ui/shared';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
@@ -34,8 +36,19 @@ export function DayMobileAccordion({
   exercises, routineRows = [], organizeMode = false, mobileCur, rangeLabel, aiDate, userNotes,
   mobileChartCfg, aiFor, onSelectEx, onStartWorkout, onEditNote, onUpdateTarget, onMoveRow, onDeleteRow, onAddToRoutine,
 }: DayMobileAccordionProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const pendingFlipRef = useRef<{ rects: Map<string, DOMRect>; key: string } | null>(null);
+  const orderKey = exercises.map((x) => x.name).join('\0');
+
+  useLayoutEffect(() => {
+    const pending = pendingFlipRef.current;
+    if (!pending) return;
+    pendingFlipRef.current = null;
+    playFlipRects(listRef.current, pending.rects, pending.key);
+  }, [orderKey]);
+
   return (
-    <div class="lg:hidden space-y-3">
+    <div ref={listRef} class="lg:hidden space-y-3">
       {exercises.map((x, idx) => {
         const open = x.name === mobileCur;
         const st = STATUS_STYLE[x.statusColor] ?? STATUS_STYLE.gray;
@@ -48,7 +61,7 @@ export function DayMobileAccordion({
             ? `Objetivo ${x.target.sets}×${x.target.reps} · Sin estrenar`
             : `Sin registros en ${rangeLabel}`;
         return (
-          <div key={x.name} class={`rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark overflow-hidden`}>
+          <div key={x.name} data-sort-item data-sort-key={x.name} class={`rounded-2xl border ${open ? 'border-electricBlue/60' : 'border-white/10'} bg-cardDark overflow-hidden`}>
             <div class="p-3.5 flex items-center justify-between gap-2">
               <button
                 type="button"
@@ -92,7 +105,11 @@ export function DayMobileAccordion({
             </div>
             {organizeMode && rRow && onMoveRow && onDeleteRow && (
               <div class="flex items-center justify-end gap-1.5 border-t border-white/5 px-3.5 py-2">
-                <DayOrganizeControls exName={x.name} idx={rIdx} total={routineRows.length} compact onMoveRow={onMoveRow} onDeleteRow={onDeleteRow} />
+                <DayOrganizeControls exName={x.name} idx={rIdx} total={routineRows.length} compact onMoveRow={(i, dir) => {
+                  const rects = captureFlipRects(listRef.current);
+                  if (rects.size) pendingFlipRef.current = { rects, key: x.name };
+                  onMoveRow(i, dir);
+                }} onDeleteRow={onDeleteRow} />
               </div>
             )}
             <Collapsible open={open}>

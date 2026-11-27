@@ -34,6 +34,8 @@ export function DayDesktopOption({
       id={`day-opt-${idx}`}
       role="option"
       tabIndex={sel ? 0 : -1}
+      data-sort-item
+      data-sort-key={x.name}
       aria-selected={sel ? 'true' : 'false'}
       class={`w-full cursor-pointer rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${sel ? 'border-electricBlue bg-electricBlue/10' : 'border-white/10 bg-cardDark hover:border-white/25'}`}
       onClick={onSelect}

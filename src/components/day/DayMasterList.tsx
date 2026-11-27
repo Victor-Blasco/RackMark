@@ -1,7 +1,9 @@
+import { useLayoutEffect, useRef } from 'preact/hooks';
 import type { ChartConfiguration } from 'chart.js';
 import type { ExStats } from '../../lib/analysis';
 import { norm } from '../../lib/seed';
 import type { AiEntry, RoutineEx } from '../../types';
+import { captureFlipRects, playFlipRects } from '../../ui/reorder';
 import { short } from '../../ui/shared';
 import { DayDesktopOption } from './DayDesktopOption';
 import { DayExerciseDetail } from './DayExerciseDetail';
@@ -45,6 +47,16 @@ export function DayMasterList(props: DayMasterListProps) {
     rangeLabel, aiDate, userNotes, aiFor, onSelectEx, onStartWorkout, onEditNote,
     onUpdateTarget, onMoveRow, onDeleteRow, onAddToRoutine,
   } = props;
+  const listRef = useRef<HTMLDivElement>(null);
+  const pendingFlipRef = useRef<{ rects: Map<string, DOMRect>; key: string } | null>(null);
+  const orderKey = exercises.map((x) => x.name).join('\0');
+
+  useLayoutEffect(() => {
+    const pending = pendingFlipRef.current;
+    if (!pending) return;
+    pendingFlipRef.current = null;
+    playFlipRects(listRef.current, pending.rects, pending.key);
+  }, [orderKey]);
 
   const onOptionKeyDown = (e: KeyboardEvent, idx: number, name: string) => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
@@ -74,6 +86,7 @@ export function DayMasterList(props: DayMasterListProps) {
 
       <div class="hidden lg:grid lg:grid-cols-12 lg:gap-5 xl:gap-6 lg:items-start">
         <div
+          ref={listRef}
           class="lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue rounded-2xl"
           role="listbox"
           aria-orientation="vertical"
@@ -100,7 +113,11 @@ export function DayMasterList(props: DayMasterListProps) {
                 onSelect={() => onSelectEx(x.name)}
                 onKeyDown={(ev) => onOptionKeyDown(ev, idx, x.name)}
                 onUpdateTarget={onUpdateTarget}
-                onMoveRow={onMoveRow}
+                onMoveRow={onMoveRow ? (i, dir) => {
+                  const rects = captureFlipRects(listRef.current);
+                  if (rects.size) pendingFlipRef.current = { rects, key: x.name };
+                  onMoveRow(i, dir);
+                } : undefined}
                 onDeleteRow={onDeleteRow}
                 onAddToRoutine={onAddToRoutine}
               />

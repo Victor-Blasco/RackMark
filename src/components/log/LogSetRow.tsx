@@ -1,21 +1,20 @@
+import { useDismissibleMenu } from '../../hooks/useDismissibleMenu';
 import type { LogWorkoutActions } from '../../store/logActions';
-import type { SetRec } from '../../types';
+import type { SetKind, SetRec } from '../../types';
 import { Collapsible } from '../common/Collapsible';
 import { Icon } from '../common/Icon';
 import { StepperInput } from '../common/StepperInput';
+import { SetTypePopover } from '../workout/SetTypePopover';
 
 interface LogSetRowProps {
-  /** Índice del ejercicio dentro del borrador. */
   ei: number;
-  /** Índice de la serie dentro del ejercicio. */
   si: number;
-  /** Nombre del ejercicio para etiquetas accesibles. */
   exName: string;
-  /** Datos editables de la serie. */
+  tagLabel: string;
+  nextDropNum: number;
+  canDelete: boolean;
   set: SetRec;
-  /** Si se muestra la subfila plegable móvil de RIR y descanso. */
   showMobileDetails: boolean;
-  /** Acciones reactivas del borrador histórico. */
   actions: LogWorkoutActions;
 }
 
@@ -28,15 +27,45 @@ const MOBILE_NUM_INP = 'inp h-11 rounded-lg px-2 py-0 text-center text-base font
  * Fila compacta de una serie en `Registrar hecho`: peso y reps en una línea,
  * `RIR` y `Desc (s)` en línea en escritorio y bajo acordeón en móvil.
  */
-export function LogSetRow({ ei, si, exName, set: s, showMobileDetails, actions }: LogSetRowProps) {
+export function LogSetRow({ ei, si, exName, tagLabel, nextDropNum, canDelete, set: s, showMobileDetails, actions }: LogSetRowProps) {
   const n = si + 1;
+  const kind: SetKind = s.kind ?? 'S';
+  const { open, setOpen, triggerRef, menuRef } = useDismissibleMenu();
+  const tagCls = kind === 'W'
+    ? 'border-amberGold/50 text-amberGold bg-amberGold/10'
+    : kind === 'D'
+      ? 'border-electricBlue/50 text-blue-300 bg-electricBlue/10'
+      : kind === 'F'
+        ? 'border-coralRed/50 text-rose-300 bg-coralRed/10'
+        : s.done
+          ? 'border-emeraldGreen/50 text-emerald-300'
+          : 'border-gray-700 text-gray-300';
 
   return (
-    <div class={`rounded-xl px-1 py-1.5 transition-colors ${s.done ? 'bg-emeraldGreen/10' : ''}`}>
+    <div class={`relative rounded-xl px-1 py-1.5 transition-colors ${kind === 'D' ? 'pl-2.5 border-l-2 border-electricBlue/70' : ''} ${kind === 'W' ? 'opacity-85' : ''} ${s.done ? 'bg-emeraldGreen/10' : ''}`}>
       <div class="flex items-center gap-1.5">
-        <span class={`w-5 shrink-0 text-center tabular-nums text-xs font-bold ${s.done ? 'text-emerald-300' : 'text-gray-400'}`}>
-          S{n}{s.done && <span class="sr-only"> completada</span>}
-        </span>
+        <div class="relative shrink-0" ref={menuRef}>
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={open ? 'true' : 'false'}
+            aria-label={`Serie ${n} (${tagLabel}) de ${exName}${s.done ? ' · completada' : ''} · Cambiar tipo`}
+            class={`flex h-11 min-w-[36px] px-1 items-center justify-center rounded-lg border text-[11px] font-extrabold tabular-nums transition-colors hover:border-electricBlue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue ${tagCls}`}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {tagLabel}
+          </button>
+          {open && (
+            <SetTypePopover
+              kind={kind}
+              nextDropNum={nextDropNum}
+              onSelectKind={(k) => { setOpen(false); actions.setSetKind(ei, si, k); }}
+              onAddDrop={() => { setOpen(false); actions.addDropSet(ei, si); }}
+              onRemoveDrop={canDelete ? () => { setOpen(false); actions.delSet(ei, si); } : undefined}
+            />
+          )}
+        </div>
 
         <StepperInput
           label="Peso (kg)" labelClass="sr-only" wrapClass="flex-1 min-w-0" btnClass={LOG_STEP_BTN}

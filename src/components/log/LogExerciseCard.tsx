@@ -39,6 +39,7 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
   const detailsCount = ex.sets.filter((s) => s.rir != null || s.restSec != null).length;
   const borderCls = ctx.allDoneInEx ? 'border-emeraldGreen/50' : ctx.doneInEx > 0 ? 'border-electricBlue/50' : 'border-white/10';
   const hasNote = Boolean(ex.note.trim());
+  const colWeightLabel = ctx.loadType === 'weighted' ? 'Lastre (+kg)' : ctx.loadType === 'assisted' ? 'Asistencia (−kg)' : 'Peso (kg)';
 
   return (
     <div data-sort-item data-sort-idx={ei} data-sort-key={ex.name} class={`border-t pt-4 sm:rounded-2xl sm:border sm:bg-cardDark sm:p-4 space-y-2.5 transition-colors ${borderCls}`}>
@@ -62,8 +63,8 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
 
       <div>
         <div class="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-          <span class="w-5 shrink-0 text-center">#</span>
-          <span class="flex-1 text-center">Peso (kg)</span>
+          <span class="w-9 shrink-0 text-center">Tipo</span>
+          <span class="flex-1 text-center">{colWeightLabel}</span>
           <span class="flex-1 text-center">Reps</span>
           <span class="hidden sm:block w-16 shrink-0 text-center">Desc (s)</span>
           <span class="hidden sm:block w-12 shrink-0 text-center cursor-help" title="Reps que te guardaste sin llegar al fallo (0 = al fallo)">RIR</span>
@@ -71,9 +72,16 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
         </div>
 
         <div class="divide-y divide-white/[0.06]">
-          {ex.sets.map((s, si) => (
-            <LogSetRow key={si} ei={ei} si={si} exName={ex.name} set={s} showMobileDetails={showDetails} actions={actions} />
-          ))}
+          {ex.sets.map((s, si) => {
+            let effIdx = 0;
+            for (let j = 0; j <= si; j++) if (ex.sets[j].kind !== 'W' && ex.sets[j].kind !== 'D') effIdx++;
+            let dropIdx = 0;
+            for (let j = si; j >= 0 && ex.sets[j].kind === 'D'; j--) dropIdx++;
+            const tagLabel = s.kind === 'W' ? 'W' : s.kind === 'D' ? `↳D${dropIdx}` : `${s.kind === 'F' ? 'F' : 'S'}${effIdx}`;
+            return (
+              <LogSetRow key={si} ei={ei} si={si} exName={ex.name} tagLabel={tagLabel} nextDropNum={dropIdx + 1} canDelete={ex.sets.length > 1} set={s} showMobileDetails={showDetails} actions={actions} />
+            );
+          })}
         </div>
         <Collapsible open={showDetails} keepMounted className="sm:hidden">
           <p class="px-1 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>

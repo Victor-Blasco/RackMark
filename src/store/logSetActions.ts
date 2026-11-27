@@ -1,4 +1,4 @@
-import type { LogDraft } from '../types';
+import type { LogDraft, SetKind } from '../types';
 import { moveItem } from '../ui/reorder';
 import { mapDraftEx, mapDraftSet } from './logInputActions';
 import type { ToastAction } from './types';
@@ -159,5 +159,34 @@ export function createLogSetActions(
 
     moveExercise: (ei: number, dir: number) => reorderExercises(ei, ei + dir),
     reorderExercises,
+
+    setSetKind(ei: number, si: number, kind: SetKind) {
+      const draft = ensureDraft();
+      if (!draft.exercises[ei]?.sets[si]) return;
+      commitDraft(mapDraftEx(draft, ei, (item) => ({
+        ...item,
+        sets: item.sets.map((s, j) => {
+          if (j !== si) return s;
+          if (kind === 'S') {
+            const { kind: _k, ...rest } = s;
+            return rest;
+          }
+          return { ...s, kind };
+        }),
+      })));
+    },
+
+    addDropSet(ei: number, si: number) {
+      const draft = ensureDraft();
+      const base = draft.exercises[ei]?.sets[si];
+      if (!base) return;
+      const dropW = Math.max(0, Math.round((base.w * 0.8) / 2.5) * 2.5);
+      const r = base.r || 8;
+      const dropSet = { w: dropW, r, kind: 'D' as const, done: r > 0 };
+      commitDraft(mapDraftEx(draft, ei, (item) => {
+        const sets = [...item.sets.slice(0, si + 1), dropSet, ...item.sets.slice(si + 1)];
+        return { ...item, sets, done: sets.some((s) => Boolean(s.done && s.r > 0)) };
+      }));
+    },
   };
 }
