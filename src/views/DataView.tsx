@@ -1,4 +1,5 @@
 import { Icon } from '../components/common/Icon';
+import { ViewHeader } from '../components/common/ViewHeader';
 import { DataImportSection } from '../components/data/DataImportSection';
 import { useAppStore } from '../store/appStore';
 import type { State } from '../ui/shared';
@@ -18,15 +19,11 @@ export function DataView({ state: propState }: DataViewProps) {
 
   return (
     <div class="space-y-5">
-      <div class="space-y-4 pb-5 border-b border-white/10">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h1 class="text-lg font-extrabold text-white">Datos e importación</h1>
-            <p class="text-xs text-gray-400">
-              Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados.
-            </p>
-          </div>
-          {unmappedCount > 0 && (
+      <ViewHeader
+        title="Datos e importación"
+        subtitle="Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados."
+        right={
+          unmappedCount > 0 ? (
             <button
               type="button"
               class="btn-sm border-amberGold/50 text-amberGold"
@@ -34,10 +31,12 @@ export function DataView({ state: propState }: DataViewProps) {
             >
               {unmappedCount} ejercicios importados sin nombre → Asignar
             </button>
-          )}
-        </div>
+          ) : undefined
+        }
+      />
 
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-2">
+      <div class="pb-5 border-b border-white/10">
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-1">
           <div>
             <span class="block text-xs text-gray-400">Fuerza</span>
             <span class="tabular-nums text-xl font-extrabold text-white">{state.strength.length}</span>

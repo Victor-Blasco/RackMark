@@ -1,4 +1,4 @@
-import { useRef } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { Settings } from '../../types';
 import { fmtDate, todayIso } from '../../ui/shared';
 import { Icon } from '../common/Icon';
@@ -17,7 +17,8 @@ interface PlanPhasesSectionProps {
 /** Sección de configuración y borrado de fases del bloque de entrenamiento. */
 export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPhasesSectionProps) {
   const phaseNameRef = useRef<HTMLInputElement>(null);
-  const phaseStartRef = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState('');
+  const [start, setStart] = useState(() => todayIso());
   const sorted = [...phases].sort((a, b) => a.start.localeCompare(b.start));
 
   return (
@@ -52,8 +53,8 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
               type="button"
               class="btn-sm min-h-[44px] sm:min-h-[32px]"
               onClick={() => {
-                if (phaseNameRef.current) phaseNameRef.current.value = label;
-                if (phaseStartRef.current && !phaseStartRef.current.value) phaseStartRef.current.value = todayIso();
+                setName(label);
+                if (!start) setStart(todayIso());
                 phaseNameRef.current?.focus();
               }}
             >
@@ -66,16 +67,38 @@ export function PlanPhasesSection({ phases, onAddPhase, onDeletePhase }: PlanPha
           class="flex flex-wrap items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const form = e.currentTarget;
-            const name = phaseNameRef.current?.value ?? '';
-            const start = phaseStartRef.current?.value ?? '';
-            void Promise.resolve(onAddPhase(name, start))
-              .then(() => { if (name.trim() && start.trim()) form.reset(); })
+            const cleanName = name.trim();
+            const cleanStart = start.trim() || todayIso();
+            void Promise.resolve(onAddPhase(cleanName, cleanStart))
+              .then(() => {
+                if (cleanName && cleanStart) {
+                  setName('');
+                  setStart(todayIso());
+                }
+              })
               .catch(() => {});
           }}
         >
-          <input ref={phaseNameRef} class="inp w-full sm:w-56" name="name" enterKeyHint="next" placeholder="Ej. Volumen, Definición, Mantenimiento…" aria-label="Nombre de la fase" required />
-          <input ref={phaseStartRef} class="inp w-full sm:w-44" type="date" name="start" aria-label="Fecha de inicio de la fase" required />
+          <input
+            ref={phaseNameRef}
+            class="inp w-full sm:w-56 text-base sm:text-sm"
+            name="name"
+            value={name}
+            onInput={(e) => setName(e.currentTarget.value)}
+            enterKeyHint="next"
+            placeholder="Ej. Volumen, Definición, Mantenimiento…"
+            aria-label="Nombre de la fase"
+            required
+          />
+          <input
+            class="inp w-full sm:w-44 text-base sm:text-sm"
+            type="date"
+            name="start"
+            value={start}
+            onInput={(e) => setStart(e.currentTarget.value)}
+            aria-label="Fecha de inicio de la fase"
+            required
+          />
           <button class="btn-primary-sm" type="submit">Añadir fase</button>
         </form>
       </div>

@@ -753,8 +753,9 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(liveHtml).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
     expect(liveHtml).toContain('aria-label="Opciones de Press de banca"');
     expect(liveHtml).toContain('+ Nota de hoy');
-    const logHtml2 = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: initLogDraft(state, 'Push', today) } }));
-    expect(logHtml2).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
+    const singleExDraft = { ...initLogDraft(state, 'Push', today), exercises: [initLogDraft(state, 'Push', today).exercises[0]] };
+    const logHtml2 = renderToString(h(LogWorkoutView, { state: { ...state, tab: 'log', logDraft: singleExDraft } }));
+    expect(logHtml2.match(/RIR: reps en reserva \(0 = al fallo · 2 = te guardas 2\)/g)?.length).toBe(1);
     expect(logHtml2).toContain('Nota fija:');
     expect(logHtml2).not.toContain('href="#log-add-section"');
     expect(logHtml2).toContain('>+ Añadir ejercicio</button>');

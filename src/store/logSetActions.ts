@@ -60,7 +60,7 @@ export function createLogSetActions(
       }
       const nextDone = !s.done;
       if (nextDone) {
-        try { navigator?.vibrate?.(15); } catch { /* vibración opcional */ }
+        try { if (typeof navigator !== 'undefined') navigator.vibrate?.(15); } catch { /* vibración opcional */ }
       }
       const nextDraft = mapDraftSet(draft, ei, si, (set) => ({ ...set, done: nextDone }));
       commitDraft({

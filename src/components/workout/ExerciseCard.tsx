@@ -4,6 +4,7 @@ import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LiveWorkoutActions } from '../../store/workoutActions';
 import type { LogExDraft } from '../../types';
 import { Collapsible } from '../common/Collapsible';
+import { ExercisePrescriptionBanner } from '../common/ExercisePrescriptionBanner';
 import { Icon } from '../common/Icon';
 import { SetRow } from './SetRow';
 
@@ -39,7 +40,6 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
     if (ex.note.trim()) setNoteOpen(true);
   }, [ex.note]);
 
-  const showBanner = Boolean(ctx.prescription || ctx.fixedNote || (!ctx.hist && ex.sets.every((s) => s.w === 0)));
   const detailsCount = ex.sets.filter((s) => s.rir != null || s.restSec != null).length;
   const hasNote = Boolean(ex.note.trim());
   const act = (fn: () => void) => { setMenuOpen(false); fn(); };
@@ -72,21 +72,13 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
           </div>
         </div>
 
-        {showBanner && (
-          <div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-            {ctx.prescription ? (
-              <div class="flex flex-wrap items-center justify-between gap-2 text-gray-200">
-                <span>{ctx.prescription}</span>
-                {ctx.showApplyBtn && ctx.targetW != null && (
-                  <button type="button" class="inline-flex min-h-[44px] sm:min-h-[34px] items-center rounded-lg px-2 font-bold text-emerald-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue" onClick={() => actions.applyTargetWeight(curIdx, ctx.targetW!)}>Aplicar {ctx.targetW} kg</button>
-                )}
-              </div>
-            ) : (
-              <p class="text-gray-300">Primera vez: empieza con un peso cómodo donde controles bien todas las repeticiones.</p>
-            )}
-            {ctx.fixedNote && <p class="text-gray-300"><span class="font-semibold text-white">Nota fija:</span> {ctx.fixedNote}</p>}
-          </div>
-        )}
+        <ExercisePrescriptionBanner
+          prescription={ctx.prescription}
+          targetW={ctx.showApplyBtn ? ctx.targetW : null}
+          fixedNote={ctx.fixedNote}
+          firstTimeHint={!ctx.hist && ex.sets.every((s) => s.w === 0)}
+          onApplyTarget={(w) => actions.applyTargetWeight(curIdx, w)}
+        />
       </div>
 
       <div>

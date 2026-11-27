@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { AiInsightBanner } from '../components/common/AiInsightBanner';
+import { Collapsible } from '../components/common/Collapsible';
 import { RangePicker } from '../components/common/RangePicker';
 import { ViewHeader } from '../components/common/ViewHeader';
 import { BodyChartsSection } from '../components/body/BodyChartsSection';
@@ -57,7 +58,7 @@ export function BodyView({ state: propState }: BodyViewProps) {
 
       <AiInsightBanner state={state} pattern={/composici|cuerpo|antropo/i} />
 
-      {vm.ms.length > 0 && !formOpen ? (
+      {vm.ms.length > 0 && !formOpen && (
         <div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-white/10">
           <p class="text-xs text-gray-400">
             Último registro: <span class="font-semibold text-gray-200">{short(vm.measuresDesc[0]?.date ?? '')}</span>
@@ -66,7 +67,9 @@ export function BodyView({ state: propState }: BodyViewProps) {
             + Registrar peso / medidas de hoy
           </button>
         </div>
-      ) : (
+      )}
+
+      <Collapsible open={formOpen}>
         <div class="space-y-2">
           {vm.ms.length > 0 && (
             <div class="flex justify-end">
@@ -96,7 +99,7 @@ export function BodyView({ state: propState }: BodyViewProps) {
             onSubmitMeasure={analytics.saveMeasure}
           />
         </div>
-      )}
+      </Collapsible>
 
       <BodyChartsSection
         compCount={vm.compCount}

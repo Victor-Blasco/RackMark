@@ -77,7 +77,7 @@ export function applyToggleLiveSet(
 
   if (nextDone) {
     try {
-      navigator?.vibrate?.(15);
+      if (typeof navigator !== 'undefined') navigator.vibrate?.(15);
     } catch {
       /* vibración opcional según navegador */
     }

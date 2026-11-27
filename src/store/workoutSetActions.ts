@@ -92,7 +92,7 @@ export function createWorkoutSetActions(
       const { nextLive, changed, advanced } = applyToggleLiveSet(live, ei, si, toast);
       if (!changed) return;
       commit(nextLive);
-      if (advanced) window.scrollTo?.(0, 0);
+      if (advanced && typeof window !== 'undefined') window.scrollTo?.(0, 0);
     },
   };
 }

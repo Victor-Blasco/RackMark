@@ -45,7 +45,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
       pickerMode: undefined,
       exMenuOpen: undefined,
     });
-    window.scrollTo?.(0, 0);
+    if (typeof window !== 'undefined') window.scrollTo?.(0, 0);
   };
 
   return {
@@ -56,7 +56,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
 
     start(day: DayName | 'Libre' = 'Libre') {
       deps.commitLive(initLiveWorkout(deps.getState(), day));
-      window.scrollTo?.(0, 0);
+      if (typeof window !== 'undefined') window.scrollTo?.(0, 0);
     },
 
     async discard() {

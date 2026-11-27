@@ -3,6 +3,7 @@ import type { exerciseContext } from '../../store/exerciseCatalog';
 import type { LogWorkoutActions } from '../../store/logActions';
 import type { LogExDraft } from '../../types';
 import { Collapsible } from '../common/Collapsible';
+import { ExercisePrescriptionBanner } from '../common/ExercisePrescriptionBanner';
 import { LogExerciseHeader } from './LogExerciseHeader';
 import { LogSetRow } from './LogSetRow';
 
@@ -52,21 +53,12 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
         onRemoveExercise={() => actions.removeExercise(ei)}
       />
 
-      {(ctx.prescription || ctx.fixedNote) && (
-        <div class="space-y-1 border-l-2 border-emeraldGreen/70 pl-2.5 text-xs">
-          {ctx.prescription && (
-            <div class="flex flex-wrap items-center justify-between gap-2 text-gray-200">
-              <span>{ctx.prescription}</span>
-              {ctx.showApplyBtn && ctx.targetW != null && (
-                <button type="button" class="btn min-h-[44px] px-3 py-1.5 text-xs text-emerald-300 border-emeraldGreen/40 hover:border-emeraldGreen" onClick={() => actions.applyTargetWeight(ei, ctx.targetW!)}>
-                  Aplicar {ctx.targetW} kg
-                </button>
-              )}
-            </div>
-          )}
-          {ctx.fixedNote && <p class="text-gray-300"><span class="font-semibold text-white">Nota fija:</span> {ctx.fixedNote}</p>}
-        </div>
-      )}
+      <ExercisePrescriptionBanner
+        prescription={ctx.prescription}
+        targetW={ctx.showApplyBtn ? ctx.targetW : null}
+        fixedNote={ctx.fixedNote}
+        onApplyTarget={(w) => actions.applyTargetWeight(ei, w)}
+      />
 
       <div>
         <div class="flex items-center gap-1.5 px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
@@ -83,6 +75,9 @@ export function LogExerciseCard({ ei, total, exercise: ex, ctx, actions, onMoveE
             <LogSetRow key={si} ei={ei} si={si} exName={ex.name} set={s} showMobileDetails={showDetails} actions={actions} />
           ))}
         </div>
+        <Collapsible open={showDetails} keepMounted className="sm:hidden">
+          <p class="px-1 pt-1 text-[11px] text-gray-400">RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)</p>
+        </Collapsible>
       </div>
 
       <div class="space-y-2 pt-1">
