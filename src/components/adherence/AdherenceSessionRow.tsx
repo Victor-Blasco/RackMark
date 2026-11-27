@@ -36,12 +36,12 @@ export function AdherenceSessionRow({ item, onOpenStrengthSession }: AdherenceSe
       </div>
 
       <div class="flex shrink-0 items-center gap-1.5">
-        <span class="text-xs sm:text-sm font-semibold text-gray-100 tabular-nums whitespace-nowrap">
+        <span class="text-right text-xs sm:text-sm font-semibold text-gray-100 tabular-nums whitespace-nowrap">
           {item.kind === 'strength'
             ? `${item.exCount} ej. · ${item.sets} ${item.sets === 1 ? 'serie' : 'series'}`
             : `${r1(item.durMin)} min · ${r1(item.distKm)} km`}
         </span>
-        {item.kind === 'strength' && (
+        {item.kind === 'strength' ? (
           <button
             type="button"
             class="icon-btn sm:h-8 sm:w-8 text-gray-400 hover:text-blue-300 hover:bg-electricBlue/15"
@@ -50,6 +50,8 @@ export function AdherenceSessionRow({ item, onOpenStrengthSession }: AdherenceSe
           >
             <Icon name="edit" className="h-3.5 w-3.5" />
           </button>
+        ) : (
+          <span class="inline-block h-11 w-11 sm:h-8 sm:w-8 shrink-0" aria-hidden="true" />
         )}
       </div>
     </div>

@@ -40,6 +40,7 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
   useEffect(() => { setInfoOpen(false); }, [e.name]);
   const aiBiomech = aiAdvice?.biomech?.trim() ?? '';
   const recent = [...e.sessions].reverse().slice(0, historyLimit);
+  const hasAnyTelemetry = recent.some((x) => x.avgHr != null || x.durMin != null);
   const prescLabel = aiAdvice?.prescription && aiDate ? `Próxima sesión · IA (${short(aiDate)})` : 'Próxima sesión';
   const maxVol = e.n ? Math.round(Math.max(...e.sessions.map((s) => s.volume))) : 0;
   const kpis = [
@@ -119,20 +120,27 @@ export function DayExerciseDetail(props: DayExerciseDetailProps) {
         <div class="space-y-2 pt-2 border-t border-white/10">
           <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Últimas sesiones</p>
           <div class="divide-y divide-white/10">
-            {recent.map((x) => (
-              <div key={`${x.date}-${x.sets.length}`} class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2.5 text-sm">
-                <span class="font-medium text-gray-300 tabular-nums">{fmtDate(x.date)}</span>
-                <span class="font-semibold text-gray-100 tabular-nums">{x.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}</span>
-                {(x.avgHr != null || x.durMin != null) && (
-                  <span class="text-[13px] text-gray-400 tabular-nums">
-                    {x.avgHr ? <span class="text-cyan-300">{Math.round(x.avgHr)}{x.maxHr ? `/${Math.round(x.maxHr)}` : ''} lpm</span> : null}
-                    {x.avgHr && x.durMin ? ' · ' : ''}
-                    {x.durMin ? `${Math.round(x.durMin)}m` : ''}
-                  </span>
-                )}
-                {x.note && <span class="w-full text-xs text-amberGold">{x.note}</span>}
-              </div>
-            ))}
+            {recent.map((x) => {
+              const hasTel = x.avgHr != null || x.durMin != null;
+              return (
+                <div
+                  key={`${x.date}-${x.sets.length}`}
+                  class={`grid items-center gap-x-3 gap-y-1 py-2.5 text-sm ${hasAnyTelemetry ? 'grid-cols-[5.5rem_1fr] sm:grid-cols-[6rem_1fr_9.5rem]' : 'grid-cols-[5.5rem_1fr] sm:grid-cols-[6rem_1fr]'}`}
+                >
+                  <span class="font-medium text-gray-300 tabular-nums">{fmtDate(x.date)}</span>
+                  <span class="font-semibold text-gray-100 tabular-nums">{x.sets.map((s) => `${s.w}×${s.r}`).join(' · ')}</span>
+                  {hasAnyTelemetry && (
+                    <span class={`col-span-2 sm:col-span-1 text-[13px] text-gray-400 tabular-nums sm:text-right ${hasTel ? '' : 'hidden sm:block'}`}>
+                      {x.avgHr ? <span class="text-cyan-300">{Math.round(x.avgHr)}{x.maxHr ? `/${Math.round(x.maxHr)}` : ''} lpm</span> : null}
+                      {x.avgHr && x.durMin ? ' · ' : ''}
+                      {x.durMin ? `${Math.round(x.durMin)}m` : ''}
+                      {!hasTel && <span class="text-gray-400/60" aria-hidden="true">—</span>}
+                    </span>
+                  )}
+                  {x.note && <span class="col-span-full text-xs text-amberGold">{x.note}</span>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
