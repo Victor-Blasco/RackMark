@@ -1,6 +1,6 @@
 import type { ExStats } from '../lib/analysis';
 import { daysAgoIso, diffIsoDays, isValidIsoDate, LEGACY_ROUTINE_COLORS, norm, ROUTINE_COLORS, todayIso } from '../lib/seed';
-import type { AiEntry, AiResult, AiSection, Measure, Settings } from '../types';
+import type { AiEntry, AiResult, AiSection, Settings } from '../types';
 import {
   humanizeError,
   RANGES,

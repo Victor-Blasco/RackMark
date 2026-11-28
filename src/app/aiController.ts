@@ -191,7 +191,7 @@ export function createAiController(deps: AiControllerDeps): AiController {
     if (deps.state.busy || !deps.state.user?.emailVerified) return;
     try {
       const job = deps.state.aiJob ?? await loadAiJob();
-      if (!job || job.status !== 'error') return;
+      if (job?.status !== 'error') return;
       if (!(await reserveQuota(deps.state.user.uid))) return;
       const now = Date.now();
       lastAiAt = now;

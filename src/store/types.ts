@@ -90,6 +90,7 @@ export interface State {
   mergeTo?: string;
   planRoutine?: string;
   authReady?: boolean;
+  demoMode?: boolean;
   user?: CloudUser | null;
   syncing?: boolean;
   syncJob?: SyncJob;

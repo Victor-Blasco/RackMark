@@ -15,7 +15,7 @@ interface PlanExerciseMapEditorProps {
   /** Persiste el renombrado en catálogo, rutinas e historial. */
   onRename?: (oldName: string, newName: string) => Promise<string | undefined>;
   /** Elimina el ejercicio previa confirmación. */
-  onDelete?: (exName: string) => Promise<boolean> | void;
+  onDelete?: (exName: string) => Promise<boolean> | undefined;
   /** Cambia el músculo principal. */
   onChangePrimary?: (exName: string, primary: string) => void;
   /** Alterna un músculo secundario. */

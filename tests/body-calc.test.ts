@@ -18,7 +18,6 @@ import {
   recommendActivityFactor,
 } from '../src/lib/nutrition';
 import {
-  DEFAULT_MUSCLES,
   DEFAULT_SETTINGS,
   daysAgoIso,
   diffIsoDays,
@@ -105,7 +104,7 @@ describe('ai tone & chart axis offset', () => {
       settings,
     );
 
-    expect(payload.volumen_semanal?.series_efectivas_semana['Pecho']).toBeGreaterThan(0);
+    expect(payload.volumen_semanal?.series_efectivas_semana.Pecho).toBeGreaterThan(0);
     const bench = (payload.ejercicios as Record<string, { musculo?: string; sesiones: { series: string[] }[] }>)['Press de banca'];
     expect(bench.musculo).toBe('Pecho');
     expect(bench.sesiones[0].series[0]).toContain('· 120s');
@@ -197,7 +196,7 @@ describe('ai tone & chart axis offset', () => {
     });
     const denseDs = dense.data.datasets[0] as unknown as { pointRadius?: number; pointHitRadius?: number };
     const densePlugins = dense.options?.plugins as Record<string, Record<string, unknown>>;
-    const denseX = (dense.options?.scales as Record<string, Record<string, unknown>>).x.ticks as Record<string, unknown>;
+    const denseX = (dense.options!.scales as Record<string, Record<string, unknown>>).x.ticks as Record<string, unknown>;
     expect(denseDs.pointRadius).toBe(0);
     expect(denseDs.pointHitRadius).toBe(18);
     expect(densePlugins.legend.display).toBe(false);
@@ -215,7 +214,7 @@ describe('ai tone & chart axis offset', () => {
       },
     });
     const multiDs = multi.data.datasets[0] as unknown as { pointRadius?: number };
-    const multiLegend = (multi.options?.plugins as Record<string, Record<string, unknown>>).legend;
+    const multiLegend = (multi.options!.plugins as Record<string, Record<string, unknown>>).legend;
     const multiLabels = multiLegend.labels as Record<string, unknown>;
     expect(multiDs.pointRadius).toBe(2.5);
     expect(multiLegend.display).toBe(true);

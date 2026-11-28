@@ -125,5 +125,5 @@ export function buildHomeExChartConfig(state: State): ChartConfiguration<'line'>
   const cur = state.sel.home && state.analysis.exercises.has(state.sel.home) ? state.sel.home : ex[0]?.name;
   const found = cur ? state.analysis.exercises.get(cur) : undefined;
   const curEx = found ? filterExByRange(found, bounds) : undefined;
-  return curEx && curEx.sessions.length ? exerciseChartConfig(curEx.sessions, chartAccentColor()) : null;
+  return curEx?.sessions.length ? exerciseChartConfig(curEx.sessions, chartAccentColor()) : null;
 }

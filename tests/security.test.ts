@@ -18,9 +18,9 @@ describe('security hardening', () => {
     raw.nanVal = Number.NaN;
     raw.constructor = { evil: true };
     const clean = stripUndefined(raw) as Record<string, unknown>;
-    expect(Object.prototype.hasOwnProperty.call(clean, '__proto__')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(clean, 'constructor')).toBe(false);
-    expect(Object.prototype.hasOwnProperty.call(clean, 'nanVal')).toBe(false);
+    expect(Object.hasOwn(clean, '__proto__')).toBe(false);
+    expect(Object.hasOwn(clean, 'constructor')).toBe(false);
+    expect(Object.hasOwn(clean, 'nanVal')).toBe(false);
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(clean.ok).toBe(1);
   });
@@ -64,7 +64,7 @@ describe('security hardening', () => {
     expect(parsed.settings.profile.age).toBeGreaterThan(0);
     expect(Number.isFinite(parsed.settings.profile.age)).toBe(true);
     expect(parsed.settings.profile.height).toBe(178);
-    expect(Object.prototype.hasOwnProperty.call(parsed.settings.notes, '__proto__')).toBe(false);
+    expect(Object.hasOwn(parsed.settings.notes, '__proto__')).toBe(false);
   });
 
   it('ignora edad y altura no numéricas en parseMeasuresCsv sin generar NaN', () => {

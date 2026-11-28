@@ -1,22 +1,24 @@
+import { lazy, Suspense } from 'preact/compat';
 import { useAppStore } from '../../store/appStore';
 import { activeTabTitle, buildShellCounters, isRoutineTab } from '../../store/navigation';
 import type { State } from '../../ui/shared';
-import { AdherenceView } from '../../views/AdherenceView';
-import { BodyView } from '../../views/BodyView';
-import { CalcView } from '../../views/CalcView';
-import { DataView } from '../../views/DataView';
-import { DayRoutineView } from '../../views/DayRoutineView';
 import { HomeView } from '../../views/HomeView';
 import { LiveWorkoutView } from '../../views/LiveWorkoutView';
-import { LogWorkoutView } from '../../views/LogWorkoutView';
-import { PlanView } from '../../views/PlanView';
-import { SettingsView } from '../../views/SettingsView';
-import { VolumeView } from '../../views/VolumeView';
 import { SwUpdateBanner, ToastBanner } from '../common/ToastBanner';
-import { ModalHost } from '../modals/ModalHost';
 import { MobileBottomNav, MobileHeader } from './MobileNav';
 import { RestTimerWatcher } from './RestTimerPill';
 import { Sidebar } from './Sidebar';
+
+const AdherenceView = lazy(() => import('../../views/AdherenceView').then((m) => ({ default: m.AdherenceView })));
+const BodyView = lazy(() => import('../../views/BodyView').then((m) => ({ default: m.BodyView })));
+const CalcView = lazy(() => import('../../views/CalcView').then((m) => ({ default: m.CalcView })));
+const DataView = lazy(() => import('../../views/DataView').then((m) => ({ default: m.DataView })));
+const DayRoutineView = lazy(() => import('../../views/DayRoutineView').then((m) => ({ default: m.DayRoutineView })));
+const LogWorkoutView = lazy(() => import('../../views/LogWorkoutView').then((m) => ({ default: m.LogWorkoutView })));
+const PlanView = lazy(() => import('../../views/PlanView').then((m) => ({ default: m.PlanView })));
+const SettingsView = lazy(() => import('../../views/SettingsView').then((m) => ({ default: m.SettingsView })));
+const VolumeView = lazy(() => import('../../views/VolumeView').then((m) => ({ default: m.VolumeView })));
+const ModalHost = lazy(() => import('../modals/ModalHost').then((m) => ({ default: m.ModalHost })));
 
 interface AppShellProps {
   /** Se ejecuta una vez cuando el temporizador global de descanso llega a cero. */
@@ -51,6 +53,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
   const restUntil = state.liveWorkout?.restUntil;
   const restPausedRemSec = state.liveWorkout?.restPausedRemSec;
   const targetRestSec = state.liveWorkout?.targetRestSec;
+  const hasAnyModal = Boolean(state.activeModal);
 
   return (
     <>
@@ -78,10 +81,22 @@ export function AppShell({ onRestExpire }: AppShellProps) {
       />
       <div class="lg:pl-64">
         <main id="main-content" tabIndex={-1} class="w-full space-y-4 p-2.5 pb-28 sm:p-5 lg:px-7 lg:py-6 xl:px-10 lg:pb-10 focus:outline-none">
+          {state.demoMode && (
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-electricBlue/35 bg-electricBlue/10 px-3 py-2 text-xs">
+              <span class="text-blue-200">
+                <strong class="font-bold">Modo demo interactivo</strong> · Datos de ejemplo en memoria (no modifica tu cuenta).
+              </span>
+              <button type="button" class="btn-sm min-h-[36px]" onClick={store.exitDemoMode}>
+                Salir de demo
+              </button>
+            </div>
+          )}
           {['home', 'calc', 'settings'].includes(state.tab) && (
             <h1 class="sr-only lg:not-sr-only lg:block text-lg font-extrabold text-white">{activeTabTitle(state)}</h1>
           )}
-          {renderActiveView(state)}
+          <Suspense fallback={<div class="py-12 text-center text-xs text-gray-400">Cargando vista…</div>}>
+            {renderActiveView(state)}
+          </Suspense>
         </main>
       </div>
       <MobileBottomNav
@@ -95,7 +110,11 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         targetRestSec={targetRestSec}
         onSelectTab={store.setTab}
       />
-      <ModalHost />
+      {hasAnyModal && (
+        <Suspense fallback={null}>
+          <ModalHost />
+        </Suspense>
+      )}
       <ToastBanner message={state.toast} action={state.toastAction} />
       <SwUpdateBanner
         visible={store.swUpdatePending}

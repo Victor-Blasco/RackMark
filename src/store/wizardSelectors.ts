@@ -1,4 +1,4 @@
-import { parseDecimal, ROUTINE_TEMPLATES } from '../lib/seed';
+import { parseDecimal, } from '../lib/seed';
 import type { AiTone, ExperienceLevel, Settings, TrainingGoal } from '../types';
 import type { State } from '../ui/shared';
 

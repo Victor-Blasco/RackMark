@@ -1652,14 +1652,14 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
 
     // ExerciseModal no preselecciona Pecho cuando no hay initialName
     const emptyExModal = renderToString(
-      h(ExerciseModal, { routines: ['Push', 'Pull'], onSave: () => {}, onClose: () => {} }),
+      h(ExerciseModal, { routines: ['Push', 'Pull'], onSave: () => undefined, onClose: () => {} }),
     );
     expect(emptyExModal).toMatch(/<option[^>]*selected[^>]*>Selecciona músculo…<\/option>/);
     expect(emptyExModal).not.toMatch(/value="Pecho"[^>]*selected|selected[^>]*value="Pecho"/);
 
     // ExerciseModal sugiere Espalda cuando initialName contiene "Remo"
     const rowExModal = renderToString(
-      h(ExerciseModal, { routines: ['Push', 'Pull'], initialName: 'Remo gironda', onSave: () => {}, onClose: () => {} }),
+      h(ExerciseModal, { routines: ['Push', 'Pull'], initialName: 'Remo gironda', onSave: () => undefined, onClose: () => {} }),
     );
     expect(rowExModal).toMatch(/value="Espalda"[^>]*selected|selected[^>]*value="Espalda"/);
   });

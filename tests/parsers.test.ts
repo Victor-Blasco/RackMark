@@ -42,7 +42,7 @@ describe('parseo de CSV de medidas y cruce de ejercicios Samsung', () => {
     ].join('\n');
 
     const names = parseCustomExerciseCsv(ceCsv);
-    expect(names['m7i86bn9_2u6']).toBe('Curl de bíceps Martillo');
+    expect(names.m7i86bn9_2u6).toBe('Curl de bíceps Martillo');
     const { strength, cardio } = parseExerciseCsv(exCsv);
     expect(strength.length).toBeGreaterThan(1);
     expect(cardio.length).toBeGreaterThan(0);

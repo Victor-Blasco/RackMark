@@ -12,6 +12,8 @@ interface OnboardingHomeProps {
   onGoLog: () => void;
   /** Navega a una sección concreta (`plan`, `body`, `data`). */
   onNavigateTab: (tab: string) => void;
+  /** Carga un conjunto de datos de demostración sin crear cuenta. */
+  onEnterDemo?: () => void;
 }
 
 /**
@@ -23,18 +25,26 @@ export function OnboardingHome({
   onStartWorkout,
   onGoLog,
   onNavigateTab,
+  onEnterDemo,
 }: OnboardingHomeProps) {
   const routines = routineNames(state.settings);
   const onboarded = Boolean(state.settings.onboardingCompleted);
 
   return (
     <div class="max-w-3xl space-y-6">
-      <header class="space-y-1">
-        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Primeros pasos</span>
-        <h2 class="text-xl sm:text-2xl font-extrabold text-white">Tu cuaderno de entrenamiento está listo</h2>
-        <p class="text-sm text-gray-300">
-          Completa estos pasos a tu ritmo. En cuanto guardes tu primer entreno verás tus gráficas y progresión aquí.
-        </p>
+      <header class="flex flex-wrap items-start justify-between gap-3">
+        <div class="space-y-1">
+          <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Primeros pasos</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white">Tu cuaderno de entrenamiento está listo</h2>
+          <p class="text-sm text-gray-300">
+            Completa estos pasos a tu ritmo. En cuanto guardes tu primer entreno verás tus gráficas y progresión aquí.
+          </p>
+        </div>
+        {onEnterDemo && (
+          <button type="button" class="btn-sm btn-accent min-h-[44px] sm:min-h-[34px] shrink-0" onClick={onEnterDemo}>
+            Probar con datos de demo
+          </button>
+        )}
       </header>
 
       <ol class="divide-y divide-white/10 border-y border-white/10">

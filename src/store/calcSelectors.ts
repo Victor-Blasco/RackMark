@@ -35,7 +35,7 @@ export function buildCalcViewModel(state: State) {
     .flatMap((e) => {
       const k = norm(e.name);
       const last = e.last;
-      if (!last || !last.sets.length || seenPresets.has(k)) return [];
+      if (!last?.sets.length || seenPresets.has(k)) return [];
       seenPresets.add(k);
       const best = last.sets.filter((s) => s.w === last.top).sort((a, b) => b.r - a.r)[0] ?? last.sets[0];
       return best ? [{ n: e.name, w: best.w, r: best.r }] : [];

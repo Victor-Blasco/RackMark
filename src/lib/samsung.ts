@@ -41,7 +41,7 @@ export function parseExerciseCsv(text: string): { strength: StrengthRow[]; cardi
     const id = r['com.samsung.health.exercise.datauuid'];
     const st = r['com.samsung.health.exercise.start_time'];
     if (!id || !st) continue;
-    const ts = Date.parse(st.replace(' ', 'T') + 'Z');
+    const ts = Date.parse(`${st.replace(' ', 'T')}Z`);
     if (Number.isNaN(ts)) continue;
     const date = localDate(ts, offsetMin(r['com.samsung.health.exercise.time_offset']));
     const type = Number(r['com.samsung.health.exercise.exercise_type'] || 0);
@@ -98,8 +98,8 @@ export function parseSleepCsv(text: string): Map<string, DailyWellbeing> {
     const st = r['com.samsung.health.sleep.start_time'];
     const et = r['com.samsung.health.sleep.end_time'];
     if (!et) continue;
-    const endTs = Date.parse(et.replace(' ', 'T') + 'Z');
-    const startTs = st ? Date.parse(st.replace(' ', 'T') + 'Z') : NaN;
+    const endTs = Date.parse(`${et.replace(' ', 'T')}Z`);
+    const startTs = st ? Date.parse(`${st.replace(' ', 'T')}Z`) : NaN;
     if (Number.isNaN(endTs)) continue;
     const date = localDate(endTs, offsetMin(r['com.samsung.health.sleep.time_offset']));
     const sleepMin = pos(r.sleep_duration) ?? (!Number.isNaN(startTs) ? pos((endTs - startTs) / 60000) : undefined);

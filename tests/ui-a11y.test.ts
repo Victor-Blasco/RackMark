@@ -27,7 +27,6 @@ import { WizardModal } from '../src/components/modals/WizardModal';
 import { ChartCanvas } from '../src/components/common/ChartCanvas';
 import { RangePicker } from '../src/components/common/RangePicker';
 import { DayMobileAccordion } from '../src/components/day/DayMobileAccordion';
-import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
 import { buildAdherenceCalendarData, buildMonthGrid } from '../src/store/adherenceCalendar';
 import { buildCompChartConfig, buildPerimChartConfig } from '../src/store/bodyChartConfigs';

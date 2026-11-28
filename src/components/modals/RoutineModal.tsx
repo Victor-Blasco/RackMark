@@ -14,7 +14,7 @@ interface RoutineModalProps {
   /** Color hexadecimal identificativo seleccionado. */
   initialColor: string;
   /** Persiste la creación o actualización de la rutina; devuelve mensaje si hay error de validación. */
-  onSave: (payload: SaveRoutinePayload) => string | undefined | void | Promise<string | undefined | void>;
+  onSave: (payload: SaveRoutinePayload) => string | undefined | undefined | Promise<string | undefined | undefined>;
   /** Cierra el modal sin guardar cambios. */
   onClose: () => void;
 }

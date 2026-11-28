@@ -67,7 +67,7 @@ export function createWorkoutPickerActions(
       const state = getState();
       const live = state.liveWorkout;
       const trimmed = rawName.trim();
-      if (!live || !live.pickerMode) return;
+      if (!live?.pickerMode) return;
       if (!trimmed) {
         toast('Elige o escribe un ejercicio.');
         return;

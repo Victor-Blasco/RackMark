@@ -17,7 +17,7 @@ interface HomeViewProps {
  * Vista principal `Resumen`: muestra bienvenida en el Día 1 o KPIs, Coach IA, gráficas y control de cargas.
  */
 export function HomeView({ state: propState }: HomeViewProps) {
-  const { state: storeState, plan, cloudLogin, setTab } = useAppStore();
+  const { state: storeState, plan, cloudLogin, enterDemoMode, setTab } = useAppStore();
   const state = propState ?? storeState;
   const vm = buildHomeViewModel(state);
 
@@ -29,6 +29,7 @@ export function HomeView({ state: propState }: HomeViewProps) {
         onStartWorkout={(d) => plan.startWorkout(d)}
         onGoLog={() => plan.openLog()}
         onNavigateTab={setTab}
+        onEnterDemo={enterDemoMode}
       />
     );
   }

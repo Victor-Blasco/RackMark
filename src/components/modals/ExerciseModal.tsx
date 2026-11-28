@@ -15,7 +15,7 @@ interface ExerciseModalProps {
   /** Indica si se abrió desde `Registrar hecho` (oculta asignación de rutina). */
   fromLog?: boolean;
   /** Guarda el nuevo ejercicio en el catálogo y en la rutina destino; devuelve error de validación si falla. */
-  onSave: (payload: SaveExercisePayload) => string | undefined | void | Promise<string | undefined | void>;
+  onSave: (payload: SaveExercisePayload) => string | undefined | undefined | Promise<string | undefined | undefined>;
   /** Cierra el modal sin guardar cambios. */
   onClose: () => void;
 }

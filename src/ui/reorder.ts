@@ -135,7 +135,7 @@ export function initSortableLists(
   const getItems = getSortItems;
 
   const maybeSwap = () => {
-    if (!active || !active.started || performance.now() < active.lockUntil) return;
+    if (!active?.started || performance.now() < active.lockUntil) return;
     const { list, item } = active;
     const items = getItems(list);
     if (items.length < 2) return;
@@ -257,7 +257,7 @@ export function initSortableLists(
 
     if (speed !== 0 && !active.rafScroll) {
       const step = () => {
-        if (!active || !active.started) return;
+        if (!active?.started) return;
         const prevY = window.scrollY;
         window.scrollBy(0, speed);
         const scrolled = window.scrollY - prevY;

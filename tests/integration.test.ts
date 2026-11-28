@@ -8,6 +8,7 @@ import { ModalHost } from '../src/components/modals/ModalHost';
 import { RestTimerBar } from '../src/components/workout/RestTimerBar';
 import { fmtMMSS } from '../src/ui/restAudio';
 import { buildPayload, buildPrompt } from '../src/lib/ai';
+import { buildDemoDataset } from '../src/lib/demoData';
 import { analyze } from '../src/lib/analysis';
 import { parseBackup, sanitizeDataRecord, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
@@ -265,5 +266,14 @@ describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y accio
     expect(maybeOpenInitialWizard(state)).toBe(true);
     expect((state as State).activeModal?.type).toBe('wizard');
     expect(maybeOpenInitialWizard(state)).toBe(false);
+
+    // 6. Dataset de demostración (?demo=1) coherente y con informe IA precargado
+    const demo = buildDemoDataset();
+    expect(demo.strength.length).toBeGreaterThan(20);
+    expect(demo.measures.length).toBeGreaterThanOrEqual(10);
+    expect(demo.settings.ai?.summary?.length).toBeGreaterThan(20);
+    const demoAn = analyze(demo.strength, demo.settings);
+    expect(demoAn.sessions.length).toBe(27);
+    expect(demoAn.exercises.size).toBeGreaterThanOrEqual(6);
   });
 });

@@ -377,15 +377,47 @@ function handleRestExpire() {
   if (S.tab !== 'workout') toast('Descanso completado · listo para la siguiente serie.');
 }
 
+const isDemoUrl = () => new URLSearchParams(location.search).get('demo') === '1';
+
+async function activateDemoMode() {
+  const { buildDemoDataset } = await import('./lib/demoData');
+  const demo = buildDemoDataset();
+  S.demoMode = true;
+  S.user = undefined;
+  S.authReady = true;
+  S.settings = demo.settings;
+  S.strength = demo.strength;
+  S.cardio = demo.cardio;
+  S.measures = demo.measures;
+  S.wellbeing = demo.wellbeing;
+  S.analysis = analyze(S.strength, S.settings);
+  applyTheme(S.settings.theme ?? 'dark');
+  const u = new URL(location.href);
+  if (u.searchParams.get('demo') !== '1') {
+    u.searchParams.set('demo', '1');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }
+  render();
+}
+
+function exitDemoMode() {
+  const u = new URL(location.href);
+  u.searchParams.delete('demo');
+  history.replaceState(null, '', u.pathname + u.search + u.hash);
+  location.reload();
+}
+
 function RootShell() {
   const storeValue: AppStoreValue = {
     state: S,
     lastRoutine,
     lastAnalytics,
-    unsynced: hasUnsyncedChanges(),
+    unsynced: S.demoMode ? false : hasUnsyncedChanges(),
     swUpdatePending,
     setTab: navigateTab,
     cloudLogin: () => openAuthModal('login'),
+    enterDemoMode: () => { void activateDemoMode(); },
+    exitDemoMode,
     resolveConfirm,
     closeModal,
     saveNoteModal,
@@ -420,7 +452,7 @@ window.addEventListener('hashchange', () => {
 
 window.addEventListener('online', () => {
   renderChrome();
-  syncCtrl.queueSync();
+  if (!S.demoMode) syncCtrl.queueSync();
 });
 window.addEventListener('offline', () => renderChrome());
 
@@ -433,14 +465,18 @@ initSortableLists(root, async (scope, from, to) => {
   }
 });
 
-reload()
-  .then(async () => {
-    S.lastSync = syncCtrl.getLastSyncAt();
-    maybeOpenInitialWizard(S);
-    render();
-    await syncCtrl.initAuth();
-  })
-  .catch((e) => {
-    renderChrome();
-    toast(`No se pudieron cargar los datos locales: ${humanizeError(e)}`);
-  });
+if (isDemoUrl()) {
+  void activateDemoMode();
+} else {
+  reload()
+    .then(async () => {
+      S.lastSync = syncCtrl.getLastSyncAt();
+      maybeOpenInitialWizard(S);
+      render();
+      await syncCtrl.initAuth();
+    })
+    .catch((e) => {
+      renderChrome();
+      toast(`No se pudieron cargar los datos locales: ${humanizeError(e)}`);
+    });
+}

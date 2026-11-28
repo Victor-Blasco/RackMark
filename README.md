@@ -6,7 +6,8 @@
 
 <p align="center">
   Cuaderno de entrenamiento de fuerza, análisis de progresión y seguimiento físico (PWA offline-first).<br />
-  <a href="https://rackmark.web.app"><strong>https://rackmark.web.app</strong></a>
+  <a href="https://rackmark.web.app/?demo=1"><strong>Probar demo interactiva (sin registro)</strong></a> ·
+  <a href="https://rackmark.web.app">App en producción</a>
 </p>
 
 <p align="center">
@@ -27,6 +28,25 @@
 - **Planificación:** rutinas personalizables (Push/Pull/Leg, Torso/Pierna, Full Body, Weider o propias), catálogo muscular, fusión de ejercicios duplicados y fases de entrenamiento.
 - **Coach IA (opcional):** análisis periódico mediante Firebase AI Logic (Gemini) en modo sencillo o técnico.
 - **Offline-first + Nube:** persistencia local en IndexedDB con sincronización bidireccional en Cloud Firestore e inicio de sesión con Google.
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+  UI["Preact Views & Components (lazy-loaded)"] --> Store["Store, Selectors & Actions"]
+  Store --> IDB["IndexedDB (offline-first)"]
+  Store <--> Sync["Sync Controller"]
+  Sync <--> Firestore["Cloud Firestore (por UID)"]
+  Store --> Worker["Web Worker (fflate + papaparse)"]
+  Store -.-> AI["Firebase AI Logic (Gemini, import dinámico)"]
+```
+
+## Decisiones técnicas
+
+- **Preact + Code Splitting:** vistas secundarias y modales cargados bajo demanda (`preact/compat` `lazy`) para mantener ligero el arranque móvil en gimnasio.
+- **Offline-first real:** persistencia local inmediata en IndexedDB con cola de sincronización por cubos mensuales hacia Cloud Firestore y reglas declarativas por `uid`.
+- **Importación pesada aislada:** descompresión ZIP y parseo CSV de Samsung Health ejecutados en Web Worker sin bloquear la interfaz.
+- **Calidad automatizada:** suite de tests unitarios/integración/A11y con Vitest, tipado estricto (`tsc --noEmit`) y linting con Biome en CI.
 
 ## Stack técnico
 
@@ -53,6 +73,7 @@ Comandos disponibles:
 
 ```bash
 npm run dev      # Servidor de desarrollo Vite
+npm run lint     # Linter estático (Biome)
 npm test         # Suite de tests (Vitest)
 npm run build    # Comprobación de tipos (tsc --noEmit) + build de producción en dist/
 npm run preview  # Previsualización local del build

@@ -80,7 +80,7 @@ export function createWorkoutSetActions(
 
     applyTargetWeight(ei: number, targetW: number) {
       const live = getLive();
-      if (!live || !live.exercises[ei] || !Number.isFinite(targetW)) return;
+      if (!live?.exercises[ei] || !Number.isFinite(targetW)) return;
       const nextW = Math.max(0, targetW);
       commit(mapExercise(live, ei, (item) => ({
         ...item,

@@ -39,7 +39,7 @@ export function createLiveWorkoutActions(deps: WorkoutActionDeps) {
 
   const selectExercise = (idx: number) => {
     const live = getLive();
-    if (!live || !live.exercises.length) return;
+    if (!live?.exercises.length) return;
     deps.commitLive({
       ...live,
       curIdx: Math.min(Math.max(0, idx), live.exercises.length - 1),

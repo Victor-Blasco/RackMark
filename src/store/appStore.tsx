@@ -25,6 +25,10 @@ export interface AppStoreValue {
   setTab: (tab: string) => void;
   /** Inicia el flujo de autenticación en la nube con Google. */
   cloudLogin: () => void;
+  /** Activa el modo demo en memoria con datos ficticios sin tocar IndexedDB ni la nube. */
+  enterDemoMode: () => void;
+  /** Sale del modo demo y recarga los datos reales del dispositivo/cuenta. */
+  exitDemoMode: () => void;
   /** Resuelve la promesa del diálogo `#confirm-modal`. */
   resolveConfirm: (ok: boolean) => void;
   /** Cierra el modal de formulario o edición activo. */
@@ -65,6 +69,8 @@ const DEFAULT_STORE: AppStoreValue = {
   swUpdatePending: false,
   setTab: noop,
   cloudLogin: noop,
+  enterDemoMode: noop,
+  exitDemoMode: noop,
   resolveConfirm: noop,
   closeModal: noop,
   saveNoteModal: noopAsync,

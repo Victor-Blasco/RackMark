@@ -62,7 +62,7 @@ export function EmailAuthForm({
       setLocalError('Introduce tu nombre (al menos 2 caracteres).');
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
+    if (!cleanEmail?.includes('@')) {
       setLocalError('Introduce un correo electrónico válido.');
       return;
     }

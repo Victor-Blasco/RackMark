@@ -8,7 +8,7 @@ interface PlanExerciseMapListProps {
   /** Renombra un ejercicio en catálogo, rutinas e historial. */
   onRename?: (oldName: string, newName: string) => Promise<string | undefined>;
   /** Elimina por completo un ejercicio tras confirmación. */
-  onDelete?: (exName: string) => Promise<boolean> | void;
+  onDelete?: (exName: string) => Promise<boolean> | undefined;
   /** Cambia el músculo principal de un ejercicio. */
   onChangePrimary?: (exName: string, primary: string) => void;
   /** Alterna un músculo secundario de un ejercicio en un toque. */

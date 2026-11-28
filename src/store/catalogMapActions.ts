@@ -28,7 +28,7 @@ function omitMatchingEntries<T>(rec: Record<string, T>, matchVal: (val: T, key: 
 }
 
 function removeFromLiveWorkout(live: LiveWorkout | undefined, targetNorm: string): { next: LiveWorkout | undefined; changed: boolean } {
-  if (!live || !live.exercises.some((e) => norm(e.name) === targetNorm)) return { next: live, changed: false };
+  if (!live?.exercises.some((e) => norm(e.name) === targetNorm)) return { next: live, changed: false };
   const kept: LiveWorkout['exercises'] = [];
   const idxMap = new Map<number, number>();
   live.exercises.forEach((ex, idx) => {

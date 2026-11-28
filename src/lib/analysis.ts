@@ -355,7 +355,7 @@ export function analyze(rows: StrengthRow[], s: Settings): Analysis {
 
 export function isoWeekStart(date: string): string {
   const safeDate = isValidIsoDate(date) ? date : todayIso();
-  const d = new Date(safeDate + 'T00:00:00Z');
+  const d = new Date(`${safeDate}T00:00:00Z`);
   const wd = (d.getUTCDay() + 6) % 7;
   d.setUTCDate(d.getUTCDate() - wd);
   return d.toISOString().slice(0, 10);

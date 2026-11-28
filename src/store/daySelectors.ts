@@ -81,11 +81,11 @@ export function buildDayRoutineViewModel(state: State, day: DayName) {
 
   const desktopEx = desktopCur ? allPool.find((x) => x.name === desktopCur) : undefined;
   const desktopChartCfg =
-    desktopEx && desktopEx.sessions.length ? exerciseChartConfig(desktopEx.sessions, dayColor) : null;
+    desktopEx?.sessions.length ? exerciseChartConfig(desktopEx.sessions, dayColor) : null;
 
   const mobileEx = mobileCur ? allPool.find((x) => x.name === mobileCur) : undefined;
   const mobileChartCfg =
-    mobileEx && mobileEx.sessions.length ? exerciseChartConfig(mobileEx.sessions, dayColor) : null;
+    mobileEx?.sessions.length ? exerciseChartConfig(mobileEx.sessions, dayColor) : null;
 
   const sess = hasFilter ? sessAll.filter((x) => inRange(x.date, bounds)) : sessAll;
   const lastS = sess[sess.length - 1];

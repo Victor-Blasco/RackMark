@@ -95,7 +95,7 @@ export function useFocusTrap(
       window.removeEventListener('keydown', handleKeyDown);
       const trigger = prevTrigger.current;
       prevTrigger.current = null;
-      if (trigger && trigger.isConnected) {
+      if (trigger?.isConnected) {
         trigger.focus({ preventScroll: true });
       } else {
         document.getElementById('main-content')?.focus({ preventScroll: true });

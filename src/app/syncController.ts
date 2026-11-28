@@ -31,7 +31,7 @@ const SYNC_RETRY_BASE_MS = 2_000;
 const SYNC_RETRY_MAX_MS = 5 * 60 * 1000;
 
 const isOnline = (): boolean => (typeof navigator === 'undefined' ? true : navigator.onLine !== false);
-const isVerifiedUser = (u: AppContext['state']['user']): boolean => Boolean(u && u.emailVerified);
+const isVerifiedUser = (u: AppContext['state']['user']): boolean => Boolean(u?.emailVerified);
 
 export interface SyncControllerHooks {
   onUserReady?: () => void;
