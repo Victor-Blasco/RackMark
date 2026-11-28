@@ -166,8 +166,7 @@ describe('Integración Bloque D: db.ts, ai.ts, componentes Preact, hooks y accio
     expect(fmtMMSS(75)).toBe('1:15');
 
     const idleHtml = renderToString(h(RestTimerBar, { targetRestSec: 90 }));
-    expect(idleHtml).toContain('id="rest-timer-bar"');
-    expect(idleHtml).toContain('data-rest-state="idle"');
+    expect(idleHtml).toBe('');
 
     const runningHtml = renderToString(h(RestTimerBar, { restUntil: Date.now() + 75_000, targetRestSec: 90 }));
     expect(runningHtml).toContain('id="rest-timer-bar"');

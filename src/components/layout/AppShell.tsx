@@ -48,6 +48,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
 
   const { statsText, liveCount, draftCount } = buildShellCounters(state);
   const restUntil = state.liveWorkout?.restUntil;
+  const restPausedRemSec = state.liveWorkout?.restPausedRemSec;
   const targetRestSec = state.liveWorkout?.targetRestSec;
 
   return (
@@ -89,6 +90,7 @@ export function AppShell({ onRestExpire }: AppShellProps) {
         lastRoutine={store.lastRoutine}
         lastAnalytics={store.lastAnalytics}
         restUntil={restUntil}
+        restPausedRemSec={restPausedRemSec}
         targetRestSec={targetRestSec}
         onSelectTab={store.setTab}
       />

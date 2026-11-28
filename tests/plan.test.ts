@@ -545,7 +545,7 @@ describe('onboarding wizard & athlete profile', () => {
     expect(runningHtml).toContain('data-rest-state="running"');
     expect(runningHtml).toContain('id="rest-timer-val"');
     expect(renderToString(h(RestTimerBar, { restUntil: Date.now() - 1000, targetRestSec: live.targetRestSec }))).toContain('data-rest-state="done"');
-    expect(renderToString(h(RestTimerBar, { targetRestSec: live.targetRestSec }))).toContain('data-rest-state="idle"');
+    expect(renderToString(h(RestTimerBar, { targetRestSec: live.targetRestSec }))).toBe('');
 
     const logHtml = renderToString(h(LogWorkoutView, { state: { ...state, logDraft: draft } }));
     expect(logHtml).not.toContain('id="rest-timer-bar"');
@@ -737,6 +737,66 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     expect(headPlan).toContain('Catálogo');
     expect(headPlan).toContain('Fases');
     expect(headPlan).toContain('grid-cols-2');
+
+    const headWorkout = renderToString(
+      h(MobileHeader, {
+        state: {
+          ...baseState,
+          tab: 'workout',
+          liveWorkout: { day: 'Push', date: '2026-11-28', startedAt: Date.now(), curIdx: 0, exercises: [], targetRestSec: 90 },
+        },
+        statsText: 'sin datos',
+        unsynced: false,
+        onSelectTab: () => {},
+        onCloudLogin: () => {},
+      }),
+    );
+    expect(headWorkout).toContain('Entreno en vivo');
+    expect(headWorkout).not.toContain('Modo de entrenamiento');
+    expect(headWorkout).not.toContain('Registrar hecho');
+
+    const navRestHome = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'home' },
+        liveCount: 1,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        restUntil: Date.now() + 75_000,
+        targetRestSec: 90,
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navRestHome).toContain('1:15');
+
+    const navRestPaused = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'home' },
+        liveCount: 1,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        restPausedRemSec: 45,
+        targetRestSec: 90,
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navRestPaused).toContain('0:45');
+    expect(navRestPaused).toContain('bg-amberGold');
+
+    const navRestInWorkout = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'workout' },
+        liveCount: 1,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        restUntil: Date.now() + 75_000,
+        targetRestSec: 90,
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navRestInWorkout).not.toContain('1:15');
 
     // 3. Sidebar: rutinas + "+ Nueva rutina" y herramientas (Catálogo y Fases) sin duplicar Editor de rutinas
     const sideHtml = renderToString(

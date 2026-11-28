@@ -858,7 +858,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...base, tab: 'workout', liveWorkout: live } }));
     expect(liveHtml).not.toContain('max-[380px]:w-9');
     expect(liveHtml).toContain('w-full min-h-[44px] rounded-sm border-b');
-    expect(liveHtml).toContain('min-h-[44px] min-w-[44px]');
+    expect(liveHtml).toContain('min-h-[48px] min-w-[48px]');
 
     // 6. Calculadoras con comas españolas y inputs alineados
     const calcHtml = renderToString(h(CalcView, { state: { ...base, tab: 'calc' } }));

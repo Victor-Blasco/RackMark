@@ -8,6 +8,7 @@ import { parseBackup, sanitizeSettings } from '../src/lib/db';
 import { DEFAULT_SETTINGS } from '../src/lib/seed';
 import { WorkoutSummaryModal } from '../src/components/modals/WorkoutSummaryModal';
 import { PlanCatalogList } from '../src/components/plan/PlanCatalogList';
+import { ExerciseCardMenu } from '../src/components/workout/ExerciseCardMenu';
 import { ExerciseHistoryDrawer } from '../src/components/workout/ExerciseHistoryDrawer';
 import { LiveExerciseMenu } from '../src/components/workout/LiveExerciseMenu';
 import { LiveHeader } from '../src/components/workout/LiveHeader';
@@ -173,7 +174,7 @@ describe('live workout & manual rest separation', () => {
     const ex1Name = live.exercises[1].name;
 
     const step1Html = renderToString(h(LiveWorkoutView, { state: { ...state, liveWorkout: live } }));
-    expect(step1Html).toContain('id="rest-timer-bar"');
+    expect(step1Html).not.toContain('id="rest-timer-bar"');
     expect(step1Html).toContain('aria-label="Peso kg serie 1"');
     expect(step1Html).toContain('aria-label="Descanso en segundos serie 1"');
     expect(step1Html).toContain('Peso (kg)');
@@ -749,10 +750,22 @@ describe('workout: descansos, FLIP, auto-marcado y orden real', () => {
     expect(popupHtml).toContain('+2,5 kg máx');
     expect(popupHtml).toContain('+ Serie extra');
 
-    // 3. RestTimerBar en espera permite inicio manual (m:ss) sin duplicar la duración; RIR explicado en móvil en En vivo y Registrar hecho
-    const restIdleHtml = renderToString(h(RestTimerBar, { targetRestSec: 90 }));
-    expect(restIdleHtml).toContain('Iniciar 1:30');
-    expect(restIdleHtml).not.toContain('Descanso de serie:');
+    // 3. RestTimerBar se oculta en reposo y el menú contextual permite inicio manual (m:ss); RIR explicado en móvil en En vivo y Registrar hecho
+    expect(renderToString(h(RestTimerBar, { targetRestSec: 90 }))).toBe('');
+    const cardMenuHtml = renderToString(
+      h(ExerciseCardMenu, {
+        exName: 'Press de banca',
+        historyCount: 1,
+        targetRestSec: 90,
+        loadType: 'external',
+        onOpenHistory: () => {},
+        onStartRest: () => {},
+        onOpenPicker: () => {},
+        onOpenFixedNote: () => {},
+        onSetLoadType: () => {},
+      }),
+    );
+    expect(cardMenuHtml).toContain('Iniciar descanso (1:30)');
     const liveHtml = renderToString(h(LiveWorkoutView, { state: { ...state, tab: 'workout', liveWorkout: liveIdle } }));
     expect(liveHtml).toContain('RIR: reps en reserva (0 = al fallo · 2 = te guardas 2)');
     expect(liveHtml).toContain('aria-label="Opciones de Press de banca"');

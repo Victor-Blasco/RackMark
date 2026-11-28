@@ -4,7 +4,6 @@ import {
   PLAN_TABS,
   SYSTEM_IDS,
   SYSTEM_TABS,
-  TRAIN_TABS,
   activeTabTitle,
   isRoutineTab,
   syncStatusInfo,
@@ -35,19 +34,16 @@ export function MobileHeader({ state, statsText, unsynced, onSelectTab, onSelect
   const unmappedCount = state.analysis.unmapped.length;
   const inAnalytics = ANALYTICS_IDS.has(state.tab);
   const inSystem = SYSTEM_IDS.has(state.tab);
-  const inTrain = state.tab === 'workout' || state.tab === 'log';
   const rNames = routineNames(state.settings);
   const st = syncStatusInfo(state, unsynced);
   const compactStats = statsText.replace(/ sesiones?\b/, ' ses.').replace(/ medidas?\b/, ' med.');
 
   const subTabs = inAnalytics
     ? ANALYTICS_TABS.map((a) => ({ id: a.id, label: a.label === 'Calculadoras' ? 'Calc.' : a.label }))
-    : inTrain
-      ? TRAIN_TABS
-      : inSystem
-        ? SYSTEM_TABS
-        : null;
-  const subLabel = inAnalytics ? 'Vistas de análisis' : inTrain ? 'Modo de entrenamiento' : 'Cuenta y datos';
+    : inSystem
+      ? SYSTEM_TABS
+      : null;
+  const subLabel = inAnalytics ? 'Vistas de análisis' : 'Cuenta y datos';
 
   return (
     <header class="sticky top-0 z-30 border-b border-borderDark bg-navDark px-3 py-2 pt-[max(env(safe-area-inset-top),0.5rem)] lg:hidden">

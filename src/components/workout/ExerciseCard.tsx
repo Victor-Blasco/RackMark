@@ -79,8 +79,9 @@ export function ExerciseCard({ curIdx, exercise: ex, ctx, targetRestSec, actions
             </button>
             {menuOpen && (
               <ExerciseCardMenu
-                exName={ex.name} historyCount={ctx.hist?.n ?? 0} loadType={ctx.loadType}
+                exName={ex.name} historyCount={ctx.hist?.n ?? 0} targetRestSec={targetRestSec} loadType={ctx.loadType}
                 onOpenHistory={() => act(() => setHistoryOpen(true))}
+                onStartRest={() => act(() => actions.startRest(targetRestSec))}
                 onOpenPicker={(mode) => act(() => actions.openPicker(mode))}
                 onOpenFixedNote={() => act(() => actions.openFixedNote(ex.name))}
                 onSetLoadType={(lt) => act(() => actions.setLoadType(ex.name, lt))}

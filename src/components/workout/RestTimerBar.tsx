@@ -1,6 +1,5 @@
 import { useRestTimer } from '../../hooks/useRestTimer';
 import { fmtMMSS } from '../../ui/restAudio';
-import { Icon } from '../common/Icon';
 
 interface RestTimerBarProps {
   /** Marca temporal de fin de descanso activo en milisegundos epoch. */
@@ -77,16 +76,5 @@ export function RestTimerBar({
     );
   }
 
-  return (
-    <div id="rest-timer-bar" data-rest-state="idle" class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2 text-xs">
-      <span class="text-gray-400">Descanso</span>
-      <button
-        type="button"
-        class="btn min-h-[44px] min-w-[44px] sm:min-h-[36px] px-3 text-xs font-semibold text-blue-300 tabular-nums"
-        onClick={() => onStart?.(restSec)}
-      >
-        <Icon name="play" className="h-3.5 w-3.5" /> Iniciar {fmtMMSS(restSec)}
-      </button>
-    </div>
-  );
+  return null;
 }

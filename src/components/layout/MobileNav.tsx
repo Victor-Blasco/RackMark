@@ -2,7 +2,7 @@ import { ANALYTICS_IDS, isRoutineTab } from '../../store/navigation';
 import type { DayName } from '../../types';
 import type { State } from '../../ui/shared';
 import { Icon } from '../common/Icon';
-import { RestTimerBadge } from './RestTimerPill';
+import { MobileTrainPill } from './RestTimerPill';
 
 export { MobileHeader } from './MobileHeader';
 
@@ -19,6 +19,8 @@ interface MobileBottomNavProps {
   lastAnalytics: string;
   /** Marca temporal objetivo del descanso activo para reloj local sin re-renders globales. */
   restUntil?: number;
+  /** Segundos restantes cuando el descanso está en pausa. */
+  restPausedRemSec?: number;
   /** Duración objetivo del descanso activo en segundos. */
   targetRestSec?: number;
   /** Callback al seleccionar una pestaña en la barra inferior. */
@@ -35,6 +37,7 @@ export function MobileBottomNav({
   lastRoutine,
   lastAnalytics,
   restUntil,
+  restPausedRemSec,
   targetRestSec,
   onSelectTab,
 }: MobileBottomNavProps) {
@@ -58,13 +61,13 @@ export function MobileBottomNav({
           <span>Rutinas</span>
         </button>
         <button type="button" aria-current={inTrain ? 'page' : undefined} class="bnav-item" onClick={() => onSelectTab('workout')}>
-          <span class={`relative inline-flex items-center justify-center rounded-full px-3 py-1 text-white shadow-sm bg-electricBlue ${inTrain ? 'ring-2 ring-blue-300/60' : ''}`}>
-            <Icon name="play" className="h-4 w-4" />
-            <RestTimerBadge restUntil={restUntil} targetRestSec={targetRestSec} className="ml-1 text-[10px] font-bold tabular-nums" />
-            {(liveCount > 0 || state.liveWorkout != null || draftCount > 0) && (
-              <span class="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emeraldGreen ring-2 ring-navDark" />
-            )}
-          </span>
+          <MobileTrainPill
+            inTrain={inTrain}
+            showDot={liveCount > 0 || state.liveWorkout != null || draftCount > 0}
+            restUntil={restUntil}
+            restPausedRemSec={restPausedRemSec}
+            targetRestSec={targetRestSec}
+          />
           <span class={inTrain ? 'text-blue-300' : 'text-gray-200'}>Entrenar</span>
         </button>
         <button type="button" aria-current={inAnalytics ? 'page' : undefined} class={`bnav-item ${inAnalytics ? 'bnav-item-on' : ''}`} onClick={() => onSelectTab(lastAnalytics)}>

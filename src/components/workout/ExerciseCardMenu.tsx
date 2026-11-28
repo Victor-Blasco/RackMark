@@ -1,4 +1,5 @@
 import type { LoadType } from '../../types';
+import { fmtMMSS } from '../../ui/restAudio';
 import { Icon } from '../common/Icon';
 
 interface ExerciseCardMenuProps {
@@ -6,10 +7,14 @@ interface ExerciseCardMenuProps {
   exName: string;
   /** Número de sesiones previas registradas (`0` si no hay historial). */
   historyCount: number;
+  /** Descanso objetivo en segundos para el inicio manual. */
+  targetRestSec: number;
   /** Tipo de carga configurado actualmente para el ejercicio. */
   loadType: LoadType;
   /** Abre el drawer/sheet de historial rápido. */
   onOpenHistory: () => void;
+  /** Inicia manualmente el temporizador de descanso. */
+  onStartRest: () => void;
   /** Abre el selector para cambiar o añadir ejercicio. */
   onOpenPicker: (mode: 'swap' | 'add') => void;
   /** Abre el modal de nota permanente. */
@@ -31,8 +36,10 @@ const LOAD_OPTS: ReadonlyArray<{ id: LoadType; label: string }> = [
 export function ExerciseCardMenu({
   exName,
   historyCount,
+  targetRestSec,
   loadType,
   onOpenHistory,
+  onStartRest,
   onOpenPicker,
   onOpenFixedNote,
   onSetLoadType,
@@ -45,6 +52,9 @@ export function ExerciseCardMenu({
     >
       <button type="button" role="menuitem" class={MENU_ITEM} onClick={onOpenHistory}>
         <Icon name="chart" className="h-3.5 w-3.5 text-emerald-300" /> Historial ({historyCount})
+      </button>
+      <button type="button" role="menuitem" class={MENU_ITEM} onClick={onStartRest}>
+        <Icon name="play" className="h-3.5 w-3.5 text-blue-300" /> Iniciar descanso ({fmtMMSS(targetRestSec)})
       </button>
       <button type="button" role="menuitem" class={MENU_ITEM} onClick={() => onOpenPicker('swap')}>
         <Icon name="refresh" className="h-3.5 w-3.5 text-blue-300" /> Cambiar ejercicio
