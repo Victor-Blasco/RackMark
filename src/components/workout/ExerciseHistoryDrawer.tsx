@@ -75,7 +75,7 @@ export function ExerciseHistoryDrawer({ open, exName, hist, onClose }: ExerciseH
                 <span class="tabular-nums text-sm font-extrabold text-white">{pr8 != null ? `${r1(pr8)} kg` : '—'}</span>
               </div>
               <div>
-                <span class="block text-[11px] text-gray-400">e1RM máx</span>
+                <span class="block text-[11px] text-gray-400" title="Máximo estimado a 1 repetición (e1RM)">e1RM máx</span>
                 <span class="tabular-nums text-sm font-extrabold text-emerald-300">{r1(hist.maxE1rm)} kg</span>
               </div>
             </div>

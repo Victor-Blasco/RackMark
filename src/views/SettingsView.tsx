@@ -22,7 +22,7 @@ interface SettingsViewProps {
 export function SettingsView({ state: propState }: SettingsViewProps) {
   const { state: storeState, unsynced, plan, analytics, dataSync, setTab } = useAppStore();
   const state = propState ?? storeState;
-  const [openPc, setOpenPc] = useState<SettingsSecId | null>('account');
+  const [openPc, setOpenPc] = useState<SettingsSecId | null>(null);
   const [mobSub, setMobSub] = useState<SettingsSecId | null>(null);
 
   const tone: AiTone = state.settings.aiTone === 'simple' ? 'simple' : 'technical';

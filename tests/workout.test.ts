@@ -150,6 +150,16 @@ describe('live workout & manual rest separation', () => {
     const homeHtml = renderToString(h(HomeView, { state }));
     expect(homeHtml).toContain('Iniciar entreno');
     expect(homeHtml).toContain('Registrar hecho');
+
+    const homeActiveHtml = renderToString(
+      h(HomeView, {
+        state: {
+          ...state,
+          liveWorkout: { day: 'Push', date: '2026-11-10', startedAt: Date.now(), curIdx: 0, exercises: [], targetRestSec: 90 },
+        },
+      }),
+    );
+    expect(homeActiveHtml).toContain('Continuar entreno');
   });
 
   it('renderiza solo el ejercicio activo en liveWorkout, paneles swap/add, aviso de avance y conserva restSec', () => {

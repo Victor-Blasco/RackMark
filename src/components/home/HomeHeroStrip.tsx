@@ -9,6 +9,8 @@ interface HomeHeroStripProps {
   vm: ReturnType<typeof buildHomeViewModel>;
   /** Fechas personalizadas actuales para el filtro `home`. */
   customRange?: { from?: string; to?: string };
+  /** Indica si existe un entrenamiento en vivo en curso para mostrar `Continuar entreno`. */
+  hasActiveWorkout?: boolean;
   /** Inicia el entreno en vivo. */
   onStartWorkout: () => void;
   /** Navega a `Registrar hecho`. */
@@ -27,6 +29,7 @@ interface HomeHeroStripProps {
 export function HomeHeroStrip({
   vm,
   customRange,
+  hasActiveWorkout = false,
   onStartWorkout,
   onGoLog,
   onSelectRange,
@@ -57,7 +60,7 @@ export function HomeHeroStrip({
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="btn-primary min-h-[44px] px-4 py-2 text-xs sm:text-sm" onClick={onStartWorkout}>
-            <Icon name="play" className="h-3.5 w-3.5" /> Iniciar entreno
+            <Icon name="play" className="h-3.5 w-3.5" /> {hasActiveWorkout ? 'Continuar entreno' : 'Iniciar entreno'}
           </button>
           <button type="button" class="btn min-h-[44px] px-3 py-2 text-xs sm:text-sm" onClick={onGoLog}>
             <Icon name="edit" className="h-3.5 w-3.5" /> Registrar hecho

@@ -24,21 +24,23 @@ export function PlanExerciseMapList({ items, onRename, onDelete, onChangePrimary
   }
 
   return (
-    <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 items-start border-t border-white/10">
-      {items.map((item, idx) => (
-        <PlanExerciseMapRow
-          key={item.name}
-          item={item}
-          idx={idx}
-          open={expandedEx === item.name}
-          onToggle={() => setExpandedEx((cur) => (cur === item.name ? null : item.name))}
-          onRenamed={(newName) => setExpandedEx(newName)}
-          onRename={onRename}
-          onDelete={onDelete}
-          onChangePrimary={onChangePrimary}
-          onToggleSecondary={onToggleSecondary}
-        />
-      ))}
+    <div class="max-h-[58vh] sm:max-h-[560px] overflow-y-auto overscroll-contain pr-1 border-y border-white/10">
+      <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-x-8 items-start">
+        {items.map((item, idx) => (
+          <PlanExerciseMapRow
+            key={item.name}
+            item={item}
+            idx={idx}
+            open={expandedEx === item.name}
+            onToggle={() => setExpandedEx((cur) => (cur === item.name ? null : item.name))}
+            onRenamed={(newName) => setExpandedEx(newName)}
+            onRename={onRename}
+            onDelete={onDelete}
+            onChangePrimary={onChangePrimary}
+            onToggleSecondary={onToggleSecondary}
+          />
+        ))}
+      </div>
     </div>
   );
 }

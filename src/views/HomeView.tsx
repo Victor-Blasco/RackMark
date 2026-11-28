@@ -40,6 +40,7 @@ export function HomeView({ state: propState }: HomeViewProps) {
       <HomeHeroStrip
         vm={vm}
         customRange={state.customRanges?.home}
+        hasActiveWorkout={Boolean(state.liveWorkout)}
         onStartWorkout={() => plan.startWorkout()}
         onGoLog={() => plan.openLog()}
         onSelectRange={(key) => plan.setRange('home', key)}

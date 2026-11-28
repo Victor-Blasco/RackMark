@@ -834,7 +834,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     const planExHtml = renderToString(h(PlanView, { state: { ...base, tab: 'plan', planTab: 'exercises' } }));
     expect(planExHtml).not.toContain('text-gray-500');
     expect(planExHtml).toContain('max-w-full items-center justify-between');
-    expect(planExHtml).toContain('lg:sticky lg:top-0 lg:z-10');
+    expect(planExHtml).toContain('overflow-y-auto');
     expect(planExHtml).toContain('min-h-[44px] sm:min-h-[34px]');
 
     const pickerHtml = renderToString(h(ModalHost, { state: { ...base, activeModal: { type: 'routineExercisePicker', routine: 'Push' } } }));

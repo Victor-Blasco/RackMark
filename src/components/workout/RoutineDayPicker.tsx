@@ -35,7 +35,11 @@ export function RoutineDayPicker({ items, onStartWorkout, onGoToLog }: RoutineDa
                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
                 <span class="text-base font-extrabold text-white">{item.day}</span>
                 {item.sub && <span class="text-xs text-gray-400">· {item.sub}</span>}
-                {item.isSuggested && <span class="rounded-full bg-electricBlue px-2 py-0.5 text-[10px] font-bold text-white">Toca hoy</span>}
+                {item.isSuggested && (
+                  <span class="rounded-full bg-electricBlue px-2 py-0.5 text-[10px] font-bold" style={{ color: 'rgb(var(--c-accent-fg))' }}>
+                    Toca hoy
+                  </span>
+                )}
               </div>
               <p class="text-xs text-gray-400 tabular-nums">
                 {item.exerciseCount} {item.exerciseCount === 1 ? 'ejercicio' : 'ejercicios'} · {item.totalSets} {item.totalSets === 1 ? 'serie' : 'series'}{item.lastDate ? ` · Última ${fmtDate(item.lastDate)}` : ''}

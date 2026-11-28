@@ -41,15 +41,6 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
         </div>
       )}
 
-      <PlanMergeSection
-        mergeFrom={state.mergeFrom ?? ''}
-        mergeTo={state.mergeTo ?? ''}
-        aliases={state.settings.aliases}
-        onOpenPicker={actions.openMergeExercisePicker}
-        onMerge={(from, to) => void actions.mergeExercises(from, to)}
-        onUnmerge={(a) => void actions.unmergeExercise(a)}
-      />
-
       <div class="min-w-0 space-y-3">
         <div class="space-y-2">
           <div>
@@ -74,7 +65,7 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
           </div>
         </div>
 
-        <div class="lg:sticky lg:top-0 lg:z-10 -mx-1 space-y-2 bg-bgDark px-1 pb-2">
+        <div class="space-y-2 pb-1">
           <div class="flex items-center gap-2">
             <SearchInput
               id="exerciseMapSearch"
@@ -110,6 +101,15 @@ export function PlanExercisesTab({ state, allNames, actions }: PlanExercisesTabP
           />
         </div>
       </div>
+
+      <PlanMergeSection
+        mergeFrom={state.mergeFrom ?? ''}
+        mergeTo={state.mergeTo ?? ''}
+        aliases={state.settings.aliases}
+        onOpenPicker={actions.openMergeExercisePicker}
+        onMerge={(from, to) => void actions.mergeExercises(from, to)}
+        onUnmerge={(a) => void actions.unmergeExercise(a)}
+      />
     </>
   );
 }
