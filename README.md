@@ -28,15 +28,18 @@
     </td>
     <td width="32%" valign="top" align="center">
       <strong>Entreno en vivo (móvil)</strong><br /><br />
-      <img src="docs/screenshots/demo-live-mobile.png" alt="RackMark Entreno en vivo en móvil" width="260" />
+      <img src="docs/screenshots/demo-live-mobile.png" alt="RackMark Entreno en vivo en móvil" width="240" />
     </td>
   </tr>
+</table>
+
+<table>
   <tr>
-    <td valign="top">
+    <td width="50%" valign="top">
       <strong>Adherencia, calendario y recuperación (HRV / sueño)</strong><br /><br />
       <img src="docs/screenshots/demo-adherence-desktop.png" alt="RackMark Adherencia y bienestar" />
     </td>
-    <td valign="top">
+    <td width="50%" valign="top">
       <strong>Cuerpo y composición corporal</strong><br /><br />
       <img src="docs/screenshots/demo-body-desktop.png" alt="RackMark Cuerpo y medidas" />
     </td>
