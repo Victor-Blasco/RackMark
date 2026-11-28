@@ -16,6 +16,8 @@ interface AiPreferencesSectionProps {
   onRetryAi: () => void;
   /** Descarta el aviso de error del trabajo IA. */
   onDismissAi: () => void;
+  /** Oculta el encabezado `<h2>` interno cuando el contenedor ya muestra título. */
+  hideTitle?: boolean;
 }
 
 const TONE_OPTIONS: { id: AiTone; title: string; desc: string }[] = [
@@ -31,7 +33,6 @@ const TONE_OPTIONS: { id: AiTone; title: string; desc: string }[] = [
   },
 ];
 
-const STATUS_ACTIVE_CLS = 'border-emeraldGreen/40 bg-emeraldGreen/10 text-emerald-300';
 const STATUS_LOCKED_CLS = 'border-amberGold/40 bg-amberGold/10 text-amber-300';
 const TONE_BTN_BASE =
   'rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electricBlue';
@@ -46,24 +47,35 @@ export function AiPreferencesSection({
   onRunAi,
   onRetryAi,
   onDismissAi,
+  hideTitle = false,
 }: AiPreferencesSectionProps) {
   const ai = state.settings.ai;
   const quota = state.user?.emailVerified ? state.aiQuota : undefined;
   const quotaExhausted = Boolean(quota && quota.remaining <= 0);
 
   return (
-    <div class="pb-5 border-b border-white/10 space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="font-bold text-white">Preferencias del Coach IA</h2>
-          <p class="text-xs text-gray-400 mt-0.5">
-            Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.
-          </p>
+    <div class="space-y-4">
+      {(!hideTitle || !state.user?.emailVerified) && (
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          {!hideTitle ? (
+            <div>
+              <h2 class="font-bold text-white">Preferencias del Coach IA</h2>
+              <p class="text-xs text-gray-400 mt-0.5">
+                Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.
+              </p>
+            </div>
+          ) : (
+            <p class="text-xs text-gray-400">
+              Elige con qué profundidad y vocabulario redacta tu Coach IA tus resúmenes y recomendaciones.
+            </p>
+          )}
+          {!state.user?.emailVerified && (
+            <span class={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_LOCKED_CLS}`}>
+              {state.user ? 'Verifica tu correo' : 'Requiere iniciar sesión'}
+            </span>
+          )}
         </div>
-        <span class={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${state.user?.emailVerified ? STATUS_ACTIVE_CLS : STATUS_LOCKED_CLS}`}>
-          {state.user?.emailVerified ? 'Coach IA activo' : state.user ? 'Verifica tu correo' : 'Requiere iniciar sesión'}
-        </span>
-      </div>
+      )}
 
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2" role="group" aria-label="Nivel técnico de la IA">
         {TONE_OPTIONS.map((opt) => {
@@ -81,7 +93,10 @@ export function AiPreferencesSection({
             >
               <div class="flex items-center justify-between gap-2">
                 <span class="text-sm font-bold text-white">{opt.title}</span>
-                <span class={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-electricBlue text-white' : 'bg-gray-800 text-gray-400'}`}>
+                <span
+                  class={`rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-electricBlue' : 'bg-gray-800 text-gray-400'}`}
+                  style={active ? { color: 'rgb(var(--c-accent-fg))' } : undefined}
+                >
                   {active ? 'Activo' : 'Seleccionar'}
                 </span>
               </div>

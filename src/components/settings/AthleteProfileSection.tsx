@@ -17,6 +17,8 @@ interface AthleteProfileSectionProps {
   onChangeExperience: (val: string) => void;
   /** Actualiza la disponibilidad de días semanales. */
   onChangeDays: (raw: string) => void;
+  /** Oculta el encabezado `<h2>` interno cuando el contenedor ya muestra título. */
+  hideTitle?: boolean;
 }
 
 const DAY_CHOICES = [2, 3, 4, 5, 6];
@@ -33,22 +35,25 @@ export function AthleteProfileSection({
   onChangeGoal,
   onChangeExperience,
   onChangeDays,
+  hideTitle = false,
 }: AthleteProfileSectionProps) {
   const customSex = Boolean(profile.sex && profile.sex !== 'hombre' && profile.sex !== 'mujer');
 
   return (
     <div class="space-y-3">
-      <div class="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 class="font-bold text-white">Perfil del atleta</h2>
-          <p class="text-xs text-gray-400 mt-0.5">
-            Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.
-          </p>
+      {!hideTitle && (
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 class="font-bold text-white">Perfil del atleta</h2>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.
+            </p>
+          </div>
+          <button type="button" class="btn-sm btn-accent" onClick={onOpenWizard}>
+            Asistente inicial
+          </button>
         </div>
-        <button type="button" class="btn-sm btn-accent" onClick={onOpenWizard}>
-          Asistente inicial
-        </button>
-      </div>
+      )}
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label class="block">
@@ -121,6 +126,15 @@ export function AthleteProfileSection({
           </select>
         </label>
       </div>
+
+      {hideTitle && (
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
+          <p class="text-xs text-gray-400">Se utiliza para calcular tu gasto energético diario y contextualizar el informe de IA.</p>
+          <button type="button" class="btn-sm btn-accent" onClick={onOpenWizard}>
+            Asistente inicial
+          </button>
+        </div>
+      )}
     </div>
   );
 }

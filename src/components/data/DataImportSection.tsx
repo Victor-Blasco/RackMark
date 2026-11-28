@@ -51,16 +51,16 @@ export function DataImportSection({ onImportFiles, onGoBody, onDownloadTemplate,
         </div>
 
         <div class="space-y-3">
-          <div class="flex flex-wrap items-start justify-between gap-2">
-            <div>
+          <div>
+            <div class="flex items-center justify-between gap-2">
               <h2 class="font-bold text-white">Medidas corporales (CSV)</h2>
-              <p class="text-xs text-gray-400 mt-0.5">
-                Importa tu histórico de peso, % grasa y perímetros, o añade mediciones nuevas manualmente desde la pestaña Cuerpo.
-              </p>
+              <button type="button" class="inline-flex min-h-[44px] sm:min-h-0 items-center text-xs font-semibold text-blue-300 hover:text-white shrink-0" onClick={onGoBody}>
+                Ir a Cuerpo →
+              </button>
             </div>
-            <button type="button" class="btn-sm" onClick={onGoBody}>
-              Ir a Cuerpo
-            </button>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Importa tu histórico de peso, % grasa y perímetros, o añade mediciones nuevas manualmente desde la pestaña Cuerpo.
+            </p>
           </div>
           <div class="space-y-1.5">
             <p class="lbl">Archivo CSV de medidas</p>

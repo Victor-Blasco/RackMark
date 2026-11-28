@@ -22,21 +22,23 @@ export function DataView({ state: propState }: DataViewProps) {
 
   return (
     <div class="space-y-5">
-      <ViewHeader
-        title="Datos e importación"
-        subtitle="Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados."
-        right={
-          unmappedCount > 0 ? (
-            <button
-              type="button"
-              class="btn-sm border-amberGold/50 text-amberGold"
-              onClick={plan.openUnmapped}
-            >
-              {unmappedCount} ejercicios importados sin nombre → Asignar
-            </button>
-          ) : undefined
-        }
-      />
+      <div class={unmappedCount > 0 ? '' : 'hidden lg:block'}>
+        <ViewHeader
+          title="Datos e importación"
+          subtitle="Importa tu historial externo, descarga copias de seguridad y gestiona los datos guardados."
+          right={
+            unmappedCount > 0 ? (
+              <button
+                type="button"
+                class="btn-sm border-amberGold/50 text-amberGold"
+                onClick={plan.openUnmapped}
+              >
+                {unmappedCount} ejercicios importados sin nombre → Asignar
+              </button>
+            ) : undefined
+          }
+        />
+      </div>
 
       <div class="pb-5 border-b border-white/10">
         <div class="grid grid-cols-2 gap-4 sm:grid-cols-4 pt-1">

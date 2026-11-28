@@ -18,6 +18,8 @@ interface AccountSyncSectionProps {
   onLogout: () => void;
   /** Elimina permanentemente la cuenta y sus datos tras confirmación. */
   onDeleteAccount?: () => void;
+  /** Oculta el encabezado `<h2>` interno cuando el contenedor ya muestra título. */
+  hideTitle?: boolean;
 }
 
 function resolveSyncStatusText(state: State, unsynced = false): string {
@@ -47,6 +49,7 @@ export function AccountSyncSection({
   onSync,
   onLogout,
   onDeleteAccount,
+  hideTitle = false,
 }: AccountSyncSectionProps) {
   const initial = (state.user?.displayName ?? state.user?.email ?? 'U').trim().charAt(0).toUpperCase() || 'U';
   const syncStatus = resolveSyncStatusText(state, unsynced);
@@ -54,9 +57,9 @@ export function AccountSyncSection({
 
   if (!state.user) {
     return (
-      <div class="flex flex-col justify-between gap-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
+      <div class="flex flex-col justify-between gap-4">
         <div class="space-y-1.5">
-          <h2 class="font-bold text-white">Cuenta y sincronización</h2>
+          {!hideTitle && <h2 class="font-bold text-white">Cuenta y sincronización</h2>}
           <p class="text-xs text-gray-400 leading-relaxed">
             Inicia sesión con Google o con tu correo para sincronizar entrenamientos, medidas, sueño/FC y preferencias entre dispositivos, además de activar los informes de IA.
           </p>
@@ -73,15 +76,27 @@ export function AccountSyncSection({
     );
   }
 
+  const dangerZone = (
+    <div class="rounded-xl border border-coralRed/30 bg-coralRed/10 p-3.5 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <p class="text-xs font-bold text-rose-300">Zona de peligro</p>
+        <p class="text-xs text-gray-400">Borra tu cuenta y todos tus datos en la nube de forma permanente.</p>
+      </div>
+      <button type="button" class="btn-sm btn-danger min-h-[44px] sm:min-h-[34px]" disabled={state.syncing} onClick={onDeleteAccount}>
+        Eliminar cuenta
+      </button>
+    </div>
+  );
+
   if (!state.user.emailVerified) {
     return (
-      <div class="space-y-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
+      <div class="space-y-4">
         <div class="flex items-start gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amberGold/20 border border-amberGold/40 text-sm font-extrabold text-amber-300">
             {initial}
           </div>
           <div class="min-w-0 flex-1">
-            <h2 class="font-bold text-white">Cuenta y sincronización</h2>
+            {!hideTitle && <h2 class="font-bold text-white">Cuenta y sincronización</h2>}
             <p class="text-sm text-gray-200 truncate mt-0.5">{state.user.displayName ?? 'Cuenta por correo'}</p>
             <p class="text-xs text-gray-400 truncate">{state.user.email ?? ''}</p>
             <p class="text-xs mt-1 text-amberGold">Correo pendiente de verificar</p>
@@ -97,43 +112,35 @@ export function AccountSyncSection({
           <button type="button" class="btn min-h-[44px]" disabled={state.syncing} onClick={onResendVerification}>
             Reenviar correo
           </button>
-          <button type="button" class="btn btn-danger min-h-[44px]" disabled={state.syncing} onClick={onLogout}>
+          <button type="button" class="btn min-h-[44px]" disabled={state.syncing} onClick={onLogout}>
             Cerrar sesión
           </button>
-          <button type="button" class="min-h-[44px] sm:min-h-[36px] text-xs text-rose-300 hover:text-rose-200 underline underline-offset-4 ml-auto" disabled={state.syncing} onClick={onDeleteAccount}>
-            Eliminar cuenta
-          </button>
         </div>
+        {dangerZone}
       </div>
     );
   }
 
   return (
-    <div class="space-y-4 pb-5 border-b border-white/10 xl:pb-0 xl:border-b-0 xl:border-r xl:border-white/10 xl:pr-6">
+    <div class="space-y-4">
       <div class="flex items-start gap-3">
-        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-electricBlue text-sm font-extrabold text-white shadow-sm">
+        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-electricBlue text-sm font-extrabold shadow-sm" style={{ color: 'rgb(var(--c-accent-fg))' }}>
           {initial}
         </div>
         <div class="min-w-0 flex-1">
-          <h2 class="font-bold text-white">Cuenta y sincronización</h2>
+          {!hideTitle && <h2 class="font-bold text-white">Cuenta y sincronización</h2>}
           <p class="text-sm text-gray-200 truncate mt-0.5">{state.user.displayName ?? 'Cuenta por correo'}</p>
           <p class="text-xs text-gray-400 truncate">{state.user.email ?? ''}</p>
-          <p class={`text-xs mt-1 ${state.syncJob?.status === 'error' ? 'text-rose-300' : 'text-emerald-400'}`}>
-            {syncStatus}
-          </p>
+          <p class={`text-xs mt-1 ${state.syncJob?.status === 'error' ? 'text-rose-300' : 'text-emerald-400'}`}>{syncStatus}</p>
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2 border-t border-white/5 pt-3">
         <button type="button" class="btn min-h-[44px]" disabled={state.syncing} onClick={onSync}>
           <Icon name="refresh" className="h-4 w-4" /> Sincronizar ahora
         </button>
-        <button type="button" class="btn btn-danger min-h-[44px]" disabled={state.syncing} onClick={onLogout}>
-          Cerrar sesión
-        </button>
-        <button type="button" class="min-h-[44px] sm:min-h-[36px] text-xs text-rose-300 hover:text-rose-200 underline underline-offset-4 ml-auto" disabled={state.syncing} onClick={onDeleteAccount}>
-          Eliminar cuenta
-        </button>
+        <button type="button" class="btn min-h-[44px]" disabled={state.syncing} onClick={onLogout}>Cerrar sesión</button>
       </div>
+      {dangerZone}
     </div>
   );
 }
