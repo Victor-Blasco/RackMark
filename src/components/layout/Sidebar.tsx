@@ -99,18 +99,34 @@ export function Sidebar({
                 <span>+ Nueva rutina</span>
               </button>
             )}
+            <button type="button" aria-current={state.tab === 'plan' && activePlanTab === 'exercises' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' && activePlanTab === 'exercises' ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab('exercises') : onSelectTab('plan'))}>
+              <Icon name="barbell" className="h-4 w-4" />
+              <span class="flex-1 truncate text-left">Catálogo y músculos</span>
+              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
+            </button>
           </div>
         </div>
 
         <div>
           <p class="nav-sec-lbl">Análisis y métricas</p>
           <div class="space-y-1">
-            {ANALYTICS_TABS.map((a) => (
-              <button key={a.id} type="button" aria-current={state.tab === a.id ? 'page' : undefined} class={`nav-item ${state.tab === a.id ? 'nav-item-on' : ''}`} onClick={() => onSelectTab(a.id)}>
-                <Icon name={a.icon} className="h-4 w-4" />
-                <span>{a.label}</span>
-              </button>
-            ))}
+            {ANALYTICS_TABS.map((a) => {
+              const active = a.id === 'phases'
+                ? state.tab === 'phases' || (state.tab === 'plan' && activePlanTab === 'phases')
+                : state.tab === a.id;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  class={`nav-item ${active ? 'nav-item-on' : ''}`}
+                  onClick={() => (a.id === 'phases' && onSelectPlanTab ? onSelectPlanTab('phases') : onSelectTab(a.id))}
+                >
+                  <Icon name={a.icon} className="h-4 w-4" />
+                  <span>{a.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -120,15 +136,6 @@ export function Sidebar({
             <button type="button" aria-current={state.tab === 'data' ? 'page' : undefined} class={`nav-item ${state.tab === 'data' ? 'nav-item-on' : ''}`} onClick={() => onSelectTab('data')}>
               <Icon name="upload" className="h-4 w-4" />
               <span>Datos y copias</span>
-            </button>
-            <button type="button" aria-current={state.tab === 'plan' && activePlanTab === 'exercises' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' && activePlanTab === 'exercises' ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab('exercises') : onSelectTab('plan'))}>
-              <Icon name="barbell" className="h-4 w-4" />
-              <span class="flex-1 truncate text-left">Catálogo y músculos</span>
-              {unmappedCount > 0 && <span class="rounded-full bg-amberGold/20 px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-amberGold">{unmappedCount}</span>}
-            </button>
-            <button type="button" aria-current={state.tab === 'plan' && activePlanTab === 'phases' ? 'page' : undefined} class={`nav-item ${state.tab === 'plan' && activePlanTab === 'phases' ? 'nav-item-on' : ''}`} onClick={() => (onSelectPlanTab ? onSelectPlanTab('phases') : onSelectTab('plan'))}>
-              <Icon name="calendar" className="h-4 w-4" />
-              <span class="flex-1 truncate text-left">Fases del bloque</span>
             </button>
           </div>
         </div>

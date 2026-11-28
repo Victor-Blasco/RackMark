@@ -29,6 +29,7 @@ function renderActiveView(state: State) {
     case 'workout': return <LiveWorkoutView />;
     case 'log': return <LogWorkoutView />;
     case 'plan': return <PlanView />;
+    case 'phases': return <PlanView forcedTab="phases" />;
     case 'body': return <BodyView />;
     case 'volume': return <VolumeView />;
     case 'adherence': return <AdherenceView />;

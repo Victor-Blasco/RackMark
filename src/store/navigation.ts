@@ -6,6 +6,7 @@ export const ANALYTICS_TABS: { id: string; label: string; icon: IconName }[] = [
   { id: 'body', label: 'Cuerpo', icon: 'body' },
   { id: 'volume', label: 'Volumen', icon: 'chart' },
   { id: 'adherence', label: 'Adherencia', icon: 'calendar' },
+  { id: 'phases', label: 'Fases del bloque', icon: 'calendar' },
   { id: 'calc', label: 'Calculadoras', icon: 'calc' },
 ];
 
@@ -32,6 +33,7 @@ export const TAB_TITLES: Record<string, string> = {
   body: 'Cuerpo',
   volume: 'Volumen',
   adherence: 'Adherencia',
+  phases: 'Fases del bloque',
   calc: 'Calculadoras',
   data: 'Datos e importación',
   settings: 'Cuenta y ajustes',
@@ -51,6 +53,10 @@ export const isValidTab = (state: State, tab: string): boolean => FIXED_TAB_IDS.
 /** Devuelve el título visible y accesible para la pestaña actual. */
 export function activeTabTitle(state: State): string {
   if (state.tab === 'workout' && state.liveWorkout) return 'Entreno en vivo';
+  if (state.tab === 'plan') {
+    if (state.planTab === 'phases') return 'Fases del bloque';
+    if (!state.planTab || state.planTab === 'exercises') return 'Catálogo y músculos';
+  }
   return TAB_TITLES[state.tab] ?? (isRoutineTab(state, state.tab) ? `Rutina ${state.tab}` : 'RackMark');
 }
 

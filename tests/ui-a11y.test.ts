@@ -1175,7 +1175,7 @@ describe('accesibilidad WCAG, contraste, temas y shell UI', () => {
     );
     expect(summaryHtml).toContain('Kilos movidos');
 
-    const planHtml = renderToString(h(PlanView, { state: baseState }));
+    const planHtml = renderToString(h(PlanView, { state: { ...baseState, planTab: 'routines' } }));
     expect(planHtml).toContain('Volver a rutinas');
 
     const orgHtml = renderToString(

@@ -41,8 +41,9 @@ export function MobileBottomNav({
   targetRestSec,
   onSelectTab,
 }: MobileBottomNavProps) {
-  const inRoutine = isRoutineTab(state, state.tab) || state.tab === 'plan';
-  const inAnalytics = ANALYTICS_IDS.has(state.tab);
+  const inPhases = state.tab === 'phases' || (state.tab === 'plan' && state.planTab === 'phases');
+  const inRoutine = isRoutineTab(state, state.tab) || (state.tab === 'plan' && !inPhases);
+  const inAnalytics = ANALYTICS_IDS.has(state.tab) || inPhases;
   const inTrain = state.tab === 'workout' || state.tab === 'log';
   const unmappedCount = state.analysis.unmapped.length;
 

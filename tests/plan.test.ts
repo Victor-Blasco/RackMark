@@ -709,7 +709,7 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     );
     expect(navPlanHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
 
-    // 2. MobileHeader: solo rutinas en Push (sin botón Plan) y 3 subpestañas en Plan
+    // 2. MobileHeader: rutinas + Catálogo en Push y barra deslizable de 5 pestañas en Análisis (incl. Fases)
     const headPush = renderToString(
       h(MobileHeader, {
         state: { ...baseState, tab: 'Push' },
@@ -720,6 +720,7 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
       }),
     );
     expect(headPush).toContain('aria-label="Rutinas"');
+    expect(headPush).toContain('Catálogo');
     expect(headPush).not.toContain('>Plan</button>');
 
     const headPlan = renderToString(
@@ -732,11 +733,37 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
         onCloudLogin: () => {},
       }),
     );
-    expect(headPlan).toContain('aria-label="Secciones de planificación"');
-    expect(headPlan).not.toContain('>Rutinas<');
-    expect(headPlan).toContain('Catálogo');
+    expect(headPlan).toContain('aria-label="Vistas de análisis"');
+    expect(headPlan).toContain('overflow-x-auto');
+    expect(headPlan).toContain('Cuerpo');
+    expect(headPlan).toContain('Volumen');
+    expect(headPlan).toContain('Adherencia');
     expect(headPlan).toContain('Fases');
-    expect(headPlan).toContain('grid-cols-2');
+    expect(headPlan).toContain('Calc.');
+
+    const navPhasesHtml = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'phases' },
+        liveCount: 0,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navPhasesHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Análisis<\/span>/s);
+
+    const navCatalogHtml = renderToString(
+      h(MobileBottomNav, {
+        state: { ...baseState, tab: 'plan', planTab: 'exercises' },
+        liveCount: 0,
+        draftCount: 0,
+        lastRoutine: 'Push',
+        lastAnalytics: 'body',
+        onSelectTab: () => {},
+      }),
+    );
+    expect(navCatalogHtml).toMatch(/bnav-item bnav-item-on[^>]*>.*?<span>Rutinas<\/span>/s);
 
     const headWorkout = renderToString(
       h(MobileHeader, {
@@ -1207,7 +1234,7 @@ describe('planificación, catálogo, rutinas y fusiones', () => {
     const planHtml = renderToString(h(PlanView, { state: base }));
     expect(planHtml).not.toContain('<select');
     expect(planHtml).toContain('Cambiar ejercicio 1 de Push');
-    expect(planHtml).toContain('sr-only lg:not-sr-only lg:flex');
+    expect(planHtml).toContain('sr-only lg:not-sr-only lg:block');
 
     const replaceModalHtml = renderToString(
       h(ModalHost, { state: { ...base, activeModal: { type: 'routineExercisePicker', routine: 'Push', replaceRowIdx: 0 } } }),
