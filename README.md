@@ -18,6 +18,31 @@
 
 ---
 
+## Capturas
+
+<table>
+  <tr>
+    <td width="68%" valign="top">
+      <strong>Resumen en escritorio</strong> (KPIs, Coach IA y gráficas de progresión)<br /><br />
+      <img src="docs/screenshots/demo-home-desktop.png" alt="RackMark Resumen en escritorio" />
+    </td>
+    <td width="32%" valign="top" align="center">
+      <strong>Entreno en vivo (móvil)</strong><br /><br />
+      <img src="docs/screenshots/demo-live-mobile.png" alt="RackMark Entreno en vivo en móvil" width="260" />
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <strong>Adherencia, calendario y recuperación (HRV / sueño)</strong><br /><br />
+      <img src="docs/screenshots/demo-adherence-desktop.png" alt="RackMark Adherencia y bienestar" />
+    </td>
+    <td valign="top">
+      <strong>Cuerpo y composición corporal</strong><br /><br />
+      <img src="docs/screenshots/demo-body-desktop.png" alt="RackMark Cuerpo y medidas" />
+    </td>
+  </tr>
+</table>
+
 ## Funcionalidades principales
 
 - **Entrenar (`En vivo` y `Registrar hecho`):** registro rápido en gimnasio pensado para usar con una mano en móvil, un ejercicio activo a la vez, cronómetro de descanso manual/automático, notas por sesión o fijas y resumen al completar.
